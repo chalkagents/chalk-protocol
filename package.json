@@ -1,0 +1,22 @@
+{
+  "name": "chalk-protocol",
+  "version": "0.0.0",
+  "description": "A layer-2 agent harness: a .chalk/ project-state spine + CLI that holds AI coding agents to software-development fundamentals via enforceable gates.",
+  "type": "module",
+  "bin": {
+    "chalk": "bin/chalk.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "PROTOCOL.md",
+    "RESEARCH.md"
+  ],
+  "license": "MIT"
+}

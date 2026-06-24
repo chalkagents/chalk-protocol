@@ -1,0 +1,22 @@
+[
+  {
+    "id": "task-47d95c06",
+    "title": "Enforce the seven gates (P1-P7) via the CLI",
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "All gate tests pass (P1/P4/P5/P6/P7) via node --test"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/protocol.test.mjs",
+        "sha256": "2e82752a7cd21851baf4897a7708f2086471ed5700ad35fe7cd55c22cdc5d05f"
+      }
+    ],
+    "heldOut": [],
+    "createdAt": "2026-06-24T18:58:39.042Z",
+    "reviews": [],
+    "startedAt": "2026-06-24T18:58:39.151Z"
+  }
+]

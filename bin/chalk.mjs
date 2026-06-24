@@ -1,0 +1,460 @@
+#!/usr/bin/env node
+// Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
+// The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
+import { resolve, join } from 'node:path';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, UPDATE_TYPES } from '../lib/store.mjs';
+import { verify as runVerify } from '../lib/verify.mjs';
+import { runReview } from '../lib/review.mjs';
+import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
+import { execSync } from 'node:child_process';
+
+// ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
+function parse(argv) {
+  const _ = [], flags = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith('--')) {
+      let key = a.slice(2), val = true;
+      if (key.includes('=')) { [key, val] = [key.slice(0, key.indexOf('=')), key.slice(key.indexOf('=') + 1)]; }
+      else if (argv[i + 1] && !argv[i + 1].startsWith('--')) { val = argv[++i]; }
+      if (key in flags) flags[key] = [].concat(flags[key], val); else flags[key] = val;
+    } else _.push(a);
+  }
+  return { _, flags };
+}
+const arr = (v) => (v == null ? [] : [].concat(v));
+
+const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
+const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
+const ok = (msg) => console.log(C.g('✓ ') + msg);
+
+// ---------------------------------------------------------------- commands
+const cmds = {
+  init({ flags }) {
+    const root = process.cwd();
+    const meta = initSpine(root, { name: flags.name, goal: flags.goal });
+    ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})`);
+    if (flags['no-agents'] !== true) {
+      for (const r of installAgentDocs(root)) console.log(C.dim(`  ${r.action} ${r.name} (agent contract)`));
+    }
+    console.log(C.dim('  next: set verify commands in .chalk/chalk.json, then `chalk task add "..."`'));
+  },
+
+  // (Re)install the agent contract into AGENTS.md / CLAUDE.md.
+  agents() {
+    const s = Store.open();
+    for (const r of installAgentDocs(s.root)) ok(`${r.action} ${r.name}`);
+    console.log(C.dim('  any CLI (Claude Code, Codex, Gemini) will now auto-load the Chalk contract.'));
+  },
+
+  // The single command an agent calls to learn its next action (which gate is blocking).
+  next() {
+    const s = Store.open();
+    const tasks = s.tasks();
+    const wip = tasks.filter((t) => t.state === 'in-progress');
+    const specd = tasks.filter((t) => t.state === 'specd');
+    const todo = tasks.filter((t) => t.state === 'todo');
+    console.log(C.b('Chalk · next action'));
+    const reg0 = s.protocol().regression;
+    if (reg0?.required) {
+      const la = reg0.lastAudit;
+      const stale = !la || !la.green || (la.size && la.size.loc !== codeSize(s.root).loc);
+      if (stale) console.log(C.y('  ⚠ held-out audit is stale — run `chalk audit` (required to advance phase).'));
+    }
+
+    if (wip.length) {
+      if (wip.length > 1) console.log(C.y(`  ! ${wip.length} tasks in-progress — protocol prefers ONE at a time; finish one first.`));
+      for (const t of wip) {
+        const short = t.id.slice(0, 12);
+        console.log(`  ${C.b('●')} ${C.b(t.title)} ${C.dim(short)} is in-progress.`);
+        for (const c of t.acceptanceCriteria || []) console.log(`     → satisfy: ${c.text}`);
+        if ((t.tests || []).length) {
+          const broken = s.brokenLocks(t);
+          console.log(`     ${broken.length ? C.r('✗ tests MODIFIED') : C.dim('READ-ONLY tests')}: ${(t.tests).map((x) => x.path).join(', ')}`);
+          if (broken.length) console.log(C.r(`       integrity break — revert them or run: chalk amend-spec ${short} --test <path> --why "..."`));
+        }
+        const needsReview = s.protocol().review?.required;
+        const last = (t.reviews || []).slice(-1)[0];
+        const seq = needsReview && !(last && last.verdict === 'pass')
+          ? `chalk verify   then   chalk review ${short}   then   chalk done ${short}`
+          : `chalk verify   then   chalk done ${short}`;
+        console.log(C.dim(`     when ready:  ${seq}`));
+        console.log(C.dim(`     read first:  chalk context ${short}`));
+      }
+      return;
+    }
+    if (specd.length) {
+      console.log(`  ${C.y('◐')} ${specd.length} task(s) ready. Pick ${C.b('ONE')} and start it:`);
+      for (const t of specd) console.log(C.dim(`     chalk start ${t.id.slice(0, 12)}   `) + t.title);
+      return;
+    }
+    if (todo.length) {
+      console.log(`  ${C.dim('○')} ${todo.length} task(s) need acceptance criteria before they can start (GATE P1):`);
+      for (const t of todo) console.log(C.dim(`     chalk spec ${t.id.slice(0, 12)} --criterion "..."   `) + `(${t.title})`);
+      return;
+    }
+    if (!tasks.length) { console.log(C.dim('  no tasks yet →  chalk task add "<title>"')); return; }
+    console.log(`  ${C.g('✓')} all tasks done. Add the next one ${C.dim('(chalk task add)')} or advance phase ${C.dim('(chalk phase ...)')}.`);
+  },
+
+  status() {
+    const s = Store.open();
+    const m = s.meta();
+    const tasks = s.tasks();
+    const openQ = s.questions().filter((q) => q.status !== 'resolved');
+    console.log(`${C.b(m.project.name)}  ${C.dim('· phase')} ${m.protocol?.phase}  ${C.dim('· status')} ${m.protocol?.status}`);
+    if (m.project.description) console.log(C.dim(`  goal: ${m.project.description}`));
+    console.log('\n' + C.b('Tasks'));
+    if (!tasks.length) console.log(C.dim('  (none — `chalk task add "..."`)'));
+    for (const st of TASK_STATES) {
+      const inState = tasks.filter((t) => t.state === st);
+      for (const t of inState) console.log(`  ${stateBadge(st)} ${C.dim(t.id.slice(0, 12))} ${t.title} ${C.dim(`(${(t.acceptanceCriteria || []).length} crit, ${(t.tests || []).length} test)`)}`);
+    }
+    console.log('\n' + C.b('Open questions') + ` ${openQ.length}`);
+    for (const q of openQ.slice(0, 5)) console.log(`  ${C.y('?')} ${q.question} ${C.dim(`→ ${q.awaitingFrom}`)}`);
+    const recent = s.updates().slice(-3).reverse();
+    if (recent.length) { console.log('\n' + C.b('Recent')); for (const u of recent) console.log(`  ${C.dim(u.at.slice(0, 16))} ${u.title}`); }
+  },
+
+  // P3 — context over procedure: surface the spec slice + at-risk tests, not a TDD lecture.
+  context({ _ }) {
+    const s = Store.open();
+    const m = s.meta();
+    const t = _[0] ? mustTask(s, _[0]) : null;
+    console.log(`# Chalk context — ${m.project.name} (phase: ${m.protocol?.phase})\n`);
+    console.log(`## Spec\n${s.spec().trim()}\n`);
+    if (t) {
+      console.log(`## Current task — ${t.title}  [${t.state}]\n`);
+      console.log('### Acceptance criteria (the contract — make these pass)');
+      (t.acceptanceCriteria || []).forEach((c, i) => console.log(`  ${i + 1}. ${c.text}`));
+      if (!(t.acceptanceCriteria || []).length) console.log(C.dim('  (none yet — add with `chalk spec`)'));
+      console.log('\n### Tests at risk for this change (READ-ONLY — do not edit; use `chalk amend-spec`)');
+      if ((t.tests || []).length) t.tests.forEach((x) => console.log(`  - ${x.path}`));
+      else console.log(C.dim('  (no locked tests)'));
+    }
+    const reg = m.protocol?.regression;
+    if (reg?.tests?.length) console.log(`\n## Held-out regression\n${reg.tests.length} locked file(s) under ${reg.dir} — you may NOT read or edit them. They run in \`chalk audit\`; on failure you learn only WHICH criterion regressed. Fix against the spec.`);
+    const openQ = s.questions().filter((q) => q.status !== 'resolved');
+    if (openQ.length) { console.log('\n## Open questions'); openQ.forEach((q) => console.log(`  - ${q.question} (→ ${q.awaitingFrom})`)); }
+    console.log('\n## Contract\nread → start (needs criteria) → work → `chalk verify` (must be green) → `chalk done`.\nTests are read-only. Do not self-declare done; the verify gate decides.');
+  },
+
+  task({ _, flags }) {
+    const sub = _[0];
+    const s = Store.open();
+    if (sub === 'add') {
+      const title = _.slice(1).join(' ') || flags.title;
+      if (!title) die('usage: chalk task add "<title>"');
+      const t = { id: id('task'), title, state: 'todo', acceptanceCriteria: [], tests: [], heldOut: [], createdAt: now(), reviews: [] };
+      s.upsertTask(t);
+      s.emitUpdate({ type: 'work-item-started', title: `Task created: ${title}`, taskId: t.id });
+      ok(`task ${C.b(t.id.slice(0, 12))} — ${title} ${C.dim('[todo]')}`);
+    } else die('usage: chalk task add "<title>"');
+  },
+
+  // Attach acceptance criteria and/or LOCK a test file (P1/P2/P6).
+  spec({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    let changed = false;
+    for (const c of arr(flags.criterion)) { t.acceptanceCriteria.push({ text: String(c) }); changed = true; }
+    for (const p of arr(flags.test)) {
+      const lock = s.lockTest(resolve(process.cwd(), String(p)));
+      if (!t.tests.some((x) => x.path === lock.path)) t.tests.push(lock);
+      changed = true;
+      console.log(C.dim(`  locked ${lock.path} @ ${lock.sha256.slice(0, 12)}`));
+    }
+    for (const p of arr(flags['held-out'])) { if (!t.heldOut.includes(String(p))) t.heldOut.push(String(p)); changed = true; }
+    if (!changed) die('nothing to add — use --criterion "..." and/or --test <path>');
+    if (t.state === 'todo' && (t.acceptanceCriteria.length || t.tests.length)) t.state = 'specd';
+    s.upsertTask(t);
+    ok(`spec updated — ${t.title} ${C.dim(`[${t.state}] ${t.acceptanceCriteria.length} crit, ${t.tests.length} test`)}`);
+  },
+
+  // GATE P1 — refuse to start without machine-checkable acceptance criteria.
+  start({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const hasCriteria = (t.acceptanceCriteria || []).length || (t.tests || []).length;
+    if (!hasCriteria) die(`GATE P1: task has no acceptance criteria. Add them first:\n    chalk spec ${t.id.slice(0, 12)} --criterion "..."  (or --test <path>)`);
+    if (t.state === 'done') die('task already done.');
+    t.state = 'in-progress'; t.startedAt = now();
+    s.upsertTask(t);
+    s.emitUpdate({ type: 'work-item-started', title: `Started: ${t.title}`, taskId: t.id });
+    ok(`started ${C.b(t.title)} ${C.dim('[in-progress]')}`);
+    console.log(C.dim(`  read context with: chalk context ${t.id.slice(0, 12)}`));
+  },
+
+  verify() {
+    const s = Store.open();
+    const v = runVerify(s);
+    console.log(C.b('Verify') + '\n');
+    for (const r of v.toolchain) {
+      const tag = r.status === 'pass' ? C.g('pass') : r.status === 'fail' ? C.r('fail') : C.dim('skip');
+      console.log(`  ${tag}  ${r.gate}${r.cmd ? C.dim(`  (${r.cmd})`) : C.dim('  (not configured)')}`);
+      if (r.status === 'fail' && r.tail) console.log(r.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
+    }
+    if (v.integrity.length) {
+      console.log('\n' + C.r('  test-integrity VIOLATED (P6):'));
+      for (const i of v.integrity) for (const b of i.broken) console.log(`    ${C.r('✗')} ${b.path} changed under task ${i.taskId.slice(0, 12)} — use \`chalk amend-spec\``);
+    }
+    console.log('\n' + (v.green ? C.g('● GREEN — done gate is open') : C.r('● RED — done gate is closed')));
+    process.exit(v.green ? 0 : 2);
+  },
+
+  // GATE P4 + P6 (+ P5) — done is impossible unless verify is green, locks intact, review passed.
+  done({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
+    const v = runVerify(s);
+    if (!v.green) {
+      const reasons = [];
+      if (!v.toolchainGreen) reasons.push('toolchain not green (run `chalk verify`)');
+      if (!v.integrityGreen) reasons.push('locked tests were modified (P6) — use `chalk amend-spec`');
+      die(`GATE P4+P6: cannot mark done — ${reasons.join('; ')}.`);
+    }
+    // GATE P5 — if review is required, the latest review must pass (override is logged).
+    if (s.protocol().review?.required) {
+      const last = (t.reviews || []).slice(-1)[0];
+      const passed = last && last.verdict === 'pass';
+      if (!passed) {
+        if (!flags['force-review']) die(`GATE P5: needs a passing adversarial review — run \`chalk review ${t.id.slice(0, 12)}\`${last ? ` (last verdict: ${last.verdict})` : ''}.\n    To override (logged): chalk done ${t.id.slice(0, 12)} --force-review --why "..."`);
+        if (!flags.why) die('--force-review requires --why "<reason>" (it is logged as a decision).');
+        s.appendDecision({ title: `Overrode review gate for "${t.title}"`, why: String(flags.why) });
+        console.log(C.y('  ! review gate overridden (decision logged).'));
+      }
+    }
+    t.state = 'done'; t.doneAt = now();
+    s.upsertTask(t);
+    s.emitUpdate({ type: 'work-item-accepted', title: `Done: ${t.title}`, taskId: t.id });
+    ok(`done ${C.b(t.title)} — verify green ✓`);
+  },
+
+  // P6 — the ONLY sanctioned path to change a locked acceptance test.
+  'amend-spec'({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const why = flags.why || flags.reason;
+    if (!flags.test) die('usage: chalk amend-spec <id> --test <path> --why "<reason>"');
+    if (!why) die('amend-spec requires --why "<reason>" (the change is logged as a decision).');
+    for (const p of arr(flags.test)) {
+      const lock = s.lockTest(resolve(process.cwd(), String(p)));
+      const i = t.tests.findIndex((x) => x.path === lock.path);
+      if (i >= 0) t.tests[i] = lock; else t.tests.push(lock);
+      console.log(C.dim(`  re-locked ${lock.path} @ ${lock.sha256.slice(0, 12)}`));
+    }
+    s.upsertTask(t);
+    s.appendDecision({ title: `Amended acceptance test for "${t.title}"`, why: String(why) });
+    ok('spec amended + decision logged.');
+  },
+
+  // P5 — adversarial review. Runs the configured reviewer; if none, records a manual note.
+  review({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const meta = s.meta();
+    t.reviews = t.reviews || [];
+
+    if (!meta.protocol?.review?.command) {
+      const note = flags.note || _.slice(1).join(' ');
+      if (!note) die('no reviewer configured. Set .chalk/chalk.json → protocol.review.command (e.g. "claude -p"),\n  or record a manual review:  chalk review <id> --note "..."');
+      t.reviews.push({ at: now(), by: flags.by || 'human', verdict: flags.block ? 'block' : 'pass', findings: [], note: String(note), checklist: ['test-adequacy', 'design-intent', 'regressions'] });
+      s.upsertTask(t);
+      s.emitUpdate({ type: 'progress-update', title: `Review (manual): ${t.title}`, description: String(note), taskId: t.id });
+      return ok('manual review recorded ' + C.dim('(checklist: test-adequacy · design-intent · regressions)'));
+    }
+
+    console.log(C.dim('  running adversarial reviewer…'));
+    const r = runReview(s, t);
+    if (r.status === 'error') die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
+    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings });
+    s.upsertTask(t);
+    s.emitUpdate({ type: 'progress-update', title: `Review (${r.verdict}): ${t.title}`, taskId: t.id });
+    console.log((r.verdict === 'pass' ? C.g('● review PASS') : C.r('● review BLOCK')) + ` ${C.dim(t.title)}`);
+    for (const f of r.findings) console.log(`   ${sev(f.severity)} ${C.dim(`[${f.area}]`)} ${f.note}`);
+    if (r.verdict !== 'pass') console.log(C.dim('   fix the blocking findings and re-run `chalk review`.'));
+    process.exit(r.verdict === 'pass' ? 0 : 3);
+  },
+
+  // P7 — author/lock the held-out regression set (hidden from the implementing agent).
+  guard({ _, flags }) {
+    const s = Store.open();
+    const m = s.meta();
+    m.protocol = m.protocol || {};
+    const reg = m.protocol.regression = m.protocol.regression || { command: '', authorCommand: '', dir: '.chalk/held-out', required: false, tests: [], lastAudit: null };
+    const sub = _[0];
+    const lockInto = (abs) => {
+      const lock = lockFile(s.root, abs);
+      const i = reg.tests.findIndex((t) => t.path === lock.path);
+      if (i >= 0) reg.tests[i] = lock; else reg.tests.push(lock);
+      return lock;
+    };
+    if (sub === 'add') {
+      const p = _[1] || flags.path;
+      if (!p) die('usage: chalk guard add <path>');
+      const lock = lockInto(resolve(process.cwd(), String(p)));
+      s.saveMeta(m);
+      ok(`held-out regression locked: ${lock.path} ${C.dim('(hidden from the implementer)')}`);
+    } else if (sub === 'gen') {
+      if (!reg.authorCommand) die('set .chalk/chalk.json → protocol.regression.authorCommand (a BYO test-author agent).');
+      console.log(C.dim('  running guard author (derives held-out tests from the spec, blind to the code)…'));
+      const prompt = buildGuardPrompt(m, s.spec(), s.tasks().flatMap((t) => (t.acceptanceCriteria || []).map((c) => `- [${t.title}] ${c.text}`)).join('\n'));
+      try { execSync(reg.authorCommand, { cwd: s.root, input: prompt, stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); }
+      catch { /* author may write files then exit nonzero */ }
+      let n = 0;
+      for (const f of listDirFiles(s.root, reg.dir)) { if (/readme/i.test(f)) continue; lockInto(f); n++; }
+      s.saveMeta(m);
+      ok(`locked ${n} held-out test file(s) under ${reg.dir}`);
+    } else if (sub === 'list') {
+      if (!reg.tests.length) return console.log(C.dim('  (none — `chalk guard add <path>` or `chalk guard gen`)'));
+      for (const t of reg.tests) console.log(`  ${C.dim(t.sha256.slice(0, 12))} ${t.path}`);
+    } else die('usage: chalk guard <add <path> | gen | list>');
+  },
+
+  // P7 — run the held-out set. Results are WITHHELD (pass/fail only) to prevent overfitting.
+  audit() {
+    const s = Store.open();
+    const r = runAudit(s);
+    console.log(C.b('Audit · held-out regression'));
+    for (const p of r.broken) console.log(`  ${C.r('✗ integrity')} ${p} ${C.dim('— held-out test modified (P7 violation)')}`);
+    if (r.status === 'unconfigured') console.log(C.dim('  no regression.command configured — integrity check only.'));
+    else console.log('  ' + (r.passed ? C.g('held-out checks PASS') : C.r('held-out checks FAIL')) + C.dim('  (output withheld — fix against the spec, not the hidden tests)'));
+    console.log(C.dim(`  code size: ${r.size.loc} LOC across ${r.size.files} file(s)`));
+    const m = s.meta();
+    m.protocol = m.protocol || {};
+    const reg = m.protocol.regression = m.protocol.regression || {};
+    reg.lastAudit = { at: now(), green: r.green, size: r.size, count: (reg.tests || []).length };
+    s.saveMeta(m);
+    s.emitUpdate({ type: 'progress-update', title: `Audit ${r.green ? 'green' : 'red'} (held-out regression)` });
+    console.log('\n' + (r.green ? C.g('● AUDIT GREEN') : C.r('● AUDIT RED — phase gate closed')));
+    process.exit(r.green ? 0 : 2);
+  },
+
+  phase({ _, flags }) {
+    const s = Store.open();
+    const p = _[0];
+    if (!p) die(`usage: chalk phase <${PHASES.join('|')}>`);
+    if (!PHASES.includes(p)) console.log(C.y(`! "${p}" is not a standard phase (${PHASES.join(', ')}) — setting anyway.`));
+    // GATE P7 — advancing a phase requires a fresh green held-out audit (size-aware).
+    const reg = s.protocol().regression;
+    if (reg?.required) {
+      const la = reg.lastAudit;
+      const size = codeSize(s.root);
+      const changed = la && la.size && la.size.loc !== size.loc;
+      if (!la || !la.green || changed) {
+        if (!flags['force-audit']) {
+          const why = !la ? 'never audited' : !la.green ? 'last audit was RED' : 'code changed since last audit';
+          die(`GATE P7: run a green \`chalk audit\` before advancing phase (${why}).\n    To override (logged): chalk phase ${p} --force-audit --why "..."`);
+        }
+        if (!flags.why) die('--force-audit requires --why "<reason>" (it is logged as a decision).');
+        s.appendDecision({ title: `Overrode held-out audit gate advancing to phase "${p}"`, why: String(flags.why) });
+        console.log(C.y('  ! audit gate overridden (decision logged).'));
+      }
+    }
+    s.setPhase(p);
+    s.emitUpdate({ type: 'progress-update', title: `Phase → ${p}` });
+    ok(`phase → ${C.b(p)}`);
+  },
+
+  update({ _, flags }) {
+    const s = Store.open();
+    const title = _.join(' ') || flags.title;
+    if (!title) die('usage: chalk update "<title>" [--type T] [--desc D]');
+    const type = flags.type && UPDATE_TYPES.includes(flags.type) ? flags.type : 'progress-update';
+    const u = s.emitUpdate({ type, title, description: flags.desc || '' });
+    ok(`logged ${C.dim(`[${u.type}]`)} ${title}`);
+  },
+
+  decision({ _, flags }) {
+    const s = Store.open();
+    const title = _.join(' ') || flags.title;
+    if (!title) die('usage: chalk decision "<title>" --why "..."');
+    s.appendDecision({ title, why: flags.why || '' });
+    ok(`decision logged — ${title}`);
+  },
+
+  question({ _, flags }) {
+    const s = Store.open();
+    const sub = _[0];
+    const qs = s.questions();
+    if (sub === 'add') {
+      const text = _.slice(1).join(' ') || flags.q;
+      if (!text) die('usage: chalk question add "<q>" [--for us|client]');
+      const q = { id: id('q'), question: text, awaitingFrom: flags.for || 'us', status: 'open', at: now() };
+      qs.push(q); s.saveQuestions(qs);
+      ok(`question ${C.dim(q.id.slice(0, 10))} logged → ${q.awaitingFrom}`);
+    } else if (sub === 'resolve') {
+      const q = qs.find((x) => x.id === _[1] || x.id.startsWith(_[1] || '\0'));
+      if (!q) die('question not found');
+      q.status = 'resolved'; q.answer = _.slice(2).join(' ') || flags.answer || '';
+      s.saveQuestions(qs);
+      s.emitUpdate({ type: 'question-answered', title: `Answered: ${q.question}`, description: q.answer });
+      ok('resolved.');
+    } else {
+      for (const q of qs.filter((x) => x.status !== 'resolved')) console.log(`  ${C.y('?')} ${C.dim(q.id.slice(0, 10))} ${q.question} → ${q.awaitingFrom}`);
+    }
+  },
+
+  log({ flags }) {
+    const s = Store.open();
+    const n = Number(flags.n || 15);
+    for (const u of s.updates().slice(-n)) console.log(`${C.dim(u.at.slice(0, 16))}  ${C.dim(`[${u.type}]`)} ${u.title}`);
+  },
+
+  help() { printHelp(); },
+};
+
+// ---------------------------------------------------------------- helpers
+function sev(s) { return { high: C.r('▲ high'), med: C.y('▲ med '), low: C.dim('▲ low ') }[s] || C.dim('▲ ' + (s || '?')); }
+function stateBadge(st) {
+  return { todo: C.dim('○ todo  '), specd: C.y('◐ specd '), 'in-progress': C.b('● wip   '), done: C.g('✓ done  ') }[st] || st;
+}
+function mustTask(s, ref) {
+  if (!ref) die('missing task id');
+  const t = s.task(ref);
+  if (!t) die(`task not found: ${ref}`);
+  return t;
+}
+function printHelp() {
+  console.log(`${C.b('chalk')} — Chalk Protocol CLI (v0)  ${C.dim('· read → work → verify → write')}
+
+${C.b('setup')}
+  chalk init [--name N] [--goal G]     ${C.dim('also installs the agent contract into AGENTS.md/CLAUDE.md')}
+  chalk agents                         ${C.dim('(re)install the agent contract')}
+  chalk status
+  chalk next                           ${C.dim('the agent entrypoint: what to do next')}
+  chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
+
+${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental is met)')}
+  chalk task add "<title>"
+  chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
+  chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
+  chalk verify                         ${C.dim('toolchain + test-integrity (P4/P6/P7)')}
+  chalk review <id>                    ${C.dim('GATE P5: adversarial reviewer (configured in chalk.json)')}
+  chalk done <id> [--force-review --why "..."]   ${C.dim('GATE P4+P6(+P5): verify green, locks intact, review passed')}
+  chalk amend-spec <id> --test <path> --why "..."   ${C.dim('gated test change (P6)')}
+
+${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
+  chalk guard add <path> | gen | list  ${C.dim('author/lock the held-out set (from the spec)')}
+  chalk audit                          ${C.dim('run held-out set; results withheld; gates phase advance')}
+
+${C.b('spine')}
+  chalk phase <${PHASES.join('|')}> [--force-audit --why "..."]
+  chalk update "<title>" [--type T] [--desc D]
+  chalk decision "<title>" --why "..."
+  chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
+  chalk log [--n N]`);
+}
+
+// ---------------------------------------------------------------- dispatch
+const [, , cmd, ...rest] = process.argv;
+const parsed = parse(rest);
+try {
+  if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') { printHelp(); process.exit(0); }
+  const fn = cmds[cmd];
+  if (!fn) die(`unknown command: ${cmd}  (try \`chalk help\`)`);
+  fn(parsed);
+} catch (e) {
+  die(e.message);
+}

@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+*.log
+
+# Chalk convention — local/machine state and ephemeral runs are not versioned.
+.chalk/local/
+.chalk/skills/
+.chalk/runs/
+.chalk/pipelines/
