@@ -459,6 +459,36 @@ test('plan stage — the planner output is stored on the task and injected into 
   assert.match(chalk(d, 'cost').out, /planner/);
 });
 
+test('retro — appends lessons + files deduped improvement issues; --dry-run is inert', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  const created = join(d, 'created.txt');
+  const ghCmd = stubGh(d, `import {appendFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('issue','list')) console.log(JSON.stringify([{title:'existing open issue'}]));
+    else if(has('issue','create')) appendFileSync(${JSON.stringify(created)}, a.join(' ')+'\\n');
+    else process.exit(0);`);
+  writeFileSync(join(d, 'retro.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({lessons:['always clean up the worktree after merge'], issues:[{title:'fix: improve the error message',body:'- [ ] do it',labels:['bug']},{title:'existing open issue',body:'dup'}]}));`);
+  conf(d, (o) => { o.github.command = ghCmd; o.retro = { command: `node ${join(d, 'retro.mjs')}` }; });
+
+  // dry-run: nothing changes.
+  let r = chalk(d, 'retro', '--dry-run');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /would file:.*improve the error/);
+  assert.ok(!existsSync(created), 'dry-run filed nothing');
+  assert.ok(!readFileSync(join(d, '.chalk/lessons.md'), 'utf8').includes('clean up the worktree'), 'dry-run appended no lesson');
+
+  // real: lesson appended, the new issue filed, the duplicate skipped.
+  r = chalk(d, 'retro');
+  assert.equal(r.code, 0);
+  assert.match(readFileSync(join(d, '.chalk/lessons.md'), 'utf8'), /clean up the worktree/, 'lesson appended');
+  const filed = readFileSync(created, 'utf8');
+  assert.match(filed, /improve the error message/, 'the new issue was filed');
+  assert.ok(!/existing open issue/.test(filed), 'the duplicate issue was skipped');
+  assert.match(r.out, /issue\(s\) filed/);
+  // the lesson is now in the agent context (closes the loop).
+  assert.match(chalk(d, 'context').out, /clean up the worktree/);
+});
+
 test('pipeline --dry-run — plans without touching anything', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');

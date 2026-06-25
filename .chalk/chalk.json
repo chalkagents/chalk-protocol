@@ -33,6 +33,9 @@
     },
     "planner": {
       "command": "claude -p --agent chalk-planner --max-turns 30"
+    },
+    "retro": {
+      "command": "claude -p --agent chalk-retro --max-turns 20"
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",

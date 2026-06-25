@@ -17,6 +17,7 @@ import { runPipeline } from '../lib/pipeline.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
+import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { basename } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -384,13 +385,40 @@ const cmds = {
   autopilot({ flags }) {
     const s = Store.open();
     console.log(C.b('chalk autopilot') + C.dim(` · ${now()}`));
-    const r = runAutopilot(s, process.argv[1], { max: Number(flags.max || 3), log: (m) => console.log(C.dim('  ' + m)) });
+    const r = runAutopilot(s, process.argv[1], { max: Number(flags.max || 3), retro: flags['no-retro'] !== true, log: (m) => console.log(C.dim('  ' + m)) });
     if (r.skipped) { console.log(C.y('  another autopilot run is in progress — skipping.')); process.exit(0); }
     if (r.notReady) { console.log(C.r(`  NOT READY — ${r.fails.length} blocker(s); skipping (run \`chalk doctor\`).`)); process.exit(2); }
     syncBrowser(s);
     console.log(`  ${C.g(`✓ ${r.merged.length} merged`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim('(gates are the safety)')}`);
     s.emitUpdate({ type: 'progress-update', title: `Autopilot: ${r.merged.length} merged, ${r.blocked.length} blocked` });
     process.exit(0);
+  },
+
+  // Self-healing retrospective — a read-only retro agent distills durable LESSONS from the recent run
+  // and proposes ISSUES for the chalk defects/friction it exposed; chalk appends the lessons and files
+  // the issues (capped + deduped). The loop thus finds its own bugs and the next sweep fixes them.
+  retro({ flags }) {
+    const s = Store.open();
+    const gh0 = s.protocol().github || {};
+    const dry = flags['dry-run'] === true;
+    const r = runRetro(s);
+    if (r.status === 'unconfigured') die('no retro agent configured (protocol.retro.command).');
+    if (r.status === 'error') die('retro agent did not return JSON. tail:\n' + C.dim(r.raw || '(empty)'));
+    console.log(C.b('chalk retro') + (dry ? C.dim(' · dry-run') : ''));
+    for (const lesson of r.lessons) { console.log(`  ${C.g('+')} lesson: ${C.dim(String(lesson).slice(0, 100))}`); if (!dry) s.appendLesson({ lesson, by: 'retro' }); }
+    let open = [];
+    try { open = JSON.parse(runGh(s.root, gh0.command, 'issue list --state open --json title --limit 100') || '[]').map((i) => i.title); } catch { /* gh down — skip dedup */ }
+    let filed = 0;
+    for (const iss of (r.issues || []).slice(0, Number(flags['max-issues'] || 3))) {
+      if (!iss.title) continue;
+      if (open.some((t) => titlesSimilar(t, iss.title))) { console.log(C.dim(`  · skip (already open): ${iss.title}`)); continue; }
+      if (dry) { console.log(`  ${C.y('~ would file:')} ${iss.title}`); continue; }
+      const labels = (iss.labels || []).map((l) => `--label ${shq(l)}`).join(' ');
+      try { const out = runGh(s.root, gh0.command, `issue create --title ${shq(iss.title)} --body ${shq((iss.body || '') + '\n\n_filed by `chalk retro` (self-healing)_')} ${labels}`); console.log(`  ${C.g('✓ filed:')} ${out.trim().split('\n').pop()}`); filed++; }
+      catch (e) { console.log(C.r(`  ✗ file failed: ${String(e.message).split('\n').slice(-1)[0]}`)); }
+    }
+    if (!dry) syncBrowser(s);
+    ok(`retro: ${C.b(String(r.lessons.length))} lesson(s)${dry ? ' (dry-run)' : ''}, ${C.b(String(filed))} issue(s) filed`);
   },
 
   // Summarize the agent-call cost ledger (.chalk/local/cost.jsonl): calls + wall-clock per agent.
@@ -959,6 +987,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk doctor                         ${C.dim('preflight readiness check for autonomous runs (read-only)')}
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
+  chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
   chalk autopilot [--max N]            ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
   chalk smoke [--create|--issue N] --yes   ${C.dim('prove the pipeline on ONE throwaway issue (real; use a scratch repo)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
