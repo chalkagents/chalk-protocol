@@ -190,6 +190,25 @@ hand first; if it's `● READY`, the schedule will be too.
 
 ---
 
+## Cost & credits
+
+Headless `claude -p` bills against the **same account/quota as your interactive Claude Code session
+— there is no separate "headless credits" pool.** Each agent invocation is independent, so a task
+that runs **planner + executor + reviewer** is **3 full agent runs**, each with its own context.
+
+- **Subscription (Pro/Max):** cost is *flat* — you're not billed per token — but you're **rate-capped**
+  (weekly usage). The real lever is **how many tasks you run**: keep `chalk autopilot --max N` small.
+- **API key:** billed **per token**; the [Claude Console](https://platform.claude.com/usage) is the
+  authoritative source. Use `--max-budget-usd <amt>` in the agent commands to hard-cap a run.
+
+Bounding levers (set inside `protocol.{planner,executor,review}.command`):
+- **`--max-turns N`** — caps agentic turns per call (runaway guard). The defaults wire 30/40/20.
+- **`--model <name>`** — e.g. a cheaper model for the planner/reviewer if you want to trade quality
+  for spend (left at the default here — quality-first).
+
+`chalk cost` summarizes the local ledger (`.chalk/local/cost.jsonl`, gitignored): calls + wall-clock
+per agent across your sweeps — a practical proxy when cost is flat.
+
 ## Monitoring & kill switches
 
 - **`chalk status`** / **`chalk backlog`** — current state, what each blocked task needs, the DAG.

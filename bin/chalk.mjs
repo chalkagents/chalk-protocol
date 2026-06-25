@@ -309,8 +309,10 @@ const cmds = {
     const cmd = s.protocol().planner?.command;
     if (!cmd) die('no planner configured (protocol.planner.command).');
     let out = '';
+    const t0 = Date.now();
     try { out = execSync(withRunner(s.protocol().runner, cmd), { cwd: workdir(s, t), input: buildContext(s, t), encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 10 * 60 * 1000 }); }
     catch (e) { out = `${e.stdout || ''}`; }
+    s.logCost({ taskId: t.id, stage: 'plan', agent: 'planner', ms: Date.now() - t0 });
     const planText = out.trim();
     if (!planText) die('planner produced no plan.');
     t.plan = planText.slice(0, 8000);
@@ -330,7 +332,11 @@ const cmds = {
     }
     if (t.state !== 'in-progress') die(`task is [${t.state}], not workable.`);
     const ex = s.protocol().executor?.command;
-    if (ex) { try { execSync(ex, { cwd: workdir(s, t), input: buildContext(s, t), stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); } catch { /* gate decides */ } }
+    if (ex) {
+      const t0 = Date.now();
+      try { execSync(ex, { cwd: workdir(s, t), input: buildContext(s, t), stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); } catch { /* gate decides */ }
+      s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0 });
+    }
     const v = runVerify(s, { cwd: workdir(s, t) });
     if (!v.green) { console.error(C.r('✗ ') + 'verify RED after work — gate closed.'); process.exit(2); }
     t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };
@@ -385,6 +391,20 @@ const cmds = {
     console.log(`  ${C.g(`✓ ${r.merged.length} merged`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim('(gates are the safety)')}`);
     s.emitUpdate({ type: 'progress-update', title: `Autopilot: ${r.merged.length} merged, ${r.blocked.length} blocked` });
     process.exit(0);
+  },
+
+  // Summarize the agent-call cost ledger (.chalk/local/cost.jsonl): calls + wall-clock per agent.
+  // For a subscription this is a proxy (flat cost, rate-capped); for API, the Console is authoritative.
+  cost() {
+    const s = Store.open();
+    const recs = s.costRecords();
+    if (!recs.length) { console.log(C.dim('  no agent calls recorded yet (.chalk/local/cost.jsonl)')); return; }
+    console.log(C.b('chalk cost') + C.dim(` · ${recs.length} agent call(s)`));
+    const by = {};
+    for (const r of recs) { const k = r.agent || '?'; (by[k] = by[k] || { n: 0, ms: 0 }); by[k].n++; by[k].ms += r.ms || 0; }
+    for (const [agent, v] of Object.entries(by)) console.log(`  ${C.b(agent.padEnd(9))} ${v.n} call(s)  ${C.dim(`${(v.ms / 1000).toFixed(0)}s wall-clock`)}`);
+    const total = recs.reduce((a, r) => a + (r.ms || 0), 0);
+    console.log(C.dim(`  total: ${(total / 1000).toFixed(0)}s across ${recs.length} calls. Subscription = flat + rate-capped; bound a sweep with \`autopilot --max N\`.`));
   },
 
   // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
@@ -938,6 +958,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk doctor                         ${C.dim('preflight readiness check for autonomous runs (read-only)')}
+  chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
   chalk autopilot [--max N]            ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
   chalk smoke [--create|--issue N] --yes   ${C.dim('prove the pipeline on ONE throwaway issue (real; use a scratch repo)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}

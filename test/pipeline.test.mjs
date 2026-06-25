@@ -450,6 +450,13 @@ test('plan stage — the planner output is stored on the task and injected into 
   assert.match(t.plan, /Approach:.*add the flag/, 'plan stored on the task');
   assert.equal(t.pipeline.stage, 'planned');
   assert.match(chalk(d, 'context', id).out, /Plan \(implement this/, 'plan injected into the executor context');
+
+  // The planner call was logged to the cost ledger, and `chalk cost` summarizes it.
+  assert.ok(existsSync(join(d, '.chalk/local/cost.jsonl')), 'cost ledger written');
+  const rec = JSON.parse(readFileSync(join(d, '.chalk/local/cost.jsonl'), 'utf8').trim().split('\n')[0]);
+  assert.equal(rec.agent, 'planner');
+  assert.equal(typeof rec.ms, 'number');
+  assert.match(chalk(d, 'cost').out, /planner/);
 });
 
 test('pipeline --dry-run — plans without touching anything', () => {
