@@ -6,6 +6,8 @@ import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STA
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
+import { projectPlans } from '../lib/plans.mjs';
+import { projectBoard } from '../lib/boards.mjs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -27,6 +29,9 @@ const arr = (v) => (v == null ? [] : [].concat(v));
 const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
 const ok = (msg) => console.log(C.g('✓ ') + msg);
+// Refresh both Chalk Browser views after a state change. Best-effort — a projection error must
+// never break a gate or a CLI command, so failures are swallowed (run `chalk sync` to see them).
+const syncBrowser = (s) => { try { projectPlans(s); projectBoard(s); } catch { /* non-fatal */ } };
 
 // ---------------------------------------------------------------- commands
 const cmds = {
@@ -139,6 +144,28 @@ const cmds = {
     console.log('\n## Contract\nread → start (needs criteria) → work → `chalk verify` (must be green) → `chalk done`.\nTests are read-only. Do not self-declare done; the verify gate decides.');
   },
 
+  // Bridge to Chalk Browser — project tasks.json into BOTH canonical Browser views:
+  //  • .chalk/plans/  — folder-kanban of markdown plans (the spec/planning view)
+  //  • .chalk/boards/ — one card board with per-task testArtifact (the execution view)
+  // One-way: Protocol owns state via gates, so this rewrites only what it generated and
+  // leaves hand-authored plans / user boards untouched. Auto-runs after task add/spec/start/done.
+  sync() {
+    const s = Store.open();
+    const p = projectPlans(s);
+    const b = projectBoard(s);
+    ok(`projected ${C.b(String(p.written.length))} task(s) → ${C.dim('.chalk/plans/')} + ${C.dim('.chalk/boards/')} ${C.dim(`(${p.removed} stale plan(s) removed)`)}`);
+    const byCol = {};
+    for (const w of p.written) (byCol[w.column] = byCol[w.column] || []).push(w);
+    for (const col of ['todo', 'inprogress', 'testing', 'done']) {
+      if (!byCol[col]) continue;
+      console.log(`  ${C.b(col)}`);
+      for (const w of byCol[col]) console.log(C.dim(`    ${w.filename}`) + '  ' + w.title);
+    }
+    if (!p.written.length) console.log(C.dim('  (no tasks yet — `chalk task add "..."`)'));
+    console.log(C.dim(`  board: ${b.cards} card(s) in chalk-protocol.board.json`));
+    console.log(C.dim('  open this project in Chalk Browser — it watches .chalk/plans/ and .chalk/boards/.'));
+  },
+
   task({ _, flags }) {
     const sub = _[0];
     const s = Store.open();
@@ -148,6 +175,7 @@ const cmds = {
       const t = { id: id('task'), title, state: 'todo', acceptanceCriteria: [], tests: [], heldOut: [], createdAt: now(), reviews: [] };
       s.upsertTask(t);
       s.emitUpdate({ type: 'work-item-started', title: `Task created: ${title}`, taskId: t.id });
+      syncBrowser(s);
       ok(`task ${C.b(t.id.slice(0, 12))} — ${title} ${C.dim('[todo]')}`);
     } else die('usage: chalk task add "<title>"');
   },
@@ -168,6 +196,7 @@ const cmds = {
     if (!changed) die('nothing to add — use --criterion "..." and/or --test <path>');
     if (t.state === 'todo' && (t.acceptanceCriteria.length || t.tests.length)) t.state = 'specd';
     s.upsertTask(t);
+    syncBrowser(s);
     ok(`spec updated — ${t.title} ${C.dim(`[${t.state}] ${t.acceptanceCriteria.length} crit, ${t.tests.length} test`)}`);
   },
 
@@ -180,6 +209,7 @@ const cmds = {
     if (t.state === 'done') die('task already done.');
     t.state = 'in-progress'; t.startedAt = now();
     s.upsertTask(t);
+    syncBrowser(s);
     s.emitUpdate({ type: 'work-item-started', title: `Started: ${t.title}`, taskId: t.id });
     ok(`started ${C.b(t.title)} ${C.dim('[in-progress]')}`);
     console.log(C.dim(`  read context with: chalk context ${t.id.slice(0, 12)}`));
@@ -227,6 +257,7 @@ const cmds = {
     }
     t.state = 'done'; t.doneAt = now();
     s.upsertTask(t);
+    syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Done: ${t.title}`, taskId: t.id });
     ok(`done ${C.b(t.title)} — verify green ✓`);
   },
@@ -404,6 +435,7 @@ const cmds = {
 
   help() { printHelp(); },
 };
+cmds.plans = cmds.sync; // alias — `chalk plans` projects both Browser views (plans/ + boards/)
 
 // ---------------------------------------------------------------- helpers
 function sev(s) { return { high: C.r('▲ high'), med: C.y('▲ med '), low: C.dim('▲ low ') }[s] || C.dim('▲ ' + (s || '?')); }
@@ -444,7 +476,11 @@ ${C.b('spine')}
   chalk update "<title>" [--type T] [--desc D]
   chalk decision "<title>" --why "..."
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
-  chalk log [--n N]`);
+  chalk log [--n N]
+
+${C.b('chalk browser bridge')}
+  chalk sync                           ${C.dim('project tasks.json → .chalk/plans/ + .chalk/boards/ (auto-runs on task/start/done)')}
+  chalk plans                          ${C.dim('alias for sync')}`);
 }
 
 // ---------------------------------------------------------------- dispatch
