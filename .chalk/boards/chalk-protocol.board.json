@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1782424213406,
+  "updatedAt": 1782428615086,
   "order": 0,
   "cards": [
     {
@@ -172,6 +172,44 @@
         "prNumber": 38,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/38",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/37"
+      }
+    },
+    {
+      "id": "task-4a803e9c",
+      "title": "fix: review-stage failures auto-block as human-input without surfacing findings or retrying",
+      "column": "done",
+      "createdAt": 1782427429083,
+      "updatedAt": 1782428217665,
+      "order": 9,
+      "description": "- When the `review` stage fails, the block reason includes the reviewer's blocking finding text (from `task.reviews`) rather than the generic `pipeline stage 'review' failed`.\n- A transient/non-deterministic review failure does not permanently wedge the task (e.g. retry the review stage once before auto-blocking, or otherwise distinguish a review failure from genuine human-input).\n- A test asserts that a failed review stage produces a block whose reason contains the reviewer's finding text.",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-4a803e9c",
+          "status": "passed",
+          "at": 1782428217665
+        },
+        "prNumber": 44,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/44",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/41"
+      }
+    },
+    {
+      "id": "task-7799438c",
+      "title": "fix: pipeline discards a failed stage's stdout/stderr, leaving auto-blocks undiagnosable",
+      "column": "done",
+      "createdAt": 1782428352336,
+      "updatedAt": 1782428615086,
+      "order": 10,
+      "description": "- On a non-zero stage exit, include a trimmed snippet of the failed stage's stderr/stdout in the block reason instead of only `pipeline stage '<cmd>' failed`.\n- Log the failed stage's captured output (or a bounded tail) so it appears in the sweep transcript, not just the exit code.\n- Add a test asserting that when a stage subprocess fails, the resulting block reason/log carries the subprocess's error output.",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-7799438c",
+          "status": "passed",
+          "at": 1782428615086
+        },
+        "prNumber": 45,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/45",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/43"
       }
     }
   ]

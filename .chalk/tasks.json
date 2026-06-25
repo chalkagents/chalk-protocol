@@ -523,5 +523,135 @@
       "url": "https://github.com/chalkagents/chalk-protocol/pull/38"
     },
     "doneAt": "2026-06-25T21:50:13.406Z"
+  },
+  {
+    "id": "task-4a803e9c",
+    "title": "fix: review-stage failures auto-block as human-input without surfacing findings or retrying",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "When the `review` stage fails, the block reason includes the reviewer's blocking finding text (from `task.reviews`) rather than the generic `pipeline stage 'review' failed`."
+      },
+      {
+        "text": "A transient/non-deterministic review failure does not permanently wedge the task (e.g. retry the review stage once before auto-blocking, or otherwise distinguish a review failure from genuine human-input)."
+      },
+      {
+        "text": "A test asserts that a failed review stage produces a block whose reason contains the reviewer's finding text."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 41,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/41",
+      "body": "In this run task #37's review stage blocked (`needs:human-input`, reason `pipeline stage 'review' failed`), was manually unblocked ~4min later, and then passed review on re-run with no intervening work/commit event — i.e. the same code blocked then passed. Two problems: (1) `lib/pipeline.mjs:33` records a generic reason that discards the reviewer's actual blocking findings (which live in `task.reviews`), so a human can't tell what to fix without re-running; (2) a non-deterministic/transient review failure permanently wedges the task until someone manually unblocks it.\n\n- [ ] When the `review` stage fails, the block reason includes the reviewer's blocking finding text (from `task.reviews`) rather than the generic `pipeline stage 'review' failed`.\n- [ ] A transient/non-deterministic review failure does not permanently wedge the task (e.g. retry the review stage once before auto-blocking, or otherwise distinguish a review failure from genuine human-input).\n- [ ] A test asserts that a failed review stage produces a block whose reason contains the reviewer's finding text.\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T22:56:57.665Z"
+    },
+    "createdAt": "2026-06-25T22:43:49.083Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T22:54:31.618Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The new test only exercises an always-blocking reviewer. Criterion 2's core intent (a transient/non-deterministic failure must NOT permanently wedge the task) is never directly verified: there is no test where the reviewer fails once then PASSES on retry, leaving the task unblocked and the pipeline proceeding to evidence/merge. A regression that wrongly blocks after a successful retry would slip through. The test proves a retry happens (revCount==2) but not that recovery actually works."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "A failed review still auto-blocks with `--needs human-input`; only the reason text ('review blocked: ...') and the retry distinguish it from genuine human-input. The 'needs' category is unchanged, so downstream tooling that routes by `block.needs` still treats a reviewer block identically to a credentials/decision block. Acceptable under the criterion's 'e.g. retry once' clause, but the distinction is textual, not structural."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "reviewBlockReason takes only the last review record; if both the initial review and the retry error out before producing a verdict (e.g. invalid-JSON die with no record pushed), it falls back to a generic 'review error (no verdict)' message containing no finding text. This is a reasonable fallback but means criterion 1's finding-surfacing is not guaranteed in the double-transient-error case (untested)."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/41-fix-review-stage-failures-auto",
+    "plan": "## Plan\n\n**Approach:** Fix in `lib/run.mjs` `runPipeline` — the subprocess driver that auto-blocks on any non-zero stage. Special-case the `review` stage: on failure, retry the `review` subprocess once (handles transient/non-deterministic failures, criterion 2); if it still fails, re-read the task from disk (`store.task(ref)` re-reads `tasks.json`, so it has the just-written review record) and build the block reason from the latest review's blocking findings (criterion 1). Chosen over a sentinel-string parse of reviewer stdout because `task.reviews` is the authoritative, already-persisted source the spec points at.\n\n**Steps:**\n1. In `runPipeline`'s stage loop, factor the `review` stage out of the generic non-zero handler.\n2. On first review failure, re-invoke `call(cliPath, store.root, ['review', ref])` once; if that exits 0, continue the pipeline.\n3. If the retry still fails, read `store.task(ref)`, take the last entry of `t.reviews`, and join its `findings[].note` (with severity/area) into a reason string; fall back to a clear \"review error (no verdict) after retry\" message when there's no finding (reviewer error path).\n4. Call `block` with `--reason <that text>` (keep `--needs human-input`), push to `blocked`, break.\n5. Leave all other stages on the existing generic block path unchanged.\n\n**Files:**\n- `lib/run.mjs` — edit the review branch of the stage loop; reuse existing `call()`, `store.task()`, and the `block` subprocess invocation.\n\n**Test:** Add to `test/pipeline.test.mjs` (not locked): a pipeline run with a reviewer stub that always prints `{\"verdict\":\"block\",\"findings\":[{\"severity\":\"high\",\"area\":\"correctness\",\"note\":\"UNIQUE_FINDING_TEXT\"}]}`. Assert the task ends `state==='blocked'` and `task.block.reason` contains `UNIQUE_FINDING_TEXT` (and is NOT the generic `pipeline stage 'review' failed`). This fails today (reason is the generic string) and passes after the change. Optionally assert the reviewer stub was invoked twice (retry) for a flaky-then-fail reviewer.",
+    "startedAt": "2026-06-25T22:45:01.513Z",
+    "pr": {
+      "number": 44,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/44"
+    },
+    "doneAt": "2026-06-25T22:56:57.665Z"
+  },
+  {
+    "id": "task-7799438c",
+    "title": "fix: pipeline discards a failed stage's stdout/stderr, leaving auto-blocks undiagnosable",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "On a non-zero stage exit, include a trimmed snippet of the failed stage's stderr/stdout in the block reason instead of only `pipeline stage '<cmd>' failed`."
+      },
+      {
+        "text": "Log the failed stage's captured output (or a bounded tail) so it appears in the sweep transcript, not just the exit code."
+      },
+      {
+        "text": "Add a test asserting that when a stage subprocess fails, the resulting block reason/log carries the subprocess's error output."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 43,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/43",
+      "body": "In `lib/pipeline.mjs` `runPipeline`, when a stage exits non-zero the `spawnSync` result's captured `r.stdout`/`r.stderr` are thrown away: the log shows only `FAILED (exit N)` and the task is blocked with the generic reason `pipeline stage '<cmd>' failed`. This run produced two such blocks — \"pipeline stage 'review' failed\" (#38, which then passed unchanged on retry) and \"pipeline stage 'work' failed\" (#41) — with no recorded cause, so the wedge can't be diagnosed without manually re-running the stage. This is broader than #41 (which only routes reviewer-finding text for the `review` stage): it affects every stage (work, commit, pr, merge).\n\n- [ ] On a non-zero stage exit, include a trimmed snippet of the failed stage's stderr/stdout in the block reason instead of only `pipeline stage '<cmd>' failed`.\n- [ ] Log the failed stage's captured output (or a bounded tail) so it appears in the sweep transcript, not just the exit code.\n- [ ] Add a test asserting that when a stage subprocess fails, the resulting block reason/log carries the subprocess's error output.\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T23:03:35.087Z"
+    },
+    "createdAt": "2026-06-25T22:59:12.336Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T23:03:03.322Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "stageSnippet uses `r.stderr || r.stdout`, so if a stage writes its real diagnostic to stdout while emitting any non-empty noise on stderr, the snippet surfaces the stderr noise instead of the meaningful stdout message. Minor; criteria allow either stream."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The new test only exercises the non-review branch (commit stage). The review-stage snippet enrichment (reviewBlockReason fallback + 'output →' log on retry failure) is not covered by a dedicated assertion, though criterion 3 only mandates one failing-stage test which is satisfied."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "When a stage exits non-zero with empty stdout/stderr, the block reason falls back to the original generic 'pipeline stage <cmd> failed' with no snippet — acceptable since there is no output to include, but means criterion 1's improvement is conditional on the subprocess actually producing output."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/43-fix-pipeline-discards-a-failed",
+    "plan": "## Plan\n\n**Approach:** In `lib/pipeline.mjs`, stop discarding the failed stage's `spawnSync` result. Add a small `stageSnippet(r)` helper that builds a trimmed, bounded tail from `r.stderr || r.stdout`, then (1) append it to the generic block reason and (2) `log()` it so it lands in the sweep transcript. Mirror the same enrichment in the review-retry branch's fallback. Reuse the existing `r` object already captured by `call()` — no new subprocess plumbing. (The review path already surfaces findings; this fixes the generic non-review path which is the bug.)\n\n**Steps:**\n1. Add `stageSnippet(r, max=600)`: pick `(r.stderr || r.stdout || '').trim()`, collapse, take the last ~600 chars / last N lines, return `''` if empty.\n2. In the generic `else if (r.status !== 0)` branch (line 58–61): build `reason = \\`pipeline stage '${cmd}' failed\\` + (snip ? \\`: ${snip}\\` : '')`; pass as `--reason`, and `log()` the captured output (bounded tail) before blocking.\n3. In `reviewBlockReason` fallback (the \"no verdict\" case), also append the snippet from the failed review `r` so a reviewer crash is diagnosable (thread `r` in).\n4. Keep happy-path ORDER and exit codes unchanged.\n\n**Files:**\n- `lib/pipeline.mjs` — `runPipeline` block branch + new `stageSnippet` helper (reuse existing `call`/`r`); minor signature tweak to `reviewBlockReason` to accept `r`.\n- `test/pipeline.test.mjs` — add the new test (uses existing `repoWithBare`, `chalk`, `stubGh`, `conf`, `tasksOf` helpers).\n\n**Test:** Add `pipeline — a failed non-review stage surfaces the subprocess's error output in the block reason and log`: configure an executor that makes NO file change so the `commit` stage dies with `nothing to commit — the executor made no file changes…` (a unique, deterministic stage stderr). Run `chalk pipeline`, capture stdout. Assert `t.block.reason` matches `/nothing to commit/` (the stage's actual output) and the captured pipeline log (`r.stdout`) contains that snippet. This FAILS today (reason is only `pipeline stage 'commit' failed`, output discarded) and passes after the change.",
+    "startedAt": "2026-06-25T23:00:36.349Z",
+    "pr": {
+      "number": 45,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/45"
+    },
+    "doneAt": "2026-06-25T23:03:35.086Z"
   }
 ]
