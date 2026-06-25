@@ -98,6 +98,26 @@ test('log --type — filters events by type, still honoring --n; plain log uncha
   assert.ok(plain.out.includes('progress one') && plain.out.includes('a milestone note'), 'unfiltered log unchanged');
 });
 
+test('log --reverse — newest-first; default unchanged', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  chalk(d, 'update', 'a one');
+  chalk(d, 'update', 'b two');
+  chalk(d, 'update', 'c three');
+  // default is oldest-first: 'a one' appears before 'c three'.
+  const def = chalk(d, 'log');
+  assert.equal(def.code, 0);
+  assert.ok(def.out.indexOf('a one') < def.out.indexOf('c three'), 'default log is oldest-first');
+  // --reverse flips to newest-first: 'c three' appears before 'a one'.
+  const rev = chalk(d, 'log', '--reverse');
+  assert.equal(rev.code, 0);
+  assert.ok(rev.out.indexOf('c three') < rev.out.indexOf('a one'), '--reverse log is newest-first');
+  // --reverse still honors --n (the most-recent N, newest-first).
+  const rn = chalk(d, 'log', '--reverse', '--n', '2').out;
+  assert.ok(rn.includes('c three') && rn.includes('b two'), '--n keeps the most-recent events');
+  assert.ok(!rn.includes('a one'), '--n drops older events under --reverse');
+});
+
 test('P4 + P6 — done needs green verify; tampering a locked test fails integrity', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'd');
