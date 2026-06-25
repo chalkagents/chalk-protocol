@@ -10,6 +10,7 @@ import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
+import { gh as runGh } from '../lib/git.mjs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -173,6 +174,42 @@ const cmds = {
     console.log(`  ${C.g(`✓ ${r.completed.length} done`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim(`(${r.iterations} iteration(s), stopped: ${r.stopped})`)}`);
     if (r.blocked.length) console.log(C.dim('  run `chalk next` / `chalk status` to see what each blocked task needs.'));
     process.exit(r.stopped === 'blocked' ? 2 : 0);
+  },
+
+  // GitHub pipeline — pull open issues into the backlog as tasks (one task per issue, idempotent).
+  issue({ _, flags }) {
+    const s = Store.open();
+    const sub = _[0];
+    const ghCfg = s.protocol().github || {};
+    if (sub !== 'pull') die('usage: chalk issue pull [--state open] [--label L] [--limit N]');
+    const fields = 'number,title,body,labels,url';
+    const labelArg = flags.label ? ` --label ${flags.label}` : '';
+    let raw;
+    try {
+      raw = runGh(s.root, ghCfg.command, `issue list --state ${flags.state || 'open'} --json ${fields} --limit ${flags.limit || 50}${labelArg}`);
+    } catch (e) {
+      die(`gh issue list failed — is \`${ghCfg.command || 'gh'}\` installed and authed for this repo?\n  ${String(e.message).split('\n').slice(-3).join('\n  ')}`);
+    }
+    const issues = JSON.parse(raw || '[]');
+    const existing = new Set(s.tasks().map((t) => t.issue?.number).filter(Boolean));
+    let created = 0;
+    for (const iss of issues) {
+      if (existing.has(iss.number)) continue;
+      const labels = (iss.labels || []).map((l) => l.name);
+      const branchType = labels.map((n) => ghCfg.labelType?.[n]).find(Boolean) || 'feat';
+      const criteria = parseChecklist(iss.body || '').map((text) => ({ text }));
+      const t = {
+        id: id('task'), title: iss.title, state: criteria.length ? 'specd' : 'todo',
+        acceptanceCriteria: criteria, tests: [], heldOut: [], after: [],
+        issue: { number: iss.number, url: iss.url, body: iss.body || '' }, branchType,
+        pipeline: { stage: 'selected', at: now() }, createdAt: now(), reviews: [],
+      };
+      s.upsertTask(t); created++;
+      s.emitUpdate({ type: 'work-item-started', title: `Imported issue #${iss.number}: ${iss.title}`, taskId: t.id });
+      console.log(`  ${C.g('+')} #${iss.number} ${iss.title} ${C.dim(`[${t.state}] → ${branchType}/${iss.number}-…`)}`);
+    }
+    if (created) syncBrowser(s);
+    ok(`pulled ${C.b(String(created))} new issue(s) ${C.dim(`(${issues.length - created} already tracked)`)}`);
   },
 
   status() {
@@ -567,6 +604,10 @@ function mustTask(s, ref) {
   if (!t) die(`task not found: ${ref}`);
   return t;
 }
+// Pull `- [ ] item` / `- [x] item` checklist lines from an issue body → acceptance criteria.
+function parseChecklist(body) {
+  return (body.match(/^\s*[-*]\s*\[[ xX]\]\s+(.+)$/gm) || []).map((l) => l.replace(/^\s*[-*]\s*\[[ xX]\]\s+/, '').trim()).filter(Boolean);
+}
 // Is a passing adversarial review (P5) required to mark THIS task done right now?
 // Cadence-aware: per-task → always; milestone-boundary → only when this task closes its
 // milestone (degrades to no-gate if the task carries no milestone); phase-advance → enforced
@@ -601,6 +642,7 @@ ${C.b('setup')}
 ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental is met)')}
   chalk task add "<title>" [--milestone M] [--after <id>]   ${C.dim('queue work; --after sets a dep edge')}
   chalk backlog                        ${C.dim('ordered DAG by milestone (runnable/waiting/blocked)')}
+  chalk issue pull [--state open] [--label L]   ${C.dim('import GitHub issues as tasks (BYO gh)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}

@@ -31,6 +31,9 @@ function stubGh(dir, body) {
   writeFileSync(p, body);
   return `node ${p}`;
 }
+// Mutate .chalk/chalk.json protocol config in a scratch dir.
+const conf = (d, fn) => { const f = join(d, '.chalk/chalk.json'); const o = JSON.parse(readFileSync(f, 'utf8')); fn(o.protocol); writeFileSync(f, JSON.stringify(o, null, 2)); };
+const tasksOf = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'));
 
 test('git foundation — currentRepo parses owner/repo from the ssh-alias remote', () => {
   const d = repo();
@@ -67,4 +70,32 @@ test('init writes the github/worktree/e2e pipeline config defaults', () => {
   assert.equal(proto.github.mergeMethod, 'squash');
   assert.equal(proto.worktree.enabled, true);
   assert.ok('e2e' in proto, 'e2e config present');
+});
+
+test('issue pull — one task per open issue, criteria from checklist, idempotent', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([
+    { number: 1, title: 'Add login', url: 'https://x/1', body: '- [ ] render form\\n- [ ] validate input', labels: [{ name: 'enhancement' }] },
+    { number: 2, title: 'Fix crash', url: 'https://x/2', body: 'no checklist here', labels: [{ name: 'bug' }] }
+  ]));`);
+  conf(d, (o) => { o.github.command = ghCmd; });
+
+  let r = chalk(d, 'issue', 'pull');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /pulled .*2.* new issue/);
+  const tasks = tasksOf(d);
+  assert.equal(tasks.length, 2);
+  const t1 = tasks.find((t) => t.issue.number === 1);
+  assert.equal(t1.branchType, 'feat', 'enhancement → feat');
+  assert.equal(t1.state, 'specd', 'checklist body → criteria → specd');
+  assert.equal(t1.acceptanceCriteria.length, 2);
+  const t2 = tasks.find((t) => t.issue.number === 2);
+  assert.equal(t2.branchType, 'fix', 'bug → fix');
+  assert.equal(t2.state, 'todo', 'no checklist → no criteria → todo');
+
+  // Idempotent: a second pull creates nothing new.
+  r = chalk(d, 'issue', 'pull');
+  assert.match(r.out, /pulled .*0.* new issue/);
+  assert.equal(tasksOf(d).length, 2);
 });
