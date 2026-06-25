@@ -252,7 +252,9 @@ const cmds = {
     const paths = changedPaths(wd).filter((p) => !p.startsWith('.chalk/') || p.startsWith('.chalk/evidence/'));
     if (!paths.length) die('nothing to commit — the executor made no file changes in the worktree.');
     const type = t.branchType || 'feat';
-    const desc = (t.title || 'update').replace(/^./, (c) => c.toLowerCase()).slice(0, 60);
+    // Strip a conventional prefix the issue title may already carry, so we don't double up
+    // (e.g. issue "feat: add X" must not become "feat: feat: add X").
+    const desc = (t.title || 'update').replace(/^\s*(feat|fix|chore|docs|refactor|test|perf|style|build|ci)(\([^)]*\))?:\s*/i, '').replace(/^./, (c) => c.toLowerCase()).slice(0, 60);
     const subject = `${type}: ${desc}`;
     gitAdd(wd, paths);
     gitCommit(wd, [subject, t.issue?.number ? `Closes #${t.issue.number}` : '']);
