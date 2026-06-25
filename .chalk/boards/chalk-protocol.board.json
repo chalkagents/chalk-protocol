@@ -2,19 +2,81 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1782327519151,
+  "updatedAt": 1782393426302,
   "order": 0,
   "cards": [
     {
       "id": "task-47d95c06",
       "title": "Enforce the seven gates (P1-P7) via the CLI",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1782327519042,
-      "updatedAt": 1782327519151,
+      "updatedAt": 1782392953361,
       "order": 0,
       "description": "- All gate tests pass (P1/P4/P5/P6/P7) via node --test",
       "testArtifact": {
-        "specPath": "test/protocol.test.mjs"
+        "specPath": "test/protocol.test.mjs",
+        "lastRun": {
+          "runId": "done-task-47d95c06",
+          "status": "passed",
+          "at": 1782392953361
+        }
+      }
+    },
+    {
+      "id": "task-5c1f5d19",
+      "title": "feat: chalk decisions",
+      "column": "done",
+      "createdAt": 1782392783678,
+      "updatedAt": 1782393141575,
+      "order": 1,
+      "description": "- `chalk decisions` prints the contents of .chalk/decisions.md\n- add a test in `test/protocol.test.mjs` asserting it shows a decision after `chalk decision`",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-5c1f5d19",
+          "status": "passed",
+          "at": 1782393141575
+        },
+        "prNumber": 24,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/24",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/23"
+      }
+    },
+    {
+      "id": "task-4b837013",
+      "title": "feat: chalk lesson list",
+      "column": "done",
+      "createdAt": 1782392783682,
+      "updatedAt": 1782393286746,
+      "order": 2,
+      "description": "- `chalk lesson list` prints the recorded lessons from .chalk/lessons.md (the same memory injected into agents)\n- `chalk lesson \\\"...\\\"` (adding) still works unchanged\n- add a test in `test/protocol.test.mjs` asserting `lesson list` shows a previously-added lesson",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-4b837013",
+          "status": "passed",
+          "at": 1782393286746
+        },
+        "prNumber": 25,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/25",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/22"
+      }
+    },
+    {
+      "id": "task-615d7e74",
+      "title": "feat: chalk log --grep <text>",
+      "column": "done",
+      "createdAt": 1782392783683,
+      "updatedAt": 1782393426302,
+      "order": 3,
+      "description": "- `chalk log --grep <text>` shows only update events whose title contains <text> (case-insensitive), still honoring `--n`, `--type`, and `--reverse`\n- without `--grep`, output is unchanged\n- add a test in `test/protocol.test.mjs` asserting `--grep` filters AND that it composes with another flag (e.g. `--type`)",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-615d7e74",
+          "status": "passed",
+          "at": 1782393426302
+        },
+        "prNumber": 26,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/26",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/21"
       }
     }
   ]

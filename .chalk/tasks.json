@@ -2,7 +2,7 @@
   {
     "id": "task-47d95c06",
     "title": "Enforce the seven gates (P1-P7) via the CLI",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "All gate tests pass (P1/P4/P5/P6/P7) via node --test"
@@ -11,12 +11,189 @@
     "tests": [
       {
         "path": "test/protocol.test.mjs",
-        "sha256": "2e82752a7cd21851baf4897a7708f2086471ed5700ad35fe7cd55c22cdc5d05f"
+        "sha256": "08d190d32cc21bfd2d0e71b68fa343563a7307b8dea5ef7b81cd0742558771c2"
       }
     ],
     "heldOut": [],
     "createdAt": "2026-06-24T18:58:39.042Z",
     "reviews": [],
-    "startedAt": "2026-06-24T18:58:39.151Z"
+    "startedAt": "2026-06-24T18:58:39.151Z",
+    "doneAt": "2026-06-25T13:09:13.361Z"
+  },
+  {
+    "id": "task-5c1f5d19",
+    "title": "feat: chalk decisions",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk decisions` prints the contents of .chalk/decisions.md"
+      },
+      {
+        "text": "add a test in `test/protocol.test.mjs` asserting it shows a decision after `chalk decision`"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 23,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/23",
+      "body": "- [ ] `chalk decisions` prints the contents of .chalk/decisions.md\n- [ ] add a test in `test/protocol.test.mjs` asserting it shows a decision after `chalk decision`"
+    },
+    "branchType": "feat",
+    "labels": [],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T13:12:21.576Z"
+    },
+    "createdAt": "2026-06-25T13:06:23.678Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T13:11:57.644Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`decisions()` calls readFileSync(s.p.decisions) without a guard; if .chalk/decisions.md were missing it would throw an unfriendly error. In practice init always creates the file, so both criteria are satisfied."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Test only covers the happy path (decision exists). No assertion of clean behavior when the log is empty/just-initialized, but the criterion only requires showing a decision after `chalk decision`, which is covered."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/23-feat-chalk-decisions",
+    "plan": "## Plan\n\n**Approach:** Add a tiny read-only `decisions` command to the `cmds` map in `bin/chalk.mjs` that prints `.chalk/decisions.md`. Mirror the existing `decision`/`lesson` pattern (`Store.open()` → `s.p.decisions`); `readFileSync` is already imported. Simplest, reuses existing store paths — no new utilities.\n\n**Steps:**\n1. In `bin/chalk.mjs`, after the `decision({...})` command (~line 875), add `decisions()` that does `const s = Store.open();` and `console.log(readFileSync(s.p.decisions, 'utf8'))` (guard with `existsSync` or fall back to empty — but `init` always creates the file, so a direct read is fine).\n2. Add a one-line entry in `printHelp()` near the `chalk decision` line (~1011) for discoverability.\n\n**Files:**\n- `bin/chalk.mjs` — new `decisions` cmd in the `cmds` object (reuse `Store.open()` + `s.p.decisions` from `lib/store.mjs`; `readFileSync` already imported); help text.\n- `test/protocol.test.mjs` — new test.\n\n**Test:** Add `test('decisions — prints logged decisions', ...)`: `chalk(d,'init','--name','demo')`; `chalk(d,'decision','use sqlite for the ledger','--why','simplicity')`; then `const r = chalk(d,'decisions')`; assert `r.code===0` and `assert.match(r.out, /use sqlite for the ledger/)`. Fails today (unknown command exits 1), passes with the new command.",
+    "startedAt": "2026-06-25T13:10:36.102Z",
+    "pr": {
+      "number": 24,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/24"
+    },
+    "doneAt": "2026-06-25T13:12:21.575Z"
+  },
+  {
+    "id": "task-4b837013",
+    "title": "feat: chalk lesson list",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk lesson list` prints the recorded lessons from .chalk/lessons.md (the same memory injected into agents)"
+      },
+      {
+        "text": "`chalk lesson \\\"...\\\"` (adding) still works unchanged"
+      },
+      {
+        "text": "add a test in `test/protocol.test.mjs` asserting `lesson list` shows a previously-added lesson"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 22,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/22",
+      "body": "- [ ] `chalk lesson list` prints the recorded lessons from .chalk/lessons.md (the same memory injected into agents)\n- [ ] `chalk lesson \\\"...\\\"` (adding) still works unchanged\n- [ ] add a test in `test/protocol.test.mjs` asserting `lesson list` shows a previously-added lesson"
+    },
+    "branchType": "feat",
+    "labels": [],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T13:14:46.747Z"
+    },
+    "createdAt": "2026-06-25T13:06:23.682Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T13:14:22.811Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`chalk lesson list` reads s.lessons(1000) while context injection uses s.lessons(15); criterion 1 says 'the same memory injected into agents'. They share the source file but the cap differs, so list could surface older lessons not actually injected. Harmless/arguably more complete, not blocking."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Dispatch treats `_[0] === 'list'` as the list subcommand, so a literal lesson text starting with the word 'list' (e.g. `chalk lesson list the deps`) would be misrouted. Edge case, acceptable for the contract."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The added test only checks the happy path (one added lesson appears). No test for the empty-state ('no lessons recorded yet.') branch, but criteria 1-3 are all directly exercised."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/22-feat-chalk-lesson-list",
+    "plan": "## Approach\nAdd a `list` subcommand to the existing `lesson` handler in `bin/chalk.mjs`: if `_[0] === 'list'`, print recorded lessons via the existing `Store.lessons()`; otherwise keep the current add behavior unchanged. Reuses the store reader that already feeds agent context — minimal, no new module.\n\n## Steps\n1. In `bin/chalk.mjs` `lesson({ _, flags })`, branch at top: `if (_[0] === 'list')` → open store, get `s.lessons(1000)`, print each line (and a friendly note if empty), then `return`.\n2. Leave the existing add path (`_.join(' ') || flags.text` → `appendLesson`) untouched so `chalk lesson \"...\"` still works.\n3. Add usage line for `chalk lesson list` in the help block (~line 1019).\n\n## Files\n- `bin/chalk.mjs` — `lesson()` handler (~line 885) + help text. Reuse `Store.open()` and `s.lessons()` from `lib/store.mjs`.\n- `test/protocol.test.mjs` — new test.\n\n## Test\nAdd to `test/protocol.test.mjs`: `init`, `chalk(d,'lesson','prefer reusing existing utilities')` (code 0), then `chalk(d,'lesson','list')` — assert `.code === 0` and `.out` matches `/prefer reusing existing utilities/`. Fails today because `lesson list` currently treats \"list\" as lesson text and never prints stored lessons.",
+    "startedAt": "2026-06-25T13:12:52.747Z",
+    "pr": {
+      "number": 25,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/25"
+    },
+    "doneAt": "2026-06-25T13:14:46.746Z"
+  },
+  {
+    "id": "task-615d7e74",
+    "title": "feat: chalk log --grep <text>",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk log --grep <text>` shows only update events whose title contains <text> (case-insensitive), still honoring `--n`, `--type`, and `--reverse`"
+      },
+      {
+        "text": "without `--grep`, output is unchanged"
+      },
+      {
+        "text": "add a test in `test/protocol.test.mjs` asserting `--grep` filters AND that it composes with another flag (e.g. `--type`)"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 21,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/21",
+      "body": "- [ ] `chalk log --grep <text>` shows only update events whose title contains <text> (case-insensitive), still honoring `--n`, `--type`, and `--reverse`\n- [ ] without `--grep`, output is unchanged\n- [ ] add a test in `test/protocol.test.mjs` asserting `--grep` filters AND that it composes with another flag (e.g. `--type`)"
+    },
+    "branchType": "feat",
+    "labels": [],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T13:17:06.302Z"
+    },
+    "createdAt": "2026-06-25T13:06:23.683Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T13:16:40.875Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The new test composes --grep with --type and verifies case-insensitivity + plain-unchanged, satisfying criterion 3. It does not assert --grep composes with --n or --reverse, but criterion 1's --n/--reverse behavior is structurally guaranteed (grep filters before slice(-n)/reverse, identical to the already-tested --type path)."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "String(u.title) coerces missing titles to 'undefined' which could spuriously match a grep for 'undefined', but update titles are always required in practice, so no realistic impact."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/21-feat-chalk-log-grep-text",
+    "plan": "## Plan\n\n**Approach:** Mirror the existing `--type` filter in `cmds.log` (bin/chalk.mjs:921) — add a `--grep` filter on `u.title` applied to the full set *before* `.slice(-n)`, so `--n`/`--reverse`/`--json` continue to compose unchanged. Reusing the same filter slot is the smallest, pattern-consistent change.\n\n**Steps:**\n1. In `cmds.log`, after the `flags.type` filter line (925), add: `if (flags.grep) all = all.filter((u) => String(u.title).toLowerCase().includes(String(flags.grep).toLowerCase()));`\n2. Leave the rest (slice, reverse, json/plain output) untouched — `--grep` automatically honors `--n`, `--type`, `--reverse`, `--json`.\n3. Add the `--grep` token to the help line at bin/chalk.mjs:1028.\n\n**Files:**\n- `bin/chalk.mjs` — `cmds.log` (line ~925) + help text (line 1028). Reuse the existing `all.filter` chain pattern.\n- `test/protocol.test.mjs` — new test (append after the `--type` test ~line 117).\n\n**Test:** Add `test('log --grep — filters by title substring (case-insensitive), composes with --type; plain unchanged', …)`:\n- seed: `update 'deploy api'`, `update 'fix Login bug'`, `update 'deploy worker' --type milestone-hit`.\n- `log --grep deploy` includes both deploy lines, excludes `fix Login bug`.\n- case-insensitivity: `log --grep LOGIN` includes `fix Login bug`.\n- composition: `log --grep deploy --type milestone-hit` shows only `deploy worker`, not `deploy api`.\n- `log` (no `--grep`) still shows all three.\n\nThis fails today (the `grep` flag is ignored, so `--grep deploy` would show all events including `fix Login bug`) and passes with the filter added.",
+    "startedAt": "2026-06-25T13:15:14.873Z",
+    "pr": {
+      "number": 26,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/26"
+    },
+    "doneAt": "2026-06-25T13:17:06.302Z"
   }
 ]
