@@ -2,12 +2,14 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, UPDATE_TYPES } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef } from '../lib/store.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
+import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
+import { runDriver } from '../lib/run.mjs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -37,12 +39,16 @@ const syncBrowser = (s) => { try { projectPlans(s); projectBoard(s); } catch { /
 const cmds = {
   init({ flags }) {
     const root = process.cwd();
-    const meta = initSpine(root, { name: flags.name, goal: flags.goal });
-    ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})`);
+    // --preset flutter|node|… selects a stack; bare --preset auto-detects from marker files.
+    let preset = flags.preset === true ? detectPreset(root) : (flags.preset ? String(flags.preset) : null);
+    const auto = flags.preset === true && preset;
+    if (preset && !PRESETS[preset]) die(`unknown --preset: ${preset} (choose ${Object.keys(PRESETS).join('|')})`);
+    const meta = initSpine(root, { name: flags.name, goal: flags.goal, preset, runner: flags.runner ? String(flags.runner) : undefined });
+    ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})${preset ? C.dim(` · preset ${preset}${auto ? ' (auto-detected)' : ''}`) : ''}`);
     if (flags['no-agents'] !== true) {
       for (const r of installAgentDocs(root)) console.log(C.dim(`  ${r.action} ${r.name} (agent contract)`));
     }
-    console.log(C.dim('  next: set verify commands in .chalk/chalk.json, then `chalk task add "..."`'));
+    console.log(C.dim(preset ? '  next: `chalk task add "..."` (verify commands set from the preset)' : '  next: set verify commands in .chalk/chalk.json, then `chalk task add "..."`'));
   },
 
   // (Re)install the agent contract into AGENTS.md / CLAUDE.md.
@@ -58,6 +64,8 @@ const cmds = {
     const tasks = s.tasks();
     const wip = tasks.filter((t) => t.state === 'in-progress');
     const specd = tasks.filter((t) => t.state === 'specd');
+    const ready = specd.filter((t) => depsSatisfied(t, tasks));   // deps done → startable now
+    const waiting = specd.filter((t) => !depsSatisfied(t, tasks)); // specd but blocked behind deps
     const todo = tasks.filter((t) => t.state === 'todo');
     console.log(C.b('Chalk · next action'));
     const reg0 = s.protocol().regression;
@@ -66,6 +74,8 @@ const cmds = {
       const stale = !la || !la.green || (la.size && la.size.loc !== codeSize(s.root).loc);
       if (stale) console.log(C.y('  ⚠ held-out audit is stale — run `chalk audit` (required to advance phase).'));
     }
+    for (const t of tasks.filter((x) => x.state === 'blocked'))
+      console.log(C.y(`  ⊘ blocked: ${t.title} — needs ${t.block?.needs} (${t.block?.reason}). unblock: chalk unblock ${t.id.slice(0, 12)}`));
 
     if (wip.length) {
       if (wip.length > 1) console.log(C.y(`  ! ${wip.length} tasks in-progress — protocol prefers ONE at a time; finish one first.`));
@@ -78,7 +88,7 @@ const cmds = {
           console.log(`     ${broken.length ? C.r('✗ tests MODIFIED') : C.dim('READ-ONLY tests')}: ${(t.tests).map((x) => x.path).join(', ')}`);
           if (broken.length) console.log(C.r(`       integrity break — revert them or run: chalk amend-spec ${short} --test <path> --why "..."`));
         }
-        const needsReview = s.protocol().review?.required;
+        const needsReview = reviewRequiredNow(s, t);
         const last = (t.reviews || []).slice(-1)[0];
         const seq = needsReview && !(last && last.verdict === 'pass')
           ? `chalk verify   then   chalk review ${short}   then   chalk done ${short}`
@@ -88,10 +98,17 @@ const cmds = {
       }
       return;
     }
-    if (specd.length) {
-      console.log(`  ${C.y('◐')} ${specd.length} task(s) ready. Pick ${C.b('ONE')} and start it:`);
-      for (const t of specd) console.log(C.dim(`     chalk start ${t.id.slice(0, 12)}   `) + t.title);
-      return;
+    if (ready.length || waiting.length) {
+      if (ready.length) {
+        console.log(`  ${C.y('◐')} ${ready.length} task(s) ready. Pick ${C.b('ONE')} and start it:`);
+        for (const t of ready) console.log(C.dim(`     chalk start ${t.id.slice(0, 12)}   `) + t.title);
+      }
+      for (const t of waiting) {
+        const deps = (t.after || []).map((ref) => resolveRef(tasks, ref)).filter((d) => d && d.state !== 'done').map((d) => d.title);
+        console.log(C.dim(`     ⧗ waiting: ${t.title} — on ${deps.join(', ') || 'unresolved deps'}`));
+      }
+      if (ready.length) return; // only fall through to todo/done when nothing is startable
+      if (!todo.length) { console.log(C.dim('  (all remaining work is waiting on deps or blocked)')); return; }
     }
     if (todo.length) {
       console.log(`  ${C.dim('○')} ${todo.length} task(s) need acceptance criteria before they can start (GATE P1):`);
@@ -100,6 +117,62 @@ const cmds = {
     }
     if (!tasks.length) { console.log(C.dim('  no tasks yet →  chalk task add "<title>"')); return; }
     console.log(`  ${C.g('✓')} all tasks done. Add the next one ${C.dim('(chalk task add)')} or advance phase ${C.dim('(chalk phase ...)')}.`);
+  },
+
+  // The ordered backlog/DAG — work grouped by milestone, with dependency edges + runnability.
+  backlog() {
+    const s = Store.open();
+    const tasks = s.tasks();
+    if (!tasks.length) { console.log(C.dim('  no tasks yet → chalk task add "<title>" [--milestone M] [--after <id>]')); return; }
+    console.log(C.b('Chalk · backlog'));
+    const groups = new Map();
+    for (const t of tasks) { const k = t.milestone || '(no milestone)'; (groups.get(k) || groups.set(k, []).get(k)).push(t); }
+    for (const [milestone, items] of groups) {
+      console.log('\n' + C.b(milestone));
+      for (const t of items) {
+        const deps = (t.after || []).map((ref) => resolveRef(tasks, ref)).filter(Boolean);
+        const open = deps.filter((d) => d.state !== 'done').map((d) => d.title);
+        let mark;
+        if (t.state === 'done') mark = C.g('✓ done');
+        else if (t.state === 'blocked') mark = C.y(`⊘ blocked (needs ${t.block?.needs})`);
+        else if (t.state === 'in-progress') mark = C.b('● wip');
+        else if (open.length) mark = C.dim(`⧗ waiting on ${open.join(', ')}`);
+        else if (t.state === 'specd') mark = C.y('▶ runnable');
+        else mark = C.dim('○ needs criteria');
+        const edge = deps.length ? C.dim(`  → after ${deps.map((d) => d.title).join(', ')}`) : '';
+        console.log(`  ${mark}  ${C.dim(t.id.slice(0, 12))} ${t.title}${edge}`);
+      }
+    }
+    const nonDone = tasks.filter((t) => t.state !== 'done');
+    if (nonDone.length && !runnableTasks(tasks).length && !tasks.some((t) => t.state === 'in-progress'))
+      console.log('\n' + C.y('  ⚠ nothing is runnable — check for a dependency cycle or a blocked upstream task.'));
+  },
+
+  // The unattended driver loop (P0 #2). Pulls runnable tasks and drives each through a BYO
+  // executor (protocol.executor.command) → verify → review → done, auto-blocking anything the
+  // executor can't make green so the run keeps moving. The gates still decide; this just removes
+  // the turn boundaries between tasks.
+  run({ flags }) {
+    const s = Store.open();
+    const until = flags.until === 'blocked' ? 'blocked' : 'empty';
+    const max = Number(flags.max || 50);
+    const r = runDriver(s, { until, max, dryRun: flags['dry-run'] === true, reviewRequiredNow, log: (m) => console.log(C.dim('  ' + m)) });
+    if (r.dryRun) {
+      console.log(C.b('chalk run · dry-run — planned order'));
+      if (!r.planned.length) console.log(C.dim('  (nothing runnable right now)'));
+      r.planned.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}${t.milestone ? C.dim(` · ${t.milestone}`) : ''} ${C.dim(t.id.slice(0, 12))}`));
+      return;
+    }
+    if (r.degraded) {
+      console.log(C.y('  no executor configured (protocol.executor.command) — falling back to the manual loop:') + '\n');
+      cmds.next();
+      return;
+    }
+    syncBrowser(s);
+    console.log('\n' + C.b('chalk run · summary'));
+    console.log(`  ${C.g(`✓ ${r.completed.length} done`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim(`(${r.iterations} iteration(s), stopped: ${r.stopped})`)}`);
+    if (r.blocked.length) console.log(C.dim('  run `chalk next` / `chalk status` to see what each blocked task needs.'));
+    process.exit(r.stopped === 'blocked' ? 2 : 0);
   },
 
   status() {
@@ -113,7 +186,10 @@ const cmds = {
     if (!tasks.length) console.log(C.dim('  (none — `chalk task add "..."`)'));
     for (const st of TASK_STATES) {
       const inState = tasks.filter((t) => t.state === st);
-      for (const t of inState) console.log(`  ${stateBadge(st)} ${C.dim(t.id.slice(0, 12))} ${t.title} ${C.dim(`(${(t.acceptanceCriteria || []).length} crit, ${(t.tests || []).length} test)`)}`);
+      for (const t of inState) {
+        const meta = st === 'blocked' && t.block ? C.y(`  ⊘ needs ${t.block.needs}: ${t.block.reason}`) : C.dim(`(${(t.acceptanceCriteria || []).length} crit, ${(t.tests || []).length} test)`);
+        console.log(`  ${stateBadge(st)} ${C.dim(t.id.slice(0, 12))} ${t.title} ${meta}`);
+      }
     }
     console.log('\n' + C.b('Open questions') + ` ${openQ.length}`);
     for (const q of openQ.slice(0, 5)) console.log(`  ${C.y('?')} ${q.question} ${C.dim(`→ ${q.awaitingFrom}`)}`);
@@ -122,26 +198,11 @@ const cmds = {
   },
 
   // P3 — context over procedure: surface the spec slice + at-risk tests, not a TDD lecture.
+  // Shares buildContext() with the `chalk run` executor so both see identical text.
   context({ _ }) {
     const s = Store.open();
-    const m = s.meta();
     const t = _[0] ? mustTask(s, _[0]) : null;
-    console.log(`# Chalk context — ${m.project.name} (phase: ${m.protocol?.phase})\n`);
-    console.log(`## Spec\n${s.spec().trim()}\n`);
-    if (t) {
-      console.log(`## Current task — ${t.title}  [${t.state}]\n`);
-      console.log('### Acceptance criteria (the contract — make these pass)');
-      (t.acceptanceCriteria || []).forEach((c, i) => console.log(`  ${i + 1}. ${c.text}`));
-      if (!(t.acceptanceCriteria || []).length) console.log(C.dim('  (none yet — add with `chalk spec`)'));
-      console.log('\n### Tests at risk for this change (READ-ONLY — do not edit; use `chalk amend-spec`)');
-      if ((t.tests || []).length) t.tests.forEach((x) => console.log(`  - ${x.path}`));
-      else console.log(C.dim('  (no locked tests)'));
-    }
-    const reg = m.protocol?.regression;
-    if (reg?.tests?.length) console.log(`\n## Held-out regression\n${reg.tests.length} locked file(s) under ${reg.dir} — you may NOT read or edit them. They run in \`chalk audit\`; on failure you learn only WHICH criterion regressed. Fix against the spec.`);
-    const openQ = s.questions().filter((q) => q.status !== 'resolved');
-    if (openQ.length) { console.log('\n## Open questions'); openQ.forEach((q) => console.log(`  - ${q.question} (→ ${q.awaitingFrom})`)); }
-    console.log('\n## Contract\nread → start (needs criteria) → work → `chalk verify` (must be green) → `chalk done`.\nTests are read-only. Do not self-declare done; the verify gate decides.');
+    console.log(buildContext(s, t));
   },
 
   // Bridge to Chalk Browser — project tasks.json into BOTH canonical Browser views:
@@ -172,12 +233,22 @@ const cmds = {
     if (sub === 'add') {
       const title = _.slice(1).join(' ') || flags.title;
       if (!title) die('usage: chalk task add "<title>"');
-      const t = { id: id('task'), title, state: 'todo', acceptanceCriteria: [], tests: [], heldOut: [], createdAt: now(), reviews: [] };
+      const milestone = flags.milestone ? String(flags.milestone) : undefined;
+      // Resolve each --after ref to a FULL task id now (reject ambiguous prefixes), so the stored
+      // dependency edge can't later bind to the wrong task as more tasks are added.
+      const after = arr(flags.after).map(String).map((ref) => {
+        const exact = s.tasks().find((t) => t.id === ref);
+        const matches = s.tasks().filter((t) => t.id.startsWith(ref));
+        if (!exact && !matches.length) die(`--after: no such task: ${ref}`);
+        if (!exact && matches.length > 1) die(`--after: ambiguous task ref "${ref}" — use a longer id`);
+        return (exact || matches[0]).id;
+      });
+      const t = { id: id('task'), title, state: 'todo', acceptanceCriteria: [], tests: [], heldOut: [], milestone, after, createdAt: now(), reviews: [] };
       s.upsertTask(t);
       s.emitUpdate({ type: 'work-item-started', title: `Task created: ${title}`, taskId: t.id });
       syncBrowser(s);
-      ok(`task ${C.b(t.id.slice(0, 12))} — ${title} ${C.dim('[todo]')}`);
-    } else die('usage: chalk task add "<title>"');
+      ok(`task ${C.b(t.id.slice(0, 12))} — ${title} ${C.dim(`[todo]${milestone ? ` · ${milestone}` : ''}${after.length ? ` · after ${after.length}` : ''}`)}`);
+    } else die('usage: chalk task add "<title>" [--milestone M] [--after <id>]');
   },
 
   // Attach acceptance criteria and/or LOCK a test file (P1/P2/P6).
@@ -215,13 +286,42 @@ const cmds = {
     console.log(C.dim(`  read context with: chalk context ${t.id.slice(0, 12)}`));
   },
 
+  // Park a task that needs something only a human can supply, and keep the run moving.
+  // The agent contract: `block` it and pull the next task — don't stop while work remains.
+  block({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const needs = String(flags.needs || '');
+    if (!NEEDS.includes(needs)) die(`--needs must be one of: ${NEEDS.join(', ')}`);
+    if (!flags.reason) die('block requires --reason "<what is needed>"');
+    if (t.state === 'done') die('cannot block a done task.');
+    t.blockedFrom = t.state; // remember where to resume on unblock
+    t.state = 'blocked';
+    t.block = { needs, reason: String(flags.reason), at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Blocked: ${t.title} (needs ${needs})`, description: String(flags.reason), taskId: t.id });
+    ok(`blocked ${C.b(t.title)} ${C.dim(`— needs ${needs}`)}`);
+  },
+
+  unblock({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    if (t.state !== 'blocked') die(`task is [${t.state}], not blocked.`);
+    t.state = t.blockedFrom || 'specd';
+    delete t.block; delete t.blockedFrom;
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Unblocked: ${t.title}`, taskId: t.id });
+    ok(`unblocked ${C.b(t.title)} ${C.dim(`[${t.state}]`)}`);
+  },
+
   verify() {
     const s = Store.open();
     const v = runVerify(s);
     console.log(C.b('Verify') + '\n');
     for (const r of v.toolchain) {
-      const tag = r.status === 'pass' ? C.g('pass') : r.status === 'fail' ? C.r('fail') : C.dim('skip');
-      console.log(`  ${tag}  ${r.gate}${r.cmd ? C.dim(`  (${r.cmd})`) : C.dim('  (not configured)')}`);
+      const tag = r.status === 'pass' ? C.g('pass') : r.status === 'fail' ? C.r('fail') : r.status === 'deferred' ? C.y('defer') : C.dim('skip');
+      const note = r.status === 'deferred' ? C.dim(`  (${r.cmd})  ${C.y('runs at chalk audit')}`) : (r.cmd ? C.dim(`  (${r.cmd})`) : C.dim('  (not configured)'));
+      console.log(`  ${tag}  ${r.gate}${note}`);
       if (r.status === 'fail' && r.tail) console.log(r.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
     }
     if (v.integrity.length) {
@@ -244,8 +344,9 @@ const cmds = {
       if (!v.integrityGreen) reasons.push('locked tests were modified (P6) — use `chalk amend-spec`');
       die(`GATE P4+P6: cannot mark done — ${reasons.join('; ')}.`);
     }
-    // GATE P5 — if review is required, the latest review must pass (override is logged).
-    if (s.protocol().review?.required) {
+    // GATE P5 — if review is required for this task (per the configured cadence), the latest
+    // review must pass (override is logged).
+    if (reviewRequiredNow(s, t)) {
       const last = (t.reviews || []).slice(-1)[0];
       const passed = last && last.verdict === 'pass';
       if (!passed) {
@@ -331,7 +432,7 @@ const cmds = {
       if (!reg.authorCommand) die('set .chalk/chalk.json → protocol.regression.authorCommand (a BYO test-author agent).');
       console.log(C.dim('  running guard author (derives held-out tests from the spec, blind to the code)…'));
       const prompt = buildGuardPrompt(m, s.spec(), s.tasks().flatMap((t) => (t.acceptanceCriteria || []).map((c) => `- [${t.title}] ${c.text}`)).join('\n'));
-      try { execSync(reg.authorCommand, { cwd: s.root, input: prompt, stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); }
+      try { execSync(withRunner(m.protocol?.runner, reg.authorCommand), { cwd: s.root, input: prompt, stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); }
       catch { /* author may write files then exit nonzero */ }
       let n = 0;
       for (const f of listDirFiles(s.root, reg.dir)) { if (/readme/i.test(f)) continue; lockInto(f); n++; }
@@ -351,6 +452,14 @@ const cmds = {
     for (const p of r.broken) console.log(`  ${C.r('✗ integrity')} ${p} ${C.dim('— held-out test modified (P7 violation)')}`);
     if (r.status === 'unconfigured') console.log(C.dim('  no regression.command configured — integrity check only.'));
     else console.log('  ' + (r.passed ? C.g('held-out checks PASS') : C.r('held-out checks FAIL')) + C.dim('  (output withheld — fix against the spec, not the hidden tests)'));
+    const phaseRun = (r.phaseGates || []).filter((g) => g.status !== 'skipped' && g.status !== 'deferred');
+    if (phaseRun.length) {
+      console.log('\n' + C.b('Audit · phase-boundary toolchain gates'));
+      for (const g of phaseRun) {
+        console.log(`  ${g.status === 'pass' ? C.g('pass') : C.r('fail')}  ${g.gate}${C.dim(`  (${g.cmd})`)}`);
+        if (g.status === 'fail' && g.tail) console.log(g.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
+      }
+    }
     console.log(C.dim(`  code size: ${r.size.loc} LOC across ${r.size.files} file(s)`));
     const m = s.meta();
     m.protocol = m.protocol || {};
@@ -381,6 +490,16 @@ const cmds = {
         if (!flags.why) die('--force-audit requires --why "<reason>" (it is logged as a decision).');
         s.appendDecision({ title: `Overrode held-out audit gate advancing to phase "${p}"`, why: String(flags.why) });
         console.log(C.y('  ! audit gate overridden (decision logged).'));
+      }
+    }
+    // GATE P5 (phase-advance cadence) — every worked task must carry a passing review.
+    if (reviewCadences(s.protocol().review || {}).includes('phase-advance')) {
+      const pending = unreviewed(s);
+      if (pending.length) {
+        if (!flags['force-review']) die(`GATE P5: review cadence is "phase-advance" — these need a passing review first:\n${pending.map((t) => `    chalk review ${t.id.slice(0, 12)}   ${t.title}`).join('\n')}\n    To override (logged): chalk phase ${p} --force-review --why "..."`);
+        if (!flags.why) die('--force-review requires --why "<reason>" (it is logged as a decision).');
+        s.appendDecision({ title: `Overrode phase-advance review gate advancing to phase "${p}"`, why: String(flags.why) });
+        console.log(C.y('  ! phase-advance review gate overridden (decision logged).'));
       }
     }
     s.setPhase(p);
@@ -440,7 +559,7 @@ cmds.plans = cmds.sync; // alias — `chalk plans` projects both Browser views (
 // ---------------------------------------------------------------- helpers
 function sev(s) { return { high: C.r('▲ high'), med: C.y('▲ med '), low: C.dim('▲ low ') }[s] || C.dim('▲ ' + (s || '?')); }
 function stateBadge(st) {
-  return { todo: C.dim('○ todo  '), specd: C.y('◐ specd '), 'in-progress': C.b('● wip   '), done: C.g('✓ done  ') }[st] || st;
+  return { todo: C.dim('○ todo  '), specd: C.y('◐ specd '), 'in-progress': C.b('● wip   '), blocked: C.y('⊘ blockd'), done: C.g('✓ done  ') }[st] || st;
 }
 function mustTask(s, ref) {
   if (!ref) die('missing task id');
@@ -448,24 +567,49 @@ function mustTask(s, ref) {
   if (!t) die(`task not found: ${ref}`);
   return t;
 }
+// Is a passing adversarial review (P5) required to mark THIS task done right now?
+// Cadence-aware: per-task → always; milestone-boundary → only when this task closes its
+// milestone (degrades to no-gate if the task carries no milestone); phase-advance → enforced
+// at `chalk phase`, not at per-task done. Back-compat with the legacy review.required boolean.
+function reviewRequiredNow(store, task) {
+  const cadences = reviewCadences(store.protocol().review || {});
+  if (!cadences.length) return false;
+  if (cadences.includes('per-task')) return true;
+  if (cadences.includes('milestone-boundary') && task.milestone) {
+    const remaining = store.tasks().filter((t) => t.milestone === task.milestone && t.id !== task.id && t.state !== 'done');
+    if (!remaining.length) return true; // closing the milestone
+  }
+  return false;
+}
+// Worked tasks whose latest review isn't a pass (used by the phase-advance cadence gate).
+// Only in-progress/done tasks count — todo/specd were never worked, and a `blocked` task is
+// parked on a human dependency (creds/upstream) and isn't reviewable, so it must not wedge the gate.
+function unreviewed(store) {
+  return store.tasks().filter((t) => (t.state === 'in-progress' || t.state === 'done') && (t.reviews || []).slice(-1)[0]?.verdict !== 'pass');
+}
 function printHelp() {
   console.log(`${C.b('chalk')} — Chalk Protocol CLI (v0)  ${C.dim('· read → work → verify → write')}
 
 ${C.b('setup')}
-  chalk init [--name N] [--goal G]     ${C.dim('also installs the agent contract into AGENTS.md/CLAUDE.md')}
+  chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--runner fvm]
+                                       ${C.dim('installs the agent contract; --preset fills verify/regression (bare --preset auto-detects)')}
   chalk agents                         ${C.dim('(re)install the agent contract')}
   chalk status
   chalk next                           ${C.dim('the agent entrypoint: what to do next')}
   chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
 
 ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental is met)')}
-  chalk task add "<title>"
+  chalk task add "<title>" [--milestone M] [--after <id>]   ${C.dim('queue work; --after sets a dep edge')}
+  chalk backlog                        ${C.dim('ordered DAG by milestone (runnable/waiting/blocked)')}
+  chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
   chalk verify                         ${C.dim('toolchain + test-integrity (P4/P6/P7)')}
-  chalk review <id>                    ${C.dim('GATE P5: adversarial reviewer (configured in chalk.json)')}
+  chalk review <id>                    ${C.dim('GATE P5: adversarial reviewer; cadence via review.requiredAt (per-task|milestone-boundary|phase-advance)')}
   chalk done <id> [--force-review --why "..."]   ${C.dim('GATE P4+P6(+P5): verify green, locks intact, review passed')}
   chalk amend-spec <id> --test <path> --why "..."   ${C.dim('gated test change (P6)')}
+  chalk block <id> --needs <creds|decision|human-input|upstream> --reason "..."   ${C.dim('park; keep the run moving')}
+  chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
   chalk guard add <path> | gen | list  ${C.dim('author/lock the held-out set (from the spec)')}

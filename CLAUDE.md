@@ -19,8 +19,11 @@ next action.
    excuse an inadequate test or an unmet criterion.
 7. `chalk done <id>` — only succeeds when verify is green, the locked tests are untouched,
    and (if required) the review passed.
-8. Record what changed: `chalk decision "..." --why "..."`, `chalk update "..."`,
-   `chalk question add "..."` for anything needing a human.
+8. Record what changed: `chalk decision "..." --why "..."`, `chalk update "..."`.
+
+Queue work ahead with `chalk task add "..." --milestone <m> --after <id>`; `chalk next` and
+`chalk backlog` honor the dependency order. `chalk run` drives this whole loop unattended when
+an executor is configured (protocol.executor.command).
 
 **Hard rules**
 - Files listed under a task's tests are **READ-ONLY**. Do not edit, weaken, or delete them
@@ -32,4 +35,8 @@ next action.
   the assertion. Fix the bug against the spec; do not inspect or target the hidden tests.
 - At phase boundaries run `chalk audit` — it must be green to advance.
 - Keep diffs small and scoped to the current task.
+- **When a task needs something only a human can supply** (credentials, a product decision, an
+  upstream task, or other human input), do NOT stop. Run
+  `chalk block <id> --needs <creds|decision|human-input|upstream> --reason "..."` and move on
+  with `chalk next`. Only a fully blocked or empty queue ends the run.
 <!-- chalk:end -->
