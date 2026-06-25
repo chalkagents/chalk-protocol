@@ -117,3 +117,27 @@ test('blocked — next skips a blocked task; status shows the need; unblock rest
   assert.ok(JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'))
               .find((t) => t.id.startsWith(a)).state === 'in-progress', 'unblock restores prior state');
 });
+
+test('backlog/DAG — next honors --after deps; backlog groups by milestone', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  conf(d, (o) => { o.verify.test = 'node -e "process.exit(0)"'; });
+  chalk(d, 'task', 'add', 'A first', '--milestone', 'core');
+  const a = tid(d, 0);
+  chalk(d, 'task', 'add', 'B after A', '--milestone', 'core', '--after', a);
+  const b = tid(d, 1);
+  assert.equal(chalk(d, 'task', 'add', 'bad dep', '--after', 'task-nope').code, 1, '--after rejects an unknown task');
+  chalk(d, 'spec', a, '--criterion', 'x');
+  chalk(d, 'spec', b, '--criterion', 'y');
+  // B waits on A: next should offer A (startable) and show B waiting.
+  let n = chalk(d, 'next').out;
+  assert.ok(n.includes('A first'), 'next offers the dependency-free task A');
+  assert.ok(/waiting/i.test(n) && n.includes('B after A'), 'next shows B waiting on its dep');
+  // Finish A; now B becomes runnable.
+  chalk(d, 'start', a); chalk(d, 'done', a);
+  n = chalk(d, 'next').out;
+  assert.ok(n.includes('B after A'), 'next offers B once A is done');
+  // backlog groups under the milestone and shows the edge.
+  const bl = chalk(d, 'backlog').out;
+  assert.ok(bl.includes('core') && /after A first/.test(bl), 'backlog groups by milestone and shows the dep edge');
+});

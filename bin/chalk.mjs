@@ -2,7 +2,7 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef } from '../lib/store.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -58,6 +58,8 @@ const cmds = {
     const tasks = s.tasks();
     const wip = tasks.filter((t) => t.state === 'in-progress');
     const specd = tasks.filter((t) => t.state === 'specd');
+    const ready = specd.filter((t) => depsSatisfied(t, tasks));   // deps done → startable now
+    const waiting = specd.filter((t) => !depsSatisfied(t, tasks)); // specd but blocked behind deps
     const todo = tasks.filter((t) => t.state === 'todo');
     console.log(C.b('Chalk · next action'));
     const reg0 = s.protocol().regression;
@@ -90,10 +92,17 @@ const cmds = {
       }
       return;
     }
-    if (specd.length) {
-      console.log(`  ${C.y('◐')} ${specd.length} task(s) ready. Pick ${C.b('ONE')} and start it:`);
-      for (const t of specd) console.log(C.dim(`     chalk start ${t.id.slice(0, 12)}   `) + t.title);
-      return;
+    if (ready.length || waiting.length) {
+      if (ready.length) {
+        console.log(`  ${C.y('◐')} ${ready.length} task(s) ready. Pick ${C.b('ONE')} and start it:`);
+        for (const t of ready) console.log(C.dim(`     chalk start ${t.id.slice(0, 12)}   `) + t.title);
+      }
+      for (const t of waiting) {
+        const deps = (t.after || []).map((ref) => resolveRef(tasks, ref)).filter((d) => d && d.state !== 'done').map((d) => d.title);
+        console.log(C.dim(`     ⧗ waiting: ${t.title} — on ${deps.join(', ') || 'unresolved deps'}`));
+      }
+      if (ready.length) return; // only fall through to todo/done when nothing is startable
+      if (!todo.length) { console.log(C.dim('  (all remaining work is waiting on deps or blocked)')); return; }
     }
     if (todo.length) {
       console.log(`  ${C.dim('○')} ${todo.length} task(s) need acceptance criteria before they can start (GATE P1):`);
@@ -102,6 +111,35 @@ const cmds = {
     }
     if (!tasks.length) { console.log(C.dim('  no tasks yet →  chalk task add "<title>"')); return; }
     console.log(`  ${C.g('✓')} all tasks done. Add the next one ${C.dim('(chalk task add)')} or advance phase ${C.dim('(chalk phase ...)')}.`);
+  },
+
+  // The ordered backlog/DAG — work grouped by milestone, with dependency edges + runnability.
+  backlog() {
+    const s = Store.open();
+    const tasks = s.tasks();
+    if (!tasks.length) { console.log(C.dim('  no tasks yet → chalk task add "<title>" [--milestone M] [--after <id>]')); return; }
+    console.log(C.b('Chalk · backlog'));
+    const groups = new Map();
+    for (const t of tasks) { const k = t.milestone || '(no milestone)'; (groups.get(k) || groups.set(k, []).get(k)).push(t); }
+    for (const [milestone, items] of groups) {
+      console.log('\n' + C.b(milestone));
+      for (const t of items) {
+        const deps = (t.after || []).map((ref) => resolveRef(tasks, ref)).filter(Boolean);
+        const open = deps.filter((d) => d.state !== 'done').map((d) => d.title);
+        let mark;
+        if (t.state === 'done') mark = C.g('✓ done');
+        else if (t.state === 'blocked') mark = C.y(`⊘ blocked (needs ${t.block?.needs})`);
+        else if (t.state === 'in-progress') mark = C.b('● wip');
+        else if (open.length) mark = C.dim(`⧗ waiting on ${open.join(', ')}`);
+        else if (t.state === 'specd') mark = C.y('▶ runnable');
+        else mark = C.dim('○ needs criteria');
+        const edge = deps.length ? C.dim(`  → after ${deps.map((d) => d.title).join(', ')}`) : '';
+        console.log(`  ${mark}  ${C.dim(t.id.slice(0, 12))} ${t.title}${edge}`);
+      }
+    }
+    const nonDone = tasks.filter((t) => t.state !== 'done');
+    if (nonDone.length && !runnableTasks(tasks).length && !tasks.some((t) => t.state === 'in-progress'))
+      console.log('\n' + C.y('  ⚠ nothing is runnable — check for a dependency cycle or a blocked upstream task.'));
   },
 
   status() {
@@ -177,12 +215,15 @@ const cmds = {
     if (sub === 'add') {
       const title = _.slice(1).join(' ') || flags.title;
       if (!title) die('usage: chalk task add "<title>"');
-      const t = { id: id('task'), title, state: 'todo', acceptanceCriteria: [], tests: [], heldOut: [], createdAt: now(), reviews: [] };
+      const milestone = flags.milestone ? String(flags.milestone) : undefined;
+      const after = arr(flags.after).map(String);
+      for (const ref of after) if (!resolveRef(s.tasks(), ref)) die(`--after: no such task: ${ref}`);
+      const t = { id: id('task'), title, state: 'todo', acceptanceCriteria: [], tests: [], heldOut: [], milestone, after, createdAt: now(), reviews: [] };
       s.upsertTask(t);
       s.emitUpdate({ type: 'work-item-started', title: `Task created: ${title}`, taskId: t.id });
       syncBrowser(s);
-      ok(`task ${C.b(t.id.slice(0, 12))} — ${title} ${C.dim('[todo]')}`);
-    } else die('usage: chalk task add "<title>"');
+      ok(`task ${C.b(t.id.slice(0, 12))} — ${title} ${C.dim(`[todo]${milestone ? ` · ${milestone}` : ''}${after.length ? ` · after ${after.length}` : ''}`)}`);
+    } else die('usage: chalk task add "<title>" [--milestone M] [--after <id>]');
   },
 
   // Attach acceptance criteria and/or LOCK a test file (P1/P2/P6).
@@ -492,7 +533,8 @@ ${C.b('setup')}
   chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
 
 ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental is met)')}
-  chalk task add "<title>"
+  chalk task add "<title>" [--milestone M] [--after <id>]   ${C.dim('queue work; --after sets a dep edge')}
+  chalk backlog                        ${C.dim('ordered DAG by milestone (runnable/waiting/blocked)')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
   chalk verify                         ${C.dim('toolchain + test-integrity (P4/P6/P7)')}
