@@ -1,0 +1,3 @@
+- When adding a CLI flag that must compose with existing flags, add a test asserting the combined interaction (e.g. --reverse together with --type), not just the new flag in isolation.  _(retro, 2026-06-25)_
+- When adding a read-only list/log command (decisions, lesson list, log), add a test for the empty/just-initialized state, not only the happy path where an entry already exists.  _(retro, 2026-06-25)_
+- Guard every readFileSync of a .chalk/* file with an existsSync check (or reuse the Store helper) so a missing file yields a friendly message instead of an unhandled throw.  _(retro, 2026-06-25)_
