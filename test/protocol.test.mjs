@@ -116,6 +116,28 @@ test('log --type — filters events by type, still honoring --n; plain log uncha
   assert.ok(plain.out.includes('progress one') && plain.out.includes('a milestone note'), 'unfiltered log unchanged');
 });
 
+test('log --grep — filters by title substring (case-insensitive), composes with --type; plain unchanged', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  chalk(d, 'update', 'deploy api');
+  chalk(d, 'update', 'fix Login bug');
+  chalk(d, 'update', 'deploy worker', '--type', 'milestone-hit');
+  // --grep keeps only titles containing the text.
+  const g = chalk(d, 'log', '--grep', 'deploy');
+  assert.equal(g.code, 0);
+  assert.ok(g.out.includes('deploy api') && g.out.includes('deploy worker'), 'matching titles shown');
+  assert.ok(!g.out.includes('fix Login bug'), 'non-matching title excluded');
+  // case-insensitive match.
+  const ci = chalk(d, 'log', '--grep', 'LOGIN');
+  assert.ok(ci.out.includes('fix Login bug'), '--grep is case-insensitive');
+  // composes with --type: only the milestone-hit deploy.
+  const comp = chalk(d, 'log', '--grep', 'deploy', '--type', 'milestone-hit');
+  assert.ok(comp.out.includes('deploy worker') && !comp.out.includes('deploy api'), '--grep composes with --type');
+  // without --grep all events are shown.
+  const plain = chalk(d, 'log');
+  assert.ok(plain.out.includes('deploy api') && plain.out.includes('fix Login bug') && plain.out.includes('deploy worker'), 'unfiltered log unchanged');
+});
+
 test('log --reverse — newest-first; default unchanged', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'd');
