@@ -274,7 +274,7 @@ const cmds = {
     if (!t.branch) die('no branch — run `chalk branch <id>` first.');
     try { runGit(wd, `push -u origin ${t.branch}`); } catch (e) { die(`git push failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
     const type = t.branchType || 'feat';
-    const title = `${type}: ${(t.title || '').replace(/^./, (c) => c.toLowerCase())}`;
+    const title = `${type}: ${(t.title || '').replace(/^\s*(feat|fix|chore|docs|refactor|test|perf|style|build|ci)(\([^)]*\))?:\s*/i, '').replace(/^./, (c) => c.toLowerCase())}`;
     const body = [
       '## Summary', `- ${t.title}${t.issue?.number ? ` (closes #${t.issue.number})` : ''}`, '',
       '## Changes', ...(t.acceptanceCriteria || []).map((c) => `- ${c.text}`), '',
