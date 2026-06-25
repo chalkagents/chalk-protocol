@@ -8,6 +8,7 @@ import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
+import { PRESETS, detectPreset, withRunner } from '../lib/config.mjs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -37,12 +38,16 @@ const syncBrowser = (s) => { try { projectPlans(s); projectBoard(s); } catch { /
 const cmds = {
   init({ flags }) {
     const root = process.cwd();
-    const meta = initSpine(root, { name: flags.name, goal: flags.goal });
-    ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})`);
+    // --preset flutter|node|… selects a stack; bare --preset auto-detects from marker files.
+    let preset = flags.preset === true ? detectPreset(root) : (flags.preset ? String(flags.preset) : null);
+    const auto = flags.preset === true && preset;
+    if (preset && !PRESETS[preset]) die(`unknown --preset: ${preset} (choose ${Object.keys(PRESETS).join('|')})`);
+    const meta = initSpine(root, { name: flags.name, goal: flags.goal, preset, runner: flags.runner ? String(flags.runner) : undefined });
+    ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})${preset ? C.dim(` · preset ${preset}${auto ? ' (auto-detected)' : ''}`) : ''}`);
     if (flags['no-agents'] !== true) {
       for (const r of installAgentDocs(root)) console.log(C.dim(`  ${r.action} ${r.name} (agent contract)`));
     }
-    console.log(C.dim('  next: set verify commands in .chalk/chalk.json, then `chalk task add "..."`'));
+    console.log(C.dim(preset ? '  next: `chalk task add "..."` (verify commands set from the preset)' : '  next: set verify commands in .chalk/chalk.json, then `chalk task add "..."`'));
   },
 
   // (Re)install the agent contract into AGENTS.md / CLAUDE.md.
@@ -405,7 +410,7 @@ const cmds = {
       if (!reg.authorCommand) die('set .chalk/chalk.json → protocol.regression.authorCommand (a BYO test-author agent).');
       console.log(C.dim('  running guard author (derives held-out tests from the spec, blind to the code)…'));
       const prompt = buildGuardPrompt(m, s.spec(), s.tasks().flatMap((t) => (t.acceptanceCriteria || []).map((c) => `- [${t.title}] ${c.text}`)).join('\n'));
-      try { execSync(reg.authorCommand, { cwd: s.root, input: prompt, stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); }
+      try { execSync(withRunner(m.protocol?.runner, reg.authorCommand), { cwd: s.root, input: prompt, stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); }
       catch { /* author may write files then exit nonzero */ }
       let n = 0;
       for (const f of listDirFiles(s.root, reg.dir)) { if (/readme/i.test(f)) continue; lockInto(f); n++; }
@@ -526,7 +531,8 @@ function printHelp() {
   console.log(`${C.b('chalk')} — Chalk Protocol CLI (v0)  ${C.dim('· read → work → verify → write')}
 
 ${C.b('setup')}
-  chalk init [--name N] [--goal G]     ${C.dim('also installs the agent contract into AGENTS.md/CLAUDE.md')}
+  chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--runner fvm]
+                                       ${C.dim('installs the agent contract; --preset fills verify/regression (bare --preset auto-detects)')}
   chalk agents                         ${C.dim('(re)install the agent contract')}
   chalk status
   chalk next                           ${C.dim('the agent entrypoint: what to do next')}
