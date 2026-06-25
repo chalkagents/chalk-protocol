@@ -365,6 +365,9 @@ const cmds = {
     const s = Store.open();
     const t = mustTask(s, _[0]);
     const gh0 = s.protocol().github || {};
+    // Idempotent on resume: if a prior run already merged + cleaned, don't re-run the gates against a
+    // torn-down branch — just report done. (Guard precedes the in-progress check, which a done task fails.)
+    if (stageDone(t, 'cleaned')) return ok(`merge ${C.dim('(already done)')}`);
     // Must be in-progress: verify only checks integrity (P6) + e2e (P4) for in-progress tasks, so
     // merging a done/specd/blocked task would vacuously pass those gates. Require it explicitly.
     if (t.state !== 'in-progress') die(`merge requires an in-progress, verified task (this is [${t.state}]).`);
@@ -752,10 +755,17 @@ const cmds = {
     const meta = s.meta();
     t.reviews = t.reviews || [];
 
+    // Idempotent on resume: a passing review advances the stage to 'reviewed' (only on pass — a
+    // block leaves the stage at 'pr-open' so the re-run after a fix re-reviews). So if we're already
+    // past 'reviewed', short-circuit: don't re-invoke the reviewer or append a DUPLICATE review.
+    if (stageDone(t, 'reviewed')) return ok(`review ${C.dim('(already passed)')}`);
+
     if (!meta.protocol?.review?.command) {
       const note = flags.note || _.slice(1).join(' ');
       if (!note) die('no reviewer configured. Set .chalk/chalk.json → protocol.review.command (e.g. "claude -p"),\n  or record a manual review:  chalk review <id> --note "..."');
-      t.reviews.push({ at: now(), by: flags.by || 'human', verdict: flags.block ? 'block' : 'pass', findings: [], note: String(note), checklist: ['test-adequacy', 'design-intent', 'regressions'] });
+      const verdict = flags.block ? 'block' : 'pass';
+      t.reviews.push({ at: now(), by: flags.by || 'human', verdict, findings: [], note: String(note), checklist: ['test-adequacy', 'design-intent', 'regressions'] });
+      if (verdict === 'pass') t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
       s.upsertTask(t);
       s.emitUpdate({ type: 'progress-update', title: `Review (manual): ${t.title}`, description: String(note), taskId: t.id });
       return ok('manual review recorded ' + C.dim('(checklist: test-adequacy · design-intent · regressions)'));
@@ -765,6 +775,7 @@ const cmds = {
     const r = runReview(s, t);
     if (r.status === 'error') die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
     t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings });
+    if (r.verdict === 'pass') t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
     s.upsertTask(t);
     s.emitUpdate({ type: 'progress-update', title: `Review (${r.verdict}): ${t.title}`, taskId: t.id });
     console.log((r.verdict === 'pass' ? C.g('● review PASS') : C.r('● review BLOCK')) + ` ${C.dim(t.title)}`);
