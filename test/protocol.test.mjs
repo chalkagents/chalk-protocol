@@ -164,3 +164,25 @@ test('presets + runner — init fills verify; runner prefixes gate commands; aut
   chalk(d4, 'init', '--name', 'd');
   assert.equal(readProto(d4).verify.test, '', 'no preset leaves verify empty');
 });
+
+test('when:phase — verify defers the slow gate; audit runs it and gates phase advance', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  // A passing task gate + a FAILING phase-scheduled gate (e.g. a slow build).
+  conf(d, (o) => {
+    o.verify.test = 'node -e "process.exit(0)"';
+    o.verify.build = { cmd: 'node -e "process.exit(1)"', when: 'phase' };
+    o.regression.required = true; // so `phase` is gated on a fresh green audit
+  });
+  // Task-mode verify is GREEN: the phase gate is deferred, not run.
+  const v = chalk(d, 'verify');
+  assert.equal(v.code, 0, 'verify green — phase gate deferred');
+  assert.ok(/defer/i.test(v.out), 'verify marks the phase gate deferred');
+  // Audit runs the phase gate → RED, and phase advance is blocked.
+  assert.equal(chalk(d, 'audit').code, 2, 'audit runs the failing phase build → red');
+  assert.equal(chalk(d, 'phase', 'build').code, 1, 'phase blocked while audit is red');
+  // Fix the build → audit green → phase advances.
+  conf(d, (o) => { o.verify.build = { cmd: 'node -e "process.exit(0)"', when: 'phase' }; });
+  assert.equal(chalk(d, 'audit').code, 0, 'audit green once the phase build passes');
+  assert.equal(chalk(d, 'phase', 'build').code, 0, 'phase advances on a green audit');
+});

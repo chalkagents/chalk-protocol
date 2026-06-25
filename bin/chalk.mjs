@@ -299,8 +299,9 @@ const cmds = {
     const v = runVerify(s);
     console.log(C.b('Verify') + '\n');
     for (const r of v.toolchain) {
-      const tag = r.status === 'pass' ? C.g('pass') : r.status === 'fail' ? C.r('fail') : C.dim('skip');
-      console.log(`  ${tag}  ${r.gate}${r.cmd ? C.dim(`  (${r.cmd})`) : C.dim('  (not configured)')}`);
+      const tag = r.status === 'pass' ? C.g('pass') : r.status === 'fail' ? C.r('fail') : r.status === 'deferred' ? C.y('defer') : C.dim('skip');
+      const note = r.status === 'deferred' ? C.dim(`  (${r.cmd})  ${C.y('runs at chalk audit')}`) : (r.cmd ? C.dim(`  (${r.cmd})`) : C.dim('  (not configured)'));
+      console.log(`  ${tag}  ${r.gate}${note}`);
       if (r.status === 'fail' && r.tail) console.log(r.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
     }
     if (v.integrity.length) {
@@ -430,6 +431,14 @@ const cmds = {
     for (const p of r.broken) console.log(`  ${C.r('✗ integrity')} ${p} ${C.dim('— held-out test modified (P7 violation)')}`);
     if (r.status === 'unconfigured') console.log(C.dim('  no regression.command configured — integrity check only.'));
     else console.log('  ' + (r.passed ? C.g('held-out checks PASS') : C.r('held-out checks FAIL')) + C.dim('  (output withheld — fix against the spec, not the hidden tests)'));
+    const phaseRun = (r.phaseGates || []).filter((g) => g.status !== 'skipped' && g.status !== 'deferred');
+    if (phaseRun.length) {
+      console.log('\n' + C.b('Audit · phase-boundary toolchain gates'));
+      for (const g of phaseRun) {
+        console.log(`  ${g.status === 'pass' ? C.g('pass') : C.r('fail')}  ${g.gate}${C.dim(`  (${g.cmd})`)}`);
+        if (g.status === 'fail' && g.tail) console.log(g.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
+      }
+    }
     console.log(C.dim(`  code size: ${r.size.loc} LOC across ${r.size.files} file(s)`));
     const m = s.meta();
     m.protocol = m.protocol || {};
