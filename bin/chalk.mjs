@@ -335,7 +335,13 @@ const cmds = {
     const reg = s.protocol().regression;
     if (reg?.required && !(reg.lastAudit && reg.lastAudit.green)) die('GATE P7: held-out audit is not green — run `chalk audit`.');
     try { runGh(workdir(s, t), gh0.command, `pr merge ${t.pr.number} --${gh0.mergeMethod || 'squash'} --delete-branch`); }
-    catch (e) { die(`gh pr merge failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+    catch (e) {
+      // `--delete-branch` can fail (e.g. a worktree still holds the local branch) even though the
+      // squash-merge SUCCEEDED — don't die on that. Only fail if the PR didn't actually merge.
+      let merged = false;
+      try { merged = /MERGED/i.test(runGh(s.root, gh0.command, `pr view ${t.pr.number} --json state -q .state`)); } catch { /* gh down */ }
+      if (!merged) die(`gh pr merge failed: ${String(e.message).split('\n').slice(-2).join(' ')}`);
+    }
     // Sync the primary base branch (best-effort) then tear down the worktree + local branch. A
     // failure here is non-fatal (the remote is source of truth) but is surfaced, not swallowed.
     try { runGit(s.root, `checkout ${gh0.base || 'main'}`); runGit(s.root, 'pull --ff-only'); }
