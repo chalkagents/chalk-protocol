@@ -885,7 +885,9 @@ const cmds = {
   lesson({ _, flags }) {
     const s = Store.open();
     if (_[0] === 'list' && _.length === 1) {
-      const lessons = s.lessons(1000);
+      // Default mirrors the injected set (Store.lessons() cap) so the list matches what agents
+      // actually see; --all shows the full append-only history.
+      const lessons = flags.all ? s.lessons(Infinity) : s.lessons();
       if (!lessons.length) { console.log(C.dim('no lessons recorded yet.')); return; }
       for (const l of lessons) console.log(l);
       return;
@@ -1024,7 +1026,7 @@ ${C.b('spine')}
   chalk decision "<title>" --why "..."
   chalk decisions                       ${C.dim('print the durable decision log')}
   chalk lesson "<what to remember>"     ${C.dim('add to the lessons memory injected into every agent')}
-  chalk lesson list                     ${C.dim('print the recorded lessons memory')}
+  chalk lesson list [--all]             ${C.dim('print the lessons injected into agents (--all = full history)')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
   chalk log [--n N] [--type T] [--grep TEXT] [--reverse] [--json]
 

@@ -47,6 +47,29 @@ test('lesson list — prints a previously-added lesson', () => {
   assert.match(r.out, /prefer reusing existing utilities/);
 });
 
+test('lesson list — default mirrors the injected set; --all shows the full history', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'demo');
+  // Add more lessons than the injected cap so the default list MUST drop the oldest.
+  const N = 22;
+  for (let i = 1; i <= N; i++) assert.equal(chalk(d, 'lesson', `lesson number ${i}`).code, 0);
+
+  const listLines = chalk(d, 'lesson', 'list').out.split('\n').filter((l) => /lesson number \d+/.test(l));
+  // The injected set is what `chalk context` actually shows the agent.
+  const ctx = chalk(d, 'context').out;
+  const ctxLessons = ctx.split('\n').filter((l) => /lesson number \d+/.test(l));
+
+  // Criterion 1 + 3: the listed lessons correspond exactly to the injected set.
+  assert.deepEqual(listLines, ctxLessons, 'lesson list matches the lessons injected into context');
+  assert.ok(listLines.length < N, 'default list is capped, not the full history');
+  assert.ok(!listLines.some((l) => /lesson number 1\b/.test(l)), 'oldest lesson is dropped by the default cap');
+
+  // Criterion 2: --all is the explicit escape hatch for the full history.
+  const allLines = chalk(d, 'lesson', 'list', '--all').out.split('\n').filter((l) => /lesson number \d+/.test(l));
+  assert.equal(allLines.length, N, '--all shows every recorded lesson');
+  assert.ok(allLines.some((l) => /lesson number 1\b/.test(l)), '--all surfaces the oldest lesson the default omits');
+});
+
 test('lesson — text starting with "list" is recorded, not routed to list subcommand', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'demo');
