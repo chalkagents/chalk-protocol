@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { currentRepo, branchExists, worktreeAdd, worktreeExists, worktreeRemove, gh } from '../lib/git.mjs';
+import { dataUrlToPng, extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
 const chalk = (cwd, ...args) => { const r = spawnSync('node', [CLI, ...args], { cwd, encoding: 'utf8' }); return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` }; };
@@ -213,4 +214,59 @@ test('commit + pr — conventional commit in the worktree, then push + gh pr cre
   assert.equal(t.pipeline.stage, 'pr-open');
   // The branch really landed on the (bare) remote.
   assert.match(execSync('git branch -a', { cwd: wt, encoding: 'utf8' }), /feat\/5-add-feature/);
+});
+
+test('evidence helpers — data-URL→PNG, step extraction, and blob-SHA markdown', () => {
+  const d = scratch();
+  const png = 'data:image/png;base64,' + Buffer.from('PNGBYTES').toString('base64');
+  assert.equal(dataUrlToPng(png, join(d, 'a.png')), true);
+  assert.equal(readFileSync(join(d, 'a.png'), 'utf8'), 'PNGBYTES');
+  assert.equal(dataUrlToPng('not-a-data-url', join(d, 'b.png')), false);
+
+  const run = { steps: [{ stepId: 's1', beforeScreenshot: png, afterScreenshot: png }, { stepId: 's2' }] };
+  const paths = extractScreenshots(d, '.chalk/evidence/9', run);
+  assert.deepEqual(paths, ['.chalk/evidence/9/before-s1.png', '.chalk/evidence/9/after-s1.png']);
+  assert.ok(existsSync(join(d, '.chalk/evidence/9/before-s1.png')));
+
+  const md = evidenceMarkdown('o/r', 'abc123', paths);
+  assert.match(md, /## Test evidence/);
+  assert.match(md, /blob\/abc123\/.chalk\/evidence\/9\/before-s1\.png/);
+  assert.equal(evidenceMarkdown('o/r', 'abc', []), '', 'no images → empty section');
+});
+
+test('evidence command — runs the spec, commits screenshots, edits the PR body with blob URLs', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const editOut = join(d, 'pr-body.txt');
+  const ghCmd = stubGh(d, `import {writeFileSync} from 'node:fs'; const a=process.argv.slice(2);
+    if(a.includes('pr')&&a.includes('create')) console.log('https://github.com/o/r/pull/42');
+    else if(a.includes('pr')&&a.includes('view')) console.log('Original PR body');
+    else if(a.includes('pr')&&a.includes('edit')) writeFileSync(${JSON.stringify(editOut)}, a[a.indexOf('--body')+1]);
+    else console.log(JSON.stringify([{number:9,title:'Add thing',url:'u',body:'- [ ] x',labels:[]}]));`);
+  // e2e runner emits a run.json with a screenshot data URL.
+  writeFileSync(join(d, 'runspec.mjs'), `import {writeFileSync} from 'node:fs'; const a=process.argv; const out=a[a.indexOf('--out')+1];
+    const png='data:image/png;base64,'+Buffer.from('SHOT').toString('base64');
+    writeFileSync(out+'/run.json', JSON.stringify({runId:'r',specId:'spec-x',status:'passed',startedAt:1,steps:[{stepId:'s1',beforeScreenshot:png}]}));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.e2e = { command: `node ${join(d, 'runspec.mjs')}`, baseUrl: '', runsDir: '.chalk/runs' }; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id);
+  const wt = tasksOf(d)[0].worktree;
+  // The spec must exist where it's locked (primary) AND where it runs (worktree).
+  const spec = 'apiVersion: chalk/v1\nkind: Test\nid: spec-x\nname: X\nsteps: []\n';
+  mkdirSync(join(d, '.chalk/tests'), { recursive: true }); writeFileSync(join(d, '.chalk/tests/x.test.yaml'), spec);
+  mkdirSync(join(wt, '.chalk/tests'), { recursive: true }); writeFileSync(join(wt, '.chalk/tests/x.test.yaml'), spec);
+  chalk(d, 'spec', id, '--test', '.chalk/tests/x.test.yaml');
+  writeFileSync(join(wt, 'feature.js'), 'export const f=1;\n');
+  chalk(d, 'commit', id);
+  chalk(d, 'pr', id);
+
+  assert.equal(chalk(d, 'evidence', id).code, 0);
+  assert.equal(tasksOf(d)[0].pipeline.stage, 'tested');
+  assert.ok(existsSync(join(wt, '.chalk/evidence/9/before-s1.png')), 'screenshot PNG committed in the worktree');
+  const body = readFileSync(editOut, 'utf8');
+  assert.match(body, /Original PR body/, 'preserves the existing PR body');
+  assert.match(body, /## Test evidence/);
+  assert.match(body, /blob\/[0-9a-f]{7,}\/.chalk\/evidence\/9\/before-s1\.png/, 'embeds a commit-SHA blob URL');
 });

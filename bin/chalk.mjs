@@ -11,7 +11,10 @@ import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
+import { runSpecs } from '../lib/e2e.mjs';
+import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { basename } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -283,6 +286,40 @@ const cmds = {
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-submitted', title: `PR #${number || '?'} opened`, taskId: t.id });
     ok(`PR ${C.b('#' + (number || '?'))} ${C.dim(url)}`);
+  },
+
+  // GitHub pipeline — run the task's browser specs, attach step screenshots to the PR as
+  // commit-SHA blob URLs (survive squash-merge + branch deletion). stage→tested.
+  evidence({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const gh0 = s.protocol().github || {};
+    const wd = workdir(s, t);
+    if (!t.pr?.number) die('no PR — run `chalk pr <id>` first.');
+    const specPaths = (t.tests || []).map((x) => x.path).filter((p) => p.endsWith('.test.yaml'));
+    const results = runSpecs(s, wd, specPaths);
+    const evDir = `.chalk/evidence/${t.issue?.number || t.id.slice(0, 12)}`;
+    const imgs = [];
+    for (const r of results) {
+      try { imgs.push(...extractScreenshots(wd, evDir, JSON.parse(readFileSync(join(wd, r.runDir, 'run.json'), 'utf8')))); } catch { /* no screenshots */ }
+    }
+    if (imgs.length) {
+      gitAdd(wd, imgs);
+      gitCommit(wd, ['test(evidence): attach run screenshots']);
+      try { runGit(wd, 'push'); } catch { /* offline / no upstream — body still composes from local SHA */ }
+      const sha = runGit(wd, 'rev-parse HEAD');
+      let body = '';
+      try { body = runGh(wd, gh0.command, `pr view ${t.pr.number} --json body -q .body`); } catch { /* keep empty */ }
+      try { runGh(wd, gh0.command, `pr edit ${t.pr.number} --body ${shq(body + evidenceMarkdown(currentRepo(s.root) || '', sha, imgs))}`); }
+      catch (e) { die(`gh pr edit failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+      t.evidence = imgs;
+    }
+    const failed = results.filter((r) => r.status !== 'passed').length;
+    t.pipeline = { ...(t.pipeline || {}), stage: 'tested', at: now() };
+    s.upsertTask(t);
+    s.emitUpdate({ type: 'progress-update', title: `Evidence attached (${imgs.length} screenshot(s))`, taskId: t.id });
+    if (failed) console.log(C.y(`  ⚠ ${failed} spec(s) failed`));
+    ok(`evidence: ${C.b(String(imgs.length))} screenshot(s) → PR #${t.pr.number}`);
   },
 
   // GitHub pipeline — remove a task's worktree and delete its local branch (idempotent).
@@ -740,6 +777,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk branch <id>                    ${C.dim('create <type>/<issue>-<slug> branch + git worktree')}
   chalk commit <id>                    ${C.dim('conventional commit of the worktree changes (Closes #issue)')}
   chalk pr <id>                        ${C.dim('push the branch + open a PR (gh)')}
+  chalk evidence <id>                  ${C.dim('run specs + attach screenshots to the PR (blob-SHA URLs)')}
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
