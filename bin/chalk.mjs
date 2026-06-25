@@ -2,7 +2,7 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, UPDATE_TYPES } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES } from '../lib/store.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -66,6 +66,8 @@ const cmds = {
       const stale = !la || !la.green || (la.size && la.size.loc !== codeSize(s.root).loc);
       if (stale) console.log(C.y('  ⚠ held-out audit is stale — run `chalk audit` (required to advance phase).'));
     }
+    for (const t of tasks.filter((x) => x.state === 'blocked'))
+      console.log(C.y(`  ⊘ blocked: ${t.title} — needs ${t.block?.needs} (${t.block?.reason}). unblock: chalk unblock ${t.id.slice(0, 12)}`));
 
     if (wip.length) {
       if (wip.length > 1) console.log(C.y(`  ! ${wip.length} tasks in-progress — protocol prefers ONE at a time; finish one first.`));
@@ -113,7 +115,10 @@ const cmds = {
     if (!tasks.length) console.log(C.dim('  (none — `chalk task add "..."`)'));
     for (const st of TASK_STATES) {
       const inState = tasks.filter((t) => t.state === st);
-      for (const t of inState) console.log(`  ${stateBadge(st)} ${C.dim(t.id.slice(0, 12))} ${t.title} ${C.dim(`(${(t.acceptanceCriteria || []).length} crit, ${(t.tests || []).length} test)`)}`);
+      for (const t of inState) {
+        const meta = st === 'blocked' && t.block ? C.y(`  ⊘ needs ${t.block.needs}: ${t.block.reason}`) : C.dim(`(${(t.acceptanceCriteria || []).length} crit, ${(t.tests || []).length} test)`);
+        console.log(`  ${stateBadge(st)} ${C.dim(t.id.slice(0, 12))} ${t.title} ${meta}`);
+      }
     }
     console.log('\n' + C.b('Open questions') + ` ${openQ.length}`);
     for (const q of openQ.slice(0, 5)) console.log(`  ${C.y('?')} ${q.question} ${C.dim(`→ ${q.awaitingFrom}`)}`);
@@ -213,6 +218,34 @@ const cmds = {
     s.emitUpdate({ type: 'work-item-started', title: `Started: ${t.title}`, taskId: t.id });
     ok(`started ${C.b(t.title)} ${C.dim('[in-progress]')}`);
     console.log(C.dim(`  read context with: chalk context ${t.id.slice(0, 12)}`));
+  },
+
+  // Park a task that needs something only a human can supply, and keep the run moving.
+  // The agent contract: `block` it and pull the next task — don't stop while work remains.
+  block({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const needs = String(flags.needs || '');
+    if (!NEEDS.includes(needs)) die(`--needs must be one of: ${NEEDS.join(', ')}`);
+    if (!flags.reason) die('block requires --reason "<what is needed>"');
+    if (t.state === 'done') die('cannot block a done task.');
+    t.blockedFrom = t.state; // remember where to resume on unblock
+    t.state = 'blocked';
+    t.block = { needs, reason: String(flags.reason), at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Blocked: ${t.title} (needs ${needs})`, description: String(flags.reason), taskId: t.id });
+    ok(`blocked ${C.b(t.title)} ${C.dim(`— needs ${needs}`)}`);
+  },
+
+  unblock({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    if (t.state !== 'blocked') die(`task is [${t.state}], not blocked.`);
+    t.state = t.blockedFrom || 'specd';
+    delete t.block; delete t.blockedFrom;
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Unblocked: ${t.title}`, taskId: t.id });
+    ok(`unblocked ${C.b(t.title)} ${C.dim(`[${t.state}]`)}`);
   },
 
   verify() {
@@ -440,7 +473,7 @@ cmds.plans = cmds.sync; // alias — `chalk plans` projects both Browser views (
 // ---------------------------------------------------------------- helpers
 function sev(s) { return { high: C.r('▲ high'), med: C.y('▲ med '), low: C.dim('▲ low ') }[s] || C.dim('▲ ' + (s || '?')); }
 function stateBadge(st) {
-  return { todo: C.dim('○ todo  '), specd: C.y('◐ specd '), 'in-progress': C.b('● wip   '), done: C.g('✓ done  ') }[st] || st;
+  return { todo: C.dim('○ todo  '), specd: C.y('◐ specd '), 'in-progress': C.b('● wip   '), blocked: C.y('⊘ blockd'), done: C.g('✓ done  ') }[st] || st;
 }
 function mustTask(s, ref) {
   if (!ref) die('missing task id');
@@ -466,6 +499,8 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk review <id>                    ${C.dim('GATE P5: adversarial reviewer (configured in chalk.json)')}
   chalk done <id> [--force-review --why "..."]   ${C.dim('GATE P4+P6(+P5): verify green, locks intact, review passed')}
   chalk amend-spec <id> --test <path> --why "..."   ${C.dim('gated test change (P6)')}
+  chalk block <id> --needs <creds|decision|human-input|upstream> --reason "..."   ${C.dim('park; keep the run moving')}
+  chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
   chalk guard add <path> | gen | list  ${C.dim('author/lock the held-out set (from the spec)')}
