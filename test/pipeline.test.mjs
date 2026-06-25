@@ -434,6 +434,35 @@ test('pipeline — a failed review blocks with the reviewer finding text and ret
   assert.equal(revCount, 2, 'review stage retried once before blocking');
 });
 
+test('pipeline — a TRANSIENT review failure recovers on retry: the task is not wedged and proceeds to merge', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `import {writeFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else if(has('pr','merge')) writeFileSync(${JSON.stringify(join(d, 'merged.txt'))}, a.join(' '));
+    else if(has('pr','view')) console.log('MERGED');
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  // Reviewer that BLOCKS on the first call but PASSES on the second — a transient/non-deterministic
+  // failure. Recovery means: it must NOT wedge the task; the retry passes and the sweep proceeds.
+  const revState = join(d, 'rev-state.txt');
+  writeFileSync(join(d, 'rev.mjs'), `import {existsSync,writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} const f=${JSON.stringify(revState)}; const n=existsSync(f)?Number(readFileSync(f,'utf8')):0; writeFileSync(f,String(n+1));
+    if(n===0) console.log(JSON.stringify({verdict:'block',findings:[{severity:'low',area:'correctness',note:'transient blip'}]}));
+    else console.log(JSON.stringify({verdict:'pass',findings:[]}));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; });
+
+  chalk(d, 'issue', 'pull');
+  const r = chalk(d, 'pipeline');
+  assert.equal(r.code, 0, 'pipeline exits 0 — the transient failure recovered, nothing left blocked');
+
+  const t = tasksOf(d)[0];
+  assert.notEqual(t.state, 'blocked', 'a transient review failure does NOT wedge the task');
+  assert.equal(t.state, 'done', 'the task recovered and was driven all the way to done');
+  assert.equal(Number(readFileSync(revState, 'utf8')), 2, 'reviewer ran twice (blocked then passed on retry)');
+  assert.ok(existsSync(join(d, 'merged.txt')), 'the recovered task merged');
+});
+
 test('board testArtifact — reads REAL run.json evidence + PR fields (one authoritative source)', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'p');
