@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1782394328831,
+  "updatedAt": 1782424213406,
   "order": 0,
   "cards": [
     {
@@ -134,6 +134,44 @@
         "prNumber": 33,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/33",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/27"
+      }
+    },
+    {
+      "id": "task-cf3334c7",
+      "title": "feat: add explicit `chalk lesson add` subcommand to disambiguate from `list`",
+      "column": "done",
+      "createdAt": 1782394783988,
+      "updatedAt": 1782395078702,
+      "order": 7,
+      "description": "- `chalk lesson add \"<text>\"` records the given text as a lesson, including single-word texts like `list`\n- Bare `chalk lesson list` continues to print the injected lessons (with `--all` for full history)\n- `chalk lesson \"<text>\"` (no subcommand) still records as before for back-compat\n- Help text in bin/chalk.mjs documents the `add` form\n- A test asserts that a lesson with the exact text `list` is recorded and does not trigger the list subcommand",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-cf3334c7",
+          "status": "passed",
+          "at": 1782395078702
+        },
+        "prNumber": 36,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/36",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/34"
+      }
+    },
+    {
+      "id": "task-c1884dfd",
+      "title": "fix: make pipeline stages idempotent so an interrupted sweep resumes cleanly",
+      "column": "done",
+      "createdAt": 1782423452413,
+      "updatedAt": 1782424213406,
+      "order": 8,
+      "description": "- A hermetic test that runs the pipeline to a partial point, then re-runs and asserts it resumes — **no duplicate branch, no duplicate commit** — and the task still reaches `done` (compose the assertion across stages, per the recorded lesson; don't test one stage in isolation).\n- Existing 53 tests stay green; the locked suite is untouched.\n- No change to the happy-path ORDER; only the per-stage 'already done?' guards.",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-c1884dfd",
+          "status": "passed",
+          "at": 1782424213406
+        },
+        "prNumber": 38,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/38",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/37"
       }
     }
   ]

@@ -180,13 +180,63 @@ self-skips when not ready or already running, so it's safe to fire on any interv
 */30 * * * *  cd /path/to/repo && /usr/local/bin/chalk autopilot --max 3 >> .chalk/local/autopilot.log 2>&1
 ```
 
-On macOS a **launchd** agent (`~/Library/LaunchAgents/…`) running the same command on a
-`StartInterval` is the more reliable equivalent. For an in-session, watch-and-stop demo, the Claude
-Code **`/loop`** harness works too: `/loop 30m chalk autopilot --max 2`.
+### The standing loop — `chalk loop`
 
-Either way, the executor/reviewer CLIs (`claude`) and `gh` must be **authenticated in that
-environment** — a headless cron won't inherit your interactive login. Run `chalk doctor` once by
-hand first; if it's `● READY`, the schedule will be too.
+`chalk autopilot` is **one** sweep. To let the loop self-drive across rounds without hand-kicking it,
+use **`chalk loop`** — the bounded standing loop. Each round it **pulls open issues (including the
+retro's own self-heal issues) → runs one autopilot sweep → reads the convergence marker**, and it
+**self-terminates** the moment any of these holds:
+
+- **steady state** — a round that imported nothing new *and* merged nothing (the backlog is drained);
+- a **skipped / not-ready** sweep (a lock is held, or `chalk doctor` failed);
+- the **round cap** — `--max-rounds N` (default 5).
+
+```
+chalk loop [--max-rounds 5] [--max 3] [--min-severity med]
+```
+
+Two properties make it safe to leave running. **Resumability:** every pipeline stage is idempotent,
+so a sweep interrupted mid-flight (crash, rate-limit, kill) resumes on the next round without
+duplicating branches/commits/PRs or re-reviewing. **Convergence:** the adversarial retro will always
+find *something*, so it rates each proposed issue `high|med|low` and `chalk loop` only files at/above
+`--min-severity` (default `med`), **deferring cosmetic nits**. That's what lets a round reach steady
+state instead of chasing diminishing returns forever; the per-round signal is written to
+`.chalk/local/retro-last.json` (`{filed, deferred, converged}`).
+
+### Picking a cadence (recommended: nightly)
+
+Because `chalk loop` is bounded and self-terminating, it doesn't need a tight interval — fire it
+**once a day, off-peak**. That drains whatever the day's retros filed, stays well under a
+subscription's weekly rate cap, and leaves a clean log to review each morning. On macOS, drop a
+**launchd** agent at `~/Library/LaunchAgents/com.chalk.loop.plist` (run `launchctl load` once):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.chalk.loop</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string><string>-lc</string>
+    <string>cd /path/to/repo && exec chalk loop --max-rounds 5 --max 3 >> .chalk/local/loop.log 2>&1</string>
+  </array>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
+  <key>RunAtLoad</key><false/>
+</dict></plist>
+```
+
+```bash
+# enable it (loads under your user session, so claude/gh stay authenticated):
+launchctl load ~/Library/LaunchAgents/com.chalk.loop.plist
+# the cron equivalent (3am nightly):
+0 3 * * *  cd /path/to/repo && chalk loop --max-rounds 5 >> .chalk/local/loop.log 2>&1
+```
+
+The `/bin/zsh -lc` wrapper matters: it sources your login profile so `chalk`, `node`, `claude`, and
+`gh` are on `PATH` and authenticated — a bare cron/launchd env won't inherit your interactive login.
+**Run `chalk doctor` (and one manual `chalk loop`) by hand first** — if it's `● READY`, the schedule
+will be too. For an in-session, watch-and-stop run instead, the Claude Code **`/loop`** harness works:
+`/loop 1d chalk loop --max-rounds 3`.
 
 ---
 
