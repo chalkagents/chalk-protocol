@@ -267,6 +267,30 @@ test('pipeline — unattended driver takes an issue all the way to a squash-merg
   assert.equal(branchExists(d, t.branch), false, 'local branch deleted');
 });
 
+test('board testArtifact — reads REAL run.json evidence + PR fields (one authoritative source)', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  mkdirSync(join(d, '.chalk/tests'), { recursive: true });
+  writeFileSync(join(d, '.chalk/tests/x.test.yaml'), 'apiVersion: chalk/v1\nkind: Test\nid: spec-x\nname: X\nsteps: []\n');
+  mkdirSync(join(d, '.chalk/runs/spec-x/run-1'), { recursive: true });
+  writeFileSync(join(d, '.chalk/runs/spec-x/run-1/run.json'), JSON.stringify({ runId: 'run-1', specId: 'spec-x', status: 'passed', startedAt: 1000, finishedAt: 2000, steps: [] }));
+  chalk(d, 'task', 'add', 'login');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'spec', id, '--criterion', 'logs in', '--test', '.chalk/tests/x.test.yaml');
+  // Simulate the pipeline's pr stage having set the PR on the task.
+  const tj = tasksOf(d); tj[0].pr = { number: 99, url: 'https://github.com/o/r/pull/99' };
+  writeFileSync(join(d, '.chalk/tasks.json'), JSON.stringify(tj, null, 2));
+
+  chalk(d, 'sync');
+  const art = JSON.parse(readFileSync(join(d, '.chalk/boards/chalk-protocol.board.json'), 'utf8')).cards[0].testArtifact;
+  assert.equal(art.specId, 'spec-x');
+  assert.equal(art.lastRun.runId, 'run-1', 'lastRun comes from the real run.json, not a synthesized done-/review- id');
+  assert.equal(art.lastRun.status, 'passed');
+  assert.equal(art.lastRun.at, 2000, 'uses finishedAt from run.json');
+  assert.equal(art.prNumber, 99);
+  assert.equal(art.prUrl, 'https://github.com/o/r/pull/99');
+});
+
 test('pipeline --dry-run — plans without touching anything', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');
