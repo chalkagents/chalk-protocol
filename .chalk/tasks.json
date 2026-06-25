@@ -375,5 +375,153 @@
       "url": "https://github.com/chalkagents/chalk-protocol/pull/33"
     },
     "doneAt": "2026-06-25T13:32:08.831Z"
+  },
+  {
+    "id": "task-cf3334c7",
+    "title": "feat: add explicit `chalk lesson add` subcommand to disambiguate from `list`",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk lesson add \"<text>\"` records the given text as a lesson, including single-word texts like `list`"
+      },
+      {
+        "text": "Bare `chalk lesson list` continues to print the injected lessons (with `--all` for full history)"
+      },
+      {
+        "text": "`chalk lesson \"<text>\"` (no subcommand) still records as before for back-compat"
+      },
+      {
+        "text": "Help text in bin/chalk.mjs documents the `add` form"
+      },
+      {
+        "text": "A test asserts that a lesson with the exact text `list` is recorded and does not trigger the list subcommand"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 34,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/34",
+      "body": "`lesson()` in bin/chalk.mjs dispatches the `list` subcommand via `_[0] === 'list' && _.length === 1`, and otherwise treats `_.join(' ')` as the lesson text. This leaves an inherent ambiguity: the single-word lesson text `chalk lesson list` is indistinguishable from the bare `list` subcommand and therefore cannot be recorded. Adding an explicit `add` subcommand (while keeping the bare-positional form for back-compat) removes the collision entirely.\n\n- [ ] `chalk lesson add \"<text>\"` records the given text as a lesson, including single-word texts like `list`\n- [ ] Bare `chalk lesson list` continues to print the injected lessons (with `--all` for full history)\n- [ ] `chalk lesson \"<text>\"` (no subcommand) still records as before for back-compat\n- [ ] Help text in bin/chalk.mjs documents the `add` form\n- [ ] A test asserts that a lesson with the exact text `list` is recorded and does not trigger the list subcommand\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T13:44:38.703Z"
+    },
+    "createdAt": "2026-06-25T13:39:43.988Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T13:44:15.383Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 5 test (line 80-87) correctly asserts `chalk lesson add list` records `^- list` verbatim and not via the `add list` free-text fallback. Edge cases for the add branch with no payload (`die` path) are not directly tested, but this is minor and the usage guard is straightforward."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/34-feat-add-explicit-chalk-lesson",
+    "plan": "## Plan\n\n**Approach:** Add an explicit `add` subcommand branch to `cmds.lesson` in `bin/chalk.mjs`, mirroring the existing `task add` dispatch pattern. When `_[0] === 'add'`, record `_.slice(1).join(' ')` verbatim so single-word payloads like `list` are stored, never dispatched. The bare `list` branch (L888) and the free-text fallback (L896) stay untouched for back-compat. Reuses `s.appendLesson`/`die`/`ok` — no new structure, and satisfies the lesson about giving an overloaded positional an explicit subcommand.\n\n**Steps:**\n1. In `cmds.lesson` (~L887, before the `list` branch) add: `if (_[0] === 'add') { const text = _.slice(1).join(' ') || flags.text; if (!text) die('usage: chalk lesson add \"<text>\"'); s.appendLesson({ lesson: text, by: flags.by || 'human' }); return ok(...); }`.\n2. Leave the `_[0] === 'list' && _.length === 1` branch and the trailing free-text fallback exactly as-is (criteria 2 & 3).\n3. Add a help line at ~L1029 documenting `chalk lesson add \"<text>\"` next to the existing `lesson` / `lesson list` lines (criterion 4).\n\n**Files:**\n- `bin/chalk.mjs` — `cmds.lesson` handler (~L886) + the help block (~L1029). Reuse `s.appendLesson`, `die`, `ok`.\n\n**Test (add to `test/protocol.test.mjs`, near the L73 \"list\" test):** Run `chalk(d, 'lesson', 'add', 'list')`, assert `.code === 0`, and assert `.chalk/lessons.md` matches `/^- list\\b/m` (exact text `list` recorded, not `add list`). Without the branch, `add` is treated as free text and the recorded line is `- add list …` → `/^- list\\b/m` FAILS; with the branch it records `- list …` and passes. (Criterion 5.)",
+    "startedAt": "2026-06-25T13:41:57.581Z",
+    "pr": {
+      "number": 36,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/36"
+    },
+    "doneAt": "2026-06-25T13:44:38.702Z"
+  },
+  {
+    "id": "task-c1884dfd",
+    "title": "fix: make pipeline stages idempotent so an interrupted sweep resumes cleanly",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "A hermetic test that runs the pipeline to a partial point, then re-runs and asserts it resumes — **no duplicate branch, no duplicate commit** — and the task still reaches `done` (compose the assertion across stages, per the recorded lesson; don't test one stage in isolation)."
+      },
+      {
+        "text": "Existing 53 tests stay green; the locked suite is untouched."
+      },
+      {
+        "text": "No change to the happy-path ORDER; only the per-stage 'already done?' guards."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 37,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/37",
+      "body": "## Problem\nWhen an autopilot sweep is interrupted mid-pipeline (process killed, crash, rate-limit), the partial work is left in place — a half-built branch + worktree. On the next run the `branch`/`plan`/`commit` stages **re-run blindly and report `ok` again** instead of detecting the existing work and resuming. This was observed directly: a killed #34 run left `feat/34-…` + its worktree, and the relaunch logged `branch: ok` without noticing the branch already existed.\n\nThis is the prerequisite for any unattended *standing* loop: an interrupted run MUST resume without duplicating branches/commits or wedging.\n\n## Acceptance criteria\n1. The `branch` stage detects an existing local branch/worktree for the task and **reuses** it (no error, no duplicate) instead of recreating.\n2. The `commit` stage no-ops when there is nothing new to commit (already committed) rather than failing the sweep.\n3. Re-running the pipeline on a task that is already partway through resumes from the first *incomplete* stage; completed stages are skipped/idempotent.\n\n## Checklist (definition of done)\n- [ ] A hermetic test that runs the pipeline to a partial point, then re-runs and asserts it resumes — **no duplicate branch, no duplicate commit** — and the task still reaches `done` (compose the assertion across stages, per the recorded lesson; don't test one stage in isolation).\n- [ ] Existing 53 tests stay green; the locked suite is untouched.\n- [ ] No change to the happy-path ORDER; only the per-stage 'already done?' guards."
+    },
+    "branchType": "feat",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T21:50:13.407Z"
+    },
+    "createdAt": "2026-06-25T21:37:32.413Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T21:44:02.496Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "The `review` stage (part of the pipeline ORDER, line 10 of lib/pipeline.mjs) was NOT made idempotent. The review() handler (bin/chalk.mjs:749) never sets t.pipeline.stage='reviewed' (rank 6 in PIPE_STAGES is dead/unused) and has no stageDone guard. Every other stage (branch/plan/work/commit/pr/evidence) got a guard, but on an interrupted sweep that is resumed with a reviewer configured, the adversarial reviewer is re-invoked and a DUPLICATE review record is appended to t.reviews each time. The stated goal is 'make pipeline stages idempotent so an interrupted sweep resumes cleanly' — this stage is not idempotent, so the goal is only partially met."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The resume test (pipeline.test.mjs:318) configures neither a reviewer nor an e2e runner, so both the `review` and `evidence` stages are SKIPPED during the resumed sweep. Criterion 1 explicitly demands composing the assertion across stages and not testing stages in isolation, yet the idempotency/resume behavior of review and evidence is never exercised. The happy-path-only partial point (pr-open) leaves the post-pr-open stages' resume paths unverified."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The `merge` stage (bin/chalk.mjs:364) has no stageDone idempotency guard; it relies solely on the pipeline queue filtering out state==='done' tasks plus the 'already MERGED' catch. If a merge is interrupted after `gh pr merge` succeeds but before state is persisted to 'done', a resume re-invokes merge and re-runs verify/review gates against a torn-down/merged branch, which is fragile compared with the explicit guards added to the other stages."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Cannot confirm criterion 2 ('existing 53 tests stay green; locked suite untouched') from static inspection — the new test was added into pipeline.test.mjs and the guards alter exit-codes/no-op behavior of branch/commit/pr/plan/work/evidence; verify+test-integrity must be confirmed green, which is not evidenced here."
+          }
+        ]
+      },
+      {
+        "at": "2026-06-25T21:49:38.337Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The idempotency test exercises a single interrupt point (pr-open) before resuming. Other interrupt boundaries (e.g. interrupted right after branch, or after commit but before pr) are not directly exercised, though the monotonic-rank guard design makes them behave uniformly and the review stage has its own dedicated resume test."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Stage state for fresh tasks relies on stageRank(undefined) === -1; 'selected' (rank 0) is defined in PIPE_STAGES but never appears to be assigned, so the first guard depends on the undefined→-1 fallback. Behavior is correct but slightly implicit."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/37-fix-make-pipeline-stages-idempotent",
+    "plan": "I have a complete picture. Here's the plan.\n\n---\n\n**Approach:** Add a single monotonic stage-rank guard and apply it at the entry of each side-effecting pipeline stage so re-running a stage that's already at/past its target no-ops with exit 0 instead of re-doing the side effect (duplicate `git commit`, duplicate `gh pr create`) or dying (\"nothing to commit\") and blocking the task. The happy-path ORDER in `lib/pipeline.mjs` is unchanged — only per-stage \"already done?\" guards are added, exactly as criterion 3 requires. (Alternative: track booleans per side effect — rejected; the existing `t.pipeline.stage` already encodes monotonic progress and is the minimal reuse.)\n\n**Steps:**\n1. In `bin/chalk.mjs`, add a module-level helper near `now()`: `PIPE_STAGES = ['selected','branched','planned','verified','committed','pr-open','reviewed','tested','cleaned']`, `stageRank(st)`, and `stageDone(t, target) = stageRank(t.pipeline?.stage) >= stageRank(target)`.\n2. At the top of each command (after `mustTask`), early-return `ok('… (already done)')` when `stageDone`: `branch`→`'branched'`, `plan`→`'planned'`, `work`→`'verified'`, `commit`→`'committed'`, `pr`→`'pr-open'`, `evidence`→`'tested'`. (`merge` already self-guards via `state !== 'in-progress'` + the done-filter in the queue.)\n3. Keep all stage bodies and the `ORDER` array untouched so the order/skip logic is identical.\n\n**Files:**\n- `bin/chalk.mjs` — add `stageDone`/`stageRank` helper; guard `branch` (247), `plan` (320), `work` (343), `commit` (268), `pr` (299), `evidence` (506). Reuse existing `t.pipeline.stage`, `ok()`, `now()`.\n- `test/pipeline.test.mjs` — new hermetic test (reuse `repoWithBare`, `stubGh`, executor stub pattern from the existing `pipeline —` test).\n\n**Test:** Add `pipeline — idempotent stages: an interrupted sweep resumes with no duplicate branch/commit/PR`. Drive a task *partially* to `pr-open` via individual commands (`branch`→executor write→`work`→`commit`→`pr`), with the stub `gh` appending to a file on every `pr create`. Then run full `chalk pipeline` and assert (composed across stages, per the lesson): exactly **one** feature commit on the branch (`git log` count), `gh pr create` recorded **exactly once** (no duplicate PR), `branchExists` true only for the single branch, and the task reaches `state === 'done'` / `pipeline.stage === 'cleaned'`. Without the guards this FAILS — re-running `commit` dies \"nothing to commit\" (blocks the task) and/or `pr` files a duplicate PR; with them it resumes cleanly to `done`.",
+    "startedAt": "2026-06-25T21:39:21.892Z",
+    "pr": {
+      "number": 38,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/38"
+    },
+    "doneAt": "2026-06-25T21:50:13.406Z"
   }
 ]
