@@ -195,5 +195,185 @@
       "url": "https://github.com/chalkagents/chalk-protocol/pull/26"
     },
     "doneAt": "2026-06-25T13:17:06.302Z"
+  },
+  {
+    "id": "task-e4025ad6",
+    "title": "fix: chalk lesson dispatch misroutes lesson text beginning with 'list'",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Only the bare `chalk lesson list` (no trailing text) triggers the list subcommand"
+      },
+      {
+        "text": "Recording a lesson whose text starts with the word 'list' records it correctly"
+      },
+      {
+        "text": "A test covers a lesson text beginning with 'list'"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 29,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/29",
+      "body": "`lesson()` treats `_[0] === 'list'` as the list subcommand, so `chalk lesson \"list the deps first\"` (or `chalk lesson list the deps`) is misrouted to the listing path instead of recording the lesson.\n\n- [ ] Only the bare `chalk lesson list` (no trailing text) triggers the list subcommand\n- [ ] Recording a lesson whose text starts with the word 'list' records it correctly\n- [ ] A test covers a lesson text beginning with 'list'\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T13:25:57.250Z"
+    },
+    "createdAt": "2026-06-25T13:23:12.856Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T13:25:31.656Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The single-word lesson `chalk lesson list` (text being exactly 'list') remains indistinguishable from the bare list subcommand and so cannot be recorded. This is an inherent ambiguity and consistent with criterion 1 (only bare `chalk lesson list` triggers the list subcommand); multi-word texts beginning with 'list' record correctly via the `_.length === 1` guard."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Tests cover multi-word 'list ...' recording (line 50) and bare 'list' listing (line 41), satisfying all criteria. A negative-assertion test confirming the 'list ...' text does NOT print existing lessons would harden coverage, but the file-content assertion is sufficient."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/29-fix-chalk-lesson-dispatch-misroutes",
+    "plan": "## Plan\n\n**Approach:** One-line fix in the `lesson` command dispatch in `bin/chalk.mjs`. The bug: `if (_[0] === 'list')` routes to the list subcommand whenever the first positional token is `list`, so an unquoted lesson like `chalk lesson list comprehensions are great` is swallowed. Gate it on `_.length === 1` so only the bare `chalk lesson list` lists.\n\n**Steps:**\n1. In `lesson({ _, flags })`, change the guard from `if (_[0] === 'list')` to `if (_[0] === 'list' && _.length === 1)`.\n2. Everything below (text join + `appendLesson`) already handles the record path; multi-token `list ...` now falls through and records correctly.\n\n**Files:**\n- `bin/chalk.mjs` — `lesson()` command (~line 887). No new utils; reuses `s.appendLesson` / `s.lessons`.\n- `test/protocol.test.mjs` — add a test (mirror the existing `lesson list` test at line 41 for setup helpers `scratch`/`chalk`).\n\n**Test:** Add `test('lesson — text starting with \"list\" is recorded, not routed to list subcommand')`: `init`, then `chalk(d, 'lesson', 'list', 'comprehensions', 'are', 'great')` exits 0, and assert `.chalk/lessons.md` includes `list comprehensions are great`. This FAILS today (text is misrouted to the list printer, nothing recorded) and passes after the guard change. The existing bare-`lesson list` test (line 41) still guards regression.",
+    "startedAt": "2026-06-25T13:23:58.769Z",
+    "pr": {
+      "number": 31,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/31"
+    },
+    "doneAt": "2026-06-25T13:25:57.250Z"
+  },
+  {
+    "id": "task-7edc0360",
+    "title": "fix: chalk lesson list cap diverges from the memory injected into agents",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk lesson list` and `buildContext` use the same cap so the listed lessons match what is injected"
+      },
+      {
+        "text": "If a fuller view is intentional, document the distinction and/or gate it behind an explicit flag (e.g. `--all`)"
+      },
+      {
+        "text": "A test asserts the listed lessons correspond to the injected set"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 28,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/28",
+      "body": "`chalk lesson list` reads `s.lessons(1000)` while context injection uses the default `s.lessons(15)`. Criterion 1 promises 'the same memory injected into agents', but the differing cap means `list` can surface older lessons that are never actually injected, misrepresenting what the planner/executor see.\n\n- [ ] `chalk lesson list` and `buildContext` use the same cap so the listed lessons match what is injected\n- [ ] If a fuller view is intentional, document the distinction and/or gate it behind an explicit flag (e.g. `--all`)\n- [ ] A test asserts the listed lessons correspond to the injected set\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T13:29:34.060Z"
+    },
+    "createdAt": "2026-06-25T13:23:12.863Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T13:29:09.562Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The correspondence test relies on regex filtering of 'lesson number N' lines from both outputs; it confirms the default list equals the injected set and that --all differs, which adequately covers criteria 1 and 3. It does not assert the exact cap value (15) or that buildContext and lesson list share a literal constant, but both demonstrably route through store.lessons() with the same default LESSON_CAP, so divergence cannot recur without breaking the test."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Criterion 2 is met via the --all flag plus documentation in code comments (store.mjs:20-21) and help text (chalk.mjs:1029); the distinction between listed/injected vs full history is explicitly described."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/28-fix-chalk-lesson-list-cap",
+    "plan": "## Plan\n\n**Approach:** `chalk lesson list` calls `s.lessons(1000)` while `buildContext` calls `store.lessons()` (default cap **15**) — so the list can show lessons that are NOT injected. Fix: make `lesson list` default to the same cap as the injected set, and gate the fuller view behind `--all`. Chosen over silently changing the injected cap, because the 15-cap is the contract agents actually see (criterion 1) and `--all` satisfies the \"intentional fuller view\" escape hatch (criterion 2). Reuse the existing `Store.lessons(n)` default — no new util.\n\n**Steps:**\n1. Extract the injected cap into a single shared constant so both paths reference it (e.g. `LESSON_CAP = 15` in `lib/store.mjs`, used as the default of `lessons(n = LESSON_CAP)` and exported).\n2. In `bin/chalk.mjs` `lesson()` `list` branch: use `s.lessons()` (the shared default) instead of `s.lessons(1000)`; when `flags.all` is set, pass a large n to show everything.\n3. Update help text (`chalk lesson list [--all]`) to document that `list` mirrors the injected set and `--all` shows the full history.\n\n**Files:**\n- `lib/store.mjs` — `lessons(n)` default + exported `LESSON_CAP`; `buildContext` already uses the default.\n- `bin/chalk.mjs` — `lesson` command list branch + usage line (~887–890, ~1027).\n\n**Test:** Add to `test/protocol.test.mjs`: add >15 lessons, then assert `chalk lesson list` output line-count equals the lessons in `chalk context` (the injected set) — fails today (list shows all >15, context shows 15) — and assert `chalk lesson list --all` shows the older lesson that the default omits.",
+    "startedAt": "2026-06-25T13:26:29.671Z",
+    "pr": {
+      "number": 32,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/32"
+    },
+    "doneAt": "2026-06-25T13:29:34.059Z"
+  },
+  {
+    "id": "task-ad36b04c",
+    "title": "fix: guard chalk decisions against a missing decisions.md",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk decisions` prints a clean message (e.g. 'no decisions recorded yet.') when `.chalk/decisions.md` is missing or empty"
+      },
+      {
+        "text": "No unhandled exception/stack trace is shown for the missing-file case"
+      },
+      {
+        "text": "A test covers the missing/empty decisions-log branch"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 27,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/27",
+      "body": "`decisions()` in bin/chalk.mjs calls `readFileSync(s.p.decisions, 'utf8')` with no existence guard. If `.chalk/decisions.md` is absent (e.g. an older or hand-edited store) the command throws a raw ENOENT stack instead of a friendly empty-state message, unlike `lesson list` which handles the empty case.\n\n- [ ] `chalk decisions` prints a clean message (e.g. 'no decisions recorded yet.') when `.chalk/decisions.md` is missing or empty\n- [ ] No unhandled exception/stack trace is shown for the missing-file case\n- [ ] A test covers the missing/empty decisions-log branch\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-06-25T13:32:08.831Z"
+    },
+    "createdAt": "2026-06-25T13:23:12.865Z",
+    "reviews": [
+      {
+        "at": "2026-06-25T13:31:44.472Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The added test covers the missing-file case but not a present-but-empty/whitespace-only decisions.md; the code's `.trim()` handles it, yet that path is unexercised. Criterion 3 (missing/empty branch) is still satisfied since both resolve to the same '' code path."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "A decisions.md containing only the scaffolded header '# Decisions (ADR-lite)' is non-empty after trim, so it prints the bare header rather than 'no decisions recorded yet.' This is acceptable per the criteria (file not truly empty) but is a mild UX edge case."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/27-fix-guard-chalk-decisions-against",
+    "plan": "## Plan\n\n**Approach:** Guard the read in the `decisions` command. Two options: (a) inline `existsSync`+empty check in `bin/chalk.mjs`; (b) add a `Store.decisions()` helper mirroring `Store.lessons()`. Pick **(b)** — the lessons-learned explicitly say \"reuse the Store helper,\" it keeps the readFileSync guard centralized with `lessons()`/`updates()`, and the command stays a one-liner.\n\n**Steps:**\n1. In `lib/store.mjs`, add a `decisions()` method on `Store` (next to `lessons()`/`updates()`): `return existsSync(this.p.decisions) ? readFileSync(this.p.decisions, 'utf8') : '';`\n2. In `bin/chalk.mjs` `decisions()` command, replace the raw `readFileSync(s.p.decisions, 'utf8')` with `const text = s.decisions().trim(); console.log(text || 'no decisions recorded yet.');` — also treats an empty file as \"no decisions.\"\n3. No new imports needed (`existsSync` already imported in store.mjs).\n\n**Files:**\n- `lib/store.mjs` — add `decisions()` getter (reuse the `existsSync`/`readFileSync` pattern from `lessons()`).\n- `bin/chalk.mjs` — `decisions()` command handler (~line 878).\n\n**Test:** In `test/protocol.test.mjs`, add `test('decisions — clean message when log is missing', …)`: `chalk init` only (no `chalk decision`), run `chalk decisions`, assert `r.code === 0`, `r.out` matches `/no decisions recorded yet/`, and that no stack trace/`Error` appears in output. This fails today (unhandled `ENOENT` throw, non-zero exit) and passes with the guard.",
+    "startedAt": "2026-06-25T13:30:05.877Z",
+    "pr": {
+      "number": 33,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/33"
+    },
+    "doneAt": "2026-06-25T13:32:08.831Z"
   }
 ]

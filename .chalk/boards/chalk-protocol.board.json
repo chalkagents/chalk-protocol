@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1782393426302,
+  "updatedAt": 1782394328831,
   "order": 0,
   "cards": [
     {
@@ -77,6 +77,63 @@
         "prNumber": 26,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/26",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/21"
+      }
+    },
+    {
+      "id": "task-e4025ad6",
+      "title": "fix: chalk lesson dispatch misroutes lesson text beginning with 'list'",
+      "column": "done",
+      "createdAt": 1782393792856,
+      "updatedAt": 1782393957250,
+      "order": 4,
+      "description": "- Only the bare `chalk lesson list` (no trailing text) triggers the list subcommand\n- Recording a lesson whose text starts with the word 'list' records it correctly\n- A test covers a lesson text beginning with 'list'",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-e4025ad6",
+          "status": "passed",
+          "at": 1782393957250
+        },
+        "prNumber": 31,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/31",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/29"
+      }
+    },
+    {
+      "id": "task-7edc0360",
+      "title": "fix: chalk lesson list cap diverges from the memory injected into agents",
+      "column": "done",
+      "createdAt": 1782393792863,
+      "updatedAt": 1782394174059,
+      "order": 5,
+      "description": "- `chalk lesson list` and `buildContext` use the same cap so the listed lessons match what is injected\n- If a fuller view is intentional, document the distinction and/or gate it behind an explicit flag (e.g. `--all`)\n- A test asserts the listed lessons correspond to the injected set",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-7edc0360",
+          "status": "passed",
+          "at": 1782394174059
+        },
+        "prNumber": 32,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/32",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/28"
+      }
+    },
+    {
+      "id": "task-ad36b04c",
+      "title": "fix: guard chalk decisions against a missing decisions.md",
+      "column": "done",
+      "createdAt": 1782393792865,
+      "updatedAt": 1782394328831,
+      "order": 6,
+      "description": "- `chalk decisions` prints a clean message (e.g. 'no decisions recorded yet.') when `.chalk/decisions.md` is missing or empty\n- No unhandled exception/stack trace is shown for the missing-file case\n- A test covers the missing/empty decisions-log branch",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-ad36b04c",
+          "status": "passed",
+          "at": 1782394328831
+        },
+        "prNumber": 33,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/33",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/27"
       }
     }
   ]
