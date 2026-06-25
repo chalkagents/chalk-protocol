@@ -585,6 +585,52 @@ test('retro — appends lessons + files deduped improvement issues; --dry-run is
   assert.match(chalk(d, 'context').out, /clean up the worktree/);
 });
 
+test('retro convergence guard — defers below-floor issues by default, files them at --min-severity low, writes the marker', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  const created = join(d, 'created.txt');
+  const ghCmd = stubGh(d, `import {appendFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('issue','list')) console.log('[]');
+    else if(has('issue','create')) appendFileSync(${JSON.stringify(created)}, a.join(' ')+'\\n');
+    else process.exit(0);`);
+  // Retro emits one HIGH (real bug) + one LOW (cosmetic). The high files by default; the low is deferred.
+  writeFileSync(join(d, 'retro.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({lessons:[], issues:[
+    {title:'fix: a real wedge bug',body:'- [ ] x',severity:'high',labels:['bug']},
+    {title:'docs: tidy a help string',body:'- [ ] y',severity:'low',labels:['enhancement']}]}));`);
+  conf(d, (o) => { o.github.command = ghCmd; o.retro = { command: `node ${join(d, 'retro.mjs')}` }; });
+
+  // (1) Default floor (med): files the high, defers the low.
+  let r = chalk(d, 'retro');
+  assert.equal(r.code, 0);
+  let filed = readFileSync(created, 'utf8');
+  assert.match(filed, /a real wedge bug/, 'high-severity issue filed at default floor');
+  assert.ok(!/tidy a help string/.test(filed), 'low-severity issue deferred at default floor');
+  assert.match(r.out, /defer \(below med\): docs: tidy/, 'deferral is reported');
+  // marker reflects 1 filed, 1 deferred, not converged.
+  const m1 = JSON.parse(readFileSync(join(d, '.chalk/local/retro-last.json'), 'utf8'));
+  assert.equal(m1.filed, 1); assert.equal(m1.deferred, 1); assert.equal(m1.converged, false);
+
+  // (2) --min-severity low: now the cosmetic one files too.
+  r = chalk(d, 'retro', '--min-severity', 'low');
+  assert.equal(r.code, 0);
+  filed = readFileSync(created, 'utf8');
+  assert.match(filed, /tidy a help string/, 'low-severity issue files when floor is lowered');
+});
+
+test('retro convergence marker — a clean run (no fileable issues) records converged:true', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `const a=process.argv.slice(2); if(a.includes('list')) console.log('[]'); else process.exit(0);`);
+  // Only a low-severity nit → deferred at default floor → nothing filed → converged.
+  writeFileSync(join(d, 'retro.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({lessons:['stay tidy'], issues:[{title:'docs: nit',body:'- [ ] z',severity:'low'}]}));`);
+  conf(d, (o) => { o.github.command = ghCmd; o.retro = { command: `node ${join(d, 'retro.mjs')}` }; });
+  const r = chalk(d, 'retro');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /converged/, 'a sweep that files nothing reports converged');
+  const m = JSON.parse(readFileSync(join(d, '.chalk/local/retro-last.json'), 'utf8'));
+  assert.equal(m.filed, 0); assert.equal(m.converged, true);
+});
+
 test('pipeline --dry-run — plans without touching anything', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');

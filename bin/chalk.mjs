@@ -19,7 +19,7 @@ import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { basename } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -401,7 +401,7 @@ const cmds = {
   autopilot({ flags }) {
     const s = Store.open();
     console.log(C.b('chalk autopilot') + C.dim(` · ${now()}`));
-    const r = runAutopilot(s, process.argv[1], { max: Number(flags.max || 3), retro: flags['no-retro'] !== true, log: (m) => console.log(C.dim('  ' + m)) });
+    const r = runAutopilot(s, process.argv[1], { max: Number(flags.max || 3), retro: flags['no-retro'] !== true, minSeverity: String(flags['min-severity'] || 'med'), log: (m) => console.log(C.dim('  ' + m)) });
     if (r.skipped) { console.log(C.y('  another autopilot run is in progress — skipping.')); process.exit(0); }
     if (r.notReady) { console.log(C.r(`  NOT READY — ${r.fails.length} blocker(s); skipping (run \`chalk doctor\`).`)); process.exit(2); }
     syncBrowser(s);
@@ -420,21 +420,35 @@ const cmds = {
     const r = runRetro(s);
     if (r.status === 'unconfigured') die('no retro agent configured (protocol.retro.command).');
     if (r.status === 'error') die('retro agent did not return JSON. tail:\n' + C.dim(r.raw || '(empty)'));
-    console.log(C.b('chalk retro') + (dry ? C.dim(' · dry-run') : ''));
+    // Convergence guard: the retro is adversarial, so it will always find SOMETHING — a naked
+    // standing loop would chase cosmetic nits forever. Only file issues at/above a severity floor
+    // (default 'med'); defer the rest. An unrated issue defaults to 'med' so it still files (we don't
+    // silently drop). A sweep that files nothing above the floor has "converged" — the signal the
+    // standing loop reads (.chalk/local/retro-last.json) to know when to stop.
+    const RANK = { low: 0, med: 1, high: 2 };
+    const floor = RANK[String(flags['min-severity'] || 'med').toLowerCase()] ?? RANK.med;
+    const sevOf = (iss) => RANK[String(iss.severity || 'med').toLowerCase()] ?? RANK.med;
+    console.log(C.b('chalk retro') + (dry ? C.dim(' · dry-run') : '') + C.dim(` · min-severity ${Object.keys(RANK)[floor]}`));
     for (const lesson of r.lessons) { console.log(`  ${C.g('+')} lesson: ${C.dim(String(lesson).slice(0, 100))}`); if (!dry) s.appendLesson({ lesson, by: 'retro' }); }
     let open = [];
     try { open = JSON.parse(runGh(s.root, gh0.command, 'issue list --state open --json title --limit 100') || '[]').map((i) => i.title); } catch { /* gh down — skip dedup */ }
-    let filed = 0;
+    let filed = 0, deferred = 0;
     for (const iss of (r.issues || []).slice(0, Number(flags['max-issues'] || 3))) {
       if (!iss.title) continue;
+      if (sevOf(iss) < floor) { console.log(C.dim(`  · defer (below ${Object.keys(RANK)[floor]}): ${iss.title}`)); deferred++; continue; }
       if (open.some((t) => titlesSimilar(t, iss.title))) { console.log(C.dim(`  · skip (already open): ${iss.title}`)); continue; }
-      if (dry) { console.log(`  ${C.y('~ would file:')} ${iss.title}`); continue; }
+      if (dry) { console.log(`  ${C.y('~ would file:')} ${iss.title}`); filed++; continue; }
       const labels = (iss.labels || []).map((l) => `--label ${shq(l)}`).join(' ');
       try { const out = runGh(s.root, gh0.command, `issue create --title ${shq(iss.title)} --body ${shq((iss.body || '') + '\n\n_filed by `chalk retro` (self-healing)_')} ${labels}`); console.log(`  ${C.g('✓ filed:')} ${out.trim().split('\n').pop()}`); filed++; }
       catch (e) { console.log(C.r(`  ✗ file failed: ${String(e.message).split('\n').slice(-1)[0]}`)); }
     }
-    if (!dry) syncBrowser(s);
-    ok(`retro: ${C.b(String(r.lessons.length))} lesson(s)${dry ? ' (dry-run)' : ''}, ${C.b(String(filed))} issue(s) filed`);
+    // Convergence marker — the standing loop reads this to decide whether to keep sweeping.
+    const converged = filed === 0;
+    if (!dry) {
+      try { const md = join(s.root, '.chalk', 'local'); mkdirSync(md, { recursive: true }); writeFileSync(join(md, 'retro-last.json'), JSON.stringify({ at: now(), lessons: r.lessons.length, filed, deferred, converged }, null, 2)); } catch { /* best-effort marker */ }
+      syncBrowser(s);
+    }
+    ok(`retro: ${C.b(String(r.lessons.length))} lesson(s)${dry ? ' (dry-run)' : ''}, ${C.b(String(filed))} issue(s) ${dry ? 'would file' : 'filed'}${deferred ? `, ${C.b(String(deferred))} deferred` : ''}` + (converged ? C.dim(' · converged') : ''));
   },
 
   // Summarize the agent-call cost ledger (.chalk/local/cost.jsonl): calls + wall-clock per agent.
