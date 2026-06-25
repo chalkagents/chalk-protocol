@@ -276,7 +276,9 @@ const cmds = {
       '## Test plan', '- `chalk verify` green (toolchain + integrity + e2e)',
       t.issue?.number ? `\nCloses #${t.issue.number}` : '',
     ].join('\n');
-    const labels = (t.labels || []).map((l) => `--label ${l}`).join(' ');
+    // Quote each label — GitHub label names are attacker-controlled (from the issue) and may
+    // contain shell metacharacters; an unquoted value would be command injection in an unattended run.
+    const labels = (t.labels || []).map((l) => `--label ${shq(l)}`).join(' ');
     let out;
     try { out = runGh(wd, gh0.command, `pr create --base ${gh0.base || 'main'} --head ${t.branch} --title ${shq(title)} --body ${shq(body)} ${labels}`); }
     catch (e) { die(`gh pr create failed: ${String(e.message).split('\n').slice(-3).join('\n  ')}`); }
@@ -314,6 +316,9 @@ const cmds = {
     const s = Store.open();
     const t = mustTask(s, _[0]);
     const gh0 = s.protocol().github || {};
+    // Must be in-progress: verify only checks integrity (P6) + e2e (P4) for in-progress tasks, so
+    // merging a done/specd/blocked task would vacuously pass those gates. Require it explicitly.
+    if (t.state !== 'in-progress') die(`merge requires an in-progress, verified task (this is [${t.state}]).`);
     if (!t.pr?.number) die('no PR — run `chalk pr <id>` first.');
     if (!runVerify(s, { cwd: workdir(s, t) }).green) die('GATE: verify is not green — cannot merge.');
     if (reviewRequiredNow(s, t) && !((t.reviews || []).slice(-1)[0]?.verdict === 'pass')) die('GATE P5: a passing review is required before merge.');
@@ -321,8 +326,10 @@ const cmds = {
     if (reg?.required && !(reg.lastAudit && reg.lastAudit.green)) die('GATE P7: held-out audit is not green — run `chalk audit`.');
     try { runGh(workdir(s, t), gh0.command, `pr merge ${t.pr.number} --${gh0.mergeMethod || 'squash'} --delete-branch`); }
     catch (e) { die(`gh pr merge failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
-    // Sync the primary base branch (best-effort) then tear down the worktree + local branch.
-    try { runGit(s.root, `checkout ${gh0.base || 'main'}`); runGit(s.root, 'pull --ff-only'); } catch { /* offline / local changes — non-fatal */ }
+    // Sync the primary base branch (best-effort) then tear down the worktree + local branch. A
+    // failure here is non-fatal (the remote is source of truth) but is surfaced, not swallowed.
+    try { runGit(s.root, `checkout ${gh0.base || 'main'}`); runGit(s.root, 'pull --ff-only'); }
+    catch { console.log(C.y(`  ⚠ couldn't fast-forward ${gh0.base || 'main'} locally — pull it manually (the remote is up to date).`)); }
     worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
     t.worktree = undefined; t.state = 'done'; t.doneAt = now();
     t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };

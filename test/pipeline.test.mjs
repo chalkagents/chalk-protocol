@@ -216,6 +216,28 @@ test('commit + pr — conventional commit in the worktree, then push + gh pr cre
   assert.match(execSync('git branch -a', { cwd: wt, encoding: 'utf8' }), /feat\/5-add-feature/);
 });
 
+test('pr — a malicious GitHub label name cannot inject shell commands', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const argsFile = join(d, 'gh-args.json');
+  const ghCmd = stubGh(d, `import {writeFileSync} from 'node:fs'; const a=process.argv.slice(2);
+    if(a.includes('pr')&&a.includes('create')){ writeFileSync(${JSON.stringify(argsFile)}, JSON.stringify(a)); console.log('https://github.com/o/r/pull/1'); }
+    else console.log(JSON.stringify([{number:1,title:'t',url:'u',body:'',labels:[{name:'x; touch PWNED'}]}]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id);
+  const wt = tasksOf(d)[0].worktree;
+  writeFileSync(join(wt, 'f.js'), 'export const f=1;\n');
+  chalk(d, 'commit', id);
+  chalk(d, 'pr', id);
+
+  assert.ok(!existsSync(join(wt, 'PWNED')) && !existsSync(join(d, 'PWNED')), 'no command injection from the label');
+  const args = JSON.parse(readFileSync(argsFile, 'utf8'));
+  assert.ok(args.includes('x; touch PWNED'), 'label passed to gh as a single, intact argument');
+});
+
 test('evidence helpers — data-URL→PNG, step extraction, and blob-SHA markdown', () => {
   const d = scratch();
   const png = 'data:image/png;base64,' + Buffer.from('PNGBYTES').toString('base64');
