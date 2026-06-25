@@ -66,6 +66,28 @@ test('log --json — emits one valid JSON event per line; plain log unchanged', 
   assert.ok(plain.out.includes('[progress-update]') && !plain.out.includes('"type"'), 'plain log stays human-readable');
 });
 
+test('log --type — filters events by type, still honoring --n; plain log unchanged', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  chalk(d, 'update', 'progress one');
+  chalk(d, 'update', 'a milestone note', '--type', 'milestone-hit');
+  chalk(d, 'update', 'progress two');
+  // --type shows only matching events.
+  const filtered = chalk(d, 'log', '--type', 'progress-update');
+  assert.equal(filtered.code, 0);
+  assert.ok(filtered.out.includes('progress one') && filtered.out.includes('progress two'), 'matching events shown');
+  assert.ok(!filtered.out.includes('a milestone note'), 'non-matching type excluded');
+  // a different type yields only its own events.
+  const ms = chalk(d, 'log', '--type', 'milestone-hit');
+  assert.ok(ms.out.includes('a milestone note') && !ms.out.includes('progress one'), 'filters to the requested type');
+  // --type still honors --n (last N of the filtered set).
+  const one = chalk(d, 'log', '--type', 'progress-update', '--n', '1').out;
+  assert.ok(one.includes('progress two') && !one.includes('progress one'), '--n limits the filtered output');
+  // without --type the output is unchanged (includes all types).
+  const plain = chalk(d, 'log');
+  assert.ok(plain.out.includes('progress one') && plain.out.includes('a milestone note'), 'unfiltered log unchanged');
+});
+
 test('P4 + P6 — done needs green verify; tampering a locked test fails integrity', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'd');
