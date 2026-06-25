@@ -16,6 +16,7 @@ import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline } from '../lib/pipeline.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
+import { runAutopilot } from '../lib/autopilot.mjs';
 import { basename } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -340,6 +341,20 @@ const cmds = {
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Merged + cleaned: PR #${t.pr.number}`, taskId: t.id });
     ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓`);
+  },
+
+  // The scheduled-run unit (for cron / launchd / `/loop`): locked + doctor-gated + one bounded
+  // pipeline sweep. Safe to call on a schedule — it self-skips when not ready or already running.
+  autopilot({ flags }) {
+    const s = Store.open();
+    console.log(C.b('chalk autopilot') + C.dim(` · ${now()}`));
+    const r = runAutopilot(s, process.argv[1], { max: Number(flags.max || 3), log: (m) => console.log(C.dim('  ' + m)) });
+    if (r.skipped) { console.log(C.y('  another autopilot run is in progress — skipping.')); process.exit(0); }
+    if (r.notReady) { console.log(C.r(`  NOT READY — ${r.fails.length} blocker(s); skipping (run \`chalk doctor\`).`)); process.exit(2); }
+    syncBrowser(s);
+    console.log(`  ${C.g(`✓ ${r.merged.length} merged`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim('(gates are the safety)')}`);
+    s.emitUpdate({ type: 'progress-update', title: `Autopilot: ${r.merged.length} merged, ${r.blocked.length} blocked` });
+    process.exit(0);
   },
 
   // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
@@ -880,6 +895,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk doctor                         ${C.dim('preflight readiness check for autonomous runs (read-only)')}
+  chalk autopilot [--max N]            ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
   chalk smoke [--create|--issue N] --yes   ${C.dim('prove the pipeline on ONE throwaway issue (real; use a scratch repo)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]

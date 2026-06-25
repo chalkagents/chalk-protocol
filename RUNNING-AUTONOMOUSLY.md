@@ -163,14 +163,30 @@ NO-GO**. Point it at a sacrificial repo, not your main project, until you trust 
 
 ## Scheduling
 
-There is no built-in scheduler — Chalk stays a CLI. Drive it from whatever you already use:
-```bash
-# cron — every night, bounded
-0 2 * * *  cd /path/to/repo && chalk pipeline --max 5 >> .chalk/cron.log 2>&1
+Chalk stays a CLI — there's no daemon. But **don't put `chalk pipeline` directly in cron**: use
+**`chalk autopilot`**, the safe scheduled-run unit:
+
 ```
-Or the Claude Code `/loop` harness for interval runs. Either way: the executor/reviewer CLIs and
-`gh` must be **authenticated in that environment** — a headless cron won't have your interactive
-login.
+chalk autopilot [--max N]
+```
+
+Each call: takes a **lock** (so overlapping scheduled runs can't stomp each other), runs
+**`chalk doctor`** and **aborts if the repo isn't ready** (no executor, `gh` not authed, a testless
+task with no reviewer backstop, …), and only then drives **one bounded `chalk pipeline` sweep**. It
+self-skips when not ready or already running, so it's safe to fire on any interval.
+
+```bash
+# cron — every 30 min, bounded, logged
+*/30 * * * *  cd /path/to/repo && /usr/local/bin/chalk autopilot --max 3 >> .chalk/local/autopilot.log 2>&1
+```
+
+On macOS a **launchd** agent (`~/Library/LaunchAgents/…`) running the same command on a
+`StartInterval` is the more reliable equivalent. For an in-session, watch-and-stop demo, the Claude
+Code **`/loop`** harness works too: `/loop 30m chalk autopilot --max 2`.
+
+Either way, the executor/reviewer CLIs (`claude`) and `gh` must be **authenticated in that
+environment** — a headless cron won't inherit your interactive login. Run `chalk doctor` once by
+hand first; if it's `● READY`, the schedule will be too.
 
 ---
 

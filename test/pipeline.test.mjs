@@ -353,7 +353,7 @@ test('doctor — flags missing executor + testless runnable tasks; READY when co
   let r = chalk(d, 'doctor');
   assert.equal(r.code, 2, 'NOT READY');
   assert.match(r.out, /no protocol.executor.command/);
-  assert.match(r.out, /NO locked test/);
+  assert.match(r.out, /no locked test/i);
 
   // Configure executor + lock a real test → READY.
   writeFileSync(join(d, 'spec.test.txt'), 'contract\n');
@@ -399,6 +399,39 @@ test('smoke — refuses without --yes; --dry-run previews; GO when the real flow
   const t = tasksOf(d).find((x) => x.issue?.number === 7);
   assert.equal(t.state, 'done');
   assert.equal(branchExists(d, t.branch), false, 'branch cleaned up');
+});
+
+test('autopilot — aborts when not ready, runs one sweep when reviewer-gated, skips when locked', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('issue','list')) console.log(JSON.stringify([{number:5,title:'do thing',url:'u',body:'- [ ] x',labels:[]}]));
+    else if(has('pr','create')) console.log('https://github.com/o/r/pull/55');
+    else process.exit(0);`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('f.js','x\\n');`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
+  chalk(d, 'issue', 'pull');
+
+  // (1) No reviewer → doctor FAILS on the testless task → autopilot aborts; pipeline never ran.
+  let r = chalk(d, 'autopilot', '--max', '1');
+  assert.equal(r.code, 2, 'NOT READY without a reviewer backstop');
+  assert.match(r.out, /NOT READY/);
+  assert.equal(tasksOf(d)[0].state, 'specd', 'pipeline did not run');
+
+  // (2) Add a passing reviewer → testless becomes a warning → autopilot runs the sweep + merges.
+  writeFileSync(join(d, 'rev.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({verdict:'pass',findings:[]}));`);
+  conf(d, (o) => { o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; });
+  r = chalk(d, 'autopilot', '--max', '1');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /1 merged/);
+  assert.equal(tasksOf(d)[0].state, 'done', 'task driven to done');
+
+  // (3) A fresh lock → the next run self-skips (single-flight).
+  mkdirSync(join(d, '.chalk/local'), { recursive: true });
+  writeFileSync(join(d, '.chalk/local/autopilot.lock'), new Date().toISOString());
+  r = chalk(d, 'autopilot');
+  assert.match(r.out, /in progress — skipping/);
 });
 
 test('pipeline --dry-run — plans without touching anything', () => {
