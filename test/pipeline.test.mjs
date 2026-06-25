@@ -338,6 +338,43 @@ test('doctor — flags missing executor + testless runnable tasks; READY when co
   assert.match(r.out, /READY/);
 });
 
+test('smoke — refuses without --yes; --dry-run previews; GO when the real flow succeeds', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  // Fake GitHub: create→#7, list returns it, pr create→#77, pr/issue view report merged/closed.
+  const ghCmd = stubGh(d, `const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('issue','create')) console.log('https://github.com/o/r/issues/7');
+    else if(has('issue','list')) console.log(JSON.stringify([{number:7,title:'chalk smoke',url:'u',body:'- [ ] smoke',labels:[]}]));
+    else if(has('issue','view')) console.log('CLOSED');
+    else if(has('pr','create')) console.log('https://github.com/o/r/pull/77');
+    else if(has('pr','view')) console.log('MERGED');
+    else process.exit(0);`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
+
+  // Refuses without --yes.
+  const refused = chalk(d, 'smoke', '--create');
+  assert.equal(refused.code, 1);
+  assert.match(refused.out, /refused/i);
+
+  // --dry-run previews the target repo, no actions.
+  const dry = chalk(d, 'smoke', '--dry-run');
+  assert.equal(dry.code, 0);
+  assert.match(dry.out, /chalkagents\/chalk-protocol|target repo/);
+  assert.equal(existsSync(join(d, '.chalk/tasks.json')) ? tasksOf(d).length : 0, 0, 'dry-run created no tasks');
+
+  // Real (stubbed) run → GO.
+  const r = chalk(d, 'smoke', '--create', '--yes');
+  assert.equal(r.code, 0, 'GO');
+  assert.match(r.out, /GO — the pipeline works end-to-end/);
+  assert.match(r.out, /PR #77 merged/);
+  assert.match(r.out, /issue #7 closed/);
+  const t = tasksOf(d).find((x) => x.issue?.number === 7);
+  assert.equal(t.state, 'done');
+  assert.equal(branchExists(d, t.branch), false, 'branch cleaned up');
+});
+
 test('pipeline --dry-run — plans without touching anything', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');

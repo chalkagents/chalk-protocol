@@ -15,6 +15,7 @@ import { runSpecs } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline } from '../lib/pipeline.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
+import { runSmoke } from '../lib/smoke.mjs';
 import { basename } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -353,6 +354,19 @@ const cmds = {
     const warns = results.filter((r) => r.level === 'warn').length;
     console.log('\n' + (fails ? C.r(`● NOT READY — ${fails} blocker(s)${warns ? `, ${warns} warning(s)` : ''}`) : warns ? C.y(`● READY with ${warns} warning(s)`) : C.g('● READY')));
     process.exit(fails ? 2 : 0);
+  },
+
+  // Sacrificial-issue smoke — prove the REAL pipeline works end-to-end before trusting it. The one
+  // command that performs real outward-facing actions (PR + squash-merge): --yes-gated, scratch-repo.
+  smoke({ flags }) {
+    const s = Store.open();
+    const r = runSmoke(s, process.argv[1], { issue: flags.issue, create: flags.create === true, yes: flags.yes === true, dryRun: flags['dry-run'] === true, log: (m) => console.log(C.dim('  ' + m)) });
+    if (r.dryRun) { console.log(C.y(`  smoke runs the REAL pipeline + a squash-merge in ${C.b(r.repo)}. Re-run with ${C.b('--yes')} (use a SCRATCH repo).`)); return; }
+    if (r.refused) die(`refused — smoke performs REAL gh actions (PR + squash-merge) in ${C.b(r.repo)}. Re-run with --yes, ideally on a scratch repo.`);
+    console.log('\n' + C.b('chalk smoke · verification'));
+    for (const [label, ok] of r.checks) console.log(`  ${ok ? C.g('✓') : C.r('✗')} ${label}`);
+    console.log('\n' + (r.go ? C.g('● GO — the pipeline works end-to-end') : C.r('● NO-GO — see the failed checks above')));
+    process.exit(r.go ? 0 : 2);
   },
 
   // GitHub pipeline — the unattended driver: walk every issue-backed task issue→merge, blocking
@@ -862,6 +876,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk doctor                         ${C.dim('preflight readiness check for autonomous runs (read-only)')}
+  chalk smoke [--create|--issue N] --yes   ${C.dim('prove the pipeline on ONE throwaway issue (real; use a scratch repo)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
