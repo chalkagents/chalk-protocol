@@ -419,13 +419,16 @@ test('autopilot — aborts when not ready, runs one sweep when reviewer-gated, s
   assert.match(r.out, /NOT READY/);
   assert.equal(tasksOf(d)[0].state, 'specd', 'pipeline did not run');
 
-  // (2) Add a passing reviewer → testless becomes a warning → autopilot runs the sweep + merges.
+  // (2) Add a passing reviewer + a retro agent → autopilot runs the sweep, merges, and self-heals.
   writeFileSync(join(d, 'rev.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({verdict:'pass',findings:[]}));`);
-  conf(d, (o) => { o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; });
+  writeFileSync(join(d, 'rt.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({lessons:['the sweep ran clean'], issues:[]}));`);
+  conf(d, (o) => { o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; o.retro = { command: `node ${join(d, 'rt.mjs')}` }; });
   r = chalk(d, 'autopilot', '--max', '1');
   assert.equal(r.code, 0);
   assert.match(r.out, /1 merged/);
   assert.equal(tasksOf(d)[0].state, 'done', 'task driven to done');
+  // retro ran at the end of the sweep (regression: spawnSync must be imported in autopilot).
+  assert.match(readFileSync(join(d, '.chalk/lessons.md'), 'utf8'), /the sweep ran clean/, 'autopilot ran retro');
 
   // (3) A fresh lock → the next run self-skips (single-flight).
   mkdirSync(join(d, '.chalk/local'), { recursive: true });
