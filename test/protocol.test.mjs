@@ -21,6 +21,13 @@ const conf = (d, fn) => { const f = join(d, '.chalk/chalk.json'); const o = JSON
 const tid = (d, i = 0) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'))[i].id.slice(0, 12);
 const TEST = (body) => `import {sum} from './sum.mjs'; import a from 'node:assert'; ${body} console.log('ok');`;
 
+test('version — prints the protocol version', () => {
+  const d = scratch();
+  const r = chalk(d, 'version');
+  assert.equal(r.code, 0, 'version exits 0');
+  assert.ok(r.out.includes('chalk/0'), 'version output contains the protocol constant');
+});
+
 test('init scaffolds the spine + installs the agent contract', () => {
   const d = scratch();
   assert.equal(chalk(d, 'init', '--name', 'demo', '--goal', 'g').code, 0);

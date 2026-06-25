@@ -2,7 +2,7 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -65,6 +65,11 @@ const cmds = {
     const s = Store.open();
     for (const r of installAgentDocs(s.root)) ok(`${r.action} ${r.name}`);
     console.log(C.dim('  any CLI (Claude Code, Codex, Gemini) will now auto-load the Chalk contract.'));
+  },
+
+  // Print the protocol version on its own line.
+  version() {
+    console.log(PROTOCOL);
   },
 
   // The single command an agent calls to learn its next action (which gate is blocking).
