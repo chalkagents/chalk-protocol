@@ -725,6 +725,29 @@ test('pipeline --dry-run — plans without touching anything', () => {
   assert.equal(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'), before, 'dry-run is side-effect-free');
 });
 
+test('pipeline — a failed non-review stage surfaces the subprocess\'s error output in the block reason and log', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  // Executor makes NO file change → the `commit` stage dies with a unique, deterministic stderr
+  // ("nothing to commit — the executor made no file changes…"), which is the failed stage's output.
+  writeFileSync(join(d, 'exec.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{}`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
+
+  chalk(d, 'issue', 'pull');
+  const r = chalk(d, 'pipeline');
+  assert.equal(r.code, 2, 'pipeline exits 2 — it left a task blocked');
+
+  const t = tasksOf(d)[0];
+  assert.equal(t.state, 'blocked', 'the failed commit stage blocked the task');
+  assert.match(t.block.reason, /nothing to commit/, 'block reason carries the failed stage\'s actual error output');
+  assert.match(t.block.reason, /pipeline stage 'commit' failed/, 'still names the failed stage');
+  assert.match(r.out, /nothing to commit/, 'the captured stage output appears in the sweep transcript/log');
+});
+
 test('evidence command — runs the spec, commits screenshots, edits the PR body with blob URLs', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');
