@@ -123,3 +123,54 @@ test('branch + cleanup — creates a <type>/<issue>-<slug> worktree, then tears 
   assert.equal(t.pipeline.stage, 'cleaned');
   assert.equal(branchExists(d, 'feat/7-add-dark-mode'), false, 'local branch deleted');
 });
+
+test('work+verify run in the worktree — executor edits + gates resolve there, not in primary', () => {
+  const d = repo();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 3, title: 'feature', url: 'u', body: '- [ ] do it', labels: [] }]));`);
+  const wtbase = scratch();
+  // executor writes impl.txt in its cwd; verify (check.mjs) passes iff impl.txt exists in cwd.
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync, readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('impl.txt','ok');`);
+  writeFileSync(join(d, 'check.mjs'), `import {existsSync} from 'node:fs'; process.exit(existsSync('impl.txt')?0:1);`);
+  conf(d, (o) => {
+    o.github.command = ghCmd; o.worktree.dir = wtbase;
+    o.verify.test = `node ${join(d, 'check.mjs')}`;
+    o.executor = { command: `node ${join(d, 'exec.mjs')}` };
+  });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id);
+  const wt = tasksOf(d)[0].worktree;
+
+  assert.equal(chalk(d, 'run', '--max', '1').code, 0);
+  assert.equal(tasksOf(d)[0].state, 'done', 'task driven to done');
+  assert.ok(existsSync(join(wt, 'impl.txt')), 'executor wrote into the WORKTREE');
+  assert.ok(!existsSync(join(d, 'impl.txt')), 'primary tree untouched — gates ran in the worktree');
+});
+
+test('e2e gate — a locked .test.yaml is run via the BYO runner and folds into verify', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  mkdirSync(join(d, '.chalk/tests'), { recursive: true });
+  writeFileSync(join(d, '.chalk/tests/login.test.yaml'), 'apiVersion: chalk/v1\nkind: Test\nid: spec-login\nname: Login\nsteps: []\n');
+  // stub runner: parse --out, write run.json, exit per an env-controlled verdict file.
+  writeFileSync(join(d, 'runspec.mjs'), `import {writeFileSync,readFileSync,existsSync} from 'node:fs';
+    const a=process.argv; const out=a[a.indexOf('--out')+1];
+    const pass=!existsSync('FAIL');
+    writeFileSync(out+'/run.json', JSON.stringify({runId:'r1',specId:'spec-login',status:pass?'passed':'failed',startedAt:1,steps:[]}));
+    process.exit(pass?0:1);`);
+  conf(d, (o) => { o.e2e = { command: `node ${join(d, 'runspec.mjs')}`, baseUrl: '', runsDir: '.chalk/runs' }; });
+  chalk(d, 'task', 'add', 'login works');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'spec', id, '--criterion', 'logs in', '--test', '.chalk/tests/login.test.yaml');
+  chalk(d, 'start', id);
+
+  let v = chalk(d, 'verify');
+  assert.equal(v.code, 0, 'verify GREEN when the spec passes');
+  assert.match(v.out, /login\.test\.yaml/);
+  assert.ok(existsSync(join(d, '.chalk/runs/spec-login')), 'run evidence written under .chalk/runs/<specId>/');
+  // Force the spec to fail → verify RED.
+  writeFileSync(join(d, 'FAIL'), '');
+  v = chalk(d, 'verify');
+  assert.equal(v.code, 2, 'verify RED when the spec fails');
+});

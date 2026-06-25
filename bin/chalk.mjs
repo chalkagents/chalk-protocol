@@ -2,7 +2,7 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef, workdir } from '../lib/store.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -390,8 +390,9 @@ const cmds = {
 
   verify() {
     const s = Store.open();
-    const v = runVerify(s);
-    console.log(C.b('Verify') + '\n');
+    const wip = s.tasks().find((t) => t.state === 'in-progress');
+    const v = runVerify(s, { cwd: workdir(s, wip) });
+    console.log(C.b('Verify') + (wip?.worktree ? C.dim(`  · in worktree ${wip.worktree}`) : '') + '\n');
     for (const r of v.toolchain) {
       const tag = r.status === 'pass' ? C.g('pass') : r.status === 'fail' ? C.r('fail') : r.status === 'deferred' ? C.y('defer') : C.dim('skip');
       const note = r.status === 'deferred' ? C.dim(`  (${r.cmd})  ${C.y('runs at chalk audit')}`) : (r.cmd ? C.dim(`  (${r.cmd})`) : C.dim('  (not configured)'));
@@ -402,6 +403,7 @@ const cmds = {
       console.log('\n' + C.r('  test-integrity VIOLATED (P6):'));
       for (const i of v.integrity) for (const b of i.broken) console.log(`    ${C.r('✗')} ${b.path} changed under task ${i.taskId.slice(0, 12)} — use \`chalk amend-spec\``);
     }
+    for (const r of v.e2e || []) console.log(`  ${r.status === 'passed' ? C.g('pass') : C.r('fail')}  ${C.dim('e2e')} ${r.path} ${C.dim(`→ ${r.runDir}`)}`);
     console.log('\n' + (v.green ? C.g('● GREEN — done gate is open') : C.r('● RED — done gate is closed')));
     process.exit(v.green ? 0 : 2);
   },
@@ -411,11 +413,12 @@ const cmds = {
     const s = Store.open();
     const t = mustTask(s, _[0]);
     if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
-    const v = runVerify(s);
+    const v = runVerify(s, { cwd: workdir(s, t) });
     if (!v.green) {
       const reasons = [];
       if (!v.toolchainGreen) reasons.push('toolchain not green (run `chalk verify`)');
       if (!v.integrityGreen) reasons.push('locked tests were modified (P6) — use `chalk amend-spec`');
+      if (!v.e2eGreen) reasons.push('a browser-spec (e2e) check failed');
       die(`GATE P4+P6: cannot mark done — ${reasons.join('; ')}.`);
     }
     // GATE P5 — if review is required for this task (per the configured cadence), the latest
