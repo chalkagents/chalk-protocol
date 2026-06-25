@@ -77,6 +77,15 @@ test('lesson — text starting with "list" is recorded, not routed to list subco
   assert.match(readFileSync(join(d, '.chalk/lessons.md'), 'utf8'), /list comprehensions are great/);
 });
 
+test('lesson add — exact text "list" is recorded, not routed to list subcommand', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'demo');
+  assert.equal(chalk(d, 'lesson', 'add', 'list').code, 0, 'lesson add exits 0');
+  const lessons = readFileSync(join(d, '.chalk/lessons.md'), 'utf8');
+  // Records verbatim as "- list ...", NOT "- add list ..." (free-text fallback).
+  assert.match(lessons, /^- list\b/m, 'exact text "list" recorded via the add subcommand');
+});
+
 test('decisions — prints logged decisions', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'demo');
