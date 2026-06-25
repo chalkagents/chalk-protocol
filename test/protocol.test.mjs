@@ -99,3 +99,21 @@ test('P7 — held-out catches the spec gap; phase gated on a green, fresh audit'
   appendFileSync(join(d, '.chalk/held-out/r.mjs'), '\n// tampered');
   assert.equal(chalk(d, 'audit').code, 2, 'held-out integrity violation fails the audit');
 });
+
+test('blocked — next skips a blocked task; status shows the need; unblock restores it', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  chalk(d, 'task', 'add', 'needs creds'); const a = tid(d, 0);
+  chalk(d, 'task', 'add', 'runnable');    const b = tid(d, 1);
+  chalk(d, 'spec', a, '--criterion', 'x');
+  chalk(d, 'spec', b, '--criterion', 'y');
+  chalk(d, 'start', a);
+  assert.equal(chalk(d, 'block', a, '--needs', 'bogus', '--reason', 'r').code, 1, 'rejects unknown --needs');
+  assert.equal(chalk(d, 'block', a, '--needs', 'creds', '--reason', 'firebase').code, 0);
+  const n = chalk(d, 'next').out;
+  assert.ok(n.includes('runnable') || n.includes(b), 'next points to the runnable task');
+  assert.ok(/blocked/i.test(chalk(d, 'status').out), 'status surfaces the blocked task');
+  assert.equal(chalk(d, 'unblock', a).code, 0);
+  assert.ok(JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'))
+              .find((t) => t.id.startsWith(a)).state === 'in-progress', 'unblock restores prior state');
+});
