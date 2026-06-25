@@ -1,0 +1,21 @@
+{
+  "id": "proto-ba413e855c25",
+  "name": "chalk-protocol — Chalk Protocol",
+  "createdAt": 1782327495431,
+  "updatedAt": 1782327519151,
+  "order": 0,
+  "cards": [
+    {
+      "id": "task-47d95c06",
+      "title": "Enforce the seven gates (P1-P7) via the CLI",
+      "column": "in_progress",
+      "createdAt": 1782327519042,
+      "updatedAt": 1782327519151,
+      "order": 0,
+      "description": "- All gate tests pass (P1/P4/P5/P6/P7) via node --test",
+      "testArtifact": {
+        "specPath": "test/protocol.test.mjs"
+      }
+    }
+  ]
+}
