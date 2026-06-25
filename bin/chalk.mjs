@@ -923,6 +923,7 @@ const cmds = {
     const n = Number(flags.n || 15);
     let all = s.updates();
     if (flags.type) all = all.filter((u) => u.type === flags.type);
+    if (flags.grep) all = all.filter((u) => String(u.title).toLowerCase().includes(String(flags.grep).toLowerCase()));
     const recent = all.slice(-n);
     const ordered = flags.reverse === true ? recent.slice().reverse() : recent;
     if (flags.json === true) { for (const u of ordered) console.log(JSON.stringify(u)); return; }
@@ -1025,7 +1026,7 @@ ${C.b('spine')}
   chalk lesson "<what to remember>"     ${C.dim('add to the lessons memory injected into every agent')}
   chalk lesson list                     ${C.dim('print the recorded lessons memory')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
-  chalk log [--n N] [--type T] [--reverse] [--json]
+  chalk log [--n N] [--type T] [--grep TEXT] [--reverse] [--json]
 
 ${C.b('chalk browser bridge')}
   chalk sync                           ${C.dim('project tasks.json → .chalk/plans/ + .chalk/boards/ (auto-runs on task/start/done)')}
