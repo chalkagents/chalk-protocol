@@ -14,6 +14,7 @@ import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, worktreeAd
 import { runSpecs } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline } from '../lib/pipeline.mjs';
+import { runDoctor } from '../lib/doctor.mjs';
 import { basename } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -336,6 +337,22 @@ const cmds = {
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Merged + cleaned: PR #${t.pr.number}`, taskId: t.id });
     ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓`);
+  },
+
+  // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
+  doctor() {
+    const s = Store.open();
+    const results = runDoctor(s);
+    console.log(C.b('chalk doctor') + C.dim(' · autonomous-run readiness') + '\n');
+    const icon = { ok: C.g('✓'), warn: C.y('⚠'), fail: C.r('✗') };
+    for (const area of [...new Set(results.map((r) => r.area))]) {
+      console.log(C.b(area));
+      for (const r of results.filter((x) => x.area === area)) console.log(`  ${icon[r.level]} ${r.msg}`);
+    }
+    const fails = results.filter((r) => r.level === 'fail').length;
+    const warns = results.filter((r) => r.level === 'warn').length;
+    console.log('\n' + (fails ? C.r(`● NOT READY — ${fails} blocker(s)${warns ? `, ${warns} warning(s)` : ''}`) : warns ? C.y(`● READY with ${warns} warning(s)`) : C.g('● READY')));
+    process.exit(fails ? 2 : 0);
   },
 
   // GitHub pipeline — the unattended driver: walk every issue-backed task issue→merge, blocking
@@ -844,6 +861,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk merge <id>                     ${C.dim('GATED squash-merge + cleanup + done')}
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
+  chalk doctor                         ${C.dim('preflight readiness check for autonomous runs (read-only)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}

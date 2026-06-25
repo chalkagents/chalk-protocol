@@ -313,6 +313,31 @@ test('board testArtifact — reads REAL run.json evidence + PR fields (one autho
   assert.equal(art.prUrl, 'https://github.com/o/r/pull/99');
 });
 
+test('doctor — flags missing executor + testless runnable tasks; READY when configured', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `process.exit(0);`); // gh auth status → ok
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+
+  // No executor + a runnable task with no locked test → two blockers.
+  chalk(d, 'task', 'add', 'do a thing');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'spec', id, '--criterion', 'it works'); // specd, but NO --test
+  let r = chalk(d, 'doctor');
+  assert.equal(r.code, 2, 'NOT READY');
+  assert.match(r.out, /no protocol.executor.command/);
+  assert.match(r.out, /NO locked test/);
+
+  // Configure executor + lock a real test → READY.
+  writeFileSync(join(d, 'spec.test.txt'), 'contract\n');
+  chalk(d, 'spec', id, '--test', 'spec.test.txt');
+  conf(d, (o) => { o.executor = { command: 'true' }; });
+  r = chalk(d, 'doctor');
+  assert.equal(r.code, 0, 'READY once executor + locked test exist');
+  assert.match(r.out, /READY/);
+});
+
 test('pipeline --dry-run — plans without touching anything', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');
