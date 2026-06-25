@@ -315,6 +315,99 @@ test('pipeline — unattended driver takes an issue all the way to a squash-merg
   assert.equal(branchExists(d, t.branch), false, 'local branch deleted');
 });
 
+test('pipeline — idempotent stages: an interrupted sweep resumes with no duplicate branch/commit/PR', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  // Stub gh: RECORD every `pr create` (one line per call) so we can assert it fires exactly once,
+  // and record `pr merge`. Anything else → the issue list.
+  const prCreates = join(d, 'pr-creates.txt');
+  const merged = join(d, 'merged.txt');
+  const ghCmd = stubGh(d, `import {appendFileSync,writeFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('pr','create')){ appendFileSync(${JSON.stringify(prCreates)}, 'create\\n'); console.log('https://github.com/o/r/pull/42'); }
+    else if(has('pr','merge')) writeFileSync(${JSON.stringify(merged)}, a.join(' '));
+    else if(has('pr','view')) console.log('MERGED');
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  // Executor writes feature.js once; if it (wrongly) re-ran it would still only rewrite the same file.
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
+
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+
+  // (1) Drive the sweep PARTWAY — through pr-open — via the discrete stage commands, then "interrupt".
+  assert.equal(chalk(d, 'branch', id).code, 0);
+  assert.equal(chalk(d, 'work', id).code, 0);
+  assert.equal(chalk(d, 'commit', id).code, 0);
+  assert.equal(chalk(d, 'pr', id).code, 0);
+  assert.equal(tasksOf(d)[0].pipeline.stage, 'pr-open', 'partial run stopped at pr-open');
+  const branch = tasksOf(d)[0].branch;
+  const wt = tasksOf(d)[0].worktree;
+  const featCommits = (s) => (s.match(/feat: add feature/g) || []).length;
+  assert.equal(featCommits(execSync('git log --oneline', { cwd: wt, encoding: 'utf8' })), 1, 'one feature commit so far');
+  assert.equal(readFileSync(prCreates, 'utf8').trim().split('\n').filter(Boolean).length, 1, 'one pr create so far');
+
+  // (2) Re-run the FULL pipeline. Without the per-stage guards, `commit` would die ("nothing to
+  // commit") and block the task, and/or `pr` would file a DUPLICATE PR. With them it resumes cleanly.
+  const r = chalk(d, 'pipeline');
+  assert.equal(r.code, 0, 'resumed pipeline completes with no blocked tasks');
+
+  // (3) Assert COMPOSED across stages (per the recorded lesson): no dup commit, no dup PR, one branch, done.
+  // The worktree was torn down by merge, so count commits on the pushed remote branch (the squash
+  // stub doesn't delete the remote ref): exactly one feature commit means no duplicate on resume.
+  execSync(`git fetch origin ${branch}`, { cwd: d, stdio: 'pipe' });
+  const log = execSync('git log --oneline FETCH_HEAD', { cwd: d, encoding: 'utf8' });
+  assert.equal(featCommits(log), 1, 'still exactly ONE feature commit — no duplicate commit on resume');
+  assert.equal(readFileSync(prCreates, 'utf8').trim().split('\n').filter(Boolean).length, 1, 'gh pr create fired exactly ONCE — no duplicate PR');
+  assert.ok(existsSync(merged), 'gh pr merge was called');
+
+  const t = tasksOf(d)[0];
+  assert.equal(t.state, 'done', 'task still reaches done');
+  assert.equal(t.pipeline.stage, 'cleaned');
+  assert.ok(!t.worktree, 'worktree torn down');
+  assert.equal(branchExists(d, branch), false, 'the single local branch was cleaned up (no stray duplicate)');
+});
+
+test('pipeline — idempotent review stage: a resumed sweep does NOT re-invoke the reviewer or duplicate the verdict', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `import {writeFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else if(has('pr','merge')) writeFileSync(${JSON.stringify(join(d, 'merged.txt'))}, a.join(' '));
+    else if(has('pr','view')) console.log('MERGED');
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  // Reviewer that RECORDS each invocation (one line per call) and always passes — so we can assert
+  // it fires exactly once across an interrupt+resume.
+  const revCalls = join(d, 'rev-calls.txt');
+  writeFileSync(join(d, 'rev.mjs'), `import {appendFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} appendFileSync(${JSON.stringify(revCalls)}, 'x\\n'); console.log(JSON.stringify({verdict:'pass',findings:[]}));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; });
+
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  const revCount = () => (existsSync(revCalls) ? readFileSync(revCalls, 'utf8').trim().split('\n').filter(Boolean).length : 0);
+
+  // (1) Drive through a PASSING review, then "interrupt".
+  for (const stage of ['branch', 'work', 'commit', 'pr', 'review']) assert.equal(chalk(d, stage, id).code, 0, `${stage} ok`);
+  assert.equal(tasksOf(d)[0].pipeline.stage, 'reviewed', 'review advanced the stage to reviewed');
+  assert.equal(tasksOf(d)[0].reviews.length, 1, 'one review on record after first pass');
+  assert.equal(revCount(), 1, 'reviewer invoked exactly once');
+
+  // (2) Re-run review directly (resume) → it must short-circuit: no second invocation, no dup record.
+  assert.equal(chalk(d, 'review', id).code, 0, 'resumed review short-circuits with exit 0');
+  assert.equal(revCount(), 1, 'reviewer NOT re-invoked on resume');
+  assert.equal(tasksOf(d)[0].reviews.length, 1, 'no duplicate review record on resume');
+
+  // (3) Re-run the full pipeline to completion — still exactly one review, task reaches done.
+  assert.equal(chalk(d, 'pipeline').code, 0, 'resumed pipeline completes');
+  assert.equal(revCount(), 1, 'still exactly one reviewer invocation after full resume');
+  const t = tasksOf(d)[0];
+  assert.equal(t.reviews.length, 1, 'still exactly one review record');
+  assert.equal(t.state, 'done', 'task reaches done');
+  assert.equal(t.pipeline.stage, 'cleaned');
+});
+
 test('board testArtifact — reads REAL run.json evidence + PR fields (one authoritative source)', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'p');
