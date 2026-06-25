@@ -530,6 +530,32 @@ test('autopilot — aborts when not ready, runs one sweep when reviewer-gated, s
   assert.match(r.out, /in progress — skipping/);
 });
 
+test('loop — bounded standing loop drives a round, then stops at steady state before the round cap', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  // gh always lists the same one issue (#5); `chalk issue pull` dedupes, so round 2 pulls 0 → steady state.
+  const ghCmd = stubGh(d, `import {writeFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('issue','list')) console.log(JSON.stringify([{number:5,title:'do thing',url:'u',body:'- [ ] x',labels:[]}]));
+    else if(has('pr','create')) console.log('https://github.com/o/r/pull/55');
+    else if(has('pr','merge')) writeFileSync(${JSON.stringify(join(d, 'merged.txt'))}, a.join(' '));
+    else if(has('pr','view')) console.log('MERGED');
+    else process.exit(0);`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('f.js','x\\n');`);
+  writeFileSync(join(d, 'rev.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({verdict:'pass',findings:[]}));`);
+  writeFileSync(join(d, 'rt.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({lessons:[], issues:[]}));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; o.retro = { command: `node ${join(d, 'rt.mjs')}` }; });
+
+  const r = chalk(d, 'loop', '--max-rounds', '4', '--max', '1');
+  assert.equal(r.code, 0);
+  // Round 1 merges the issue; round 2 pulls 0 + merges 0 → steady state → stop (well before 4 rounds).
+  assert.match(r.out, /round 1: pulled 1, merged 1/);
+  assert.match(r.out, /steady state after 2 round\(s\)/);
+  assert.match(r.out, /1 merged.*over 2 round\(s\)/s);
+  assert.equal(tasksOf(d)[0].state, 'done', 'the issue was driven to done');
+  assert.ok(existsSync(join(d, 'merged.txt')), 'a merge happened');
+});
+
 test('plan stage — the planner output is stored on the task and injected into context', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'p');

@@ -17,6 +17,7 @@ import { runPipeline } from '../lib/pipeline.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
+import { runLoop } from '../lib/loop.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { basename } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -407,6 +408,25 @@ const cmds = {
     syncBrowser(s);
     console.log(`  ${C.g(`✓ ${r.merged.length} merged`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim('(gates are the safety)')}`);
     s.emitUpdate({ type: 'progress-update', title: `Autopilot: ${r.merged.length} merged, ${r.blocked.length} blocked` });
+    process.exit(0);
+  },
+
+  // The bounded STANDING loop — drives several autopilot rounds (each: pull issues → sweep → read the
+  // retro convergence marker) until steady state, a skipped/not-ready sweep, or the round cap. This is
+  // what a cron / launchd entry should call to let the loop self-drive; it self-terminates by design.
+  loop({ flags }) {
+    const s = Store.open();
+    console.log(C.b('chalk loop') + C.dim(` · ${now()} · ≤${Number(flags['max-rounds'] || 5)} rounds`));
+    const r = runLoop(s, process.argv[1], {
+      maxRounds: Number(flags['max-rounds'] || 5),
+      max: Number(flags.max || 3),
+      minSeverity: String(flags['min-severity'] || 'med'),
+      log: (m) => console.log(C.dim('  ' + m)),
+    });
+    syncBrowser(s);
+    const conv = r.rounds.slice(-1)[0]?.converged;
+    console.log(`  ${C.g(`✓ ${r.totalMerged} merged`)}${r.totalBlocked ? '  ' + C.y(`⊘ ${r.totalBlocked} blocked`) : ''}  ${C.dim(`over ${r.rounds.length} round(s)${conv ? ' · converged' : ''}`)}`);
+    s.emitUpdate({ type: 'progress-update', title: `Loop: ${r.totalMerged} merged, ${r.totalBlocked} blocked over ${r.rounds.length} round(s)` });
     process.exit(0);
   },
 
@@ -1052,7 +1072,8 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk doctor                         ${C.dim('preflight readiness check for autonomous runs (read-only)')}
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
   chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
-  chalk autopilot [--max N]            ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
+  chalk autopilot [--max N] [--min-severity med]   ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
+  chalk loop [--max-rounds N] [--max N] [--min-severity med]   ${C.dim('bounded STANDING loop: pull→sweep→converge, self-terminating')}
   chalk smoke [--create|--issue N] --yes   ${C.dim('prove the pipeline on ONE throwaway issue (real; use a scratch repo)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
