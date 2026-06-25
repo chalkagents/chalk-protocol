@@ -884,6 +884,12 @@ const cmds = {
   // stops repeating mistakes. The `retro` stage appends these programmatically too.
   lesson({ _, flags }) {
     const s = Store.open();
+    if (_[0] === 'list') {
+      const lessons = s.lessons(1000);
+      if (!lessons.length) { console.log(C.dim('no lessons recorded yet.')); return; }
+      for (const l of lessons) console.log(l);
+      return;
+    }
     const text = _.join(' ') || flags.text;
     if (!text) die('usage: chalk lesson "<what to remember>"');
     s.appendLesson({ lesson: text, by: flags.by || 'human' });
@@ -1017,6 +1023,7 @@ ${C.b('spine')}
   chalk decision "<title>" --why "..."
   chalk decisions                       ${C.dim('print the durable decision log')}
   chalk lesson "<what to remember>"     ${C.dim('add to the lessons memory injected into every agent')}
+  chalk lesson list                     ${C.dim('print the recorded lessons memory')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
   chalk log [--n N] [--type T] [--reverse] [--json]
 
