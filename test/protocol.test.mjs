@@ -47,6 +47,13 @@ test('lesson list — prints a previously-added lesson', () => {
   assert.match(r.out, /prefer reusing existing utilities/);
 });
 
+test('lesson — text starting with "list" is recorded, not routed to list subcommand', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'demo');
+  assert.equal(chalk(d, 'lesson', 'list', 'comprehensions', 'are', 'great').code, 0);
+  assert.match(readFileSync(join(d, '.chalk/lessons.md'), 'utf8'), /list comprehensions are great/);
+});
+
 test('decisions — prints logged decisions', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'demo');
