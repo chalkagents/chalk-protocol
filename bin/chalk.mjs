@@ -877,7 +877,8 @@ const cmds = {
   // Read-only: print the durable decision log (.chalk/decisions.md).
   decisions() {
     const s = Store.open();
-    console.log(readFileSync(s.p.decisions, 'utf8'));
+    const text = s.decisions().trim();
+    console.log(text || 'no decisions recorded yet.');
   },
 
   // Add a durable lesson to .chalk/lessons.md — injected into every agent's context so the loop
