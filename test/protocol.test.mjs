@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, appendFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, appendFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -84,6 +84,17 @@ test('decisions — prints logged decisions', () => {
   const r = chalk(d, 'decisions');
   assert.equal(r.code, 0, 'decisions exits 0');
   assert.match(r.out, /use sqlite for the ledger/, 'shows the logged decision');
+});
+
+test('decisions — clean message when the log is missing', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'demo');
+  // Simulate a missing decisions.md (e.g. partial/old spine) — must not throw ENOENT.
+  rmSync(join(d, '.chalk/decisions.md'), { force: true });
+  const r = chalk(d, 'decisions');
+  assert.equal(r.code, 0, 'decisions exits 0 even with no decisions.md');
+  assert.match(r.out, /no decisions recorded yet/, 'prints a clean message');
+  assert.doesNotMatch(r.out, /Error|ENOENT|at Object\./, 'no stack trace / unhandled exception');
 });
 
 test('init scaffolds the spine + installs the agent contract', () => {
