@@ -10,7 +10,7 @@ import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
-import { gh as runGh, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
+import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
 import { basename } from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -202,7 +202,7 @@ const cmds = {
       const t = {
         id: id('task'), title: iss.title, state: criteria.length ? 'specd' : 'todo',
         acceptanceCriteria: criteria, tests: [], heldOut: [], after: [],
-        issue: { number: iss.number, url: iss.url, body: iss.body || '' }, branchType,
+        issue: { number: iss.number, url: iss.url, body: iss.body || '' }, branchType, labels,
         pipeline: { stage: 'selected', at: now() }, createdAt: now(), reviews: [],
       };
       s.upsertTask(t); created++;
@@ -235,6 +235,54 @@ const cmds = {
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Branched: ${t.branch}`, taskId: t.id });
     ok(`branch ${C.b(t.branch)} ${C.dim(`· worktree ${t.worktree}`)}`);
+  },
+
+  // GitHub pipeline — conventional commit of the executor's changes in the task's worktree.
+  // Stages specific code paths only (never `git add -A`, never the spine state).
+  commit({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const wd = workdir(s, t);
+    const paths = changedPaths(wd).filter((p) => !p.startsWith('.chalk/') || p.startsWith('.chalk/evidence/'));
+    if (!paths.length) die('nothing to commit — the executor made no file changes in the worktree.');
+    const type = t.branchType || 'feat';
+    const desc = (t.title || 'update').replace(/^./, (c) => c.toLowerCase()).slice(0, 60);
+    const subject = `${type}: ${desc}`;
+    gitAdd(wd, paths);
+    gitCommit(wd, [subject, t.issue?.number ? `Closes #${t.issue.number}` : '']);
+    t.pipeline = { ...(t.pipeline || {}), stage: 'committed', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'work-item-submitted', title: `Committed: ${subject}`, taskId: t.id });
+    ok(`committed ${C.dim(`${paths.length} file(s)`)} — ${C.b(subject)}`);
+  },
+
+  // GitHub pipeline — push the branch and open a PR (conventional title + Summary/Changes/Test-plan).
+  pr({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const gh0 = s.protocol().github || {};
+    const wd = workdir(s, t);
+    if (!t.branch) die('no branch — run `chalk branch <id>` first.');
+    try { runGit(wd, `push -u origin ${t.branch}`); } catch (e) { die(`git push failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+    const type = t.branchType || 'feat';
+    const title = `${type}: ${(t.title || '').replace(/^./, (c) => c.toLowerCase())}`;
+    const body = [
+      '## Summary', `- ${t.title}${t.issue?.number ? ` (closes #${t.issue.number})` : ''}`, '',
+      '## Changes', ...(t.acceptanceCriteria || []).map((c) => `- ${c.text}`), '',
+      '## Test plan', '- `chalk verify` green (toolchain + integrity + e2e)',
+      t.issue?.number ? `\nCloses #${t.issue.number}` : '',
+    ].join('\n');
+    const labels = (t.labels || []).map((l) => `--label ${l}`).join(' ');
+    let out;
+    try { out = runGh(wd, gh0.command, `pr create --base ${gh0.base || 'main'} --head ${t.branch} --title ${shq(title)} --body ${shq(body)} ${labels}`); }
+    catch (e) { die(`gh pr create failed: ${String(e.message).split('\n').slice(-3).join('\n  ')}`); }
+    const url = (out.match(/https?:\/\/\S+\/pull\/\d+/) || [out.trim()])[0];
+    const number = Number((url.match(/\/pull\/(\d+)/) || [])[1]) || undefined;
+    t.pr = { number, url };
+    t.pipeline = { ...(t.pipeline || {}), stage: 'pr-open', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'work-item-submitted', title: `PR #${number || '?'} opened`, taskId: t.id });
+    ok(`PR ${C.b('#' + (number || '?'))} ${C.dim(url)}`);
   },
 
   // GitHub pipeline — remove a task's worktree and delete its local branch (idempotent).
@@ -648,6 +696,8 @@ function mustTask(s, ref) {
 function parseChecklist(body) {
   return (body.match(/^\s*[-*]\s*\[[ xX]\]\s+(.+)$/gm) || []).map((l) => l.replace(/^\s*[-*]\s*\[[ xX]\]\s+/, '').trim()).filter(Boolean);
 }
+// Shell single-quote (for titles/bodies passed to gh).
+function shq(s) { return `'${String(s).replace(/'/g, `'\\''`)}'`; }
 // Branch-name slug: lowercase, non-alphanumeric → '-', trimmed, max ~4 words.
 function pipelineSlug(title) {
   return (String(title || 'task').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').split('-').slice(0, 5).join('-')) || 'task';
@@ -688,6 +738,8 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk backlog                        ${C.dim('ordered DAG by milestone (runnable/waiting/blocked)')}
   chalk issue pull [--state open] [--label L]   ${C.dim('import GitHub issues as tasks (BYO gh)')}
   chalk branch <id>                    ${C.dim('create <type>/<issue>-<slug> branch + git worktree')}
+  chalk commit <id>                    ${C.dim('conventional commit of the worktree changes (Closes #issue)')}
+  chalk pr <id>                        ${C.dim('push the branch + open a PR (gh)')}
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]

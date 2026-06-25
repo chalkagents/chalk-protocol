@@ -31,6 +31,17 @@ function stubGh(dir, body) {
   writeFileSync(p, body);
   return `node ${p}`;
 }
+// A working repo whose `origin` is a local bare repo, so `git push` actually works (offline).
+function repoWithBare() {
+  const bare = scratch();
+  execSync('git init --bare -b main', { cwd: bare, stdio: 'pipe' });
+  const d = scratch();
+  const g = (a) => execSync(`git ${a}`, { cwd: d, stdio: 'pipe' });
+  g('init -b main'); g('config user.email t@t.t'); g('config user.name t');
+  writeFileSync(join(d, 'README.md'), '# tmp\n'); g('add README.md'); g('commit -m init');
+  g(`remote add origin ${bare}`); g('push -u origin main');
+  return d;
+}
 // Mutate .chalk/chalk.json protocol config in a scratch dir.
 const conf = (d, fn) => { const f = join(d, '.chalk/chalk.json'); const o = JSON.parse(readFileSync(f, 'utf8')); fn(o.protocol); writeFileSync(f, JSON.stringify(o, null, 2)); };
 const tasksOf = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'));
@@ -173,4 +184,33 @@ test('e2e gate — a locked .test.yaml is run via the BYO runner and folds into 
   writeFileSync(join(d, 'FAIL'), '');
   v = chalk(d, 'verify');
   assert.equal(v.code, 2, 'verify RED when the spec fails');
+});
+
+test('commit + pr — conventional commit in the worktree, then push + gh pr create', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `const a=process.argv.slice(2);
+    if(a.includes('pr')&&a.includes('create')) console.log('https://github.com/o/r/pull/42');
+    else console.log(JSON.stringify([{number:5,title:'Add feature',url:'u',body:'- [ ] x',labels:[{name:'enhancement'}]}]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id);
+  const wt = tasksOf(d)[0].worktree;
+  writeFileSync(join(wt, 'feature.js'), 'export const f = () => 1;\n'); // simulate the executor's edit
+
+  assert.equal(chalk(d, 'commit', id).code, 0);
+  const msg = execSync('git log -1 --format=%B', { cwd: wt, encoding: 'utf8' });
+  assert.match(msg, /^feat: add feature/, 'conventional subject from branchType + title');
+  assert.match(msg, /Closes #5/, 'links the issue');
+  assert.equal(tasksOf(d)[0].pipeline.stage, 'committed');
+
+  const pr = chalk(d, 'pr', id);
+  assert.equal(pr.code, 0);
+  const t = tasksOf(d)[0];
+  assert.equal(t.pr.number, 42, 'PR number parsed from gh output');
+  assert.equal(t.pipeline.stage, 'pr-open');
+  // The branch really landed on the (bare) remote.
+  assert.match(execSync('git branch -a', { cwd: wt, encoding: 'utf8' }), /feat\/5-add-feature/);
 });
