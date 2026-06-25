@@ -8,7 +8,7 @@ import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
-import { PRESETS, detectPreset, withRunner } from '../lib/config.mjs';
+import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -87,7 +87,7 @@ const cmds = {
           console.log(`     ${broken.length ? C.r('✗ tests MODIFIED') : C.dim('READ-ONLY tests')}: ${(t.tests).map((x) => x.path).join(', ')}`);
           if (broken.length) console.log(C.r(`       integrity break — revert them or run: chalk amend-spec ${short} --test <path> --why "..."`));
         }
-        const needsReview = s.protocol().review?.required;
+        const needsReview = reviewRequiredNow(s, t);
         const last = (t.reviews || []).slice(-1)[0];
         const seq = needsReview && !(last && last.verdict === 'pass')
           ? `chalk verify   then   chalk review ${short}   then   chalk done ${short}`
@@ -324,8 +324,9 @@ const cmds = {
       if (!v.integrityGreen) reasons.push('locked tests were modified (P6) — use `chalk amend-spec`');
       die(`GATE P4+P6: cannot mark done — ${reasons.join('; ')}.`);
     }
-    // GATE P5 — if review is required, the latest review must pass (override is logged).
-    if (s.protocol().review?.required) {
+    // GATE P5 — if review is required for this task (per the configured cadence), the latest
+    // review must pass (override is logged).
+    if (reviewRequiredNow(s, t)) {
       const last = (t.reviews || []).slice(-1)[0];
       const passed = last && last.verdict === 'pass';
       if (!passed) {
@@ -471,6 +472,16 @@ const cmds = {
         console.log(C.y('  ! audit gate overridden (decision logged).'));
       }
     }
+    // GATE P5 (phase-advance cadence) — every worked task must carry a passing review.
+    if (reviewCadences(s.protocol().review || {}).includes('phase-advance')) {
+      const pending = unreviewed(s);
+      if (pending.length) {
+        if (!flags['force-review']) die(`GATE P5: review cadence is "phase-advance" — these need a passing review first:\n${pending.map((t) => `    chalk review ${t.id.slice(0, 12)}   ${t.title}`).join('\n')}\n    To override (logged): chalk phase ${p} --force-review --why "..."`);
+        if (!flags.why) die('--force-review requires --why "<reason>" (it is logged as a decision).');
+        s.appendDecision({ title: `Overrode phase-advance review gate advancing to phase "${p}"`, why: String(flags.why) });
+        console.log(C.y('  ! phase-advance review gate overridden (decision logged).'));
+      }
+    }
     s.setPhase(p);
     s.emitUpdate({ type: 'progress-update', title: `Phase → ${p}` });
     ok(`phase → ${C.b(p)}`);
@@ -536,6 +547,24 @@ function mustTask(s, ref) {
   if (!t) die(`task not found: ${ref}`);
   return t;
 }
+// Is a passing adversarial review (P5) required to mark THIS task done right now?
+// Cadence-aware: per-task → always; milestone-boundary → only when this task closes its
+// milestone (degrades to no-gate if the task carries no milestone); phase-advance → enforced
+// at `chalk phase`, not at per-task done. Back-compat with the legacy review.required boolean.
+function reviewRequiredNow(store, task) {
+  const cadences = reviewCadences(store.protocol().review || {});
+  if (!cadences.length) return false;
+  if (cadences.includes('per-task')) return true;
+  if (cadences.includes('milestone-boundary') && task.milestone) {
+    const remaining = store.tasks().filter((t) => t.milestone === task.milestone && t.id !== task.id && t.state !== 'done');
+    if (!remaining.length) return true; // closing the milestone
+  }
+  return false;
+}
+// Tasks whose latest review isn't a pass (used by the phase-advance cadence gate).
+function unreviewed(store) {
+  return store.tasks().filter((t) => t.state !== 'todo' && (t.reviews || []).slice(-1)[0]?.verdict !== 'pass');
+}
 function printHelp() {
   console.log(`${C.b('chalk')} — Chalk Protocol CLI (v0)  ${C.dim('· read → work → verify → write')}
 
@@ -553,7 +582,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
   chalk verify                         ${C.dim('toolchain + test-integrity (P4/P6/P7)')}
-  chalk review <id>                    ${C.dim('GATE P5: adversarial reviewer (configured in chalk.json)')}
+  chalk review <id>                    ${C.dim('GATE P5: adversarial reviewer; cadence via review.requiredAt (per-task|milestone-boundary|phase-advance)')}
   chalk done <id> [--force-review --why "..."]   ${C.dim('GATE P4+P6(+P5): verify green, locks intact, review passed')}
   chalk amend-spec <id> --test <path> --why "..."   ${C.dim('gated test change (P6)')}
   chalk block <id> --needs <creds|decision|human-input|upstream> --reason "..."   ${C.dim('park; keep the run moving')}
