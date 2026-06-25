@@ -408,6 +408,32 @@ test('pipeline — idempotent review stage: a resumed sweep does NOT re-invoke t
   assert.equal(t.pipeline.stage, 'cleaned');
 });
 
+test('pipeline — a failed review blocks with the reviewer finding text and retries once before blocking', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  // Reviewer that RECORDS each invocation and ALWAYS blocks with a unique finding note.
+  const revCalls = join(d, 'rev-calls.txt');
+  writeFileSync(join(d, 'rev.mjs'), `import {appendFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} appendFileSync(${JSON.stringify(revCalls)}, 'x\\n'); console.log(JSON.stringify({verdict:'block',findings:[{severity:'high',area:'correctness',note:'UNIQUE_FINDING_TEXT'}]}));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; });
+
+  chalk(d, 'issue', 'pull');
+  const r = chalk(d, 'pipeline');
+  assert.equal(r.code, 2, 'pipeline exits 2 when it leaves a task blocked (it does not halt the whole run)');
+
+  const t = tasksOf(d)[0];
+  assert.equal(t.state, 'blocked', 'a failed review blocks the task');
+  assert.match(t.block.reason, /UNIQUE_FINDING_TEXT/, 'block reason surfaces the reviewer finding text');
+  assert.doesNotMatch(t.block.reason, /pipeline stage 'review' failed/, 'not the generic stage-failed reason');
+  // Retried once before auto-blocking → the reviewer was invoked twice.
+  const revCount = readFileSync(revCalls, 'utf8').trim().split('\n').filter(Boolean).length;
+  assert.equal(revCount, 2, 'review stage retried once before blocking');
+});
+
 test('board testArtifact — reads REAL run.json evidence + PR fields (one authoritative source)', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'p');
