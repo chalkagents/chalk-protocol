@@ -7,7 +7,7 @@ import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { currentRepo, branchExists, worktreeAdd, worktreeExists, worktreeRemove, gh } from '../lib/git.mjs';
+import { currentRepo, branchExists, worktreeAdd, worktreeExists, worktreeRemove, gh, changedPaths } from '../lib/git.mjs';
 import { dataUrlToPng, extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
@@ -65,6 +65,16 @@ test('git foundation — worktree add/exists/remove is idempotent; branchExists 
   worktreeRemove(d, { dir: wt, branch: 'feat/x' });
   assert.equal(worktreeExists(d, wt), false, 'worktree removed');
   assert.equal(branchExists(d, 'feat/x'), false, 'branch deleted');
+});
+
+test('git foundation — changedPaths does not mangle the first modified path (trim regression)', () => {
+  const d = repo();
+  const g = (a) => execSync(`git ${a}`, { cwd: d, stdio: 'pipe' });
+  writeFileSync(join(d, 'bin-file.js'), 'x'); g('add bin-file.js'); g('commit -m add');
+  writeFileSync(join(d, 'bin-file.js'), 'y');           // modify a tracked file (porcelain " M ...")
+  writeFileSync(join(d, 'test-file.js'), 'z');          // untracked ("?? ...")
+  const paths = changedPaths(d).sort();
+  assert.deepEqual(paths, ['bin-file.js', 'test-file.js'], 'first path keeps its leading char');
 });
 
 test('git foundation — gh() runs the BYO command and returns its stdout', () => {
