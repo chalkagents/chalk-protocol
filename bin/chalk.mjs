@@ -10,7 +10,8 @@ import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
-import { gh as runGh } from '../lib/git.mjs';
+import { gh as runGh, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
+import { basename } from 'node:path';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -210,6 +211,42 @@ const cmds = {
     }
     if (created) syncBrowser(s);
     ok(`pulled ${C.b(String(created))} new issue(s) ${C.dim(`(${issues.length - created} already tracked)`)}`);
+  },
+
+  // GitHub pipeline — create the feature branch + an isolated git worktree for a task.
+  branch({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const wt = s.protocol().worktree || {};
+    const gh0 = s.protocol().github || {};
+    const type = t.branchType || 'feat';
+    const slug = pipelineSlug(t.title);
+    t.branch = t.branch || `${type}/${t.issue?.number ? `${t.issue.number}-` : ''}${slug}`;
+    if (wt.enabled !== false) {
+      const repo = (currentRepo(s.root) || basename(s.root)).split('/').pop();
+      const dir = resolve(s.root, wt.dir || '..', `${repo}-${t.branch.replace(/\//g, '-')}`);
+      try { worktreeAdd(s.root, { dir, branch: t.branch, base: gh0.base || 'main' }); }
+      catch (e) { die(`worktree add failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+      t.worktree = dir;
+    } else {
+      t.worktree = s.root; // no isolation — work in the primary tree
+    }
+    t.pipeline = { ...(t.pipeline || {}), stage: 'branched', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Branched: ${t.branch}`, taskId: t.id });
+    ok(`branch ${C.b(t.branch)} ${C.dim(`· worktree ${t.worktree}`)}`);
+  },
+
+  // GitHub pipeline — remove a task's worktree and delete its local branch (idempotent).
+  cleanup({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
+    t.worktree = undefined;
+    t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Cleaned up: ${t.branch || t.title}`, taskId: t.id });
+    ok(`cleaned up ${C.dim(t.branch || t.id.slice(0, 12))}`);
   },
 
   status() {
@@ -608,6 +645,10 @@ function mustTask(s, ref) {
 function parseChecklist(body) {
   return (body.match(/^\s*[-*]\s*\[[ xX]\]\s+(.+)$/gm) || []).map((l) => l.replace(/^\s*[-*]\s*\[[ xX]\]\s+/, '').trim()).filter(Boolean);
 }
+// Branch-name slug: lowercase, non-alphanumeric → '-', trimmed, max ~4 words.
+function pipelineSlug(title) {
+  return (String(title || 'task').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').split('-').slice(0, 5).join('-')) || 'task';
+}
 // Is a passing adversarial review (P5) required to mark THIS task done right now?
 // Cadence-aware: per-task → always; milestone-boundary → only when this task closes its
 // milestone (degrades to no-gate if the task carries no milestone); phase-advance → enforced
@@ -643,6 +684,8 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk task add "<title>" [--milestone M] [--after <id>]   ${C.dim('queue work; --after sets a dep edge')}
   chalk backlog                        ${C.dim('ordered DAG by milestone (runnable/waiting/blocked)')}
   chalk issue pull [--state open] [--label L]   ${C.dim('import GitHub issues as tasks (BYO gh)')}
+  chalk branch <id>                    ${C.dim('create <type>/<issue>-<slug> branch + git worktree')}
+  chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}

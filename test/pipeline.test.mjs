@@ -99,3 +99,27 @@ test('issue pull — one task per open issue, criteria from checklist, idempoten
   assert.match(r.out, /pulled .*0.* new issue/);
   assert.equal(tasksOf(d).length, 2);
 });
+
+test('branch + cleanup — creates a <type>/<issue>-<slug> worktree, then tears it down', () => {
+  const d = repo();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add dark mode', url: 'u', body: '', labels: [{ name: 'enhancement' }] }]));`);
+  const wtbase = scratch(); // isolate worktrees here so parallel runs never collide
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+
+  assert.equal(chalk(d, 'branch', id).code, 0);
+  let t = tasksOf(d)[0];
+  assert.equal(t.branch, 'feat/7-add-dark-mode', 'branch is <type>/<issue>-<slug>');
+  assert.ok(t.worktree && existsSync(t.worktree), 'worktree dir exists');
+  assert.ok(existsSync(join(t.worktree, 'README.md')), 'worktree checked out the branch');
+  assert.equal(t.pipeline.stage, 'branched');
+  assert.ok(branchExists(d, 'feat/7-add-dark-mode'));
+
+  assert.equal(chalk(d, 'cleanup', id).code, 0);
+  t = tasksOf(d)[0];
+  assert.ok(!t.worktree, 'worktree cleared on task');
+  assert.equal(t.pipeline.stage, 'cleaned');
+  assert.equal(branchExists(d, 'feat/7-add-dark-mode'), false, 'local branch deleted');
+});
