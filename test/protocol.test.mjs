@@ -38,6 +38,15 @@ test('lessons — `chalk lesson` records to memory and it is injected into conte
   assert.match(ctx, /author a real test/, 'the lesson is injected into the agent context');
 });
 
+test('lesson list — prints a previously-added lesson', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'demo');
+  assert.equal(chalk(d, 'lesson', 'prefer reusing existing utilities').code, 0);
+  const r = chalk(d, 'lesson', 'list');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /prefer reusing existing utilities/);
+});
+
 test('decisions — prints logged decisions', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'demo');
