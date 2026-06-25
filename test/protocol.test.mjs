@@ -186,3 +186,34 @@ test('when:phase — verify defers the slow gate; audit runs it and gates phase 
   assert.equal(chalk(d, 'audit').code, 0, 'audit green once the phase build passes');
   assert.equal(chalk(d, 'phase', 'build').code, 0, 'phase advances on a green audit');
 });
+
+const PASS_REVIEWER = `import {readFileSync} from 'node:fs'; try{readFileSync(0,'utf8')}catch{} console.log(JSON.stringify({verdict:'pass',findings:[]}));`;
+
+test('review cadence — milestone-boundary gates only the task that closes the milestone', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  writeFileSync(join(d, 'rev.mjs'), PASS_REVIEWER);
+  conf(d, (o) => { o.verify.test = 'node -e "process.exit(0)"'; o.review = { command: 'node rev.mjs', requiredAt: ['milestone-boundary'] }; });
+  chalk(d, 'task', 'add', 'core A', '--milestone', 'core'); const a = tid(d, 0);
+  chalk(d, 'task', 'add', 'core B', '--milestone', 'core'); const b = tid(d, 1);
+  chalk(d, 'spec', a, '--criterion', 'x'); chalk(d, 'spec', b, '--criterion', 'y');
+  chalk(d, 'start', a);
+  assert.equal(chalk(d, 'done', a).code, 0, 'non-last task in the milestone: done needs no review');
+  chalk(d, 'start', b);
+  assert.equal(chalk(d, 'done', b).code, 1, 'last task in the milestone: done blocked until reviewed');
+  assert.equal(chalk(d, 'review', b).code, 0, 'review passes');
+  assert.equal(chalk(d, 'done', b).code, 0, 'done succeeds after the milestone review');
+});
+
+test('review cadence — phase-advance gates the seam, not per-task done; absent-cadence degrades', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  writeFileSync(join(d, 'rev.mjs'), PASS_REVIEWER);
+  conf(d, (o) => { o.verify.test = 'node -e "process.exit(0)"'; o.review = { command: 'node rev.mjs', requiredAt: ['phase-advance'] }; });
+  chalk(d, 'task', 'add', 'T'); const a = tid(d, 0);
+  chalk(d, 'spec', a, '--criterion', 'x'); chalk(d, 'start', a);
+  assert.equal(chalk(d, 'done', a).code, 0, 'per-task done needs no review under phase-advance');
+  assert.equal(chalk(d, 'phase', 'build').code, 1, 'phase blocked while a worked task is unreviewed');
+  assert.equal(chalk(d, 'review', a).code, 0, 'review the task');
+  assert.equal(chalk(d, 'phase', 'build').code, 0, 'phase advances once reviewed');
+});
