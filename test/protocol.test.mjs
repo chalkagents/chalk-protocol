@@ -217,3 +217,45 @@ test('review cadence — phase-advance gates the seam, not per-task done; absent
   assert.equal(chalk(d, 'review', a).code, 0, 'review the task');
   assert.equal(chalk(d, 'phase', 'build').code, 0, 'phase advances once reviewed');
 });
+
+test('run — drives runnable tasks to done in dependency order; --dry-run is side-effect-free', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  // executor reads the context (ignored) and writes the impl that makes verify pass.
+  writeFileSync(join(d, 'exec.mjs'), `import {readFileSync,writeFileSync} from 'node:fs'; try{readFileSync(0,'utf8')}catch{} writeFileSync('impl.txt','ok');`);
+  writeFileSync(join(d, 'check.mjs'), `import {existsSync} from 'node:fs'; process.exit(existsSync('impl.txt')?0:1);`);
+  conf(d, (o) => { o.verify.test = 'node check.mjs'; o.executor = { command: 'node exec.mjs' }; });
+  chalk(d, 'task', 'add', 'A first'); const a = tid(d, 0);
+  chalk(d, 'task', 'add', 'B after A', '--after', a); const b = tid(d, 1);
+  chalk(d, 'spec', a, '--criterion', 'x');
+  chalk(d, 'spec', b, '--criterion', 'y');
+  // dry-run lists only the dependency-free task and changes nothing.
+  const tasksPath = join(d, '.chalk/tasks.json');
+  const before = readFileSync(tasksPath, 'utf8');
+  const dry = chalk(d, 'run', '--dry-run');
+  assert.ok(/dry-run/i.test(dry.out) && dry.out.includes('A first'), 'dry-run prints the planned order');
+  assert.equal(readFileSync(tasksPath, 'utf8'), before, 'dry-run is side-effect-free');
+  // real run drives both to done.
+  assert.equal(chalk(d, 'run', '--max', '5').code, 0);
+  const tasks = JSON.parse(readFileSync(tasksPath, 'utf8'));
+  assert.ok(tasks.every((t) => t.state === 'done'), 'run drove every task to done');
+});
+
+test('run — auto-blocks a task the executor cannot make green; degrades without an executor', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  writeFileSync(join(d, 'exec.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0,'utf8')}catch{}`); // does nothing
+  conf(d, (o) => { o.verify.test = 'node -e "process.exit(1)"'; o.executor = { command: 'node exec.mjs' }; });
+  chalk(d, 'task', 'add', 'T'); const a = tid(d, 0);
+  chalk(d, 'spec', a, '--criterion', 'x');
+  chalk(d, 'run', '--max', '3');
+  const t = () => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'))[0];
+  assert.equal(t().state, 'blocked', 'task auto-blocked when verify stays red after the executor');
+  assert.equal(t().block.needs, 'human-input', 'blocked with needs: human-input');
+  // No executor → run degrades to the manual loop and exits 0.
+  conf(d, (o) => { o.executor = { command: '' }; });
+  chalk(d, 'unblock', a);
+  const r = chalk(d, 'run');
+  assert.equal(r.code, 0, 'no executor → run exits 0');
+  assert.ok(/no executor|manual loop/i.test(r.out), 'run prints the manual fallback');
+});
