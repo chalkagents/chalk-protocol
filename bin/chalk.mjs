@@ -2,7 +2,7 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -10,6 +10,12 @@ import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
+import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
+import { runSpecs } from '../lib/e2e.mjs';
+import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
+import { runPipeline } from '../lib/pipeline.mjs';
+import { basename } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -175,6 +181,221 @@ const cmds = {
     process.exit(r.stopped === 'blocked' ? 2 : 0);
   },
 
+  // GitHub pipeline — pull open issues into the backlog as tasks (one task per issue, idempotent).
+  issue({ _, flags }) {
+    const s = Store.open();
+    const sub = _[0];
+    const ghCfg = s.protocol().github || {};
+    if (sub !== 'pull') die('usage: chalk issue pull [--state open] [--label L] [--limit N]');
+    const fields = 'number,title,body,labels,url';
+    const labelArg = flags.label ? ` --label ${flags.label}` : '';
+    let raw;
+    try {
+      raw = runGh(s.root, ghCfg.command, `issue list --state ${flags.state || 'open'} --json ${fields} --limit ${flags.limit || 50}${labelArg}`);
+    } catch (e) {
+      die(`gh issue list failed — is \`${ghCfg.command || 'gh'}\` installed and authed for this repo?\n  ${String(e.message).split('\n').slice(-3).join('\n  ')}`);
+    }
+    const issues = JSON.parse(raw || '[]');
+    const existing = new Set(s.tasks().map((t) => t.issue?.number).filter(Boolean));
+    let created = 0;
+    for (const iss of issues) {
+      if (existing.has(iss.number)) continue;
+      const labels = (iss.labels || []).map((l) => l.name);
+      const branchType = labels.map((n) => ghCfg.labelType?.[n]).find(Boolean) || 'feat';
+      const criteria = parseChecklist(iss.body || '').map((text) => ({ text }));
+      const t = {
+        id: id('task'), title: iss.title, state: criteria.length ? 'specd' : 'todo',
+        acceptanceCriteria: criteria, tests: [], heldOut: [], after: [],
+        issue: { number: iss.number, url: iss.url, body: iss.body || '' }, branchType, labels,
+        pipeline: { stage: 'selected', at: now() }, createdAt: now(), reviews: [],
+      };
+      s.upsertTask(t); created++;
+      s.emitUpdate({ type: 'work-item-started', title: `Imported issue #${iss.number}: ${iss.title}`, taskId: t.id });
+      console.log(`  ${C.g('+')} #${iss.number} ${iss.title} ${C.dim(`[${t.state}] → ${branchType}/${iss.number}-…`)}`);
+    }
+    if (created) syncBrowser(s);
+    ok(`pulled ${C.b(String(created))} new issue(s) ${C.dim(`(${issues.length - created} already tracked)`)}`);
+  },
+
+  // GitHub pipeline — create the feature branch + an isolated git worktree for a task.
+  branch({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const wt = s.protocol().worktree || {};
+    const gh0 = s.protocol().github || {};
+    const type = t.branchType || 'feat';
+    const slug = pipelineSlug(t.title);
+    t.branch = t.branch || `${type}/${t.issue?.number ? `${t.issue.number}-` : ''}${slug}`;
+    if (wt.enabled !== false) {
+      const repo = (currentRepo(s.root) || basename(s.root)).split('/').pop();
+      const dir = resolve(s.root, wt.dir || '..', `${repo}-${t.branch.replace(/\//g, '-')}`);
+      try { worktreeAdd(s.root, { dir, branch: t.branch, base: gh0.base || 'main' }); }
+      catch (e) { die(`worktree add failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+      t.worktree = dir;
+    } else {
+      t.worktree = s.root; // no isolation — work in the primary tree
+    }
+    t.pipeline = { ...(t.pipeline || {}), stage: 'branched', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Branched: ${t.branch}`, taskId: t.id });
+    ok(`branch ${C.b(t.branch)} ${C.dim(`· worktree ${t.worktree}`)}`);
+  },
+
+  // GitHub pipeline — conventional commit of the executor's changes in the task's worktree.
+  // Stages specific code paths only (never `git add -A`, never the spine state).
+  commit({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const wd = workdir(s, t);
+    const paths = changedPaths(wd).filter((p) => !p.startsWith('.chalk/') || p.startsWith('.chalk/evidence/'));
+    if (!paths.length) die('nothing to commit — the executor made no file changes in the worktree.');
+    const type = t.branchType || 'feat';
+    const desc = (t.title || 'update').replace(/^./, (c) => c.toLowerCase()).slice(0, 60);
+    const subject = `${type}: ${desc}`;
+    gitAdd(wd, paths);
+    gitCommit(wd, [subject, t.issue?.number ? `Closes #${t.issue.number}` : '']);
+    t.pipeline = { ...(t.pipeline || {}), stage: 'committed', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'work-item-submitted', title: `Committed: ${subject}`, taskId: t.id });
+    ok(`committed ${C.dim(`${paths.length} file(s)`)} — ${C.b(subject)}`);
+  },
+
+  // GitHub pipeline — push the branch and open a PR (conventional title + Summary/Changes/Test-plan).
+  pr({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const gh0 = s.protocol().github || {};
+    const wd = workdir(s, t);
+    if (!t.branch) die('no branch — run `chalk branch <id>` first.');
+    try { runGit(wd, `push -u origin ${t.branch}`); } catch (e) { die(`git push failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+    const type = t.branchType || 'feat';
+    const title = `${type}: ${(t.title || '').replace(/^./, (c) => c.toLowerCase())}`;
+    const body = [
+      '## Summary', `- ${t.title}${t.issue?.number ? ` (closes #${t.issue.number})` : ''}`, '',
+      '## Changes', ...(t.acceptanceCriteria || []).map((c) => `- ${c.text}`), '',
+      '## Test plan', '- `chalk verify` green (toolchain + integrity + e2e)',
+      t.issue?.number ? `\nCloses #${t.issue.number}` : '',
+    ].join('\n');
+    // Quote each label — GitHub label names are attacker-controlled (from the issue) and may
+    // contain shell metacharacters; an unquoted value would be command injection in an unattended run.
+    const labels = (t.labels || []).map((l) => `--label ${shq(l)}`).join(' ');
+    let out;
+    try { out = runGh(wd, gh0.command, `pr create --base ${gh0.base || 'main'} --head ${t.branch} --title ${shq(title)} --body ${shq(body)} ${labels}`); }
+    catch (e) { die(`gh pr create failed: ${String(e.message).split('\n').slice(-3).join('\n  ')}`); }
+    const url = (out.match(/https?:\/\/\S+\/pull\/\d+/) || [out.trim()])[0];
+    const number = Number((url.match(/\/pull\/(\d+)/) || [])[1]) || undefined;
+    t.pr = { number, url };
+    t.pipeline = { ...(t.pipeline || {}), stage: 'pr-open', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'work-item-submitted', title: `PR #${number || '?'} opened`, taskId: t.id });
+    ok(`PR ${C.b('#' + (number || '?'))} ${C.dim(url)}`);
+  },
+
+  // GitHub pipeline — start (if needed) + run the executor in the worktree + verify. exit 2 RED.
+  work({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    if (t.state === 'todo' || t.state === 'specd') {
+      if (!((t.acceptanceCriteria || []).length || (t.tests || []).length)) die('GATE P1: task has no acceptance criteria.');
+      t.state = 'in-progress'; t.startedAt = now(); s.upsertTask(t);
+    }
+    if (t.state !== 'in-progress') die(`task is [${t.state}], not workable.`);
+    const ex = s.protocol().executor?.command;
+    if (ex) { try { execSync(ex, { cwd: workdir(s, t), input: buildContext(s, t), stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); } catch { /* gate decides */ } }
+    const v = runVerify(s, { cwd: workdir(s, t) });
+    if (!v.green) { console.error(C.r('✗ ') + 'verify RED after work — gate closed.'); process.exit(2); }
+    t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Worked + verified: ${t.title}`, taskId: t.id });
+    ok(`worked ${C.b(t.title)} — verify green ✓`);
+  },
+
+  // GitHub pipeline — gated squash-merge + cleanup + done. The GATES are the only safety:
+  // verify green ∧ (if required) review pass ∧ (if required) held-out audit green.
+  merge({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const gh0 = s.protocol().github || {};
+    // Must be in-progress: verify only checks integrity (P6) + e2e (P4) for in-progress tasks, so
+    // merging a done/specd/blocked task would vacuously pass those gates. Require it explicitly.
+    if (t.state !== 'in-progress') die(`merge requires an in-progress, verified task (this is [${t.state}]).`);
+    if (!t.pr?.number) die('no PR — run `chalk pr <id>` first.');
+    if (!runVerify(s, { cwd: workdir(s, t) }).green) die('GATE: verify is not green — cannot merge.');
+    if (reviewRequiredNow(s, t) && !((t.reviews || []).slice(-1)[0]?.verdict === 'pass')) die('GATE P5: a passing review is required before merge.');
+    const reg = s.protocol().regression;
+    if (reg?.required && !(reg.lastAudit && reg.lastAudit.green)) die('GATE P7: held-out audit is not green — run `chalk audit`.');
+    try { runGh(workdir(s, t), gh0.command, `pr merge ${t.pr.number} --${gh0.mergeMethod || 'squash'} --delete-branch`); }
+    catch (e) { die(`gh pr merge failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+    // Sync the primary base branch (best-effort) then tear down the worktree + local branch. A
+    // failure here is non-fatal (the remote is source of truth) but is surfaced, not swallowed.
+    try { runGit(s.root, `checkout ${gh0.base || 'main'}`); runGit(s.root, 'pull --ff-only'); }
+    catch { console.log(C.y(`  ⚠ couldn't fast-forward ${gh0.base || 'main'} locally — pull it manually (the remote is up to date).`)); }
+    worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
+    t.worktree = undefined; t.state = 'done'; t.doneAt = now();
+    t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'work-item-accepted', title: `Merged + cleaned: PR #${t.pr.number}`, taskId: t.id });
+    ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓`);
+  },
+
+  // GitHub pipeline — the unattended driver: walk every issue-backed task issue→merge, blocking
+  // on any gate failure and continuing to the next. The safety is the gates, not a human.
+  pipeline({ flags }) {
+    const s = Store.open();
+    const r = runPipeline(s, process.argv[1], { max: Number(flags.max || 20), dryRun: flags['dry-run'] === true, log: (m) => console.log(C.dim(m)) });
+    if (r.dryRun) { console.log(C.dim(`  (${r.planned.length} task(s) planned — dry run, no changes)`)); return; }
+    syncBrowser(s);
+    console.log('\n' + C.b('chalk pipeline · summary'));
+    console.log(`  ${C.g(`✓ ${r.merged.length} merged`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim('(gates are the safety)')}`);
+    process.exit(r.blocked.length ? 2 : 0);
+  },
+
+  // GitHub pipeline — run the task's browser specs, attach step screenshots to the PR as
+  // commit-SHA blob URLs (survive squash-merge + branch deletion). stage→tested.
+  evidence({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const gh0 = s.protocol().github || {};
+    const wd = workdir(s, t);
+    if (!t.pr?.number) die('no PR — run `chalk pr <id>` first.');
+    const specPaths = (t.tests || []).map((x) => x.path).filter((p) => p.endsWith('.test.yaml'));
+    const results = runSpecs(s, wd, specPaths);
+    const evDir = `.chalk/evidence/${t.issue?.number || t.id.slice(0, 12)}`;
+    const imgs = [];
+    for (const r of results) {
+      try { imgs.push(...extractScreenshots(wd, evDir, JSON.parse(readFileSync(join(wd, r.runDir, 'run.json'), 'utf8')))); } catch { /* no screenshots */ }
+    }
+    if (imgs.length) {
+      gitAdd(wd, imgs);
+      gitCommit(wd, ['test(evidence): attach run screenshots']);
+      try { runGit(wd, 'push'); } catch { /* offline / no upstream — body still composes from local SHA */ }
+      const sha = runGit(wd, 'rev-parse HEAD');
+      let body = '';
+      try { body = runGh(wd, gh0.command, `pr view ${t.pr.number} --json body -q .body`); } catch { /* keep empty */ }
+      try { runGh(wd, gh0.command, `pr edit ${t.pr.number} --body ${shq(body + evidenceMarkdown(currentRepo(s.root) || '', sha, imgs))}`); }
+      catch (e) { die(`gh pr edit failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+      t.evidence = imgs;
+    }
+    const failed = results.filter((r) => r.status !== 'passed').length;
+    t.pipeline = { ...(t.pipeline || {}), stage: 'tested', at: now() };
+    s.upsertTask(t);
+    s.emitUpdate({ type: 'progress-update', title: `Evidence attached (${imgs.length} screenshot(s))`, taskId: t.id });
+    if (failed) console.log(C.y(`  ⚠ ${failed} spec(s) failed`));
+    ok(`evidence: ${C.b(String(imgs.length))} screenshot(s) → PR #${t.pr.number}`);
+  },
+
+  // GitHub pipeline — remove a task's worktree and delete its local branch (idempotent).
+  cleanup({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
+    t.worktree = undefined;
+    t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Cleaned up: ${t.branch || t.title}`, taskId: t.id });
+    ok(`cleaned up ${C.dim(t.branch || t.id.slice(0, 12))}`);
+  },
+
   status() {
     const s = Store.open();
     const m = s.meta();
@@ -316,8 +537,9 @@ const cmds = {
 
   verify() {
     const s = Store.open();
-    const v = runVerify(s);
-    console.log(C.b('Verify') + '\n');
+    const wip = s.tasks().find((t) => t.state === 'in-progress');
+    const v = runVerify(s, { cwd: workdir(s, wip) });
+    console.log(C.b('Verify') + (wip?.worktree ? C.dim(`  · in worktree ${wip.worktree}`) : '') + '\n');
     for (const r of v.toolchain) {
       const tag = r.status === 'pass' ? C.g('pass') : r.status === 'fail' ? C.r('fail') : r.status === 'deferred' ? C.y('defer') : C.dim('skip');
       const note = r.status === 'deferred' ? C.dim(`  (${r.cmd})  ${C.y('runs at chalk audit')}`) : (r.cmd ? C.dim(`  (${r.cmd})`) : C.dim('  (not configured)'));
@@ -328,6 +550,7 @@ const cmds = {
       console.log('\n' + C.r('  test-integrity VIOLATED (P6):'));
       for (const i of v.integrity) for (const b of i.broken) console.log(`    ${C.r('✗')} ${b.path} changed under task ${i.taskId.slice(0, 12)} — use \`chalk amend-spec\``);
     }
+    for (const r of v.e2e || []) console.log(`  ${r.status === 'passed' ? C.g('pass') : C.r('fail')}  ${C.dim('e2e')} ${r.path} ${C.dim(`→ ${r.runDir}`)}`);
     console.log('\n' + (v.green ? C.g('● GREEN — done gate is open') : C.r('● RED — done gate is closed')));
     process.exit(v.green ? 0 : 2);
   },
@@ -337,11 +560,12 @@ const cmds = {
     const s = Store.open();
     const t = mustTask(s, _[0]);
     if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
-    const v = runVerify(s);
+    const v = runVerify(s, { cwd: workdir(s, t) });
     if (!v.green) {
       const reasons = [];
       if (!v.toolchainGreen) reasons.push('toolchain not green (run `chalk verify`)');
       if (!v.integrityGreen) reasons.push('locked tests were modified (P6) — use `chalk amend-spec`');
+      if (!v.e2eGreen) reasons.push('a browser-spec (e2e) check failed');
       die(`GATE P4+P6: cannot mark done — ${reasons.join('; ')}.`);
     }
     // GATE P5 — if review is required for this task (per the configured cadence), the latest
@@ -567,6 +791,16 @@ function mustTask(s, ref) {
   if (!t) die(`task not found: ${ref}`);
   return t;
 }
+// Pull `- [ ] item` / `- [x] item` checklist lines from an issue body → acceptance criteria.
+function parseChecklist(body) {
+  return (body.match(/^\s*[-*]\s*\[[ xX]\]\s+(.+)$/gm) || []).map((l) => l.replace(/^\s*[-*]\s*\[[ xX]\]\s+/, '').trim()).filter(Boolean);
+}
+// Shell single-quote (for titles/bodies passed to gh).
+function shq(s) { return `'${String(s).replace(/'/g, `'\\''`)}'`; }
+// Branch-name slug: lowercase, non-alphanumeric → '-', trimmed, max ~4 words.
+function pipelineSlug(title) {
+  return (String(title || 'task').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').split('-').slice(0, 5).join('-')) || 'task';
+}
 // Is a passing adversarial review (P5) required to mark THIS task done right now?
 // Cadence-aware: per-task → always; milestone-boundary → only when this task closes its
 // milestone (degrades to no-gate if the task carries no milestone); phase-advance → enforced
@@ -601,6 +835,15 @@ ${C.b('setup')}
 ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental is met)')}
   chalk task add "<title>" [--milestone M] [--after <id>]   ${C.dim('queue work; --after sets a dep edge')}
   chalk backlog                        ${C.dim('ordered DAG by milestone (runnable/waiting/blocked)')}
+  chalk issue pull [--state open] [--label L]   ${C.dim('import GitHub issues as tasks (BYO gh)')}
+  chalk branch <id>                    ${C.dim('create <type>/<issue>-<slug> branch + git worktree')}
+  chalk commit <id>                    ${C.dim('conventional commit of the worktree changes (Closes #issue)')}
+  chalk pr <id>                        ${C.dim('push the branch + open a PR (gh)')}
+  chalk evidence <id>                  ${C.dim('run specs + attach screenshots to the PR (blob-SHA URLs)')}
+  chalk work <id>                      ${C.dim('run the executor in the worktree + verify (P4)')}
+  chalk merge <id>                     ${C.dim('GATED squash-merge + cleanup + done')}
+  chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
+  chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
