@@ -301,6 +301,25 @@ const cmds = {
     ok(`PR ${C.b('#' + (number || '?'))} ${C.dim(url)}`);
   },
 
+  // Planning stage — a read-only planner agent surveys the code, picks the best approach, and emits
+  // a plan stored on the task (injected into the executor's context). Advisory; the gates still decide.
+  plan({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const cmd = s.protocol().planner?.command;
+    if (!cmd) die('no planner configured (protocol.planner.command).');
+    let out = '';
+    try { out = execSync(withRunner(s.protocol().runner, cmd), { cwd: workdir(s, t), input: buildContext(s, t), encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 10 * 60 * 1000 }); }
+    catch (e) { out = `${e.stdout || ''}`; }
+    const planText = out.trim();
+    if (!planText) die('planner produced no plan.');
+    t.plan = planText.slice(0, 8000);
+    t.pipeline = { ...(t.pipeline || {}), stage: 'planned', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'planning-generated', title: `Planned: ${t.title}`, taskId: t.id });
+    ok(`plan ready ${C.dim(`(${planText.split('\n').length} lines)`)} ${C.dim('→ the executor will implement it')}`);
+  },
+
   // GitHub pipeline — start (if needed) + run the executor in the worktree + verify. exit 2 RED.
   work({ _ }) {
     const s = Store.open();
@@ -913,6 +932,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk commit <id>                    ${C.dim('conventional commit of the worktree changes (Closes #issue)')}
   chalk pr <id>                        ${C.dim('push the branch + open a PR (gh)')}
   chalk evidence <id>                  ${C.dim('run specs + attach screenshots to the PR (blob-SHA URLs)')}
+  chalk plan <id>                      ${C.dim('read-only planner picks the approach → task.plan (BYO planner)')}
   chalk work <id>                      ${C.dim('run the executor in the worktree + verify (P4)')}
   chalk merge <id>                     ${C.dim('GATED squash-merge + cleanup + done')}
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}

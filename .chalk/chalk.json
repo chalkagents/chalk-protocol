@@ -30,6 +30,9 @@
     },
     "executor": {
       "command": "claude -p --agent chalk-executor --permission-mode acceptEdits"
+    },
+    "planner": {
+      "command": "claude -p --agent chalk-planner --max-turns 30"
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",

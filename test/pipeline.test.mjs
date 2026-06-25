@@ -434,6 +434,24 @@ test('autopilot — aborts when not ready, runs one sweep when reviewer-gated, s
   assert.match(r.out, /in progress — skipping/);
 });
 
+test('plan stage — the planner output is stored on the task and injected into context', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  // stub planner: ignores stdin, prints a plan to stdout.
+  writeFileSync(join(d, 'planner.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log('**Approach:** add the flag\\n**Steps:** 1. edit bin\\n**Test:** asserts the flag');`);
+  conf(d, (o) => { o.planner = { command: `node ${join(d, 'planner.mjs')}` }; });
+  chalk(d, 'task', 'add', 'add a flag');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'spec', id, '--criterion', 'the flag works');
+  chalk(d, 'start', id);
+
+  assert.equal(chalk(d, 'plan', id).code, 0);
+  const t = tasksOf(d)[0];
+  assert.match(t.plan, /Approach:.*add the flag/, 'plan stored on the task');
+  assert.equal(t.pipeline.stage, 'planned');
+  assert.match(chalk(d, 'context', id).out, /Plan \(implement this/, 'plan injected into the executor context');
+});
+
 test('pipeline --dry-run — plans without touching anything', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');
@@ -443,7 +461,7 @@ test('pipeline --dry-run — plans without touching anything', () => {
   const before = readFileSync(join(d, '.chalk/tasks.json'), 'utf8');
   const r = chalk(d, 'pipeline', '--dry-run');
   assert.equal(r.code, 0);
-  assert.match(r.out, /branch → work → commit → pr → review → evidence → merge/);
+  assert.match(r.out, /branch → plan → work → commit → pr → review → evidence → merge/);
   assert.equal(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'), before, 'dry-run is side-effect-free');
 });
 
