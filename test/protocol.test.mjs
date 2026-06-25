@@ -141,3 +141,26 @@ test('backlog/DAG — next honors --after deps; backlog groups by milestone', ()
   const bl = chalk(d, 'backlog').out;
   assert.ok(bl.includes('core') && /after A first/.test(bl), 'backlog groups by milestone and shows the dep edge');
 });
+
+test('presets + runner — init fills verify; runner prefixes gate commands; auto-detect', () => {
+  const readProto = (d) => JSON.parse(readFileSync(join(d, '.chalk/chalk.json'), 'utf8')).protocol;
+  // Explicit preset fills verify defaults.
+  const d1 = scratch();
+  assert.equal(chalk(d1, 'init', '--name', 'd', '--preset', 'node').code, 0);
+  assert.equal(readProto(d1).verify.test, 'node --test', 'node preset sets the test gate');
+  // Auto-detect from a marker file (bare --preset).
+  const d2 = scratch();
+  writeFileSync(join(d2, 'package.json'), '{}');
+  chalk(d2, 'init', '--name', 'd', '--preset');
+  assert.equal(readProto(d2).verify.test, 'node --test', 'bare --preset auto-detects node from package.json');
+  // Runner prefixes the gate command at verify time. Use a runner that turns the command into a pass.
+  const d3 = scratch();
+  chalk(d3, 'init', '--name', 'd', '--runner', 'node');
+  writeFileSync(join(d3, 'ok.mjs'), "process.exit(0);");
+  conf(d3, (o) => { o.verify.test = 'ok.mjs'; }); // becomes `node ok.mjs` once prefixed
+  assert.equal(chalk(d3, 'verify').code, 0, 'runner prefix makes `ok.mjs` run as `node ok.mjs`');
+  // No preset → empty defaults preserved (back-compat).
+  const d4 = scratch();
+  chalk(d4, 'init', '--name', 'd');
+  assert.equal(readProto(d4).verify.test, '', 'no preset leaves verify empty');
+});
