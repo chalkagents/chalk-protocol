@@ -884,7 +884,7 @@ const cmds = {
   // stops repeating mistakes. The `retro` stage appends these programmatically too.
   lesson({ _, flags }) {
     const s = Store.open();
-    if (_[0] === 'list') {
+    if (_[0] === 'list' && _.length === 1) {
       const lessons = s.lessons(1000);
       if (!lessons.length) { console.log(C.dim('no lessons recorded yet.')); return; }
       for (const l of lessons) console.log(l);
