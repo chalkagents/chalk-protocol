@@ -226,6 +226,22 @@ test('commit + pr — conventional commit in the worktree, then push + gh pr cre
   assert.match(execSync('git branch -a', { cwd: wt, encoding: 'utf8' }), /feat\/5-add-feature/);
 });
 
+test('commit — does not double a conventional prefix already in the issue title', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{number:8,title:'feat: add thing',url:'u',body:'',labels:[{name:'enhancement'}]}]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id);
+  const wt = tasksOf(d)[0].worktree;
+  writeFileSync(join(wt, 'x.js'), 'x\n');
+  chalk(d, 'commit', id);
+  const subject = execSync('git log -1 --format=%s', { cwd: wt, encoding: 'utf8' }).trim();
+  assert.equal(subject, 'feat: add thing', 'single conventional prefix, not "feat: feat: …"');
+});
+
 test('pr — a malicious GitHub label name cannot inject shell commands', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');
