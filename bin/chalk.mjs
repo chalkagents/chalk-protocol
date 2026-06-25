@@ -9,6 +9,7 @@ import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '..
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
+import { runDriver } from '../lib/run.mjs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -147,6 +148,33 @@ const cmds = {
       console.log('\n' + C.y('  ⚠ nothing is runnable — check for a dependency cycle or a blocked upstream task.'));
   },
 
+  // The unattended driver loop (P0 #2). Pulls runnable tasks and drives each through a BYO
+  // executor (protocol.executor.command) → verify → review → done, auto-blocking anything the
+  // executor can't make green so the run keeps moving. The gates still decide; this just removes
+  // the turn boundaries between tasks.
+  run({ flags }) {
+    const s = Store.open();
+    const until = flags.until === 'blocked' ? 'blocked' : 'empty';
+    const max = Number(flags.max || 50);
+    const r = runDriver(s, { until, max, dryRun: flags['dry-run'] === true, reviewRequiredNow, log: (m) => console.log(C.dim('  ' + m)) });
+    if (r.dryRun) {
+      console.log(C.b('chalk run · dry-run — planned order'));
+      if (!r.planned.length) console.log(C.dim('  (nothing runnable right now)'));
+      r.planned.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}${t.milestone ? C.dim(` · ${t.milestone}`) : ''} ${C.dim(t.id.slice(0, 12))}`));
+      return;
+    }
+    if (r.degraded) {
+      console.log(C.y('  no executor configured (protocol.executor.command) — falling back to the manual loop:') + '\n');
+      cmds.next();
+      return;
+    }
+    syncBrowser(s);
+    console.log('\n' + C.b('chalk run · summary'));
+    console.log(`  ${C.g(`✓ ${r.completed.length} done`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim(`(${r.iterations} iteration(s), stopped: ${r.stopped})`)}`);
+    if (r.blocked.length) console.log(C.dim('  run `chalk next` / `chalk status` to see what each blocked task needs.'));
+    process.exit(r.stopped === 'blocked' ? 2 : 0);
+  },
+
   status() {
     const s = Store.open();
     const m = s.meta();
@@ -170,26 +198,11 @@ const cmds = {
   },
 
   // P3 — context over procedure: surface the spec slice + at-risk tests, not a TDD lecture.
+  // Shares buildContext() with the `chalk run` executor so both see identical text.
   context({ _ }) {
     const s = Store.open();
-    const m = s.meta();
     const t = _[0] ? mustTask(s, _[0]) : null;
-    console.log(`# Chalk context — ${m.project.name} (phase: ${m.protocol?.phase})\n`);
-    console.log(`## Spec\n${s.spec().trim()}\n`);
-    if (t) {
-      console.log(`## Current task — ${t.title}  [${t.state}]\n`);
-      console.log('### Acceptance criteria (the contract — make these pass)');
-      (t.acceptanceCriteria || []).forEach((c, i) => console.log(`  ${i + 1}. ${c.text}`));
-      if (!(t.acceptanceCriteria || []).length) console.log(C.dim('  (none yet — add with `chalk spec`)'));
-      console.log('\n### Tests at risk for this change (READ-ONLY — do not edit; use `chalk amend-spec`)');
-      if ((t.tests || []).length) t.tests.forEach((x) => console.log(`  - ${x.path}`));
-      else console.log(C.dim('  (no locked tests)'));
-    }
-    const reg = m.protocol?.regression;
-    if (reg?.tests?.length) console.log(`\n## Held-out regression\n${reg.tests.length} locked file(s) under ${reg.dir} — you may NOT read or edit them. They run in \`chalk audit\`; on failure you learn only WHICH criterion regressed. Fix against the spec.`);
-    const openQ = s.questions().filter((q) => q.status !== 'resolved');
-    if (openQ.length) { console.log('\n## Open questions'); openQ.forEach((q) => console.log(`  - ${q.question} (→ ${q.awaitingFrom})`)); }
-    console.log('\n## Contract\nread → start (needs criteria) → work → `chalk verify` (must be green) → `chalk done`.\nTests are read-only. Do not self-declare done; the verify gate decides.');
+    console.log(buildContext(s, t));
   },
 
   // Bridge to Chalk Browser — project tasks.json into BOTH canonical Browser views:
@@ -579,6 +592,7 @@ ${C.b('setup')}
 ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental is met)')}
   chalk task add "<title>" [--milestone M] [--after <id>]   ${C.dim('queue work; --after sets a dep edge')}
   chalk backlog                        ${C.dim('ordered DAG by milestone (runnable/waiting/blocked)')}
+  chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
   chalk verify                         ${C.dim('toolchain + test-integrity (P4/P6/P7)')}
