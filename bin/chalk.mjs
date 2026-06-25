@@ -234,8 +234,15 @@ const cmds = {
       const title = _.slice(1).join(' ') || flags.title;
       if (!title) die('usage: chalk task add "<title>"');
       const milestone = flags.milestone ? String(flags.milestone) : undefined;
-      const after = arr(flags.after).map(String);
-      for (const ref of after) if (!resolveRef(s.tasks(), ref)) die(`--after: no such task: ${ref}`);
+      // Resolve each --after ref to a FULL task id now (reject ambiguous prefixes), so the stored
+      // dependency edge can't later bind to the wrong task as more tasks are added.
+      const after = arr(flags.after).map(String).map((ref) => {
+        const exact = s.tasks().find((t) => t.id === ref);
+        const matches = s.tasks().filter((t) => t.id.startsWith(ref));
+        if (!exact && !matches.length) die(`--after: no such task: ${ref}`);
+        if (!exact && matches.length > 1) die(`--after: ambiguous task ref "${ref}" — use a longer id`);
+        return (exact || matches[0]).id;
+      });
       const t = { id: id('task'), title, state: 'todo', acceptanceCriteria: [], tests: [], heldOut: [], milestone, after, createdAt: now(), reviews: [] };
       s.upsertTask(t);
       s.emitUpdate({ type: 'work-item-started', title: `Task created: ${title}`, taskId: t.id });
@@ -574,9 +581,11 @@ function reviewRequiredNow(store, task) {
   }
   return false;
 }
-// Tasks whose latest review isn't a pass (used by the phase-advance cadence gate).
+// Worked tasks whose latest review isn't a pass (used by the phase-advance cadence gate).
+// Only in-progress/done tasks count — todo/specd were never worked, and a `blocked` task is
+// parked on a human dependency (creds/upstream) and isn't reviewable, so it must not wedge the gate.
 function unreviewed(store) {
-  return store.tasks().filter((t) => t.state !== 'todo' && (t.reviews || []).slice(-1)[0]?.verdict !== 'pass');
+  return store.tasks().filter((t) => (t.state === 'in-progress' || t.state === 'done') && (t.reviews || []).slice(-1)[0]?.verdict !== 'pass');
 }
 function printHelp() {
   console.log(`${C.b('chalk')} — Chalk Protocol CLI (v0)  ${C.dim('· read → work → verify → write')}

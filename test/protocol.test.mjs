@@ -215,7 +215,11 @@ test('review cadence — phase-advance gates the seam, not per-task done; absent
   assert.equal(chalk(d, 'done', a).code, 0, 'per-task done needs no review under phase-advance');
   assert.equal(chalk(d, 'phase', 'build').code, 1, 'phase blocked while a worked task is unreviewed');
   assert.equal(chalk(d, 'review', a).code, 0, 'review the task');
-  assert.equal(chalk(d, 'phase', 'build').code, 0, 'phase advances once reviewed');
+  // A task parked on a human dependency must NOT wedge the phase-advance review gate.
+  chalk(d, 'task', 'add', 'needs creds'); const b = tid(d, 1);
+  chalk(d, 'spec', b, '--criterion', 'z'); chalk(d, 'start', b);
+  chalk(d, 'block', b, '--needs', 'creds', '--reason', 'firebase');
+  assert.equal(chalk(d, 'phase', 'build').code, 0, 'blocked task does not gate phase-advance; advances once worked tasks reviewed');
 });
 
 test('run — drives runnable tasks to done in dependency order; --dry-run is side-effect-free', () => {
