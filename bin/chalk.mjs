@@ -2,7 +2,7 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef, workdir } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -13,6 +13,7 @@ import { runDriver } from '../lib/run.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
 import { runSpecs } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
+import { runPipeline } from '../lib/pipeline.mjs';
 import { basename } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -286,6 +287,60 @@ const cmds = {
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-submitted', title: `PR #${number || '?'} opened`, taskId: t.id });
     ok(`PR ${C.b('#' + (number || '?'))} ${C.dim(url)}`);
+  },
+
+  // GitHub pipeline — start (if needed) + run the executor in the worktree + verify. exit 2 RED.
+  work({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    if (t.state === 'todo' || t.state === 'specd') {
+      if (!((t.acceptanceCriteria || []).length || (t.tests || []).length)) die('GATE P1: task has no acceptance criteria.');
+      t.state = 'in-progress'; t.startedAt = now(); s.upsertTask(t);
+    }
+    if (t.state !== 'in-progress') die(`task is [${t.state}], not workable.`);
+    const ex = s.protocol().executor?.command;
+    if (ex) { try { execSync(ex, { cwd: workdir(s, t), input: buildContext(s, t), stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); } catch { /* gate decides */ } }
+    const v = runVerify(s, { cwd: workdir(s, t) });
+    if (!v.green) { console.error(C.r('✗ ') + 'verify RED after work — gate closed.'); process.exit(2); }
+    t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Worked + verified: ${t.title}`, taskId: t.id });
+    ok(`worked ${C.b(t.title)} — verify green ✓`);
+  },
+
+  // GitHub pipeline — gated squash-merge + cleanup + done. The GATES are the only safety:
+  // verify green ∧ (if required) review pass ∧ (if required) held-out audit green.
+  merge({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const gh0 = s.protocol().github || {};
+    if (!t.pr?.number) die('no PR — run `chalk pr <id>` first.');
+    if (!runVerify(s, { cwd: workdir(s, t) }).green) die('GATE: verify is not green — cannot merge.');
+    if (reviewRequiredNow(s, t) && !((t.reviews || []).slice(-1)[0]?.verdict === 'pass')) die('GATE P5: a passing review is required before merge.');
+    const reg = s.protocol().regression;
+    if (reg?.required && !(reg.lastAudit && reg.lastAudit.green)) die('GATE P7: held-out audit is not green — run `chalk audit`.');
+    try { runGh(workdir(s, t), gh0.command, `pr merge ${t.pr.number} --${gh0.mergeMethod || 'squash'} --delete-branch`); }
+    catch (e) { die(`gh pr merge failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+    // Sync the primary base branch (best-effort) then tear down the worktree + local branch.
+    try { runGit(s.root, `checkout ${gh0.base || 'main'}`); runGit(s.root, 'pull --ff-only'); } catch { /* offline / local changes — non-fatal */ }
+    worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
+    t.worktree = undefined; t.state = 'done'; t.doneAt = now();
+    t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'work-item-accepted', title: `Merged + cleaned: PR #${t.pr.number}`, taskId: t.id });
+    ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓`);
+  },
+
+  // GitHub pipeline — the unattended driver: walk every issue-backed task issue→merge, blocking
+  // on any gate failure and continuing to the next. The safety is the gates, not a human.
+  pipeline({ flags }) {
+    const s = Store.open();
+    const r = runPipeline(s, process.argv[1], { max: Number(flags.max || 20), dryRun: flags['dry-run'] === true, log: (m) => console.log(C.dim(m)) });
+    if (r.dryRun) { console.log(C.dim(`  (${r.planned.length} task(s) planned — dry run, no changes)`)); return; }
+    syncBrowser(s);
+    console.log('\n' + C.b('chalk pipeline · summary'));
+    console.log(`  ${C.g(`✓ ${r.merged.length} merged`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim('(gates are the safety)')}`);
+    process.exit(r.blocked.length ? 2 : 0);
   },
 
   // GitHub pipeline — run the task's browser specs, attach step screenshots to the PR as
@@ -778,7 +833,10 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk commit <id>                    ${C.dim('conventional commit of the worktree changes (Closes #issue)')}
   chalk pr <id>                        ${C.dim('push the branch + open a PR (gh)')}
   chalk evidence <id>                  ${C.dim('run specs + attach screenshots to the PR (blob-SHA URLs)')}
+  chalk work <id>                      ${C.dim('run the executor in the worktree + verify (P4)')}
+  chalk merge <id>                     ${C.dim('GATED squash-merge + cleanup + done')}
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
+  chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}

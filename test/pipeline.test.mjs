@@ -234,6 +234,52 @@ test('evidence helpers — data-URL→PNG, step extraction, and blob-SHA markdow
   assert.equal(evidenceMarkdown('o/r', 'abc', []), '', 'no images → empty section');
 });
 
+test('context — renders without crashing (regression: buildContext import)', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  const r = chalk(d, 'context');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /Chalk context/);
+});
+
+test('pipeline — unattended driver takes an issue all the way to a squash-merge + cleanup', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const merged = join(d, 'merged.txt');
+  const ghCmd = stubGh(d, `import {writeFileSync} from 'node:fs'; const a=process.argv.slice(2);
+    if(a.includes('pr')&&a.includes('create')) console.log('https://github.com/o/r/pull/42');
+    else if(a.includes('pr')&&a.includes('merge')) writeFileSync(${JSON.stringify(merged)}, a.join(' '));
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
+
+  chalk(d, 'issue', 'pull');
+  const r = chalk(d, 'pipeline');
+  assert.equal(r.code, 0, 'pipeline completes with no blocked tasks');
+
+  const t = tasksOf(d)[0];
+  assert.equal(t.state, 'done', 'task driven to done');
+  assert.equal(t.pipeline.stage, 'cleaned');
+  assert.ok(!t.worktree, 'worktree torn down');
+  assert.ok(existsSync(merged), 'gh pr merge was called');
+  assert.match(readFileSync(merged, 'utf8'), /pr merge 42 --squash --delete-branch/);
+  assert.equal(branchExists(d, t.branch), false, 'local branch deleted');
+});
+
+test('pipeline --dry-run — plans without touching anything', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{number:1,title:'X',url:'u',body:'- [ ] y',labels:[]}]));`);
+  conf(d, (o) => { o.github.command = ghCmd; });
+  chalk(d, 'issue', 'pull');
+  const before = readFileSync(join(d, '.chalk/tasks.json'), 'utf8');
+  const r = chalk(d, 'pipeline', '--dry-run');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /branch → work → commit → pr → review → evidence → merge/);
+  assert.equal(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'), before, 'dry-run is side-effect-free');
+});
+
 test('evidence command — runs the spec, commits screenshots, edits the PR body with blob URLs', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');
