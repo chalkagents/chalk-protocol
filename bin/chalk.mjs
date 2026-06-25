@@ -38,6 +38,14 @@ function parse(argv) {
 }
 const arr = (v) => (v == null ? [] : [].concat(v));
 
+// Monotonic pipeline-stage rank — makes each side-effecting stage idempotent so an interrupted
+// sweep resumes cleanly. A stage re-run when the task is already at/past its target no-ops with
+// exit 0 instead of repeating the side effect (duplicate commit / duplicate PR) or dying
+// ("nothing to commit", which would block the task). Order mirrors the lib/pipeline.mjs progression.
+const PIPE_STAGES = ['selected', 'branched', 'planned', 'verified', 'committed', 'pr-open', 'reviewed', 'tested', 'cleaned'];
+const stageRank = (st) => PIPE_STAGES.indexOf(st);
+const stageDone = (t, target) => stageRank(t.pipeline?.stage) >= stageRank(target);
+
 const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
 const ok = (msg) => console.log(C.g('✓ ') + msg);
@@ -230,6 +238,7 @@ const cmds = {
   branch({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
+    if (stageDone(t, 'branched')) return ok(`branch ${C.b(t.branch || '')} ${C.dim('(already done)')}`);
     const wt = s.protocol().worktree || {};
     const gh0 = s.protocol().github || {};
     const type = t.branchType || 'feat';
@@ -255,6 +264,7 @@ const cmds = {
   commit({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
+    if (stageDone(t, 'committed')) return ok(`commit ${C.dim('(already done)')}`);
     const wd = workdir(s, t);
     const paths = changedPaths(wd).filter((p) => !p.startsWith('.chalk/') || p.startsWith('.chalk/evidence/'));
     if (!paths.length) die('nothing to commit — the executor made no file changes in the worktree.');
@@ -275,6 +285,7 @@ const cmds = {
   pr({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
+    if (stageDone(t, 'pr-open')) return ok(`PR ${C.b('#' + (t.pr?.number || '?'))} ${C.dim('(already open)')}`);
     const gh0 = s.protocol().github || {};
     const wd = workdir(s, t);
     if (!t.branch) die('no branch — run `chalk branch <id>` first.');
@@ -307,6 +318,7 @@ const cmds = {
   plan({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
+    if (stageDone(t, 'planned')) return ok(`plan ${C.dim('(already done)')}`);
     const cmd = s.protocol().planner?.command;
     if (!cmd) die('no planner configured (protocol.planner.command).');
     let out = '';
@@ -327,6 +339,7 @@ const cmds = {
   work({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
+    if (stageDone(t, 'verified')) return ok(`work ${C.b(t.title)} ${C.dim('(already verified)')}`);
     if (t.state === 'todo' || t.state === 'specd') {
       if (!((t.acceptanceCriteria || []).length || (t.tests || []).length)) die('GATE P1: task has no acceptance criteria.');
       t.state = 'in-progress'; t.startedAt = now(); s.upsertTask(t);
@@ -481,6 +494,7 @@ const cmds = {
   evidence({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
+    if (stageDone(t, 'tested')) return ok(`evidence ${C.dim('(already done)')}`);
     const gh0 = s.protocol().github || {};
     const wd = workdir(s, t);
     if (!t.pr?.number) die('no PR — run `chalk pr <id>` first.');
