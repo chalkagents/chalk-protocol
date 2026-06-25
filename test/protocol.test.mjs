@@ -40,6 +40,25 @@ test('P1 — start refuses without acceptance criteria, allows after spec', () =
   assert.equal(chalk(d, 'start', id).code, 0, 'start allowed once criteria exist');
 });
 
+test('log --json — emits one valid JSON event per line; plain log unchanged', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  chalk(d, 'update', 'first thing happened');
+  chalk(d, 'update', 'second thing happened');
+  const json = chalk(d, 'log', '--json');
+  assert.equal(json.code, 0);
+  const lines = json.out.split('\n').filter(Boolean);
+  assert.ok(lines.length >= 2, 'one line per event');
+  const events = lines.map((l) => JSON.parse(l)); // throws if any line is not valid JSON
+  for (const e of events) assert.ok(typeof e.type === 'string' && typeof e.title === 'string', 'event carries type + title');
+  assert.ok(events.some((e) => e.title === 'second thing happened'), 'titles round-trip through JSON');
+  // --n still limits the JSON output.
+  assert.equal(chalk(d, 'log', '--json', '--n', '1').out.split('\n').filter(Boolean).length, 1, '--n limits json lines');
+  // Without --json the human format is unchanged: bracketed type, no raw JSON braces.
+  const plain = chalk(d, 'log');
+  assert.ok(plain.out.includes('[progress-update]') && !plain.out.includes('"type"'), 'plain log stays human-readable');
+});
+
 test('P4 + P6 — done needs green verify; tampering a locked test fails integrity', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'd');

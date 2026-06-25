@@ -804,7 +804,9 @@ const cmds = {
   log({ flags }) {
     const s = Store.open();
     const n = Number(flags.n || 15);
-    for (const u of s.updates().slice(-n)) console.log(`${C.dim(u.at.slice(0, 16))}  ${C.dim(`[${u.type}]`)} ${u.title}`);
+    const recent = s.updates().slice(-n);
+    if (flags.json === true) { for (const u of recent) console.log(JSON.stringify(u)); return; }
+    for (const u of recent) console.log(`${C.dim(u.at.slice(0, 16))}  ${C.dim(`[${u.type}]`)} ${u.title}`);
   },
 
   help() { printHelp(); },
@@ -896,7 +898,7 @@ ${C.b('spine')}
   chalk update "<title>" [--type T] [--desc D]
   chalk decision "<title>" --why "..."
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
-  chalk log [--n N]
+  chalk log [--n N] [--json]
 
 ${C.b('chalk browser bridge')}
   chalk sync                           ${C.dim('project tasks.json → .chalk/plans/ + .chalk/boards/ (auto-runs on task/start/done)')}
