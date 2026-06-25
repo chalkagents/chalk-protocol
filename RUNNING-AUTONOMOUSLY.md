@@ -104,6 +104,28 @@ is the seatbelt; `--dry-run` plans without acting.
 `e2e` is optional — set it only if tasks lock `.chalk/tests/*.test.yaml` browser specs (those run
 as a real verify gate and produce the screenshots `evidence` attaches).
 
+### Custom agents for the executor & reviewer
+
+Raw `claude -p` works, but a **custom agent** gives the executor and reviewer a tailored, reliable
+role — and the executor agent is where you enforce "author a *real* test, keep diffs small, never
+weaken locked tests," which is the antidote to the weak-test risk `doctor` warns about. Define them
+as Claude Code agents (committed at `.claude/agents/` so every worktree has them) and wire by name:
+
+```jsonc
+"executor": { "command": "claude -p --agent chalk-executor --permission-mode acceptEdits" },
+"review":   { "command": "claude -p --agent chalk-reviewer", "requiredAt": "per-task" }
+```
+
+- **`chalk-executor`** (tools: Read/Edit/Write/Grep/Glob — no Bash, so `acceptEdits` covers
+  everything and it can't hang on a permission prompt) edits the worktree to satisfy the criteria
+  and authors a focused test. Its exit code is ignored — `verify` decides.
+- **`chalk-reviewer`** (read-only tools) receives the change + criteria on stdin and emits ONLY the
+  JSON verdict (`{"verdict":"pass"|"block","findings":[…]}`) chalk's review gate parses. It runs
+  adversarially — it will block a change that ships without a real test, which is exactly the point.
+
+This makes the unattended loop trustworthy: the executor produces aligned work, and the reviewer is
+a genuine P5 gate, not a rubber stamp.
+
 ---
 
 ## Before you press go
