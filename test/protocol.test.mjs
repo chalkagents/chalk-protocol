@@ -38,6 +38,15 @@ test('lessons — `chalk lesson` records to memory and it is injected into conte
   assert.match(ctx, /author a real test/, 'the lesson is injected into the agent context');
 });
 
+test('decisions — prints logged decisions', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'demo');
+  chalk(d, 'decision', 'use sqlite for the ledger', '--why', 'simplicity');
+  const r = chalk(d, 'decisions');
+  assert.equal(r.code, 0, 'decisions exits 0');
+  assert.match(r.out, /use sqlite for the ledger/, 'shows the logged decision');
+});
+
 test('init scaffolds the spine + installs the agent contract', () => {
   const d = scratch();
   assert.equal(chalk(d, 'init', '--name', 'demo', '--goal', 'g').code, 0);
