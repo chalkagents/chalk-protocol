@@ -419,19 +419,77 @@ test('autopilot — aborts when not ready, runs one sweep when reviewer-gated, s
   assert.match(r.out, /NOT READY/);
   assert.equal(tasksOf(d)[0].state, 'specd', 'pipeline did not run');
 
-  // (2) Add a passing reviewer → testless becomes a warning → autopilot runs the sweep + merges.
+  // (2) Add a passing reviewer + a retro agent → autopilot runs the sweep, merges, and self-heals.
   writeFileSync(join(d, 'rev.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({verdict:'pass',findings:[]}));`);
-  conf(d, (o) => { o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; });
+  writeFileSync(join(d, 'rt.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({lessons:['the sweep ran clean'], issues:[]}));`);
+  conf(d, (o) => { o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; o.retro = { command: `node ${join(d, 'rt.mjs')}` }; });
   r = chalk(d, 'autopilot', '--max', '1');
   assert.equal(r.code, 0);
   assert.match(r.out, /1 merged/);
   assert.equal(tasksOf(d)[0].state, 'done', 'task driven to done');
+  // retro ran at the end of the sweep (regression: spawnSync must be imported in autopilot).
+  assert.match(readFileSync(join(d, '.chalk/lessons.md'), 'utf8'), /the sweep ran clean/, 'autopilot ran retro');
 
   // (3) A fresh lock → the next run self-skips (single-flight).
   mkdirSync(join(d, '.chalk/local'), { recursive: true });
   writeFileSync(join(d, '.chalk/local/autopilot.lock'), new Date().toISOString());
   r = chalk(d, 'autopilot');
   assert.match(r.out, /in progress — skipping/);
+});
+
+test('plan stage — the planner output is stored on the task and injected into context', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  // stub planner: ignores stdin, prints a plan to stdout.
+  writeFileSync(join(d, 'planner.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log('**Approach:** add the flag\\n**Steps:** 1. edit bin\\n**Test:** asserts the flag');`);
+  conf(d, (o) => { o.planner = { command: `node ${join(d, 'planner.mjs')}` }; });
+  chalk(d, 'task', 'add', 'add a flag');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'spec', id, '--criterion', 'the flag works');
+  chalk(d, 'start', id);
+
+  assert.equal(chalk(d, 'plan', id).code, 0);
+  const t = tasksOf(d)[0];
+  assert.match(t.plan, /Approach:.*add the flag/, 'plan stored on the task');
+  assert.equal(t.pipeline.stage, 'planned');
+  assert.match(chalk(d, 'context', id).out, /Plan \(implement this/, 'plan injected into the executor context');
+
+  // The planner call was logged to the cost ledger, and `chalk cost` summarizes it.
+  assert.ok(existsSync(join(d, '.chalk/local/cost.jsonl')), 'cost ledger written');
+  const rec = JSON.parse(readFileSync(join(d, '.chalk/local/cost.jsonl'), 'utf8').trim().split('\n')[0]);
+  assert.equal(rec.agent, 'planner');
+  assert.equal(typeof rec.ms, 'number');
+  assert.match(chalk(d, 'cost').out, /planner/);
+});
+
+test('retro — appends lessons + files deduped improvement issues; --dry-run is inert', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  const created = join(d, 'created.txt');
+  const ghCmd = stubGh(d, `import {appendFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('issue','list')) console.log(JSON.stringify([{title:'existing open issue'}]));
+    else if(has('issue','create')) appendFileSync(${JSON.stringify(created)}, a.join(' ')+'\\n');
+    else process.exit(0);`);
+  writeFileSync(join(d, 'retro.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({lessons:['always clean up the worktree after merge'], issues:[{title:'fix: improve the error message',body:'- [ ] do it',labels:['bug']},{title:'existing open issue',body:'dup'}]}));`);
+  conf(d, (o) => { o.github.command = ghCmd; o.retro = { command: `node ${join(d, 'retro.mjs')}` }; });
+
+  // dry-run: nothing changes.
+  let r = chalk(d, 'retro', '--dry-run');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /would file:.*improve the error/);
+  assert.ok(!existsSync(created), 'dry-run filed nothing');
+  assert.ok(!readFileSync(join(d, '.chalk/lessons.md'), 'utf8').includes('clean up the worktree'), 'dry-run appended no lesson');
+
+  // real: lesson appended, the new issue filed, the duplicate skipped.
+  r = chalk(d, 'retro');
+  assert.equal(r.code, 0);
+  assert.match(readFileSync(join(d, '.chalk/lessons.md'), 'utf8'), /clean up the worktree/, 'lesson appended');
+  const filed = readFileSync(created, 'utf8');
+  assert.match(filed, /improve the error message/, 'the new issue was filed');
+  assert.ok(!/existing open issue/.test(filed), 'the duplicate issue was skipped');
+  assert.match(r.out, /issue\(s\) filed/);
+  // the lesson is now in the agent context (closes the loop).
+  assert.match(chalk(d, 'context').out, /clean up the worktree/);
 });
 
 test('pipeline --dry-run — plans without touching anything', () => {
@@ -443,7 +501,7 @@ test('pipeline --dry-run — plans without touching anything', () => {
   const before = readFileSync(join(d, '.chalk/tasks.json'), 'utf8');
   const r = chalk(d, 'pipeline', '--dry-run');
   assert.equal(r.code, 0);
-  assert.match(r.out, /branch → work → commit → pr → review → evidence → merge/);
+  assert.match(r.out, /branch → plan → work → commit → pr → review → evidence → merge/);
   assert.equal(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'), before, 'dry-run is side-effect-free');
 });
 

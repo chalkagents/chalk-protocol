@@ -28,6 +28,16 @@ test('version — prints the protocol version', () => {
   assert.ok(r.out.includes('chalk/0'), 'version output contains the protocol constant');
 });
 
+test('lessons — `chalk lesson` records to memory and it is injected into context', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'demo');
+  assert.equal(chalk(d, 'lesson', 'always author a real test, not a placeholder').code, 0);
+  assert.ok(readFileSync(join(d, '.chalk/lessons.md'), 'utf8').includes('author a real test'));
+  const ctx = chalk(d, 'context').out;
+  assert.match(ctx, /Lessons learned/);
+  assert.match(ctx, /author a real test/, 'the lesson is injected into the agent context');
+});
+
 test('init scaffolds the spine + installs the agent contract', () => {
   const d = scratch();
   assert.equal(chalk(d, 'init', '--name', 'demo', '--goal', 'g').code, 0);

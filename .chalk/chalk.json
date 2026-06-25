@@ -15,7 +15,7 @@
       "build": ""
     },
     "review": {
-      "command": "claude -p --agent chalk-reviewer",
+      "command": "claude -p --agent chalk-reviewer --max-turns 20",
       "requiredAt": [
         "per-task"
       ]
@@ -29,7 +29,13 @@
       "lastAudit": null
     },
     "executor": {
-      "command": "claude -p --agent chalk-executor --permission-mode acceptEdits"
+      "command": "claude -p --agent chalk-executor --permission-mode acceptEdits --max-turns 40"
+    },
+    "planner": {
+      "command": "claude -p --agent chalk-planner --max-turns 30"
+    },
+    "retro": {
+      "command": "claude -p --agent chalk-retro --max-turns 20"
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",

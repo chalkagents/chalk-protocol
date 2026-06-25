@@ -17,6 +17,7 @@ import { runPipeline } from '../lib/pipeline.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
+import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { basename } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -301,6 +302,27 @@ const cmds = {
     ok(`PR ${C.b('#' + (number || '?'))} ${C.dim(url)}`);
   },
 
+  // Planning stage — a read-only planner agent surveys the code, picks the best approach, and emits
+  // a plan stored on the task (injected into the executor's context). Advisory; the gates still decide.
+  plan({ _ }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const cmd = s.protocol().planner?.command;
+    if (!cmd) die('no planner configured (protocol.planner.command).');
+    let out = '';
+    const t0 = Date.now();
+    try { out = execSync(withRunner(s.protocol().runner, cmd), { cwd: workdir(s, t), input: buildContext(s, t), encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 10 * 60 * 1000 }); }
+    catch (e) { out = `${e.stdout || ''}`; }
+    s.logCost({ taskId: t.id, stage: 'plan', agent: 'planner', ms: Date.now() - t0 });
+    const planText = out.trim();
+    if (!planText) die('planner produced no plan.');
+    t.plan = planText.slice(0, 8000);
+    t.pipeline = { ...(t.pipeline || {}), stage: 'planned', at: now() };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'planning-generated', title: `Planned: ${t.title}`, taskId: t.id });
+    ok(`plan ready ${C.dim(`(${planText.split('\n').length} lines)`)} ${C.dim('→ the executor will implement it')}`);
+  },
+
   // GitHub pipeline — start (if needed) + run the executor in the worktree + verify. exit 2 RED.
   work({ _ }) {
     const s = Store.open();
@@ -311,7 +333,11 @@ const cmds = {
     }
     if (t.state !== 'in-progress') die(`task is [${t.state}], not workable.`);
     const ex = s.protocol().executor?.command;
-    if (ex) { try { execSync(ex, { cwd: workdir(s, t), input: buildContext(s, t), stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); } catch { /* gate decides */ } }
+    if (ex) {
+      const t0 = Date.now();
+      try { execSync(ex, { cwd: workdir(s, t), input: buildContext(s, t), stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); } catch { /* gate decides */ }
+      s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0 });
+    }
     const v = runVerify(s, { cwd: workdir(s, t) });
     if (!v.green) { console.error(C.r('✗ ') + 'verify RED after work — gate closed.'); process.exit(2); }
     t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };
@@ -359,13 +385,54 @@ const cmds = {
   autopilot({ flags }) {
     const s = Store.open();
     console.log(C.b('chalk autopilot') + C.dim(` · ${now()}`));
-    const r = runAutopilot(s, process.argv[1], { max: Number(flags.max || 3), log: (m) => console.log(C.dim('  ' + m)) });
+    const r = runAutopilot(s, process.argv[1], { max: Number(flags.max || 3), retro: flags['no-retro'] !== true, log: (m) => console.log(C.dim('  ' + m)) });
     if (r.skipped) { console.log(C.y('  another autopilot run is in progress — skipping.')); process.exit(0); }
     if (r.notReady) { console.log(C.r(`  NOT READY — ${r.fails.length} blocker(s); skipping (run \`chalk doctor\`).`)); process.exit(2); }
     syncBrowser(s);
     console.log(`  ${C.g(`✓ ${r.merged.length} merged`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim('(gates are the safety)')}`);
     s.emitUpdate({ type: 'progress-update', title: `Autopilot: ${r.merged.length} merged, ${r.blocked.length} blocked` });
     process.exit(0);
+  },
+
+  // Self-healing retrospective — a read-only retro agent distills durable LESSONS from the recent run
+  // and proposes ISSUES for the chalk defects/friction it exposed; chalk appends the lessons and files
+  // the issues (capped + deduped). The loop thus finds its own bugs and the next sweep fixes them.
+  retro({ flags }) {
+    const s = Store.open();
+    const gh0 = s.protocol().github || {};
+    const dry = flags['dry-run'] === true;
+    const r = runRetro(s);
+    if (r.status === 'unconfigured') die('no retro agent configured (protocol.retro.command).');
+    if (r.status === 'error') die('retro agent did not return JSON. tail:\n' + C.dim(r.raw || '(empty)'));
+    console.log(C.b('chalk retro') + (dry ? C.dim(' · dry-run') : ''));
+    for (const lesson of r.lessons) { console.log(`  ${C.g('+')} lesson: ${C.dim(String(lesson).slice(0, 100))}`); if (!dry) s.appendLesson({ lesson, by: 'retro' }); }
+    let open = [];
+    try { open = JSON.parse(runGh(s.root, gh0.command, 'issue list --state open --json title --limit 100') || '[]').map((i) => i.title); } catch { /* gh down — skip dedup */ }
+    let filed = 0;
+    for (const iss of (r.issues || []).slice(0, Number(flags['max-issues'] || 3))) {
+      if (!iss.title) continue;
+      if (open.some((t) => titlesSimilar(t, iss.title))) { console.log(C.dim(`  · skip (already open): ${iss.title}`)); continue; }
+      if (dry) { console.log(`  ${C.y('~ would file:')} ${iss.title}`); continue; }
+      const labels = (iss.labels || []).map((l) => `--label ${shq(l)}`).join(' ');
+      try { const out = runGh(s.root, gh0.command, `issue create --title ${shq(iss.title)} --body ${shq((iss.body || '') + '\n\n_filed by `chalk retro` (self-healing)_')} ${labels}`); console.log(`  ${C.g('✓ filed:')} ${out.trim().split('\n').pop()}`); filed++; }
+      catch (e) { console.log(C.r(`  ✗ file failed: ${String(e.message).split('\n').slice(-1)[0]}`)); }
+    }
+    if (!dry) syncBrowser(s);
+    ok(`retro: ${C.b(String(r.lessons.length))} lesson(s)${dry ? ' (dry-run)' : ''}, ${C.b(String(filed))} issue(s) filed`);
+  },
+
+  // Summarize the agent-call cost ledger (.chalk/local/cost.jsonl): calls + wall-clock per agent.
+  // For a subscription this is a proxy (flat cost, rate-capped); for API, the Console is authoritative.
+  cost() {
+    const s = Store.open();
+    const recs = s.costRecords();
+    if (!recs.length) { console.log(C.dim('  no agent calls recorded yet (.chalk/local/cost.jsonl)')); return; }
+    console.log(C.b('chalk cost') + C.dim(` · ${recs.length} agent call(s)`));
+    const by = {};
+    for (const r of recs) { const k = r.agent || '?'; (by[k] = by[k] || { n: 0, ms: 0 }); by[k].n++; by[k].ms += r.ms || 0; }
+    for (const [agent, v] of Object.entries(by)) console.log(`  ${C.b(agent.padEnd(9))} ${v.n} call(s)  ${C.dim(`${(v.ms / 1000).toFixed(0)}s wall-clock`)}`);
+    const total = recs.reduce((a, r) => a + (r.ms || 0), 0);
+    console.log(C.dim(`  total: ${(total / 1000).toFixed(0)}s across ${recs.length} calls. Subscription = flat + rate-capped; bound a sweep with \`autopilot --max N\`.`));
   },
 
   // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
@@ -807,6 +874,16 @@ const cmds = {
     ok(`decision logged — ${title}`);
   },
 
+  // Add a durable lesson to .chalk/lessons.md — injected into every agent's context so the loop
+  // stops repeating mistakes. The `retro` stage appends these programmatically too.
+  lesson({ _, flags }) {
+    const s = Store.open();
+    const text = _.join(' ') || flags.text;
+    if (!text) die('usage: chalk lesson "<what to remember>"');
+    s.appendLesson({ lesson: text, by: flags.by || 'human' });
+    ok(`lesson recorded ${C.dim(`(${s.lessons().length} total)`)}`);
+  },
+
   question({ _, flags }) {
     const s = Store.open();
     const sub = _[0];
@@ -903,11 +980,14 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk commit <id>                    ${C.dim('conventional commit of the worktree changes (Closes #issue)')}
   chalk pr <id>                        ${C.dim('push the branch + open a PR (gh)')}
   chalk evidence <id>                  ${C.dim('run specs + attach screenshots to the PR (blob-SHA URLs)')}
+  chalk plan <id>                      ${C.dim('read-only planner picks the approach → task.plan (BYO planner)')}
   chalk work <id>                      ${C.dim('run the executor in the worktree + verify (P4)')}
   chalk merge <id>                     ${C.dim('GATED squash-merge + cleanup + done')}
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk doctor                         ${C.dim('preflight readiness check for autonomous runs (read-only)')}
+  chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
+  chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
   chalk autopilot [--max N]            ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
   chalk smoke [--create|--issue N] --yes   ${C.dim('prove the pipeline on ONE throwaway issue (real; use a scratch repo)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
@@ -928,6 +1008,7 @@ ${C.b('spine')}
   chalk phase <${PHASES.join('|')}> [--force-audit --why "..."]
   chalk update "<title>" [--type T] [--desc D]
   chalk decision "<title>" --why "..."
+  chalk lesson "<what to remember>"     ${C.dim('add to the lessons memory injected into every agent')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
   chalk log [--n N] [--type T] [--json]
 
