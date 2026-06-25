@@ -807,6 +807,16 @@ const cmds = {
     ok(`decision logged — ${title}`);
   },
 
+  // Add a durable lesson to .chalk/lessons.md — injected into every agent's context so the loop
+  // stops repeating mistakes. The `retro` stage appends these programmatically too.
+  lesson({ _, flags }) {
+    const s = Store.open();
+    const text = _.join(' ') || flags.text;
+    if (!text) die('usage: chalk lesson "<what to remember>"');
+    s.appendLesson({ lesson: text, by: flags.by || 'human' });
+    ok(`lesson recorded ${C.dim(`(${s.lessons().length} total)`)}`);
+  },
+
   question({ _, flags }) {
     const s = Store.open();
     const sub = _[0];
@@ -928,6 +938,7 @@ ${C.b('spine')}
   chalk phase <${PHASES.join('|')}> [--force-audit --why "..."]
   chalk update "<title>" [--type T] [--desc D]
   chalk decision "<title>" --why "..."
+  chalk lesson "<what to remember>"     ${C.dim('add to the lessons memory injected into every agent')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
   chalk log [--n N] [--type T] [--json]
 
