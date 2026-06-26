@@ -283,13 +283,53 @@ test('cleanup then re-branch — a cleaned-up task is re-runnable (recreates the
   assert.equal(tasksOf(d)[0].pipeline.stage, 'branched');
 });
 
+test('test-enforcement gate — a feature whose change has NO test blocks at work (verify can pass vacuously)', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }]));`);
+  // executor writes CODE ONLY — no test. verify is unconfigured → vacuously green.
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id);
+  const r = chalk(d, 'work', id);
+  assert.notEqual(r.code, 0, 'work blocks a code-only feature change');
+  assert.match(r.out, /no test in the change/);
+  assert.notEqual(tasksOf(d)[0].pipeline.stage, 'verified', 'did not advance past work');
+});
+
+test('test-enforcement gate — a test in the change satisfies it; exempt (docs / skip-test) needs none; off when disabled', () => {
+  const mk = (issue, execBody, tweak = () => {}) => {
+    const d = repoWithBare();
+    chalk(d, 'init', '--name', 'p');
+    const ghCmd = stubGh(d, `console.log(JSON.stringify([${issue}]));`);
+    writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} ${execBody}`);
+    const wtbase = scratch();
+    conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; tweak(o); });
+    chalk(d, 'issue', 'pull');
+    const id = tasksOf(d)[0].id.slice(0, 12);
+    chalk(d, 'branch', id);
+    return { d, code: chalk(d, 'work', id).code };
+  };
+  const feat = `{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }`;
+  // (1) code + a Dart-style test in the diff → satisfied.
+  assert.equal(mk(feat, `writeFileSync('feature.dart','x');writeFileSync('feature_test.dart','// asserts');`).code, 0, 'a test in the diff satisfies the gate');
+  // (2) a documentation issue → branchType docs → exempt, no test needed.
+  assert.equal(mk(`{ number: 7, title: 'Docs', url: 'u', body: '- [ ] do', labels: [{ name: 'documentation' }] }`, `writeFileSync('README.md','docs');`).code, 0, 'docs change is exempt');
+  // (3) requireTest disabled → no test needed.
+  assert.equal(mk(feat, `writeFileSync('feature.js','x');`, (o) => { o.requireTest = false; }).code, 0, 'gate off when requireTest=false');
+});
+
 test('work+verify run in the worktree — executor edits + gates resolve there, not in primary', () => {
   const d = repo();
   chalk(d, 'init', '--name', 'p');
   const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 3, title: 'feature', url: 'u', body: '- [ ] do it', labels: [] }]));`);
   const wtbase = scratch();
   // executor writes impl.txt in its cwd; verify (check.mjs) passes iff impl.txt exists in cwd.
-  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync, readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('impl.txt','ok');`);
+  // also writes a test file so the test-enforcement gate is satisfied (feature change ships a test).
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync, readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('impl.txt','ok'); writeFileSync('impl_test.mjs','// asserts impl');`);
   writeFileSync(join(d, 'check.mjs'), `import {existsSync} from 'node:fs'; process.exit(existsSync('impl.txt')?0:1);`);
   conf(d, (o) => {
     o.github.command = ghCmd; o.worktree.dir = wtbase;
@@ -435,7 +475,7 @@ test('pipeline — unattended driver takes an issue all the way to a squash-merg
     if(a.includes('pr')&&a.includes('create')) console.log('https://github.com/o/r/pull/42');
     else if(a.includes('pr')&&a.includes('merge')) writeFileSync(${JSON.stringify(merged)}, a.join(' '));
     else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
-  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts feature\\n');`);
   const wtbase = scratch();
   conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
 
@@ -465,7 +505,7 @@ test('pipeline — idempotent stages: an interrupted sweep resumes with no dupli
     else if(has('pr','view')) console.log('MERGED');
     else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
   // Executor writes feature.js once; if it (wrongly) re-ran it would still only rewrite the same file.
-  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts feature\\n');`);
   const wtbase = scratch();
   conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
 
@@ -513,7 +553,7 @@ test('pipeline — idempotent review stage: a resumed sweep does NOT re-invoke t
     else if(has('pr','merge')) writeFileSync(${JSON.stringify(join(d, 'merged.txt'))}, a.join(' '));
     else if(has('pr','view')) console.log('MERGED');
     else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
-  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts feature\\n');`);
   // Reviewer that RECORDS each invocation (one line per call) and always passes — so we can assert
   // it fires exactly once across an interrupt+resume.
   const revCalls = join(d, 'rev-calls.txt');
@@ -551,7 +591,7 @@ test('pipeline — a failed review blocks with the reviewer finding text and ret
   const ghCmd = stubGh(d, `const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
     if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
     else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
-  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts feature\\n');`);
   // Reviewer that RECORDS each invocation and ALWAYS blocks with a unique finding note.
   const revCalls = join(d, 'rev-calls.txt');
   writeFileSync(join(d, 'rev.mjs'), `import {appendFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} appendFileSync(${JSON.stringify(revCalls)}, 'x\\n'); console.log(JSON.stringify({verdict:'block',findings:[{severity:'high',area:'correctness',note:'UNIQUE_FINDING_TEXT'}]}));`);
@@ -579,7 +619,7 @@ test('pipeline — a TRANSIENT review failure recovers on retry: the task is not
     else if(has('pr','merge')) writeFileSync(${JSON.stringify(join(d, 'merged.txt'))}, a.join(' '));
     else if(has('pr','view')) console.log('MERGED');
     else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
-  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts feature\\n');`);
   // Reviewer that BLOCKS on the first call but PASSES on the second — a transient/non-deterministic
   // failure. Recovery means: it must NOT wedge the task; the retry passes and the sweep proceeds.
   const revState = join(d, 'rev-state.txt');
@@ -668,7 +708,7 @@ test('smoke — refuses without --yes; --dry-run previews; GO when the real flow
     else if(has('pr','create')) console.log('https://github.com/o/r/pull/77');
     else if(has('pr','view')) console.log('MERGED');
     else process.exit(0);`);
-  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n');`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts feature\\n');`);
   const wtbase = scratch();
   conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
 
@@ -701,7 +741,7 @@ test('autopilot — aborts when not ready, runs one sweep when reviewer-gated, s
     if(has('issue','list')) console.log(JSON.stringify([{number:5,title:'do thing',url:'u',body:'- [ ] x',labels:[]}]));
     else if(has('pr','create')) console.log('https://github.com/o/r/pull/55');
     else process.exit(0);`);
-  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('f.js','x\\n');`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('f.js','x\\n'); writeFileSync('f.test.js','// t\\n');`);
   const wtbase = scratch();
   conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
   chalk(d, 'issue', 'pull');
@@ -740,7 +780,7 @@ test('loop — bounded standing loop drives a round, then stops at steady state 
     else if(has('pr','merge')) writeFileSync(${JSON.stringify(join(d, 'merged.txt'))}, a.join(' '));
     else if(has('pr','view')) console.log('MERGED');
     else process.exit(0);`);
-  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('f.js','x\\n');`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('f.js','x\\n'); writeFileSync('f.test.js','// t\\n');`);
   writeFileSync(join(d, 'rev.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({verdict:'pass',findings:[]}));`);
   writeFileSync(join(d, 'rt.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} console.log(JSON.stringify({lessons:[], issues:[]}));`);
   const wtbase = scratch();
@@ -878,9 +918,10 @@ test('pipeline — a failed non-review stage surfaces the subprocess\'s error ou
     else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
   // Executor makes NO file change → the `commit` stage dies with a unique, deterministic stderr
   // ("nothing to commit — the executor made no file changes…"), which is the failed stage's output.
+  // requireTest off here so the (deliberately empty) change reaches commit instead of the work gate.
   writeFileSync(join(d, 'exec.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0)}catch{}`);
   const wtbase = scratch();
-  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; o.requireTest = false; });
 
   chalk(d, 'issue', 'pull');
   const r = chalk(d, 'pipeline');

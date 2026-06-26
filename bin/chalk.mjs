@@ -18,6 +18,7 @@ import { runDoctor } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
+import { missingRequiredTest } from '../lib/testgate.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { basename } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -372,6 +373,12 @@ const cmds = {
     }
     const v = runVerify(s, { cwd: workdir(s, t) });
     if (!v.green) { console.error(C.r('✗ ') + 'verify RED after work — gate closed.'); process.exit(2); }
+    // Test-enforcement gate: a green verify can be vacuous, so a feature change must add/change a test.
+    // Exit 2 → the pipeline auto-blocks (needs:human-input) with this reason surfaced (diagnosable).
+    if (missingRequiredTest(s, t)) {
+      console.error(C.r('✗ ') + 'no test in the change — a feature must add or change a test (verify can pass vacuously). Add one, lock a test, or label the issue `skip-test`.');
+      process.exit(2);
+    }
     t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Worked + verified: ${t.title}`, taskId: t.id });
