@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { execSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,6 +91,8 @@ test('init writes the github/worktree/e2e pipeline config defaults', () => {
   assert.equal(proto.github.command, 'gh');
   assert.equal(proto.github.mergeMethod, 'squash');
   assert.equal(proto.worktree.enabled, true);
+  assert.deepEqual(proto.worktree.include, ['.chalk'], 'worktree.include default = the live spine');
+  assert.equal(proto.worktree.setup, '', 'worktree.setup default empty');
   assert.ok('e2e' in proto, 'e2e config present');
 });
 
@@ -142,8 +144,108 @@ test('branch + cleanup — creates a <type>/<issue>-<slug> worktree, then tears 
   assert.equal(chalk(d, 'cleanup', id).code, 0);
   t = tasksOf(d)[0];
   assert.ok(!t.worktree, 'worktree cleared on task');
-  assert.equal(t.pipeline.stage, 'cleaned');
+  // cleanup rewinds a non-done task to pre-branch so it is RE-RUNNABLE (Finding 3) — not stranded
+  // at 'cleaned' with a stale branch field that makes the next `branch` no-op.
+  assert.equal(t.pipeline.stage, 'selected', 'task rewound to re-runnable');
+  assert.ok(!t.branch, 'branch field cleared');
   assert.equal(branchExists(d, 'feat/7-add-dark-mode'), false, 'local branch deleted');
+});
+
+test('worktree include — a fresh worktree gets the LIVE spine (its own task), never the held-out set', () => {
+  const d = repo();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  // a held-out file in the primary that must NEVER leak into the implementer's worktree
+  mkdirSync(join(d, '.chalk/held-out'), { recursive: true });
+  writeFileSync(join(d, '.chalk/held-out/secret.test.mjs'), '// hidden assertions\n');
+  chalk(d, 'issue', 'pull'); // writes primary .chalk/tasks.json — UNCOMMITTED
+  const id = tasksOf(d)[0].id.slice(0, 12);
+
+  assert.equal(chalk(d, 'branch', id).code, 0);
+  const wt = tasksOf(d)[0].worktree;
+  const wtTasks = JSON.parse(readFileSync(join(wt, '.chalk/tasks.json'), 'utf8'));
+  assert.ok(wtTasks.some((x) => x.id.startsWith(id)), 'the worktree sees its own task (live spine copied in)');
+  assert.equal(existsSync(join(wt, '.chalk/held-out/secret.test.mjs')), false, 'held-out set is NOT copied into the implementer worktree');
+});
+
+test('worktree include — a SYMLINK pointing into the held-out set cannot smuggle it into the worktree', () => {
+  const d = repo();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  mkdirSync(join(d, '.chalk/held-out'), { recursive: true });
+  writeFileSync(join(d, '.chalk/held-out/secret.test.mjs'), '// hidden\n');
+  // an attacker-ish symlink inside the spine pointing AT the hidden set — the name filter alone
+  // can't see through it, so syncWorktreeIncludes must skip symlinks outright.
+  symlinkSync(join(d, '.chalk/held-out'), join(d, '.chalk/sneaky'));
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  assert.equal(chalk(d, 'branch', id).code, 0);
+  const wt = tasksOf(d)[0].worktree;
+  assert.equal(existsSync(join(wt, '.chalk/sneaky')), false, 'the symlink was not copied/followed');
+  assert.equal(existsSync(join(wt, '.chalk/held-out/secret.test.mjs')), false, 'held-out still absent');
+});
+
+test('branch — recreates when the worktree dir was removed out-of-band (stale branch field)', () => {
+  const d = repo();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  assert.equal(chalk(d, 'branch', id).code, 0);
+  const wt1 = tasksOf(d)[0].worktree;
+  // nuke the worktree dir behind chalk's back — branch + stage='branched' remain on the task.
+  rmSync(wt1, { recursive: true, force: true });
+  assert.equal(tasksOf(d)[0].pipeline.stage, 'branched', 'task still thinks it is branched');
+  // re-branch must detect the missing worktree and recreate (not no-op on the stale field).
+  assert.equal(chalk(d, 'branch', id).code, 0);
+  const wt2 = tasksOf(d)[0].worktree;
+  assert.ok(wt2 && existsSync(wt2), 're-branch recreated the worktree after out-of-band removal');
+});
+
+test('worktree setup — the bootstrap hook runs in the worktree before work; a failure blocks at branch', () => {
+  const d = repo();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }]));`);
+  const wtbase = scratch();
+  // setup writes a sentinel INTO the worktree (cwd) — proves it ran there, before work/verify
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.worktree.setup = `node -e "require('fs').writeFileSync('.bootstrapped','ok')"`; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  assert.equal(chalk(d, 'branch', id).code, 0);
+  assert.ok(existsSync(join(tasksOf(d)[0].worktree, '.bootstrapped')), 'setup ran in the worktree');
+
+  // a failing setup must FAIL the branch stage with a clear, diagnosable reason
+  chalk(d, 'cleanup', id);
+  conf(d, (o) => { o.worktree.setup = 'node -e "process.exit(1)"'; });
+  const r = chalk(d, 'branch', id);
+  assert.notEqual(r.code, 0, 'a failed setup fails the branch stage');
+  assert.match(r.out, /worktree setup failed/);
+});
+
+test('cleanup then re-branch — a cleaned-up task is re-runnable (recreates the worktree)', () => {
+  const d = repo();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  assert.equal(chalk(d, 'branch', id).code, 0);
+  const wt1 = tasksOf(d)[0].worktree;
+  assert.ok(existsSync(wt1));
+  assert.equal(chalk(d, 'cleanup', id).code, 0);
+  assert.equal(existsSync(wt1), false, 'worktree removed by cleanup');
+  // re-branch must RECREATE, not no-op on a stale branch field (Finding 3)
+  assert.equal(chalk(d, 'branch', id).code, 0);
+  const wt2 = tasksOf(d)[0].worktree;
+  assert.ok(wt2 && existsSync(wt2), 're-branch recreated the worktree');
+  assert.equal(tasksOf(d)[0].pipeline.stage, 'branched');
 });
 
 test('work+verify run in the worktree — executor edits + gates resolve there, not in primary', () => {
@@ -510,6 +612,14 @@ test('doctor — flags missing executor + testless runnable tasks; READY when co
   r = chalk(d, 'doctor');
   assert.equal(r.code, 0, 'READY once executor + locked test exist');
   assert.match(r.out, /READY/);
+
+  // A toolchain verify command with no worktree.setup → a warning (a fresh worktree lacks packages).
+  conf(d, (o) => { o.verify = { test: 'fvm flutter test' }; });
+  r = chalk(d, 'doctor');
+  assert.match(r.out, /worktree\.setup is empty/, 'warns when verify implies a toolchain but no setup');
+  conf(d, (o) => { o.worktree.setup = 'flutter pub get'; });
+  r = chalk(d, 'doctor');
+  assert.doesNotMatch(r.out, /worktree\.setup is empty/, 'no warning once setup is configured');
 });
 
 test('smoke — refuses without --yes; --dry-run previews; GO when the real flow succeeds', () => {
