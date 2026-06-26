@@ -149,6 +149,14 @@ executor
 It fails on anything that would make a run unsafe or vacuous — missing executor, unauthenticated
 `gh`, and most importantly **a runnable task with no locked test**. Get to `● READY` first.
 
+**Test-enforcement gate (`protocol.requireTest`, default on).** A green `verify` only proves *nothing
+you assert is broken* — never that the change *is* asserted — so a feature can pass vacuously when the
+suite doesn't cover it. With `requireTest` on, the `work` stage **blocks a feature change whose diff
+adds no test** (it must add or change a real test file). Exempt: `docs`/`chore`/`refactor`/`style`/
+`build`/`ci` branches, a `skip-test`/`no-test` issue label, or a task with an already-locked test. This
+is *lever 1* (a test must EXIST); the adversarial reviewer is *lever 2* (it hard-blocks a test that
+doesn't actually assert the change). Set `protocol.requireTest: false` to disable.
+
 **2. Smoke — `chalk smoke` on a SCRATCH repo** (the only command that does real outward-facing
 actions):
 ```bash
