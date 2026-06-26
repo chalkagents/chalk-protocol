@@ -20,7 +20,7 @@ import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { basename } from 'node:path';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, lstatSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -46,6 +46,24 @@ const arr = (v) => (v == null ? [] : [].concat(v));
 const PIPE_STAGES = ['selected', 'branched', 'planned', 'verified', 'committed', 'pr-open', 'reviewed', 'tested', 'cleaned'];
 const stageRank = (st) => PIPE_STAGES.indexOf(st);
 const stageDone = (t, target) => stageRank(t.pipeline?.stage) >= stageRank(target);
+
+// Copy the configured live `include` paths from the primary checkout into a fresh worktree, so the
+// worktree's spine reflects CURRENT state (not the committed snapshot it was branched from). The
+// hidden held-out regression set, gitignored runtime state, and `.git` are ALWAYS excluded — the
+// implementer must never see `.chalk/held-out/`, `.chalk/local/` is per-machine, and copying `.git`
+// would corrupt the worktree's git pointer. Case-insensitive (macOS) and symlink-skipping, so a
+// mis-cased path or a symlink pointing INTO the hidden set can't smuggle it past the name filter.
+function syncWorktreeIncludes(srcRoot, destDir, include) {
+  if (destDir === srcRoot) return; // no isolation → nothing to copy
+  const blocked = /(^|[/\\])(\.chalk[/\\](local|held-out)|\.git)([/\\]|$)/i;
+  const allow = (s) => { if (blocked.test(s)) return false; try { if (lstatSync(s).isSymbolicLink()) return false; } catch { /* race: gone */ } return true; };
+  for (const rel of (include && include.length ? include : ['.chalk'])) {
+    const src = resolve(srcRoot, rel);
+    if (!existsSync(src) || !allow(`/${rel}`) || !allow(src)) continue;
+    try { cpSync(src, resolve(destDir, rel), { recursive: true, filter: allow }); }
+    catch { /* a missing/locked path must not abort branching */ }
+  }
+}
 
 const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
@@ -239,9 +257,15 @@ const cmds = {
   branch({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
-    if (stageDone(t, 'branched')) return ok(`branch ${C.b(t.branch || '')} ${C.dim('(already done)')}`);
     const wt = s.protocol().worktree || {};
     const gh0 = s.protocol().github || {};
+    // Idempotency guard keyed on the WORKTREE actually still existing. A leftover `branch` field whose
+    // worktree is gone (a cleanup, or an out-of-band `rm -rf`) is stale and must be recreated — keying
+    // on the branch alone would no-op while leaving t.worktree pointing at a missing dir (Finding 3).
+    const liveWorktree = wt.enabled === false ? true : !!(t.worktree && t.worktree !== s.root && existsSync(t.worktree));
+    if (stageDone(t, 'branched') && liveWorktree) {
+      return ok(`branch ${C.b(t.branch || '')} ${C.dim('(already done)')}`);
+    }
     const type = t.branchType || 'feat';
     const slug = pipelineSlug(t.title);
     t.branch = t.branch || `${type}/${t.issue?.number ? `${t.issue.number}-` : ''}${slug}`;
@@ -250,7 +274,20 @@ const cmds = {
       const dir = resolve(s.root, wt.dir || '..', `${repo}-${t.branch.replace(/\//g, '-')}`);
       try { worktreeAdd(s.root, { dir, branch: t.branch, base: gh0.base || 'main' }); }
       catch (e) { die(`worktree add failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+      // A fresh worktree checks out the COMMITTED base, so its `.chalk/` is a stale snapshot missing
+      // the just-pulled task. Copy the configured live paths from the primary over it so the worktree
+      // sees current spine state. held-out + local are ALWAYS excluded (the implementer must never see
+      // the hidden regression set; local/ is gitignored runtime). (Finding 1)
+      syncWorktreeIncludes(s.root, dir, wt.include || ['.chalk']);
       t.worktree = dir;
+      // Bootstrap hook: a fresh worktree has no resolved toolchain (no .dart_tool/, node_modules, venv);
+      // run the configured setup once before work/verify. A failure blocks here with a clear, diagnosable
+      // reason rather than a confusing verify failure later. (Finding 2)
+      if (wt.setup) {
+        console.log(C.dim(`  worktree setup: ${wt.setup}`));
+        try { execSync(withRunner(s.protocol().runner, wt.setup), { cwd: dir, stdio: ['ignore', 'inherit', 'inherit'], timeout: 15 * 60 * 1000 }); }
+        catch (e) { die(`worktree setup failed (\`${wt.setup}\`): ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+      }
     } else {
       t.worktree = s.root; // no isolation — work in the primary tree
     }
@@ -561,16 +598,21 @@ const cmds = {
     ok(`evidence: ${C.b(String(imgs.length))} screenshot(s) → PR #${t.pr.number}`);
   },
 
-  // GitHub pipeline — remove a task's worktree and delete its local branch (idempotent).
+  // GitHub pipeline — remove a task's worktree and delete its local branch (idempotent). Resets the
+  // task so it is RE-RUNNABLE: a leftover `branch` field + `stage='cleaned'` would otherwise make the
+  // next `chalk branch` no-op via its idempotency guard, stranding the task (Finding 3).
   cleanup({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
+    const had = t.branch;
     worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
     t.worktree = undefined;
-    t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
+    // A completed (merged) task stays terminal; an aborted one rewinds to pre-branch so it can re-run.
+    if (t.state !== 'done') { t.branch = undefined; t.pipeline = { ...(t.pipeline || {}), stage: 'selected', at: now() }; }
+    else { t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() }; }
     s.upsertTask(t); syncBrowser(s);
-    s.emitUpdate({ type: 'progress-update', title: `Cleaned up: ${t.branch || t.title}`, taskId: t.id });
-    ok(`cleaned up ${C.dim(t.branch || t.id.slice(0, 12))}`);
+    s.emitUpdate({ type: 'progress-update', title: `Cleaned up: ${had || t.title}`, taskId: t.id });
+    ok(`cleaned up ${C.dim(had || t.id.slice(0, 12))}`);
   },
 
   status() {
