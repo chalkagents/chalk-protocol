@@ -3,7 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { execSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync, rmSync, realpathSync } from 'node:fs';
+import { findRoot } from '../lib/store.mjs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,7 +92,6 @@ test('init writes the github/worktree/e2e pipeline config defaults', () => {
   assert.equal(proto.github.command, 'gh');
   assert.equal(proto.github.mergeMethod, 'squash');
   assert.equal(proto.worktree.enabled, true);
-  assert.deepEqual(proto.worktree.include, ['.chalk'], 'worktree.include default = the live spine');
   assert.equal(proto.worktree.setup, '', 'worktree.setup default empty');
   assert.ok('e2e' in proto, 'e2e config present');
 });
@@ -151,42 +151,77 @@ test('branch + cleanup — creates a <type>/<issue>-<slug> worktree, then tears 
   assert.equal(branchExists(d, 'feat/7-add-dark-mode'), false, 'local branch deleted');
 });
 
-test('worktree include — a fresh worktree gets the LIVE spine (its own task), never the held-out set', () => {
+test('single-canonical spine — a command run from a linked worktree resolves to the MAIN spine, even past a stale committed .chalk', () => {
   const d = repo();
   chalk(d, 'init', '--name', 'p');
-  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }]));`);
+  const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 4, title: 'Add X', url: 'u', body: '- [ ] do it', labels: [{ name: 'enhancement' }] }]));`);
   const wtbase = scratch();
   conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
-  // a held-out file in the primary that must NEVER leak into the implementer's worktree
-  mkdirSync(join(d, '.chalk/held-out'), { recursive: true });
-  writeFileSync(join(d, '.chalk/held-out/secret.test.mjs'), '// hidden assertions\n');
-  chalk(d, 'issue', 'pull'); // writes primary .chalk/tasks.json — UNCOMMITTED
+  // Commit a STALE spine snapshot so the worktree checks out its OWN .chalk — the exact condition
+  // (a committed .chalk in the worktree) that used to fork state. Then pull the task into MAIN only.
+  execSync('git add -A .chalk && git commit -q -m "spine snapshot"', { cwd: d });
+  chalk(d, 'issue', 'pull'); // MAIN's .chalk gains the task (uncommitted); the committed snapshot does NOT
   const id = tasksOf(d)[0].id.slice(0, 12);
-
   assert.equal(chalk(d, 'branch', id).code, 0);
   const wt = tasksOf(d)[0].worktree;
-  const wtTasks = JSON.parse(readFileSync(join(wt, '.chalk/tasks.json'), 'utf8'));
-  assert.ok(wtTasks.some((x) => x.id.startsWith(id)), 'the worktree sees its own task (live spine copied in)');
-  assert.equal(existsSync(join(wt, '.chalk/held-out/secret.test.mjs')), false, 'held-out set is NOT copied into the implementer worktree');
+  assert.ok(existsSync(join(wt, '.chalk/tasks.json')), 'the worktree checked out its own (stale) committed spine');
+
+  // Run a STATE-MUTATING command FROM THE WORKTREE. Option A must resolve it to MAIN's spine.
+  assert.equal(chalk(wt, 'start', id).code, 0, 'the worktree command found the task on the MAIN spine');
+  const mainTask = tasksOf(d)[0]; // reads MAIN d/.chalk/tasks.json
+  assert.equal(mainTask.state, 'in-progress', 'the worktree command advanced the MAIN spine');
+  assert.equal(mainTask.branch, tasksOf(d)[0].branch, 'branch field set from MAIN is intact — single spine, no fork');
+
+  // The worktree's own (stale committed) copy must NOT have been advanced — proving only one spine is live.
+  const wtCopy = JSON.parse(readFileSync(join(wt, '.chalk/tasks.json'), 'utf8'));
+  assert.ok(!wtCopy.some((x) => x.id.startsWith(id) && x.state === 'in-progress'), 'the worktree copy was NOT mutated (it is ignored)');
 });
 
-test('worktree include — a SYMLINK pointing into the held-out set cannot smuggle it into the worktree', () => {
+test('findRoot — a chalk project NESTED in a worktree subdir maps to the SAME subdir in main, not the outer spine', () => {
+  const d = repo();
+  const g = (a) => execSync(`git ${a}`, { cwd: d, stdio: 'pipe' });
+  // an OUTER spine at the repo root AND a distinct nested project at apps/x — both committed so the
+  // worktree checkout carries them. The nested project must NOT resolve to the outer root.
+  mkdirSync(join(d, '.chalk'), { recursive: true }); writeFileSync(join(d, '.chalk/chalk.json'), '{"version":"1.0"}');
+  mkdirSync(join(d, 'apps/x/.chalk'), { recursive: true }); writeFileSync(join(d, 'apps/x/.chalk/chalk.json'), '{"version":"1.0"}');
+  g('add -A'); g('commit -q -m spine');
+  const wt = join(scratch(), 'wt'); g(`worktree add ${wt} -b feat/x main`);
+  const same = (a, b) => realpathSync(a) === realpathSync(b);
+  assert.ok(same(findRoot(join(wt, 'apps/x')), join(d, 'apps/x')), 'nested worktree project → nested MAIN project');
+  assert.ok(same(findRoot(wt), d), 'worktree root project → MAIN root');
+});
+
+test('findRoot — no redirect when the main checkout lacks a spine at that path (uses the worktree-local copy)', () => {
+  const d = repo();
+  const g = (a) => execSync(`git ${a}`, { cwd: d, stdio: 'pipe' });
+  mkdirSync(join(d, '.chalk'), { recursive: true }); writeFileSync(join(d, '.chalk/chalk.json'), '{"version":"1.0"}');
+  g('add -A'); g('commit -q -m spine');
+  const wt = join(scratch(), 'wt'); g(`worktree add ${wt} -b feat/y main`);
+  rmSync(join(d, '.chalk'), { recursive: true, force: true }); // main spine gone at this path
+  assert.ok(realpathSync(findRoot(wt)) === realpathSync(wt), 'falls back to the worktree-local spine — never a wrong outer one');
+});
+
+test('findRoot — outside any git repo, walks up to the nearest .chalk (no crash when git is absent)', () => {
+  const base = scratch(); // a plain temp dir, NOT a git repo
+  mkdirSync(join(base, 'proj/.chalk'), { recursive: true }); writeFileSync(join(base, 'proj/.chalk/chalk.json'), '{"version":"1.0"}');
+  assert.ok(realpathSync(findRoot(join(base, 'proj/sub'))) === realpathSync(join(base, 'proj')), 'walk-up still works with no git');
+});
+
+test('worktree — held-out set is never copied into the worktree (no spine copy happens at all)', () => {
   const d = repo();
   chalk(d, 'init', '--name', 'p');
   const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }]));`);
   const wtbase = scratch();
   conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
   mkdirSync(join(d, '.chalk/held-out'), { recursive: true });
-  writeFileSync(join(d, '.chalk/held-out/secret.test.mjs'), '// hidden\n');
-  // an attacker-ish symlink inside the spine pointing AT the hidden set — the name filter alone
-  // can't see through it, so syncWorktreeIncludes must skip symlinks outright.
-  symlinkSync(join(d, '.chalk/held-out'), join(d, '.chalk/sneaky'));
+  writeFileSync(join(d, '.chalk/held-out/secret.test.mjs'), '// hidden assertions\n');
   chalk(d, 'issue', 'pull');
   const id = tasksOf(d)[0].id.slice(0, 12);
   assert.equal(chalk(d, 'branch', id).code, 0);
   const wt = tasksOf(d)[0].worktree;
-  assert.equal(existsSync(join(wt, '.chalk/sneaky')), false, 'the symlink was not copied/followed');
-  assert.equal(existsSync(join(wt, '.chalk/held-out/secret.test.mjs')), false, 'held-out still absent');
+  // The held-out set lives ONLY in the main checkout's uncommitted .chalk; the worktree (a code
+  // sandbox, no spine copy) never receives it.
+  assert.equal(existsSync(join(wt, '.chalk/held-out/secret.test.mjs')), false, 'held-out is never present in the worktree');
 });
 
 test('branch — recreates when the worktree dir was removed out-of-band (stale branch field)', () => {

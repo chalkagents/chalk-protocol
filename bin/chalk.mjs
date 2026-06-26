@@ -20,7 +20,7 @@ import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { basename } from 'node:path';
-import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, lstatSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -47,23 +47,6 @@ const PIPE_STAGES = ['selected', 'branched', 'planned', 'verified', 'committed',
 const stageRank = (st) => PIPE_STAGES.indexOf(st);
 const stageDone = (t, target) => stageRank(t.pipeline?.stage) >= stageRank(target);
 
-// Copy the configured live `include` paths from the primary checkout into a fresh worktree, so the
-// worktree's spine reflects CURRENT state (not the committed snapshot it was branched from). The
-// hidden held-out regression set, gitignored runtime state, and `.git` are ALWAYS excluded — the
-// implementer must never see `.chalk/held-out/`, `.chalk/local/` is per-machine, and copying `.git`
-// would corrupt the worktree's git pointer. Case-insensitive (macOS) and symlink-skipping, so a
-// mis-cased path or a symlink pointing INTO the hidden set can't smuggle it past the name filter.
-function syncWorktreeIncludes(srcRoot, destDir, include) {
-  if (destDir === srcRoot) return; // no isolation → nothing to copy
-  const blocked = /(^|[/\\])(\.chalk[/\\](local|held-out)|\.git)([/\\]|$)/i;
-  const allow = (s) => { if (blocked.test(s)) return false; try { if (lstatSync(s).isSymbolicLink()) return false; } catch { /* race: gone */ } return true; };
-  for (const rel of (include && include.length ? include : ['.chalk'])) {
-    const src = resolve(srcRoot, rel);
-    if (!existsSync(src) || !allow(`/${rel}`) || !allow(src)) continue;
-    try { cpSync(src, resolve(destDir, rel), { recursive: true, filter: allow }); }
-    catch { /* a missing/locked path must not abort branching */ }
-  }
-}
 
 const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
@@ -274,11 +257,9 @@ const cmds = {
       const dir = resolve(s.root, wt.dir || '..', `${repo}-${t.branch.replace(/\//g, '-')}`);
       try { worktreeAdd(s.root, { dir, branch: t.branch, base: gh0.base || 'main' }); }
       catch (e) { die(`worktree add failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
-      // A fresh worktree checks out the COMMITTED base, so its `.chalk/` is a stale snapshot missing
-      // the just-pulled task. Copy the configured live paths from the primary over it so the worktree
-      // sees current spine state. held-out + local are ALWAYS excluded (the implementer must never see
-      // the hidden regression set; local/ is gitignored runtime). (Finding 1)
-      syncWorktreeIncludes(s.root, dir, wt.include || ['.chalk']);
+      // No spine is copied into the worktree: it is a pure code sandbox. Any `chalk` command run from
+      // here (the executor's, or a manual one) resolves to the MAIN checkout's single canonical spine
+      // via findRoot's linked-worktree detection — so state can never bifurcate. (Finding #4)
       t.worktree = dir;
       // Bootstrap hook: a fresh worktree has no resolved toolchain (no .dart_tool/, node_modules, venv);
       // run the configured setup once before work/verify. A failure blocks here with a clear, diagnosable
