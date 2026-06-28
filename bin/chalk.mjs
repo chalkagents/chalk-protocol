@@ -13,6 +13,9 @@ import { runDriver } from '../lib/run.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
 import { postReviewToPr } from '../lib/prreview.mjs';
+import { brokeCheck } from '../lib/brokecheck.mjs';
+import { mergeBlockers } from '../lib/mergegate.mjs';
+import { extractQuestions, planApprovalRequired } from '../lib/planning.mjs';
 import { runSpecs } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline } from '../lib/pipeline.mjs';
@@ -365,7 +368,39 @@ const cmds = {
     t.pipeline = { ...(t.pipeline || {}), stage: 'planned', at: now() };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'planning-generated', title: `Planned: ${t.title}`, taskId: t.id });
-    ok(`plan ready ${C.dim(`(${planText.split('\n').length} lines)`)} ${C.dim('→ the executor will implement it')}`);
+    // Planning is the human checkpoint: record the planner's clarifying questions so a human can
+    // validate scope (and `chalk approve-plan` can gate work on them). Skip ones already on file.
+    const newQs = extractQuestions(planText);
+    if (newQs.length) {
+      const qs = s.questions();
+      const existing = new Set(qs.map((q) => q.question));
+      for (const text of newQs) if (!existing.has(text)) qs.push({ id: id('q'), question: text, awaitingFrom: 'human', status: 'open', taskId: t.id, at: now() });
+      s.saveQuestions(qs);
+    }
+    const qNote = newQs.length ? C.y(` · ${newQs.length} scoping question(s) → answer & \`chalk approve-plan\``) : '';
+    ok(`plan ready ${C.dim(`(${planText.split('\n').length} lines)`)}${qNote}`);
+  },
+
+  // Plan-approval gate (the human checkpoint). Marks a task's plan approved so `work` may proceed.
+  // Refuses without a plan, or with open scoping questions still unanswered (unless --force --why).
+  'approve-plan'({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    if (!t.plan) die('no plan to approve — run `chalk plan <id>` first.');
+    const openQ = s.questions().filter((q) => q.taskId === t.id && q.status !== 'resolved');
+    if (openQ.length && !flags.force) {
+      console.error(C.r('✗ ') + `${openQ.length} open scoping question(s) — answer them first (chalk question resolve <id> "..."), or --force --why "...":`);
+      for (const q of openQ) console.error(`    ? ${q.question}`);
+      process.exit(1);
+    }
+    if (openQ.length && flags.force) {
+      if (!flags.why) die('--force requires --why "<reason>" (logged as a decision).');
+      s.appendDecision(`Approved plan for "${t.title}" with ${openQ.length} open question(s)`, String(flags.why));
+    }
+    t.planApproved = { at: now(), by: flags.by || 'human' };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Plan approved: ${t.title}`, taskId: t.id });
+    ok(`plan approved ${C.dim(`for ${t.title}`)} — \`chalk work ${t.id.slice(0, 12)}\` may proceed`);
   },
 
   // GitHub pipeline — start (if needed) + run the executor in the worktree + verify. exit 2 RED.
@@ -373,6 +408,13 @@ const cmds = {
     const s = Store.open();
     const t = mustTask(s, _[0]);
     if (stageDone(t, 'verified')) return ok(`work ${C.b(t.title)} ${C.dim('(already verified)')}`);
+    // Plan-approval gate (the human checkpoint): when planning is required, no code is written until a
+    // human has approved the plan. Checked BEFORE the state flip so a refusal leaves no side effect.
+    // Exit 2 → the pipeline auto-blocks (needs:human-input) + handoff.
+    if (planApprovalRequired(s, t)) {
+      console.error(C.r('✗ ') + 'plan not approved — a human must run `chalk approve-plan ' + t.id.slice(0, 12) + '` (answer the scoping questions first).');
+      process.exit(2);
+    }
     if (t.state === 'todo' || t.state === 'specd') {
       if (!((t.acceptanceCriteria || []).length || (t.tests || []).length)) die('GATE P1: task has no acceptance criteria.');
       t.state = 'in-progress'; t.startedAt = now(); s.upsertTask(t);
@@ -423,8 +465,18 @@ const cmds = {
     // merging a done/specd/blocked task would vacuously pass those gates. Require it explicitly.
     if (t.state !== 'in-progress') die(`merge requires an in-progress, verified task (this is [${t.state}]).`);
     if (!t.pr?.number) die('no PR — run `chalk pr <id>` first.');
-    if (!runVerify(s, { cwd: workdir(s, t) }).green) die('GATE: verify is not green — cannot merge.');
-    if (reviewRequiredNow(s, t) && !((t.reviews || []).slice(-1)[0]?.verdict === 'pass')) die('GATE P5: a passing review is required before merge.');
+    // Broke-check: did something break? Remote CI when the PR has it, else local verify. Replaces the
+    // bare verify gate (its fallback IS local verify, so non-CI projects behave as before).
+    const broke = brokeCheck(s, t);
+    const reviewReq = reviewRequiredNow(s, t);
+    // If the review passed but the LGTM wasn't surfaced on the PR yet (review predated the PR, or a
+    // gh hiccup), post it now so the gate can confirm a sign-off precedes the merge.
+    if (reviewReq && !t.pr?.lgtm && (t.reviews || []).slice(-1)[0]?.verdict === 'pass') {
+      const p = postReviewToPr(s, t, { verdict: 'pass', findings: [] });
+      if (p.lgtm) { t.pr = { ...t.pr, lgtm: true }; s.upsertTask(t); }
+    }
+    const blockers = mergeBlockers(s, t, { reviewRequired: reviewReq, broke });
+    if (blockers.length) die(`GATE: cannot merge —\n  - ${blockers.join('\n  - ')}`);
     const reg = s.protocol().regression;
     if (reg?.required && !(reg.lastAudit && reg.lastAudit.green)) die('GATE P7: held-out audit is not green — run `chalk audit`.');
     try { runGh(workdir(s, t), gh0.command, `pr merge ${t.pr.number} --${gh0.mergeMethod || 'squash'} --delete-branch`); }
@@ -1159,6 +1211,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk block <id> --needs <creds|decision|human-input|upstream> --reason "..."   ${C.dim('park; keep the run moving')}
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
+  chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
   chalk guard add <path> | gen | list  ${C.dim('author/lock the held-out set (from the spec)')}
