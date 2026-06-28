@@ -20,6 +20,7 @@ import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
 import { missingRequiredTest } from '../lib/testgate.mjs';
 import { runBreakit } from '../lib/breakit.mjs';
+import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { basename } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -86,7 +87,7 @@ const cmds = {
   },
 
   // The single command an agent calls to learn its next action (which gate is blocking).
-  next() {
+  next({ flags = {} } = {}) {
     const s = Store.open();
     const tasks = s.tasks();
     const wip = tasks.filter((t) => t.state === 'in-progress');
@@ -94,6 +95,16 @@ const cmds = {
     const ready = specd.filter((t) => depsSatisfied(t, tasks));   // deps done → startable now
     const waiting = specd.filter((t) => !depsSatisfied(t, tasks)); // specd but blocked behind deps
     const todo = tasks.filter((t) => t.state === 'todo');
+    // Machine-readable signal for an orchestrator: which task to run, and that it should run in a
+    // FRESH session (one session per task) seeded with the task's latest handoff, if any.
+    if (flags.json) {
+      const pick = wip[0] || ready[0] || null; // in-progress first, else the next runnable
+      const t = pick && { id: pick.id, title: pick.title, state: pick.state };
+      const handoff = pick?.handoff?.path || null;
+      const action = pick ? (pick.state === 'in-progress' ? 'work' : 'start') : null;
+      console.log(JSON.stringify({ task: t || null, freshSession: true, handoff, action }));
+      return;
+    }
     console.log(C.b('Chalk · next action'));
     const reg0 = s.protocol().regression;
     if (reg0?.required) {
@@ -368,12 +379,17 @@ const cmds = {
     if (t.state !== 'in-progress') die(`task is [${t.state}], not workable.`);
     const ex = s.protocol().executor?.command;
     if (ex) {
+      t.attempts = (t.attempts || 0) + 1; s.upsertTask(t);   // churn budget: each work run counts
       const t0 = Date.now();
       try { execSync(ex, { cwd: workdir(s, t), input: buildContext(s, t), stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); } catch { /* gate decides */ }
       s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0 });
     }
     const v = runVerify(s, { cwd: workdir(s, t) });
-    if (!v.green) { console.error(C.r('✗ ') + 'verify RED after work — gate closed.'); process.exit(2); }
+    if (!v.green) {
+      const churn = overAttemptBudget(s, t) ? ` (churn — ${t.attempts} attempts without green; resume in a FRESH session)` : '';
+      console.error(C.r('✗ ') + `verify RED after work — gate closed.${churn}`);
+      process.exit(2);
+    }
     // Test-enforcement gate: a green verify can be vacuous, so a feature change must add/change a test.
     // Exit 2 → the pipeline auto-blocks (needs:human-input) with this reason surfaced (diagnosable).
     if (missingRequiredTest(s, t)) {
@@ -736,7 +752,10 @@ const cmds = {
     t.block = { needs, reason: String(flags.reason), at: now() };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Blocked: ${t.title} (needs ${needs})`, description: String(flags.reason), taskId: t.id });
-    ok(`blocked ${C.b(t.title)} ${C.dim(`— needs ${needs}`)}`);
+    // A blocked task never finishes in this session — leave a handoff so a fresh one can pick it up.
+    // The pipeline auto-blocks by shelling out to this command, so that path is covered here too.
+    const rec = writeHandoff(s, t, { reason: needs, note: String(flags.reason) });
+    ok(`blocked ${C.b(t.title)} ${C.dim(`— needs ${needs}`)} ${C.dim(`· handoff ${rec.path}`)}`);
   },
 
   unblock({ _ }) {
@@ -748,6 +767,16 @@ const cmds = {
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Unblocked: ${t.title}`, taskId: t.id });
     ok(`unblocked ${C.b(t.title)} ${C.dim(`[${t.state}]`)}`);
+  },
+
+  // Write a handoff doc so a FRESH session can pick up this task (context minification: one session
+  // per task). Template-first; an optional BYO protocol.handoff.command enriches the narrative.
+  handoff({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const rec = writeHandoff(s, t, { reason: String(flags.reason || 'manual'), note: flags.note ? String(flags.note) : '' });
+    ok(`handoff written ${C.dim(`(${rec.reason})`)} → ${C.b(rec.path)}`);
+    console.log(C.dim(`  pick up in a fresh session: chalk context ${t.id.slice(0, 12)}`));
   },
 
   verify() {
@@ -1122,6 +1151,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk amend-spec <id> --test <path> --why "..."   ${C.dim('gated test change (P6)')}
   chalk block <id> --needs <creds|decision|human-input|upstream> --reason "..."   ${C.dim('park; keep the run moving')}
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
+  chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
   chalk guard add <path> | gen | list  ${C.dim('author/lock the held-out set (from the spec)')}

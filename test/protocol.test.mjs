@@ -113,6 +113,7 @@ test('init scaffolds the spine + installs the agent contract', () => {
   const proto = JSON.parse(readFileSync(join(d, '.chalk/chalk.json'), 'utf8')).protocol;
   assert.equal(proto.requireTest, true, 'test-enforcement (lever 1) on by default');
   assert.equal(proto.breakTest, '', 'break-it gate (lever 3) opt-in: default off');
+  assert.deepEqual(proto.handoff, { command: '', maxAttempts: 3 }, 'handoff defaults: template-only, churn cap 3');
   assert.ok(existsSync(join(d, '.chalk/held-out')));
   assert.ok(readFileSync(join(d, 'AGENTS.md'), 'utf8').includes('Chalk Protocol'));
   assert.ok(readFileSync(join(d, 'CLAUDE.md'), 'utf8').includes('READ-ONLY'));
@@ -433,6 +434,28 @@ test('run — auto-blocks a task the executor cannot make green; degrades withou
   const r = chalk(d, 'run');
   assert.equal(r.code, 0, 'no executor → run exits 0');
   assert.ok(/no executor|manual loop/i.test(r.out), 'run prints the manual fallback');
+});
+
+test('handoff — `chalk handoff` writes a doc under .chalk/handoffs and prints its path; dir is gitignored', () => {
+  const d = scratch();
+  const g = (a) => execSync(`git ${a}`, { cwd: d, stdio: 'pipe' });
+  g('init -b main'); g('config user.email t@t.t'); g('config user.name t');
+  chalk(d, 'init', '--name', 'd');
+  const a = (chalk(d, 'task', 'add', 'Build the parser'), tid(d, 0));
+  chalk(d, 'spec', a, '--criterion', 'parses');
+  chalk(d, 'start', a);
+  writeFileSync(join(d, 'parser.mjs'), 'export const p = 1;\n'); // an uncommitted change to capture
+  const r = chalk(d, 'handoff', a, '--note', 'stuck on lookahead');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /handoff written/);
+  assert.match(r.out, /\.chalk\/handoffs\//);
+  const md = readFileSync(join(d, '.chalk/handoffs', `${a}-1.md`), 'utf8');
+  assert.match(md, /Build the parser/);
+  assert.match(md, /stuck on lookahead/);
+  assert.match(md, /parser\.mjs/, 'captures the working-tree change');
+  // the repo's own convention: ephemeral handoff docs are not versioned.
+  const ignore = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '.gitignore'), 'utf8');
+  assert.match(ignore, /\.chalk\/handoffs\//, 'handoffs dir is gitignored');
 });
 
 test('run — the break-it gate (lever 3) auto-blocks a vacuous locked test', () => {
