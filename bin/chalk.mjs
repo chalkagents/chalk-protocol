@@ -10,7 +10,9 @@ import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
-import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
+import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
+import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
+import { postReviewToPr } from '../lib/prreview.mjs';
 import { runSpecs } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline } from '../lib/pipeline.mjs';
@@ -324,12 +326,11 @@ const cmds = {
     try { runGit(wd, `push -u origin ${t.branch}`); } catch (e) { die(`git push failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
     const type = t.branchType || 'feat';
     const title = `${type}: ${(t.title || '').replace(/^\s*(feat|fix|chore|docs|refactor|test|perf|style|build|ci)(\([^)]*\))?:\s*/i, '').replace(/^./, (c) => c.toLowerCase())}`;
-    const body = [
-      '## Summary', `- ${t.title}${t.issue?.number ? ` (closes #${t.issue.number})` : ''}`, '',
-      '## Changes', ...(t.acceptanceCriteria || []).map((c) => `- ${c.text}`), '',
-      '## Test plan', '- `chalk verify` green (toolchain + integrity + e2e)',
-      t.issue?.number ? `\nCloses #${t.issue.number}` : '',
-    ].join('\n');
+    // The PR body is the "what was done" recording a human (and the merge gate) reads: summary +
+    // narrative + the files the branch actually changed + criteria + test plan. The change set comes
+    // from the committed diff vs base (working tree is clean post-commit). recorded=true gates merge.
+    const changed = diffPaths(wd, gh0.base || 'main');
+    const body = buildPrBody(s, t, { changed, narrative: prNarrative(s, t, changed) });
     // Quote each label — GitHub label names are attacker-controlled (from the issue) and may
     // contain shell metacharacters; an unquoted value would be command injection in an unattended run.
     const labels = (t.labels || []).map((l) => `--label ${shq(l)}`).join(' ');
@@ -338,7 +339,7 @@ const cmds = {
     catch (e) { die(`gh pr create failed: ${String(e.message).split('\n').slice(-3).join('\n  ')}`); }
     const url = (out.match(/https?:\/\/\S+\/pull\/\d+/) || [out.trim()])[0];
     const number = Number((url.match(/\/pull\/(\d+)/) || [])[1]) || undefined;
-    t.pr = { number, url };
+    t.pr = { number, url, recorded: changed.length > 0 };
     t.pipeline = { ...(t.pipeline || {}), stage: 'pr-open', at: now() };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-submitted', title: `PR #${number || '?'} opened`, taskId: t.id });
@@ -867,9 +868,11 @@ const cmds = {
       const verdict = flags.block ? 'block' : 'pass';
       t.reviews.push({ at: now(), by: flags.by || 'human', verdict, findings: [], note: String(note), checklist: ['test-adequacy', 'design-intent', 'regressions'] });
       if (verdict === 'pass') t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
+      const mp = postReviewToPr(s, t, { verdict, findings: [] });
+      if (mp.lgtm) t.pr = { ...(t.pr || {}), lgtm: true };
       s.upsertTask(t);
       s.emitUpdate({ type: 'progress-update', title: `Review (manual): ${t.title}`, description: String(note), taskId: t.id });
-      return ok('manual review recorded ' + C.dim('(checklist: test-adequacy · design-intent · regressions)'));
+      return ok('manual review recorded ' + C.dim('(checklist: test-adequacy · design-intent · regressions)') + (mp.posted ? C.dim(' · posted to PR') : ''));
     }
 
     console.log(C.dim('  running adversarial reviewer…'));
@@ -877,9 +880,13 @@ const cmds = {
     if (r.status === 'error') die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
     t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings });
     if (r.verdict === 'pass') t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
+    // Surface the verdict ON the PR (findings on block, LGTM on pass) so it's visible where a human
+    // reviews — and record the LGTM signal the merge gate requires.
+    const posted = postReviewToPr(s, t, { verdict: r.verdict, findings: r.findings });
+    if (posted.lgtm) t.pr = { ...(t.pr || {}), lgtm: true };
     s.upsertTask(t);
     s.emitUpdate({ type: 'progress-update', title: `Review (${r.verdict}): ${t.title}`, taskId: t.id });
-    console.log((r.verdict === 'pass' ? C.g('● review PASS') : C.r('● review BLOCK')) + ` ${C.dim(t.title)}`);
+    console.log((r.verdict === 'pass' ? C.g('● review PASS') : C.r('● review BLOCK')) + ` ${C.dim(t.title)}` + (posted.posted ? C.dim(' · posted to PR') : ''));
     for (const f of r.findings) console.log(`   ${sev(f.severity)} ${C.dim(`[${f.area}]`)} ${f.note}`);
     if (r.verdict !== 'pass') console.log(C.dim('   fix the blocking findings and re-run `chalk review`.'));
     process.exit(r.verdict === 'pass' ? 0 : 3);

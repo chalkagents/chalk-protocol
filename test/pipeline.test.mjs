@@ -450,6 +450,31 @@ test('commit + pr — conventional commit in the worktree, then push + gh pr cre
   assert.match(execSync('git branch -a', { cwd: wt, encoding: 'utf8' }), /feat\/5-add-feature/);
 });
 
+test('pr — the body records what was done (summary, changes from the diff, criteria) and sets recorded', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const bodyFile = join(d, 'pr-body.txt');
+  const ghCmd = stubGh(d, `import {writeFileSync} from 'node:fs'; const a=process.argv.slice(2);
+    if(a.includes('pr')&&a.includes('create')){ writeFileSync(${JSON.stringify(bodyFile)}, a[a.indexOf('--body')+1]); console.log('https://github.com/o/r/pull/7'); }
+    else console.log(JSON.stringify([{number:5,title:'Add sort',url:'u',body:'- [ ] x',labels:[{name:'enhancement'}]}]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id);
+  const wt = tasksOf(d)[0].worktree;
+  writeFileSync(join(wt, 'sort.js'), 'export const s = 1;\n'); // the executor's committed change
+  chalk(d, 'commit', id);
+  assert.equal(chalk(d, 'pr', id).code, 0);
+  const body = readFileSync(bodyFile, 'utf8');
+  assert.match(body, /## Summary/);
+  assert.match(body, /## What was done/);
+  assert.match(body, /## Changes/);
+  assert.match(body, /sort\.js/, 'the committed change is recorded in the PR body');
+  assert.match(body, /Closes #5/);
+  assert.equal(tasksOf(d)[0].pr.recorded, true, 'recording flag set for the merge gate');
+});
+
 test('commit — does not double a conventional prefix already in the issue title', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');
