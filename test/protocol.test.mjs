@@ -114,6 +114,7 @@ test('init scaffolds the spine + installs the agent contract', () => {
   assert.equal(proto.requireTest, true, 'test-enforcement (lever 1) on by default');
   assert.equal(proto.breakTest, '', 'break-it gate (lever 3) opt-in: default off');
   assert.deepEqual(proto.handoff, { command: '', maxAttempts: 3 }, 'handoff defaults: template-only, churn cap 3');
+  assert.deepEqual(proto.prbody, { command: '' }, 'PR-body recording default: template-only narrative');
   assert.ok(existsSync(join(d, '.chalk/held-out')));
   assert.ok(readFileSync(join(d, 'AGENTS.md'), 'utf8').includes('Chalk Protocol'));
   assert.ok(readFileSync(join(d, 'CLAUDE.md'), 'utf8').includes('READ-ONLY'));
@@ -456,6 +457,45 @@ test('handoff — `chalk handoff` writes a doc under .chalk/handoffs and prints 
   // the repo's own convention: ephemeral handoff docs are not versioned.
   const ignore = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '.gitignore'), 'utf8');
   assert.match(ignore, /\.chalk\/handoffs\//, 'handoffs dir is gitignored');
+});
+
+// Stub gh that captures any `pr comment` body (read from stdin via --body-file -).
+function ghCommentStub(d, out) {
+  const p = join(d, 'gh.mjs');
+  writeFileSync(p, `import {appendFileSync} from 'node:fs'; const a=process.argv.slice(2);
+    if(a.includes('comment')){ let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>appendFileSync(${JSON.stringify(out)}, s)); }`);
+  return `node ${p}`;
+}
+const passReviewer = (d) => { const p = join(d, 'rv.mjs'); writeFileSync(p, `process.stdin.on('data',()=>{}); console.log(JSON.stringify({verdict:'pass',findings:[]}));`); return `node ${p}`; };
+const seedPr = (d, number) => { const f = join(d, '.chalk/tasks.json'); const ts = JSON.parse(readFileSync(f)); ts[0].pr = { number, url: 'u' }; writeFileSync(f, JSON.stringify(ts, null, 2)); };
+
+test('chalk review — posts the verdict to the PR and records the LGTM signal', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  const out = join(d, 'gh-comment.txt');
+  conf(d, (o) => { o.github = { ...(o.github || {}), command: ghCommentStub(d, out) }; o.review = { command: passReviewer(d) }; });
+  chalk(d, 'task', 'add', 'T'); const a = tid(d, 0);
+  chalk(d, 'spec', a, '--criterion', 'x'); chalk(d, 'start', a);
+  seedPr(d, 7); // as if `chalk pr` had opened the PR
+  const r = chalk(d, 'review', a);
+  assert.equal(r.code, 0, 'pass verdict → exit 0');
+  assert.match(readFileSync(out, 'utf8'), /LGTM/, 'an LGTM comment was posted to the PR');
+  assert.equal(JSON.parse(readFileSync(join(d, '.chalk/tasks.json')))[0].pr.lgtm, true, 'lgtm signal recorded for the merge gate');
+});
+
+test('chalk run — the loop posts the review verdict (LGTM) to a task that has a PR', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  const out = join(d, 'gh-comment.txt');
+  writeFileSync(join(d, 'exec.mjs'), `import {readFileSync,writeFileSync} from 'node:fs'; try{readFileSync(0,'utf8')}catch{} writeFileSync('impl.js','x'); writeFileSync('impl.test.js','// asserts');`);
+  writeFileSync(join(d, 'check.mjs'), `import {existsSync} from 'node:fs'; process.exit(existsSync('impl.js')?0:1);`);
+  conf(d, (o) => { o.verify.test = 'node check.mjs'; o.executor = { command: 'node exec.mjs' };
+    o.review = { command: passReviewer(d), requiredAt: ['per-task'] }; o.github = { ...(o.github || {}), command: ghCommentStub(d, out) }; });
+  chalk(d, 'task', 'add', 'T'); const a = tid(d, 0);
+  chalk(d, 'spec', a, '--criterion', 'x');
+  seedPr(d, 9);
+  chalk(d, 'run', '--max', '2');
+  assert.match(readFileSync(out, 'utf8'), /LGTM/, 'the run-loop review posted LGTM to the PR');
 });
 
 test('run — the break-it gate (lever 3) auto-blocks a vacuous locked test', () => {

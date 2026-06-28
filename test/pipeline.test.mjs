@@ -450,6 +450,31 @@ test('commit + pr — conventional commit in the worktree, then push + gh pr cre
   assert.match(execSync('git branch -a', { cwd: wt, encoding: 'utf8' }), /feat\/5-add-feature/);
 });
 
+test('pr — the body records what was done (summary, changes from the diff, criteria) and sets recorded', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const bodyFile = join(d, 'pr-body.txt');
+  const ghCmd = stubGh(d, `import {writeFileSync} from 'node:fs'; const a=process.argv.slice(2);
+    if(a.includes('pr')&&a.includes('create')){ writeFileSync(${JSON.stringify(bodyFile)}, a[a.indexOf('--body')+1]); console.log('https://github.com/o/r/pull/7'); }
+    else console.log(JSON.stringify([{number:5,title:'Add sort',url:'u',body:'- [ ] x',labels:[{name:'enhancement'}]}]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id);
+  const wt = tasksOf(d)[0].worktree;
+  writeFileSync(join(wt, 'sort.js'), 'export const s = 1;\n'); // the executor's committed change
+  chalk(d, 'commit', id);
+  assert.equal(chalk(d, 'pr', id).code, 0);
+  const body = readFileSync(bodyFile, 'utf8');
+  assert.match(body, /## Summary/);
+  assert.match(body, /## What was done/);
+  assert.match(body, /## Changes/);
+  assert.match(body, /sort\.js/, 'the committed change is recorded in the PR body');
+  assert.match(body, /Closes #5/);
+  assert.equal(tasksOf(d)[0].pr.recorded, true, 'recording flag set for the merge gate');
+});
+
 test('commit — does not double a conventional prefix already in the issue title', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');
@@ -537,6 +562,116 @@ test('pipeline — unattended driver takes an issue all the way to a squash-merg
   assert.ok(existsSync(merged), 'gh pr merge was called');
   assert.match(readFileSync(merged, 'utf8'), /pr merge 42 --squash --delete-branch/);
   assert.equal(branchExists(d, t.branch), false, 'local branch deleted');
+});
+
+test('merge discipline — with a reviewer + green CI, the reviewer LGTMs on the PR and the gate merges', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const merged = join(d, 'merged.txt'), comment = join(d, 'comment.txt');
+  const ghCmd = stubGh(d, `import {writeFileSync,appendFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...x)=>x.every(y=>a.includes(y));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else if(has('pr','comment')){ let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>appendFileSync(${JSON.stringify(comment)}, s)); }
+    else if(has('pr','checks')) console.log(JSON.stringify([{bucket:'pass'},{bucket:'skipping'}]));
+    else if(has('pr','merge')) writeFileSync(${JSON.stringify(merged)}, a.join(' '));
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts feature\\n');`);
+  writeFileSync(join(d, 'rv.mjs'), `process.stdin.on('data',()=>{}); console.log(JSON.stringify({verdict:'pass',findings:[]}));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` };
+    o.review = { command: `node ${join(d, 'rv.mjs')}`, requiredAt: ['per-task'] }; });
+
+  chalk(d, 'issue', 'pull');
+  assert.equal(chalk(d, 'pipeline').code, 0, 'pipeline completes');
+  const t = tasksOf(d)[0];
+  assert.equal(t.state, 'done', 'merged + done through the full gate');
+  assert.equal(t.pr.recorded, true, 'PR carried a recording');
+  assert.equal(t.pr.lgtm, true, 'LGTM signal recorded');
+  assert.match(readFileSync(comment, 'utf8'), /LGTM/, 'the reviewer posted LGTM on the PR');
+  assert.ok(existsSync(merged), 'the gate let the merge through');
+});
+
+test('merge discipline — review passed but LGTM not surfaced → merge posts the LGTM before merging', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const merged = join(d, 'merged.txt'), comment = join(d, 'comment.txt');
+  const ghCmd = stubGh(d, `import {writeFileSync,appendFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...x)=>x.every(y=>a.includes(y));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else if(has('pr','comment')){ let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>appendFileSync(${JSON.stringify(comment)}, s)); }
+    else if(has('pr','checks')) console.log(JSON.stringify([{bucket:'pass'}]));
+    else if(has('pr','merge')) writeFileSync(${JSON.stringify(merged)}, a.join(' '));
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts\\n');`);
+  const wtbase = scratch();
+  // review required by cadence, but NO reviewer command runs in this flow — we seed a passing review
+  // WITHOUT a surfaced LGTM, simulating "review predated the PR / a gh hiccup dropped the comment".
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; o.review = { requiredAt: ['per-task'] }; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id); chalk(d, 'work', id); chalk(d, 'commit', id); chalk(d, 'pr', id);
+  // seed a passing review with no lgtm on the PR
+  const f = join(d, '.chalk/tasks.json'); const ts = JSON.parse(readFileSync(f));
+  ts[0].reviews = [{ verdict: 'pass', by: 'adversary' }]; delete ts[0].pr.lgtm; writeFileSync(f, JSON.stringify(ts, null, 2));
+
+  assert.equal(chalk(d, 'merge', id).code, 0, 'merge proceeds after posting the LGTM');
+  assert.match(readFileSync(comment, 'utf8'), /LGTM/, 'merge posted the LGTM to the PR before merging');
+  assert.equal(tasksOf(d)[0].pr.lgtm, true, 'lgtm recorded by the merge-time post');
+  assert.ok(existsSync(merged), 'merge happened');
+});
+
+test('review loop — a blocking review triggers fix→re-review; on pass the pipeline merges', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const merged = join(d, 'merged.txt'), comment = join(d, 'comment.txt');
+  const rvCount = join(d, 'rv-count.txt'), exCount = join(d, 'ex-count.txt');
+  const ghCmd = stubGh(d, `import {writeFileSync,appendFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...x)=>x.every(y=>a.includes(y));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else if(has('pr','comment')){ let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>appendFileSync(${JSON.stringify(comment)}, s)); }
+    else if(has('pr','checks')) console.log(JSON.stringify([{bucket:'pass'}]));
+    else if(has('pr','merge')) writeFileSync(${JSON.stringify(merged)}, a.join(' '));
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  // executor changes the code each round so the fix is real (and ships a test → test-gate satisfied)
+  writeFileSync(join(d, 'exec.mjs'), `import {readFileSync,writeFileSync,existsSync} from 'node:fs'; try{readFileSync(0)}catch{}
+    const cf=${JSON.stringify(exCount)}; const n=(existsSync(cf)?+readFileSync(cf,'utf8'):0)+1; writeFileSync(cf,String(n));
+    writeFileSync('feature.js','export const f='+n+';\\n'); writeFileSync('feature.test.js','// asserts '+n+'\\n');`);
+  // reviewer BLOCKS on its first call, PASSES thereafter (the fix loop turns it green)
+  writeFileSync(join(d, 'rv.mjs'), `import {readFileSync,writeFileSync,existsSync} from 'node:fs';
+    const cf=${JSON.stringify(rvCount)}; const n=(existsSync(cf)?+readFileSync(cf,'utf8'):0)+1; writeFileSync(cf,String(n));
+    let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>console.log(JSON.stringify(n<=1?{verdict:'block',findings:[{severity:'high',area:'correctness',note:'fix the off-by-one'}]}:{verdict:'pass',findings:[]})));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` };
+    o.review = { command: `node ${join(d, 'rv.mjs')}`, requiredAt: ['per-task'] }; });
+
+  chalk(d, 'issue', 'pull');
+  assert.equal(chalk(d, 'pipeline').code, 0, 'pipeline completes via the fix loop');
+  assert.ok(+readFileSync(rvCount, 'utf8') >= 2, 'the reviewer ran again after the fix (loop executed)');
+  assert.equal(tasksOf(d)[0].state, 'done', 'merged after the review turned green');
+  assert.match(readFileSync(comment, 'utf8'), /LGTM/, 'LGTM posted once the re-review passed');
+  assert.ok(existsSync(merged), 'merge happened after the loop');
+  // CRITICAL: the fix must reach the remote branch merge squash-merges — not the stale rejected code.
+  const branch = tasksOf(d)[0].branch;
+  execSync(`git fetch origin ${branch}`, { cwd: d, stdio: 'pipe' });
+  assert.match(execSync('git show FETCH_HEAD:feature.js', { cwd: d, encoding: 'utf8' }), /f=2/, 'the pushed remote branch carries the FIX (f=2), not the rejected f=1');
+});
+
+test('merge discipline — failing CI on the PR blocks the merge (the gate has teeth)', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const merged = join(d, 'merged.txt');
+  const ghCmd = stubGh(d, `import {writeFileSync} from 'node:fs'; const a=process.argv.slice(2); const has=(...x)=>x.every(y=>a.includes(y));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else if(has('pr','checks')){ console.log(JSON.stringify([{bucket:'fail'}])); process.exit(1); }
+    else if(has('pr','merge')) writeFileSync(${JSON.stringify(merged)}, a.join(' '));
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts\\n');`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id); chalk(d, 'work', id); chalk(d, 'commit', id); chalk(d, 'pr', id);
+  const m = chalk(d, 'merge', id);
+  assert.notEqual(m.code, 0, 'merge refused');
+  assert.match(m.out, /broke-check/, 'diagnosable reason names the failing CI');
+  assert.equal(existsSync(merged), false, 'no merge happened');
 });
 
 test('pipeline — idempotent stages: an interrupted sweep resumes with no duplicate branch/commit/PR', () => {
@@ -632,30 +767,53 @@ test('pipeline — idempotent review stage: a resumed sweep does NOT re-invoke t
   assert.equal(t.pipeline.stage, 'cleaned');
 });
 
-test('pipeline — a failed review blocks with the reviewer finding text and retries once before blocking', () => {
+test('pipeline — an unfixable blocking review runs the fix loop, then blocks with the finding text + a handoff', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else if(has('pr','checks')) console.log(JSON.stringify([{bucket:'pass'}]));
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts feature\\n');`);
+  // Reviewer that RECORDS each invocation and ALWAYS blocks — the fix loop can't turn it green.
+  const revCalls = join(d, 'rev-calls.txt');
+  writeFileSync(join(d, 'rev.mjs'), `import {appendFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} appendFileSync(${JSON.stringify(revCalls)}, 'x\\n'); console.log(JSON.stringify({verdict:'block',findings:[{severity:'high',area:'correctness',note:'UNIQUE_FINDING_TEXT'}]}));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` };
+    o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; o.handoff.maxAttempts = 2; });
+
+  chalk(d, 'issue', 'pull');
+  const r = chalk(d, 'pipeline');
+  assert.equal(r.code, 2, 'pipeline exits 2 when it leaves a task blocked');
+
+  const t = tasksOf(d)[0];
+  assert.equal(t.state, 'blocked', 'an unfixable review blocks the task');
+  assert.match(t.block.reason, /UNIQUE_FINDING_TEXT/, 'block reason surfaces the reviewer finding text');
+  assert.ok(t.handoff?.path, 'a handoff was written for the blocked task');
+  // initial review (1) + maxAttempts fix rounds (2) = 3 reviewer invocations.
+  const revCount = readFileSync(revCalls, 'utf8').trim().split('\n').filter(Boolean).length;
+  assert.equal(revCount, 3, 'the fix loop re-reviewed up to the round budget before giving up');
+});
+
+test('pipeline — a TRANSIENT reviewer ERROR (no valid verdict) still retries once, then blocks', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');
   const ghCmd = stubGh(d, `const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
     if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
     else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
   writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('feature.js','export const f=1;\\n'); writeFileSync('feature.test.js','// asserts feature\\n');`);
-  // Reviewer that RECORDS each invocation and ALWAYS blocks with a unique finding note.
+  // Reviewer that emits NO valid verdict (garbage) → `chalk review` exits 1 (error, not a block-3),
+  // which is the transient path: the pipeline retries once, then blocks. Records each invocation.
   const revCalls = join(d, 'rev-calls.txt');
-  writeFileSync(join(d, 'rev.mjs'), `import {appendFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} appendFileSync(${JSON.stringify(revCalls)}, 'x\\n'); console.log(JSON.stringify({verdict:'block',findings:[{severity:'high',area:'correctness',note:'UNIQUE_FINDING_TEXT'}]}));`);
+  writeFileSync(join(d, 'rev.mjs'), `import {appendFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} appendFileSync(${JSON.stringify(revCalls)}, 'x\\n'); console.log('not json'); process.exit(1);`);
   const wtbase = scratch();
   conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; o.executor = { command: `node ${join(d, 'exec.mjs')}` }; o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; });
 
   chalk(d, 'issue', 'pull');
-  const r = chalk(d, 'pipeline');
-  assert.equal(r.code, 2, 'pipeline exits 2 when it leaves a task blocked (it does not halt the whole run)');
-
-  const t = tasksOf(d)[0];
-  assert.equal(t.state, 'blocked', 'a failed review blocks the task');
-  assert.match(t.block.reason, /UNIQUE_FINDING_TEXT/, 'block reason surfaces the reviewer finding text');
-  assert.doesNotMatch(t.block.reason, /pipeline stage 'review' failed/, 'not the generic stage-failed reason');
-  // Retried once before auto-blocking → the reviewer was invoked twice.
+  assert.equal(chalk(d, 'pipeline').code, 2, 'still blocks the task');
+  assert.equal(tasksOf(d)[0].state, 'blocked');
   const revCount = readFileSync(revCalls, 'utf8').trim().split('\n').filter(Boolean).length;
-  assert.equal(revCount, 2, 'review stage retried once before blocking');
+  assert.equal(revCount, 2, 'transient error path retried the reviewer exactly once (no fix loop)');
 });
 
 test('pipeline — a TRANSIENT review failure recovers on retry: the task is not wedged and proceeds to merge', () => {
