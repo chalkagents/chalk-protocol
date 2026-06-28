@@ -16,6 +16,7 @@ import { postReviewToPr } from '../lib/prreview.mjs';
 import { brokeCheck } from '../lib/brokecheck.mjs';
 import { mergeBlockers } from '../lib/mergegate.mjs';
 import { extractQuestions, planApprovalRequired } from '../lib/planning.mjs';
+import { releasableTasks, bumpVersion, renderReleaseNotes } from '../lib/release.mjs';
 import { runSpecs } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline } from '../lib/pipeline.mjs';
@@ -401,6 +402,42 @@ const cmds = {
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Plan approved: ${t.title}`, taskId: t.id });
     ok(`plan approved ${C.dim(`for ${t.title}`)} — \`chalk work ${t.id.slice(0, 12)}\` may proceed`);
+  },
+
+  // Release stage — turn the merged, done work into a shipped release: a CHANGELOG entry + semver
+  // bump (from the change types) + a git tag, marking each task `released` so it's idempotent.
+  release({ flags }) {
+    const s = Store.open();
+    const tasks = releasableTasks(s);
+    if (!tasks.length) return ok('release — nothing to ship (no done tasks awaiting release).');
+
+    const pkgPath = join(s.root, 'package.json');
+    let pkg = null, current = '0.0.0';
+    if (existsSync(pkgPath)) { try { pkg = JSON.parse(readFileSync(pkgPath, 'utf8')); current = pkg.version || current; } catch { /* malformed → 0.0.0 */ } }
+    const level = flags.major ? 'major' : flags.minor ? 'minor' : flags.patch ? 'patch' : undefined;
+    const version = bumpVersion(current, tasks, { version: typeof flags.version === 'string' ? flags.version : undefined, level });
+    const notes = renderReleaseNotes(tasks, version, now().slice(0, 10));
+
+    // CHANGELOG.md — keep the title line, prepend the new section above older ones.
+    const clPath = join(s.root, 'CHANGELOG.md');
+    const prev = existsSync(clPath) ? readFileSync(clPath, 'utf8') : '# Changelog\n';
+    const nl = prev.indexOf('\n');
+    const title = prev.startsWith('# ') && nl >= 0 ? prev.slice(0, nl + 1) : '# Changelog\n';
+    const older = prev.startsWith('# ') && nl >= 0 ? prev.slice(nl + 1).replace(/^\n+/, '') : prev;
+    writeFileSync(clPath, `${title}\n${notes}\n${older}`.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
+
+    if (pkg) { pkg.version = version; writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n'); }
+
+    let tagged = false;
+    if (flags['no-tag'] !== true) {
+      try { runGit(s.root, `tag -a v${version} -m ${shq('release v' + version)}`); tagged = true; } catch { /* non-git, or tag already exists */ }
+    }
+
+    for (const t of tasks) { t.released = version; s.upsertTask(t); }
+    s.appendDecision(`Released v${version}`, `${tasks.length} change(s)${tagged ? `; tagged v${version}` : ''}`);
+    s.emitUpdate({ type: 'work-item-accepted', title: `Released v${version} (${tasks.length} change(s))` });
+    console.log(notes.trimEnd());
+    ok(`released ${C.b('v' + version)} ${C.dim(`— ${tasks.length} change(s), CHANGELOG updated${tagged ? `, tagged v${version}` : ''}`)}`);
   },
 
   // GitHub pipeline — start (if needed) + run the executor in the worktree + verify. exit 2 RED.
@@ -1212,6 +1249,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
   chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
+  chalk release [--version x|--major|--minor|--patch] [--no-tag]  ${C.dim('ship merged work: CHANGELOG + version + tag')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
   chalk guard add <path> | gen | list  ${C.dim('author/lock the held-out set (from the spec)')}
