@@ -23,8 +23,8 @@ const withPr = { id: 't', pr: { number: 7 } };
 test('ciStatus — bucket mapping: all pass/skipping → pass; any fail/pending → fail', () => {
   const d = mkdtempSync(join(tmpdir(), 'brokeck-'));
   assert.equal(ciStatus(mkStore(d, ghChecks(d, [{ bucket: 'pass' }, { bucket: 'skipping' }])), withPr), 'pass');
-  assert.equal(ciStatus(mkStore(d, ghChecks(d, [{ bucket: 'pass' }, { bucket: 'fail' }])), withPr), 'fail');
-  assert.equal(ciStatus(mkStore(d, ghChecks(d, [{ bucket: 'pending' }])), withPr), 'fail', 'pending is not green');
+  assert.equal(ciStatus(mkStore(d, ghChecks(d, [{ bucket: 'pass' }, { bucket: 'fail' }])), withPr), 'fail', 'any fail → fail');
+  assert.equal(ciStatus(mkStore(d, ghChecks(d, [{ bucket: 'pass' }, { bucket: 'pending' }])), withPr), 'pending', 'still running → pending, not broken');
 });
 
 test('ciStatus — none when no PR, no gh, or no checks', () => {
@@ -61,4 +61,20 @@ test('brokeCheck — prefers CI; falls back to local verify only when CI is none
   assert.equal(localCalled, 1, 'local verify consulted on the fallback path');
   r = brokeCheck(mkStore(d, 'gh'), { id: 't' }, { verifyFn: verifyFn(false) });
   assert.equal(r.ok, false, 'local red → not ok');
+});
+
+test('brokeCheck — waits out a pending CI (bounded poll), then decides on the settled verdict', () => {
+  const d = mkdtempSync(join(tmpdir(), 'brokeck-'));
+  let slept = 0; const sleep = () => { slept++; };
+  // classify yields pending twice, then pass — the poll must keep going until it settles
+  const seq = ['pending', 'pending', 'pass']; let i = 0;
+  let r = brokeCheck(mkStore(d, 'gh'), withPr, { classify: () => seq[Math.min(i++, seq.length - 1)], sleep });
+  assert.deepEqual({ ok: r.ok, source: r.source }, { ok: true, source: 'ci' }, 'settles to pass after waiting');
+  assert.equal(slept, 2, 'slept once per pending re-check');
+
+  // pending that never settles → bounded, then a clear "still running" non-ok (not a misleading fail)
+  const store = { root: d, protocol: () => ({ github: { command: 'gh', ciPollAttempts: 3 } }) };
+  r = brokeCheck(store, withPr, { classify: () => 'pending', sleep: () => {} });
+  assert.equal(r.ok, false);
+  assert.match(r.detail, /still running/);
 });

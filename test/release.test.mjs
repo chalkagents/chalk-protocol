@@ -3,7 +3,14 @@
 // semver bump implied by their types, and the grouped markdown notes.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { releasableTasks, bumpVersion, renderReleaseNotes } from '../lib/release.mjs';
+import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } from '../lib/release.mjs';
+
+test('latestSemverTag — highest vX.Y.Z among tags; ignores non-semver; null when none', () => {
+  assert.equal(latestSemverTag('v0.1.0\nv0.2.0\nv0.1.9'), '0.2.0');
+  assert.equal(latestSemverTag('v1.0.0\nv0.9.9\nrelease-2\nnightly'), '1.0.0', 'numeric compare, junk ignored');
+  assert.equal(latestSemverTag(''), null);
+  assert.equal(latestSemverTag('v0.0.10\nv0.0.9'), '0.0.10', 'numeric, not lexical');
+});
 
 test('releasableTasks — done tasks with no released marker, oldest-first', () => {
   const store = { tasks: () => [

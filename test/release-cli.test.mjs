@@ -47,6 +47,8 @@ test('chalk release — bumps from package.json, writes CHANGELOG, bumps pkg, ta
   assert.equal(JSON.parse(readFileSync(join(d, 'package.json'), 'utf8')).version, '1.3.0', 'package.json bumped');
   assert.equal(execSync('git tag', { cwd: d, encoding: 'utf8' }).trim(), 'v1.3.0', 'annotated tag created');
   assert.ok(readTasks(d).every((t) => t.released === '1.3.0'), 'tasks marked released');
+  // the release must be RECORDED in the decision log with a real title (not undefined).
+  assert.match(readFileSync(join(d, '.chalk/decisions.md'), 'utf8'), /## Released v1\.3\.0/, 'decision logged with a proper title');
 });
 
 test('chalk release — idempotent: a second run finds nothing new', () => {
@@ -63,6 +65,19 @@ test('chalk release — --version and --no-tag honored; explicit version wins, n
   assert.equal(r.status, 0);
   assert.equal(JSON.parse(readFileSync(join(d, 'package.json'), 'utf8')).version, '2.0.0');
   assert.equal(execSync('git tag', { cwd: d, encoding: 'utf8' }).trim(), '', 'no tag with --no-tag');
+});
+
+test('chalk release — non-Node project advances the version across releases via git tags', () => {
+  const d = project({ pkg: false }); // no package.json → version must come from tags
+  assert.equal(chalk(d, 'release').status, 0);
+  // first release: feat → 0.1.0 off a 0.0.0 base, tagged v0.1.0
+  assert.equal(execSync('git tag', { cwd: d, encoding: 'utf8' }).trim(), 'v0.1.0');
+  // a NEW done task, then a second release: must read current from the tag (0.1.0), not recompute 0.0.x
+  const ts = readTasks(d); ts.push({ id: 'task-ccc', title: 'fix: later bug', state: 'done', doneAt: '2026-06-03', branchType: 'fix', pr: { number: 13 }, acceptanceCriteria: [], tests: [] }); writeTasks(d, ts);
+  assert.equal(chalk(d, 'release').status, 0);
+  assert.match(execSync('git tag', { cwd: d, encoding: 'utf8' }), /v0\.1\.1/, 'version advanced from the tag (0.1.0 → 0.1.1)');
+  const cl = readFileSync(join(d, 'CHANGELOG.md'), 'utf8');
+  assert.ok((cl.match(/## v/g) || []).length === 2, 'two distinct version sections, no duplicate');
 });
 
 test('chalk release — tolerates a non-git project (no tag, still writes CHANGELOG)', () => {

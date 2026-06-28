@@ -16,7 +16,7 @@ import { postReviewToPr } from '../lib/prreview.mjs';
 import { brokeCheck } from '../lib/brokecheck.mjs';
 import { mergeBlockers } from '../lib/mergegate.mjs';
 import { extractQuestions, planApprovalRequired } from '../lib/planning.mjs';
-import { releasableTasks, bumpVersion, renderReleaseNotes } from '../lib/release.mjs';
+import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } from '../lib/release.mjs';
 import { runSpecs } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline } from '../lib/pipeline.mjs';
@@ -323,8 +323,17 @@ const cmds = {
   pr({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
-    if (stageDone(t, 'pr-open')) return ok(`PR ${C.b('#' + (t.pr?.number || '?'))} ${C.dim('(already open)')}`);
     const gh0 = s.protocol().github || {};
+    if (stageDone(t, 'pr-open')) {
+      // Back-compat: a PR opened before recordings existed has no `recorded` flag and `chalk pr`
+      // used to no-op here — leaving it permanently stuck at the merge gate. Backfill it from the
+      // committed diff so the merge can proceed.
+      if (t.pr && t.pr.recorded === undefined) {
+        t.pr.recorded = diffPaths(workdir(s, t), gh0.base || 'main').length > 0;
+        s.upsertTask(t);
+      }
+      return ok(`PR ${C.b('#' + (t.pr?.number || '?'))} ${C.dim('(already open)')}`);
+    }
     const wd = workdir(s, t);
     if (!t.branch) die('no branch — run `chalk branch <id>` first.');
     try { runGit(wd, `push -u origin ${t.branch}`); } catch (e) { die(`git push failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
@@ -396,7 +405,7 @@ const cmds = {
     }
     if (openQ.length && flags.force) {
       if (!flags.why) die('--force requires --why "<reason>" (logged as a decision).');
-      s.appendDecision(`Approved plan for "${t.title}" with ${openQ.length} open question(s)`, String(flags.why));
+      s.appendDecision({ title: `Approved plan for "${t.title}" with ${openQ.length} open question(s)`, why: String(flags.why) });
     }
     t.planApproved = { at: now(), by: flags.by || 'human' };
     s.upsertTask(t); syncBrowser(s);
@@ -414,6 +423,7 @@ const cmds = {
     const pkgPath = join(s.root, 'package.json');
     let pkg = null, current = '0.0.0';
     if (existsSync(pkgPath)) { try { pkg = JSON.parse(readFileSync(pkgPath, 'utf8')); current = pkg.version || current; } catch { /* malformed → 0.0.0 */ } }
+    else { try { current = latestSemverTag(runGit(s.root, "tag --list 'v[0-9]*'")) || current; } catch { /* non-git → 0.0.0 */ } } // non-Node: derive from tags so the version advances
     const level = flags.major ? 'major' : flags.minor ? 'minor' : flags.patch ? 'patch' : undefined;
     const version = bumpVersion(current, tasks, { version: typeof flags.version === 'string' ? flags.version : undefined, level });
     const notes = renderReleaseNotes(tasks, version, now().slice(0, 10));
@@ -434,7 +444,7 @@ const cmds = {
     }
 
     for (const t of tasks) { t.released = version; s.upsertTask(t); }
-    s.appendDecision(`Released v${version}`, `${tasks.length} change(s)${tagged ? `; tagged v${version}` : ''}`);
+    s.appendDecision({ title: `Released v${version}`, why: `${tasks.length} change(s)${tagged ? `; tagged v${version}` : ''}` });
     s.emitUpdate({ type: 'work-item-accepted', title: `Released v${version} (${tasks.length} change(s))` });
     console.log(notes.trimEnd());
     ok(`released ${C.b('v' + version)} ${C.dim(`— ${tasks.length} change(s), CHANGELOG updated${tagged ? `, tagged v${version}` : ''}`)}`);
@@ -511,6 +521,7 @@ const cmds = {
     if (reviewReq && !t.pr?.lgtm && (t.reviews || []).slice(-1)[0]?.verdict === 'pass') {
       const p = postReviewToPr(s, t, { verdict: 'pass', findings: [] });
       if (p.lgtm) { t.pr = { ...t.pr, lgtm: true }; s.upsertTask(t); }
+      else console.log(C.y(`  ⚠ couldn't post the LGTM comment (${p.reason || 'gh'}); merging on the passing review verdict.`));
     }
     const blockers = mergeBlockers(s, t, { reviewRequired: reviewReq, broke });
     if (blockers.length) die(`GATE: cannot merge —\n  - ${blockers.join('\n  - ')}`);
