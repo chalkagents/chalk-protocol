@@ -57,6 +57,18 @@ test('chalk next --json — emits the fresh-session signal: in-progress→work w
   assert.equal(j.handoff, task0(d).handoff.path, 'carries the latest handoff path');
 });
 
+test('chalk next --json — carries the LATEST handoff path after multiple handoffs', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'd');
+  chalk(d, 'task', 'add', 'T'); const a = tid(d);
+  chalk(d, 'spec', a, '--criterion', 'x'); chalk(d, 'start', a);
+  chalk(d, 'handoff', a, '--note', 'first');
+  chalk(d, 'handoff', a, '--note', 'second');
+  const j = lastJson(chalk(d, 'next', '--json'));
+  assert.match(j.handoff, /-2\.md$/, 'the newest (seq 2) handoff, not the first');
+  assert.equal(j.handoff, task0(d).handoff.path);
+});
+
 test('chalk next --json — a specd task → start/null handoff; no tasks → null task', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'd');

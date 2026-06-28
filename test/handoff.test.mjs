@@ -77,3 +77,11 @@ test('writeHandoff — an optional BYO agent enriches the narrative; absent → 
   const enriched = readFileSync(join(d, writeHandoff(mkStore(d, { command: cmd }), mkTask(), { reason: 'manual' }).path), 'utf8');
   assert.match(enriched, /AGENT-SAYS: root cause is the off-by-one/, 'agent narrative is included');
 });
+
+test('writeHandoff — a failing BYO agent falls back to template-only, never throwing', () => {
+  const d = repo();
+  const rec = writeHandoff(mkStore(d, { command: 'node -e "process.exit(1)"' }), mkTask(), { reason: 'block' });
+  const md = readFileSync(join(d, rec.path), 'utf8');
+  assert.match(md, /Do the X/, 'the template still renders when the agent exits nonzero');
+  assert.match(md, /## Notes/, 'the Notes section is present with no spliced narrative');
+});

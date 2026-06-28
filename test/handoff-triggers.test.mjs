@@ -75,3 +75,19 @@ test('chalk run — the loop auto-blocks with a handoff, and escalates to a chur
   assert.match(t.block.reason, /FRESH session/, 'the reason steers to a fresh session');
   assert.ok(t.handoff && existsSync(join(d, t.handoff.path)), 'the loop block left a handoff doc');
 });
+
+test('chalk run — UNDER budget, the block uses the plain verify-RED reason but STILL writes a handoff', () => {
+  const d = gitRepo();
+  chalk(d, 'init', '--name', 'd');
+  writeFileSync(join(d, 'exec.mjs'), `import {readFileSync} from 'node:fs'; try{readFileSync(0,'utf8')}catch{}`);
+  conf(d, (o) => { o.verify.test = 'node -e "process.exit(1)"'; o.executor = { command: 'node exec.mjs' }; }); // default maxAttempts=3
+  chalk(d, 'task', 'add', 'T'); const a = tid(d);
+  chalk(d, 'spec', a, '--criterion', 'x');
+  chalk(d, 'run', '--max', '3');
+  const t = task0(d);
+  assert.equal(t.state, 'blocked');
+  assert.equal(t.attempts, 1, 'one attempt — under the default budget of 3');
+  assert.match(t.block.reason, /verify RED after executor/, 'plain (non-churn) reason under budget');
+  assert.doesNotMatch(t.block.reason, /churn/);
+  assert.ok(t.handoff && existsSync(join(d, t.handoff.path)), 'a handoff is written even under budget');
+});
