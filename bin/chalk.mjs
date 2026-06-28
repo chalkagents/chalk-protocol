@@ -28,8 +28,9 @@ import { missingRequiredTest } from '../lib/testgate.mjs';
 import { runBreakit } from '../lib/breakit.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
+import { collectSignals, runFeedback, feedbackDir } from '../lib/feedback.mjs';
 import { basename } from 'node:path';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -880,6 +881,43 @@ const cmds = {
     console.log(C.dim(`  pick up in a fresh session: chalk context ${t.id.slice(0, 12)}`));
   },
 
+  // Feedback loop — close the product cycle. Collect external signals (.chalk/feedback/ + --input),
+  // run the analysis agent, and file improvement issues into the backlog (dedup + severity floor +
+  // dry-run, same convergence discipline as `chalk retro`), then archive the processed signals.
+  feedback({ flags }) {
+    const s = Store.open();
+    const gh0 = s.protocol().github || {};
+    const dry = flags['dry-run'] === true;
+    const { digest, files } = collectSignals(s, { input: typeof flags.input === 'string' ? flags.input : '' });
+    if (!digest.trim()) return ok('feedback — no signals (drop files in .chalk/feedback/ or pass --input "...").');
+    const r = runFeedback(s, digest);
+    if (r.status === 'unconfigured') die('no feedback agent configured (protocol.feedback.command).');
+    if (r.status === 'error') die('feedback agent did not return JSON. tail:\n' + C.dim(r.raw || '(empty)'));
+    const RANK = { low: 0, med: 1, high: 2 };
+    const floor = RANK[String(flags['min-severity'] || 'med').toLowerCase()] ?? RANK.med;
+    const sevOf = (iss) => RANK[String(iss.severity || 'med').toLowerCase()] ?? RANK.med;
+    console.log(C.b('chalk feedback') + (dry ? C.dim(' · dry-run') : '') + C.dim(` · ${files.length} signal file(s) · min-severity ${Object.keys(RANK)[floor]}`));
+    let open = [];
+    try { open = JSON.parse(runGh(s.root, gh0.command, 'issue list --state open --json title --limit 100') || '[]').map((i) => i.title); } catch { /* gh down — skip dedup */ }
+    let filed = 0, deferred = 0;
+    for (const iss of (r.issues || []).slice(0, Number(flags['max-issues'] || 5))) {
+      if (!iss.title) continue;
+      if (sevOf(iss) < floor) { console.log(C.dim(`  · defer (below ${Object.keys(RANK)[floor]}): ${iss.title}`)); deferred++; continue; }
+      if (open.some((t) => titlesSimilar(t, iss.title))) { console.log(C.dim(`  · skip (already open): ${iss.title}`)); continue; }
+      if (dry) { console.log(`  ${C.y('~ would file:')} ${iss.title}`); filed++; continue; }
+      const labels = (iss.labels || []).map((l) => `--label ${shq(l)}`).join(' ');
+      try { const out = runGh(s.root, gh0.command, `issue create --title ${shq(iss.title)} --body ${shq((iss.body || '') + '\n\n_filed by `chalk feedback` (product loop)_')} ${labels}`); console.log(`  ${C.g('✓ filed:')} ${out.trim().split('\n').pop()}`); filed++; }
+      catch (e) { console.log(C.r(`  ✗ file failed: ${String(e.message).split('\n').slice(-1)[0]}`)); }
+    }
+    // Archive the processed signals so a re-run doesn't re-analyze them (idempotency).
+    if (!dry && files.length) {
+      const arch = join(feedbackDir(s), 'archive'); mkdirSync(arch, { recursive: true });
+      for (const f of files) { try { renameSync(f, join(arch, f.split('/').pop())); } catch { /* leave it */ } }
+    }
+    if (!dry) syncBrowser(s);
+    ok(`feedback: ${C.b(String(filed))} issue(s) ${dry ? 'would file' : 'filed'}${deferred ? `, ${C.b(String(deferred))} deferred` : ''}${!dry && files.length ? `, ${files.length} signal(s) archived` : ''}`);
+  },
+
   verify() {
     const s = Store.open();
     const wip = s.tasks().find((t) => t.state === 'in-progress');
@@ -1261,6 +1299,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
   chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
   chalk release [--version x|--major|--minor|--patch] [--no-tag]  ${C.dim('ship merged work: CHANGELOG + version + tag')}
+  chalk feedback [--input "..."] [--dry-run] [--min-severity low|med|high]  ${C.dim('signals → improvement issues')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
   chalk guard add <path> | gen | list  ${C.dim('author/lock the held-out set (from the spec)')}
