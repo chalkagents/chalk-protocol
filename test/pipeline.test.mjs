@@ -322,6 +322,53 @@ test('test-enforcement gate — a test in the change satisfies it; exempt (docs 
   assert.equal(mk(feat, `writeFileSync('feature.js','x');`, (o) => { o.requireTest = false; }).code, 0, 'gate off when requireTest=false');
 });
 
+test('break-it gate (lever 3) — a vacuous locked test blocks at work; a real one passes; OFF when unset', () => {
+  // Drives the real issue→branch→work path so the WIRING (bin/chalk.mjs) is exercised, not just the
+  // probe: reverting the wiring would make these fail. In the worktree the spine is single-canonical,
+  // so changedPaths sees only the executor's code — exactly the production condition.
+  const mk = ({ base = {}, exec, assertBody, breakOn = true }) => {
+    const d = repoWithBare();
+    chalk(d, 'init', '--name', 'p');
+    const g = (a) => execSync(`git ${a}`, { cwd: d, stdio: 'pipe' });
+    for (const [p, c] of Object.entries(base)) writeFileSync(join(d, p), c);
+    writeFileSync(join(d, 'acc.test.mjs'), assertBody);
+    g(`add ${[...Object.keys(base), 'acc.test.mjs'].join(' ')}`); g('commit -m base'); g('push origin main');
+    writeFileSync(join(d, 'exec.mjs'), `import {writeFileSync,readFileSync} from 'node:fs'; try{readFileSync(0)}catch{} ${exec}`);
+    const ghCmd = stubGh(d, `console.log(JSON.stringify([{ number: 7, title: 'Add X', url: 'u', body: '- [ ] do', labels: [{ name: 'enhancement' }] }]));`);
+    const wtbase = scratch();
+    conf(d, (o) => {
+      o.github.command = ghCmd; o.worktree.dir = wtbase;
+      o.executor = { command: `node ${join(d, 'exec.mjs')}` };
+      o.verify = { test: 'node --test acc.test.mjs' };   // verify is green in every case → the gate is what differs
+      o.breakTest = breakOn ? 'node --test {test}' : '';
+    });
+    chalk(d, 'issue', 'pull');
+    const id = tasksOf(d)[0].id.slice(0, 12);
+    chalk(d, 'spec', id, '--test', 'acc.test.mjs');       // lock the acceptance test (the thing break-it probes)
+    chalk(d, 'branch', id);
+    const r = chalk(d, 'work', id);
+    return { code: r.code, out: r.out, stage: tasksOf(d)[0].pipeline?.stage };
+  };
+  const VACUOUS = `import {test} from 'node:test'; import assert from 'node:assert'; test('t',()=>assert.equal(1,1));\n`;
+  const ASSERTS = `import {test} from 'node:test'; import assert from 'node:assert'; import {f} from './feature.mjs'; test('t',()=>assert.equal(f(),1));\n`;
+  const WRITE1 = `writeFileSync('feature.mjs','export const f=()=>1;\\n');`;
+
+  // (1) VACUOUS — the locked test passes whether or not the change is present → blocks.
+  const vac = mk({ exec: WRITE1, assertBody: VACUOUS });
+  assert.notEqual(vac.code, 0, 'a vacuous locked test blocks work');
+  assert.match(vac.out, /vacuous locked test/);
+  assert.notEqual(vac.stage, 'verified', 'did not advance past work');
+
+  // (2) NON-VACUOUS — the locked test asserts the change, so it fails on the reverted base → passes.
+  const real = mk({ base: { 'feature.mjs': 'export const f=()=>0;\n' }, exec: WRITE1, assertBody: ASSERTS });
+  assert.equal(real.code, 0, 'a test that asserts the change passes the gate');
+  assert.equal(real.stage, 'verified', 'advanced past work');
+
+  // (3) OFF — same vacuous test, but breakTest unset → gate skipped → work proceeds (opt-in).
+  const off = mk({ exec: WRITE1, assertBody: VACUOUS, breakOn: false });
+  assert.equal(off.code, 0, 'gate is OFF when breakTest is unset');
+});
+
 test('work+verify run in the worktree — executor edits + gates resolve there, not in primary', () => {
   const d = repo();
   chalk(d, 'init', '--name', 'p');

@@ -19,6 +19,7 @@ import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
 import { missingRequiredTest } from '../lib/testgate.mjs';
+import { runBreakit } from '../lib/breakit.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { basename } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -377,6 +378,13 @@ const cmds = {
     // Exit 2 → the pipeline auto-blocks (needs:human-input) with this reason surfaced (diagnosable).
     if (missingRequiredTest(s, t)) {
       console.error(C.r('✗ ') + 'no test in the change — a feature must add or change a test (verify can pass vacuously). Add one, lock a test, or label the issue `skip-test`.');
+      process.exit(2);
+    }
+    // Lever 3 — break-it: a locked test must FAIL against the reverted (pre-change) code, else it
+    // asserts nothing about the feature. Opt-in (protocol.breakTest); a vacuous test exits 2 → block.
+    const bi = runBreakit(s, t, { cwd: workdir(s, t) });
+    if (!bi.skipped && bi.vacuous.length) {
+      console.error(C.r('✗ ') + `vacuous locked test — still passes against the pre-change code, so it asserts nothing: ${bi.vacuous.join(', ')}. Strengthen it to fail without your change.`);
       process.exit(2);
     }
     t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };
