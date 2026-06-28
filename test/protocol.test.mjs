@@ -2,7 +2,7 @@
 // throwaway projects and asserts the GATES behave. Zero deps — `node --test`.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, appendFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -110,6 +110,9 @@ test('init scaffolds the spine + installs the agent contract', () => {
   const d = scratch();
   assert.equal(chalk(d, 'init', '--name', 'demo', '--goal', 'g').code, 0);
   assert.ok(existsSync(join(d, '.chalk/chalk.json')));
+  const proto = JSON.parse(readFileSync(join(d, '.chalk/chalk.json'), 'utf8')).protocol;
+  assert.equal(proto.requireTest, true, 'test-enforcement (lever 1) on by default');
+  assert.equal(proto.breakTest, '', 'break-it gate (lever 3) opt-in: default off');
   assert.ok(existsSync(join(d, '.chalk/held-out')));
   assert.ok(readFileSync(join(d, 'AGENTS.md'), 'utf8').includes('Chalk Protocol'));
   assert.ok(readFileSync(join(d, 'CLAUDE.md'), 'utf8').includes('READ-ONLY'));
@@ -430,4 +433,24 @@ test('run — auto-blocks a task the executor cannot make green; degrades withou
   const r = chalk(d, 'run');
   assert.equal(r.code, 0, 'no executor → run exits 0');
   assert.ok(/no executor|manual loop/i.test(r.out), 'run prints the manual fallback');
+});
+
+test('run — the break-it gate (lever 3) auto-blocks a vacuous locked test', () => {
+  const d = scratch();
+  const g = (a) => execSync(`git ${a}`, { cwd: d, stdio: 'pipe' });
+  g('init -b main'); g('config user.email t@t.t'); g('config user.name t');
+  chalk(d, 'init', '--name', 'd');
+  // A locked acceptance test that asserts nothing about the feature → green with or without the change.
+  writeFileSync(join(d, 'acc.test.mjs'), `import {test} from 'node:test'; import assert from 'node:assert'; test('t',()=>assert.equal(1,1));\n`);
+  g('add acc.test.mjs'); g('commit -m base');
+  // Executor makes a real (non-test) code change, so there IS an implementation to revert.
+  writeFileSync(join(d, 'exec.mjs'), `import {readFileSync,writeFileSync} from 'node:fs'; try{readFileSync(0,'utf8')}catch{} writeFileSync('feature.mjs','export const f=()=>1;\\n');`);
+  conf(d, (o) => { o.verify.test = 'node --test acc.test.mjs'; o.executor = { command: 'node exec.mjs' }; o.breakTest = 'node --test {test}'; });
+  chalk(d, 'task', 'add', 'T'); const a = tid(d, 0);
+  chalk(d, 'spec', a, '--criterion', 'x', '--test', 'acc.test.mjs');
+  chalk(d, 'run', '--max', '3');
+  const t = JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'))[0];
+  assert.equal(t.state, 'blocked', 'a vacuous locked test auto-blocks in the run loop');
+  assert.equal(t.block.needs, 'human-input', 'blocked with needs: human-input');
+  assert.match(t.block.reason, /vacuous/, 'the block reason names the vacuous test');
 });
