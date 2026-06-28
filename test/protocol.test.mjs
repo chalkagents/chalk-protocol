@@ -116,6 +116,7 @@ test('init scaffolds the spine + installs the agent contract', () => {
   assert.deepEqual(proto.handoff, { command: '', maxAttempts: 3 }, 'handoff defaults: template-only, churn cap 3');
   assert.deepEqual(proto.prbody, { command: '' }, 'PR-body recording default: template-only narrative');
   assert.deepEqual(proto.feedback, { command: '' }, 'feedback loop default: off until a BYO agent is set');
+  assert.deepEqual(proto.discovery, { command: '' }, 'discovery/intake default: off until a BYO agent is set');
   assert.ok(existsSync(join(d, '.chalk/held-out')));
   assert.ok(readFileSync(join(d, 'AGENTS.md'), 'utf8').includes('Chalk Protocol'));
   assert.ok(readFileSync(join(d, 'CLAUDE.md'), 'utf8').includes('READ-ONLY'));

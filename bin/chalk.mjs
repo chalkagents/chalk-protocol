@@ -29,6 +29,7 @@ import { runBreakit } from '../lib/breakit.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { collectSignals, runFeedback, feedbackDir } from '../lib/feedback.mjs';
+import { runDiscovery } from '../lib/discovery.mjs';
 import { basename } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -881,6 +882,49 @@ const cmds = {
     console.log(C.dim(`  pick up in a fresh session: chalk context ${t.id.slice(0, 12)}`));
   },
 
+  // Discovery / intake — the front door. Turn a product brief into a scoped backlog: each proposed
+  // task becomes a SPECD chalk task with acceptance criteria + milestone (deps resolved by title).
+  // The plan-approval gate then lets a human validate the generated scope before any code is written.
+  discover({ _, flags }) {
+    const s = Store.open();
+    let fileBrief = '';
+    if (flags.file) { try { fileBrief = readFileSync(resolve(process.cwd(), String(flags.file)), 'utf8'); } catch { die(`--file: cannot read ${flags.file}`); } }
+    const brief = fileBrief || (typeof flags.input === 'string' ? flags.input : '') || _.join(' ');
+    if (!brief.trim()) die('usage: chalk discover "<product brief>"  (or --input "..." / --file <path>)');
+    const dry = flags['dry-run'] === true;
+    const r = runDiscovery(s, brief.trim());
+    if (r.status === 'unconfigured') die('no discovery agent configured (protocol.discovery.command).');
+    if (r.status === 'error') die('discovery agent did not return JSON. tail:\n' + C.dim(r.raw || '(empty)'));
+    console.log(C.b('chalk discover') + (dry ? C.dim(' · dry-run') : '') + (r.spec ? C.dim(` · ${r.spec.slice(0, 80)}`) : ''));
+
+    const existing = s.tasks();
+    const created = []; // { title, id|null, after, task? }
+    let skipped = 0;
+    for (const t of r.tasks) {
+      if (existing.some((x) => titlesSimilar(x.title, t.title)) || created.some((c) => titlesSimilar(c.title, t.title))) {
+        console.log(C.dim(`  · skip (similar exists): ${t.title}`)); skipped++; continue;
+      }
+      const meta = C.dim(`(${t.criteria.length} crit${t.milestone ? `, ${t.milestone}` : ''})`);
+      if (dry) { console.log(`  ${C.y('~ would add:')} ${t.title} ${meta}`); created.push({ title: t.title, id: null, after: t.after }); continue; }
+      const task = { id: id('task'), title: t.title, state: 'specd', acceptanceCriteria: t.criteria.map((text) => ({ text })), tests: [], heldOut: [], milestone: t.milestone, after: [], createdAt: now(), reviews: [] };
+      s.upsertTask(task);
+      created.push({ title: t.title, id: task.id, after: t.after, task });
+      console.log(`  ${C.g('+ added:')} ${t.title} ${meta}`);
+    }
+    // Resolve each task's after-titles to dependency ids (created this run or already existing).
+    if (!dry) {
+      const resolveTitle = (title) => (created.find((x) => x.id && titlesSimilar(x.title, title))?.id) || (existing.find((x) => titlesSimilar(x.title, title))?.id) || null;
+      for (const c of created) {
+        if (!c.id || !c.after?.length) continue;
+        const deps = c.after.map(resolveTitle).filter(Boolean);
+        if (deps.length) { c.task.after = Array.from(new Set(deps)); s.upsertTask(c.task); }
+      }
+      syncBrowser(s);
+    }
+    const n = created.filter((c) => dry || c.id).length;
+    ok(`discover: ${C.b(String(n))} task(s) ${dry ? 'proposed' : 'added'}${skipped ? `, ${skipped} skipped` : ''}` + (dry || !n ? '' : C.dim(' — review, then `chalk approve-plan` / `chalk next`')));
+  },
+
   // Feedback loop — close the product cycle. Collect external signals (.chalk/feedback/ + --input),
   // run the analysis agent, and file improvement issues into the backlog (dedup + severity floor +
   // dry-run, same convergence discipline as `chalk retro`), then archive the processed signals.
@@ -1299,6 +1343,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
   chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
   chalk release [--version x|--major|--minor|--patch] [--no-tag]  ${C.dim('ship merged work: CHANGELOG + version + tag')}
+  chalk discover "<brief>" [--file <path>] [--dry-run]  ${C.dim('intake: brief → scoped tasks with criteria')}
   chalk feedback [--input "..."] [--dry-run] [--min-severity low|med|high]  ${C.dim('signals → improvement issues')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
