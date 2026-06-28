@@ -590,6 +590,28 @@ test('merge discipline — with a reviewer + green CI, the reviewer LGTMs on the
   assert.ok(existsSync(merged), 'the gate let the merge through');
 });
 
+test('pr — re-running on an already-open PR with no recording backfills it (back-compat, unsticks merge)', () => {
+  const d = repoWithBare();
+  chalk(d, 'init', '--name', 'p');
+  const ghCmd = stubGh(d, `const a=process.argv.slice(2); const has=(...xs)=>xs.every(x=>a.includes(x));
+    if(has('pr','create')) console.log('https://github.com/o/r/pull/42');
+    else console.log(JSON.stringify([{number:7,title:'Add feature',url:'u',body:'- [ ] do it',labels:[{name:'enhancement'}]}]));`);
+  const wtbase = scratch();
+  conf(d, (o) => { o.github.command = ghCmd; o.worktree.dir = wtbase; });
+  chalk(d, 'issue', 'pull');
+  const id = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'branch', id);
+  const wt = tasksOf(d)[0].worktree;
+  writeFileSync(join(wt, 'feature.js'), 'export const f=1;\n');
+  chalk(d, 'commit', id);
+  chalk(d, 'pr', id);
+  // simulate a PR opened under the OLD code: drop the recorded flag
+  const f = join(d, '.chalk/tasks.json'); const ts = tasksOf(d); delete ts[0].pr.recorded; writeFileSync(f, JSON.stringify(ts, null, 2));
+  // re-running pr backfills recorded from the committed diff instead of leaving it stuck
+  assert.equal(chalk(d, 'pr', id).code, 0);
+  assert.equal(tasksOf(d)[0].pr.recorded, true, 'recorded backfilled so the merge gate can pass');
+});
+
 test('merge discipline — review passed but LGTM not surfaced → merge posts the LGTM before merging', () => {
   const d = repoWithBare();
   chalk(d, 'init', '--name', 'p');

@@ -30,13 +30,13 @@ test('mergeBlockers — blocks when the PR has no recording', () => {
   assert.match(b[0], /recording/);
 });
 
-test('mergeBlockers — when review required: needs a passing review AND an LGTM', () => {
-  // no passing review
+test('mergeBlockers — when review required: a passing review is the gate; LGTM is not a hard block', () => {
+  // no passing review → blocked
   let b = mergeBlockers({}, recorded({ reviews: [{ verdict: 'block' }] }), { reviewRequired: true, broke: OK });
   assert.ok(b.some((x) => /passing.*review|review.*required|P5/.test(x)));
-  // passing review but no LGTM surfaced
+  // passing review but no LGTM surfaced (e.g. a flaky gh comment) → NOT blocked; merge posts it best-effort
   b = mergeBlockers({}, recorded({ pr: { number: 7, recorded: true } }), { reviewRequired: true, broke: OK });
-  assert.ok(b.some((x) => /LGTM/.test(x)));
+  assert.deepEqual(b, [], 'a passing review merges even if the LGTM comment did not post');
 });
 
 test('ciStatus — a non-checks JSON payload (no string bucket) is treated as none, not a spurious fail', () => {
