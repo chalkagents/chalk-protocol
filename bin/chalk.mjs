@@ -30,7 +30,8 @@ import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { collectSignals, runFeedback, feedbackDir } from '../lib/feedback.mjs';
 import { runDiscovery } from '../lib/discovery.mjs';
-import { basename } from 'node:path';
+import { portalModel } from '../lib/portal.mjs';
+import { basename, dirname } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
@@ -962,6 +963,32 @@ const cmds = {
     ok(`feedback: ${C.b(String(filed))} issue(s) ${dry ? 'would file' : 'filed'}${deferred ? `, ${C.b(String(deferred))} deferred` : ''}${!dry && files.length ? `, ${files.length} signal(s) archived` : ''}`);
   },
 
+  // Stakeholder portal — publish the spine as client-facing portal data. Deterministically maps tasks/
+  // milestones/the update log to the Chalk Projects portal schema and writes the .project/ files.
+  portal({ flags }) {
+    const s = Store.open();
+    const out = String(flags.out || s.protocol().portal?.dir || '.project');
+    const dry = flags['dry-run'] === true;
+    const m = portalModel(s, { slug: typeof flags.slug === 'string' ? flags.slug : undefined });
+    const files = {
+      [`projects/${m.slug}.yaml`]: m.meta,
+      'scope/defined.yaml': m.scope,
+      'updates/extracted.yaml': m.updates,
+      'milestones.yaml': m.milestones,
+    };
+    console.log(C.b('chalk portal') + (dry ? C.dim(' · dry-run') : '') + C.dim(` · ${m.slug} → ${out}/`));
+    console.log(C.dim(`  scope ${m.scope.length} · milestones ${m.milestones.length} · updates ${m.updates.length}`));
+    if (dry) { for (const p of Object.keys(files)) console.log(`  ${C.y('~ would write:')} ${join(out, p)}`); return ok(`portal: ${m.scope.length} scope, ${m.milestones.length} milestone(s), ${m.updates.length} update(s) ${C.dim('(dry-run)')}`); }
+    for (const [rel, data] of Object.entries(files)) {
+      const abs = join(s.root, out, rel);
+      mkdirSync(dirname(abs), { recursive: true });
+      writeFileSync(abs, JSON.stringify(data, null, 2) + '\n'); // JSON is valid YAML — robust + zero-dep
+      console.log(`  ${C.g('✓')} ${join(out, rel)}`);
+    }
+    syncBrowser(s);
+    ok(`portal: wrote ${C.b(String(Object.keys(files).length))} file(s) to ${out}/ ${C.dim(`(${m.scope.length} scope, ${m.milestones.length} ms, ${m.updates.length} updates)`)}`);
+  },
+
   verify() {
     const s = Store.open();
     const wip = s.tasks().find((t) => t.state === 'in-progress');
@@ -1345,6 +1372,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk release [--version x|--major|--minor|--patch] [--no-tag]  ${C.dim('ship merged work: CHANGELOG + version + tag')}
   chalk discover "<brief>" [--file <path>] [--dry-run]  ${C.dim('intake: brief → scoped tasks with criteria')}
   chalk feedback [--input "..."] [--dry-run] [--min-severity low|med|high]  ${C.dim('signals → improvement issues')}
+  chalk portal [--out <dir>] [--slug <slug>] [--dry-run]  ${C.dim('publish spine → client portal data')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
   chalk guard add <path> | gen | list  ${C.dim('author/lock the held-out set (from the spec)')}
