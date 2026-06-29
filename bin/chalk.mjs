@@ -431,6 +431,12 @@ const cmds = {
     const version = bumpVersion(current, tasks, { version: typeof flags.version === 'string' ? flags.version : undefined, level });
     const notes = renderReleaseNotes(tasks, version, now().slice(0, 10));
 
+    // --dry-run: preview the version + notes and stop — no CHANGELOG, no bump, no tag, no marking.
+    if (flags['dry-run'] === true) {
+      console.log(notes.trimEnd());
+      return ok(`release ${C.b('v' + version)} ${C.dim(`(dry-run) — ${tasks.length} change(s); nothing written`)}`);
+    }
+
     // CHANGELOG.md — keep the title line, prepend the new section above older ones.
     const clPath = join(s.root, 'CHANGELOG.md');
     const prev = existsSync(clPath) ? readFileSync(clPath, 'utf8') : '# Changelog\n';
@@ -968,6 +974,8 @@ const cmds = {
   portal({ flags }) {
     const s = Store.open();
     const out = String(flags.out || s.protocol().portal?.dir || '.project');
+    // resolve() (not join) so an ABSOLUTE --out is honored as-is; a relative one is root-relative.
+    const outBase = resolve(s.root, out);
     const dry = flags['dry-run'] === true;
     const m = portalModel(s, { slug: typeof flags.slug === 'string' ? flags.slug : undefined });
     const files = {
@@ -976,11 +984,11 @@ const cmds = {
       'updates/extracted.yaml': m.updates,
       'milestones.yaml': m.milestones,
     };
-    console.log(C.b('chalk portal') + (dry ? C.dim(' · dry-run') : '') + C.dim(` · ${m.slug} → ${out}/`));
+    console.log(C.b('chalk portal') + (dry ? C.dim(' · dry-run') : '') + C.dim(` · ${m.slug} → ${outBase}/`));
     console.log(C.dim(`  scope ${m.scope.length} · milestones ${m.milestones.length} · updates ${m.updates.length}`));
-    if (dry) { for (const p of Object.keys(files)) console.log(`  ${C.y('~ would write:')} ${join(out, p)}`); return ok(`portal: ${m.scope.length} scope, ${m.milestones.length} milestone(s), ${m.updates.length} update(s) ${C.dim('(dry-run)')}`); }
+    if (dry) { for (const p of Object.keys(files)) console.log(`  ${C.y('~ would write:')} ${join(outBase, p)}`); return ok(`portal: ${m.scope.length} scope, ${m.milestones.length} milestone(s), ${m.updates.length} update(s) ${C.dim('(dry-run)')}`); }
     for (const [rel, data] of Object.entries(files)) {
-      const abs = join(s.root, out, rel);
+      const abs = join(outBase, rel);
       mkdirSync(dirname(abs), { recursive: true });
       writeFileSync(abs, JSON.stringify(data, null, 2) + '\n'); // JSON is valid YAML — robust + zero-dep
       console.log(`  ${C.g('✓')} ${join(out, rel)}`);
@@ -1369,7 +1377,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
   chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
-  chalk release [--version x|--major|--minor|--patch] [--no-tag]  ${C.dim('ship merged work: CHANGELOG + version + tag')}
+  chalk release [--version x|--major|--minor|--patch] [--no-tag] [--dry-run]  ${C.dim('ship merged work: CHANGELOG + version + tag')}
   chalk discover "<brief>" [--file <path>] [--dry-run]  ${C.dim('intake: brief → scoped tasks with criteria')}
   chalk feedback [--input "..."] [--dry-run] [--min-severity low|med|high]  ${C.dim('signals → improvement issues')}
   chalk portal [--out <dir>] [--slug <slug>] [--dry-run]  ${C.dim('publish spine → client portal data')}
