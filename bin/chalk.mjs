@@ -75,8 +75,12 @@ const cmds = {
     let preset = flags.preset === true ? detectPreset(root) : (flags.preset ? String(flags.preset) : null);
     const auto = flags.preset === true && preset;
     if (preset && !PRESETS[preset]) die(`unknown --preset: ${preset} (choose ${Object.keys(PRESETS).join('|')})`);
-    const meta = initSpine(root, { name: flags.name, goal: flags.goal, preset, runner: flags.runner ? String(flags.runner) : undefined });
+    // --executor opencode: scaffold the bundled opencode executor config (only supported value).
+    const executor = flags.executor ? String(flags.executor) : undefined;
+    if (executor && executor !== 'opencode') die(`unknown --executor: ${executor} (supported: opencode)`);
+    const meta = initSpine(root, { name: flags.name, goal: flags.goal, preset, runner: flags.runner ? String(flags.runner) : undefined, executor });
     ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})${preset ? C.dim(` · preset ${preset}${auto ? ' (auto-detected)' : ''}`) : ''}`);
+    if (executor === 'opencode') console.log(C.dim('  opencode executor configured · set CHALK_OPENCODE_MODEL (e.g. anthropic/claude-opus-4-8); see docs/integrations/opencode.md'));
     if (flags['no-agents'] !== true) {
       for (const r of installAgentDocs(root)) console.log(C.dim(`  ${r.action} ${r.name} (agent contract)`));
     }
@@ -1340,7 +1344,7 @@ function printHelp() {
   console.log(`${C.b('chalk')} — Chalk Protocol CLI (v0)  ${C.dim('· read → work → verify → write')}
 
 ${C.b('setup')}
-  chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--runner fvm]
+  chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--runner fvm] [--executor opencode]
                                        ${C.dim('installs the agent contract; --preset fills verify/regression (bare --preset auto-detects)')}
   chalk agents                         ${C.dim('(re)install the agent contract')}
   chalk status
