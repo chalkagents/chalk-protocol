@@ -1111,7 +1111,15 @@ const cmds = {
     }
 
     console.log(C.dim('  running adversarial reviewer…'));
-    const r = runReview(s, t);
+    let r = runReview(s, t);
+    if (r.status === 'error' && !flags['no-retry']) {
+      // A transient reviewer failure — a dropped/truncated response or a momentary bad parse — is not a
+      // verdict, so retry once so a flake doesn't sink the review; only a SECOND consecutive error is fatal.
+      // The pipeline passes --no-retry: it retries the whole review STAGE itself, so an inner retry would
+      // double the reviewer calls it accounts for.
+      console.log(C.dim('  reviewer returned no valid verdict — retrying once…'));
+      r = runReview(s, t);
+    }
     if (r.status === 'error') die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
     t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings });
     if (r.verdict === 'pass') t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
