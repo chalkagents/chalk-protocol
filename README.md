@@ -1,86 +1,197 @@
 # Chalk Protocol
 
-A **layer-2 agent harness**: a durable `.chalk/` project-state spine + a CLI that drives
-any coding agent (Claude Code, Codex, Gemini CLI) through a **read → work → verify → write**
-loop. It does not write code. Its job is to hold the agent to software-development
-fundamentals via *enforceable gates* — the things [the evidence](./RESEARCH.md) says
-autonomous agents skip on their own.
+A **layer-2 harness for coding agents**: a durable `.chalk/` project spine + a CLI that drives
+any agent (Claude Code, Codex, Gemini CLI) through a **read → work → verify → write** loop and
+holds it to software-development fundamentals via *enforceable gates*.
 
-BYO-CLI: the agent is a pluggable executor; Chalk owns state + gates.
+Chalk **does not write code** — your agent does. Chalk owns the state and the gates: the steps
+[the evidence](./RESEARCH.md) says autonomous agents skip on their own. Frontier models can't
+reliably self-certify "done"; given access to the tests that judge them they cheat ~half the
+time; and "tests-as-spec" degrades as tasks grow. So Chalk makes "done" rest on an **external
+check, never the agent's word.**
 
-## Why
+> **BYO agent.** The agent is a pluggable executor (`claude -p`, etc.); Chalk is the referee.
 
-Frontier models are strong coders, so the harness shouldn't try to code better. The
-research is blunt about where agents fail without scaffolding:
+---
 
-- they **can't self-certify "done"** — LLMs don't reliably self-correct without external
-  feedback (ICLR'24);
-- given write access to the tests that judge them, they **cheat 49–54%** of the time
-  (ImpossibleBench) and reward-hack the evaluator (METR);
-- "tests-as-spec" works on small tasks but **degrades with complexity**.
+## How it works (the mental model)
 
-So Chalk enforces seven primitives as gates. See [PROTOCOL.md](./PROTOCOL.md).
+**1. The spine — `.chalk/`.** One source of truth: tasks + acceptance criteria, locked tests,
+decisions, lessons, an event log. Created by `chalk init`, read by every command.
 
-## The gates (what makes it more than a notepad)
+**2. The loop — one task at a time.** The agent's entrypoint each turn is **`chalk next`**, which
+inspects the spine and returns the single next action.
+
+```
+chalk next ──► read (chalk context <id>) ──► work (agent writes code) ──► verify ──► done
+   ▲                                                                                  │
+   └────────────────────────────────  next task  ◄───────────────────────────────────┘
+```
+
+**3. The gates — why it's more than a notepad.** Each gate *refuses to advance* unless a
+fundamental is met (full model in [PROTOCOL.md](./PROTOCOL.md)):
 
 | Gate | Refuses unless… |
 |------|-----------------|
 | `start` (P1) | the task has machine-checkable acceptance criteria |
 | `done` (P4) | `chalk verify` (test/lint/typecheck/build) is green |
-| `done` (P6) | the locked acceptance tests are byte-for-byte unchanged |
-| `done` (P5) | if `review.required`, an adversarial reviewer passed (overridable, logged) |
-| `phase` (P7) | if `regression.required`, the held-out audit is green & fresh (overridable, logged) |
-| `amend-spec` (P6) | a test change is explicit + reason-logged (the only way to edit a locked test) |
+| `done` (P6) | the **locked** acceptance tests are byte-for-byte unchanged |
+| `done` (P5) | an **adversarial review** passed — catches *verify-green-but-the-test-was-inadequate* (overridable, logged) |
+| `work` | a feature ships a test (lever 1) that **fails without the change** (lever 3, opt-in) — no vacuous passes |
+| `phase` (P7) | a **held-out** regression audit (which the implementing agent never reads) is green & fresh |
+| `amend-spec` (P6) | a locked-test change is explicit + reason-logged — the only sanctioned way to edit one |
 
-## Quickstart
+The rule that ties it together: **the agent never self-declares success — the gate decides.**
+
+---
+
+## Install
 
 ```sh
-node bin/chalk.mjs init --name myapp --goal "what we're building"
-# set verify commands in .chalk/chalk.json → protocol.verify, e.g. { "test": "npm test", "typecheck": "tsc --noEmit" }
-
-node bin/chalk.mjs task add "implement X"
-node bin/chalk.mjs spec <id> --criterion "X does Y" --test test/x.test.ts   # locks the test
-node bin/chalk.mjs start <id>        # blocked without criteria (P1)
-node bin/chalk.mjs context <id>      # the agent reads this before working (P3)
-# ... agent writes code ...
-node bin/chalk.mjs verify            # external toolchain + integrity (P4/P6/P7)
-node bin/chalk.mjs done <id>         # blocked unless verify is green & tests intact
+git clone <this repo> && cd chalk-protocol
+npm link          # puts `chalk` on your PATH  (or just use `node bin/chalk.mjs`)
+node --test       # optional: run the suite (zero dependencies, Node ≥ 18)
 ```
 
-Run `node bin/chalk.mjs help` for the full surface. (Or `npm link` to get `chalk` on PATH.)
+---
 
-## Agent layer
+## Use it — the task loop
 
-`chalk init` installs the protocol contract into `AGENTS.md` and `CLAUDE.md` (a managed,
-idempotent block that preserves your existing content), so Claude Code / Codex / Gemini CLI
-auto-load it. The agent's entrypoint each turn is **`chalk next`** — it inspects spine state
-and returns the single next action (which task, which gate is blocking), and surfaces a
-tampered-test integrity break before `verify` is even run. Re-run with `chalk agents`.
+Run these in **your** project; Chalk drives the agent there:
 
-## Adversarial review (P5)
+```sh
+chalk init --name myapp --goal "what we're building"   # scaffolds .chalk/ + installs the agent contract
+# tell Chalk how to verify: edit .chalk/chalk.json → protocol.verify, e.g. { "test": "npm test" }
+#   (or `chalk init --preset node|flutter|python|go` to fill it in)
 
-Configure a reviewer in `.chalk/chalk.json` under `protocol`:
-`"review": { "command": "claude -p", "required": true }`. `chalk review <id>` runs it
-against the task's diff + criteria with an adversarial prompt (try to *refute* the change;
-check test-adequacy, design-intent, regressions) and records a JSON verdict. When required,
-`done` blocks until it passes — catching the case where **verify is green but the test was
-inadequate**. Overridable with `chalk done <id> --force-review --why "..."` (logged).
+chalk task add "implement X"
+chalk spec <id> --criterion "X does Y" --test test/x.test.ts   # add criteria + LOCK the test
+chalk start <id>          # GATE P1: refuses without criteria
+chalk context <id>        # the blob the agent reads first (spec, criteria, at-risk tests, lessons)
+#   ... the agent writes code to satisfy the criteria ...
+chalk verify              # external toolchain + locked-test integrity — loop until GREEN
+chalk done <id>           # GATE: refuses unless verify is green, locks intact, (review passed)
+```
 
-## Held-out regression (P7)
+`chalk init` writes the protocol contract into `AGENTS.md` / `CLAUDE.md`, so Claude Code / Codex /
+Gemini CLI auto-load it and know to drive themselves via `chalk next`. Lost? Run `chalk next` —
+it always tells you the one next action.
 
-The visible test suite stops measuring the spec once it becomes the optimization target, so
-Chalk keeps a regression/composition set under `.chalk/held-out/` that the implementing agent
-**never reads**. In a solo harness "held-out" means separation of *role + visibility*, not a
-second human: `chalk guard` authors it from the **spec** (blind to the code) and hash-locks
-it; `chalk context` only mentions it exists; `chalk audit` runs it with **output withheld**
-(pass/fail only — nothing to overfit to). `audit` gates `phase` advances and goes stale
-whenever code size changes. Configure with
-`protocol.regression`: `{ "command": "...", "authorCommand": "...", "required": true }`.
+---
+
+## Use it — autonomously
+
+Wire an executor and let Chalk run the loop unattended. The gates are the only safety (no `--force`
+on the core gates):
+
+```jsonc
+// .chalk/chalk.json → protocol
+"executor": { "command": "claude -p --permission-mode acceptEdits" }
+```
+
+```sh
+chalk run                 # drive every runnable task: executor → verify → (review) → done
+```
+
+For a full **GitHub issue → merge** pipeline (BYO `gh` + git worktrees):
+
+```sh
+chalk issue pull          # import open issues as tasks
+chalk pipeline            # per task: branch → plan → work → commit → PR → review → merge → cleanup
+```
+
+At merge, the pipeline requires what a careful human would: a **recording** of what was done in the
+PR body, the reviewer's verdict posted **on the PR** with an **LGTM**, and a **broke-check** (remote
+CI if present, else a local re-verify). A blocking review triggers a **fix → re-verify → re-review**
+loop; a task that can't finish leaves a **handoff** doc and parks (`chalk block`) so the run keeps
+moving. Full guide: [RUNNING-AUTONOMOUSLY.md](./RUNNING-AUTONOMOUSLY.md).
+
+---
+
+## The full product lifecycle
+
+Beyond the dev cycle, Chalk closes the loop from idea → shipped → learned-from:
+
+```
+discover ─► plan + approve ─► work ─► verify ─► review-on-PR ─► LGTM ─► merge ─► release ─► feedback ─┐
+(brief →    (the human                  └─ the dev cycle above ─┘                (notes +   (signals  │
+ backlog)    checkpoint)                                                          version)   → issues)│
+    ▲                                                                                                  │
+    └───────────────── chalk portal publishes client-facing status throughout ──── new backlog ◄───────┘
+```
+
+| Command | Stage |
+|---|---|
+| `chalk discover "<brief>"` | turn a product brief into scoped, criteria-bearing tasks |
+| `chalk plan <id>` → `chalk approve-plan <id>` | planner drafts an approach + scoping questions; a human approves **before** any code (set `protocol.plan.required: true`) |
+| `chalk release` | ship merged work — release notes + semver bump + git tag (`--dry-run` to preview) |
+| `chalk feedback` | turn signals dropped in `.chalk/feedback/` into improvement issues |
+| `chalk portal` | publish the spine as client-facing data under `.project/` |
+| `chalk retro` | self-heal: distill lessons + file improvement issues from a run |
+
+---
+
+## Try the whole loop in one command
+
+No LLM or GitHub needed — a throwaway project wired with **stub agents** runs every stage so you can
+watch it end-to-end:
+
+```sh
+bash examples/lifecycle-demo.sh
+```
+
+Swap the stub agents for `claude -p` (and point `github.command` at `gh`) to run it for real.
+
+---
+
+## Configuration
+
+Everything lives in `.chalk/chalk.json` under `protocol`. Each agent is a BYO command that reads its
+input on stdin and prints a result; **leave a command empty to turn that stage off.**
+
+```jsonc
+{
+  "protocol": {
+    "verify":     { "test": "npm test", "lint": "eslint .", "build": { "cmd": "npm run build", "when": "phase" } },
+    "executor":   { "command": "claude -p --permission-mode acceptEdits" },  // writes the code
+    "planner":    { "command": "claude -p" },                                 // drafts the approach
+    "review":     { "command": "claude -p", "requiredAt": ["per-task"] },     // adversarial reviewer (P5)
+    "regression": { "command": "npm test -- .chalk/held-out", "required": true }, // held-out audit (P7)
+    "plan":       { "required": true },        // gate work on an approved plan (the human checkpoint)
+    "breakTest":  "npm test -- {test}",        // lever 3: prove a locked test fails without the change
+    "mutation":   "npx stryker run --mutate {file}",  // lever 3 (rigorous): tests must KILL seeded mutants in changed code
+    "discovery":  { "command": "claude -p" },  // brief → backlog
+    "feedback":   { "command": "claude -p" },  // signals → issues
+    "github":     { "command": "gh", "base": "main", "mergeMethod": "squash" },
+    "portal":     { "dir": ".project" }
+  }
+}
+```
+
+Two gates worth understanding:
+- **Review (P5)** runs *adversarially* — it tries to *refute* the change (test-adequacy, design-intent,
+  regressions), so it catches a green-but-inadequate test. Run it on a **different model family** than the
+  executor — a same-model reviewer self-prefers and shares the author's blind spots; `chalk doctor` warns
+  when they match. Overridable with `chalk done <id> --force-review --why "..."` (logged).
+- **Held-out (P7)** keeps a regression set under `.chalk/held-out/` the implementing agent **never
+  reads**: `chalk guard` authors it from the *spec* (blind to the code), `chalk audit` runs it with
+  results withheld (pass/fail only — nothing to overfit to) and gates `phase` advances.
+
+`chalk doctor` previews readiness before an autonomous run; `chalk status` / `chalk backlog` /
+`chalk log` show where things stand.
+
+---
 
 ## Status
 
-v0 proof-of-concept, demoed end-to-end — **all seven research-backed primitives (P1–P7) are
-enforced**, plus the agent layer (`AGENTS.md`/`CLAUDE.md` contract + `chalk next`). The
-`.chalk/` event log uses the Chalk Projects portal's update vocabulary, so the spine can feed
-the portal without a separate export. Next: point Chalk at a real project; wire `guard gen` to
-a live model; consider per-task diff-size caps.
+Zero-dependency proof-of-concept (Node ≥ 18), **dogfooded on itself** — every command above was built
+through Chalk's own gated loop. Enforces all seven primitives (P1–P7) plus the agent contract and the
+full product lifecycle. The `.chalk/` event log uses the Chalk Projects portal's vocabulary, so the
+spine feeds the portal without a separate export.
+
+## Going deeper
+
+- **[PROTOCOL.md](./PROTOCOL.md)** — the seven primitives (P1–P7) and the full gate model.
+- **[RUNNING-AUTONOMOUSLY.md](./RUNNING-AUTONOMOUSLY.md)** — the unattended pipeline, end to end.
+- **[RESEARCH.md](./RESEARCH.md)** — the evidence each gate is built on.
+- **`chalk help`** — the full command surface.
