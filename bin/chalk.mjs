@@ -5,7 +5,7 @@ import { resolve, join } from 'node:path';
 import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
-import { runAudit, codeSize, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
+import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
@@ -26,6 +26,7 @@ import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
 import { missingRequiredTest } from '../lib/testgate.mjs';
 import { runBreakit } from '../lib/breakit.mjs';
+import { runMutation } from '../lib/mutation.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { collectSignals, runFeedback, feedbackDir } from '../lib/feedback.mjs';
@@ -500,6 +501,13 @@ const cmds = {
     const bi = runBreakit(s, t, { cwd: workdir(s, t) });
     if (!bi.skipped && bi.vacuous.length) {
       console.error(C.r('✗ ') + `vacuous locked test — still passes against the pre-change code, so it asserts nothing: ${bi.vacuous.join(', ')}. Strengthen it to fail without your change.`);
+      process.exit(2);
+    }
+    // Lever 3, rigorous — mutation adequacy: seed faults into the CHANGED code; surviving mutants mean the
+    // tests don't pin it (coverage can be 100% with a near-zero mutation score). Opt-in (protocol.mutation).
+    const mut = runMutation(s, t, { cwd: workdir(s, t) });
+    if (!mut.skipped && mut.survived.length) {
+      console.error(C.r('✗ ') + `weak tests — mutants survived in: ${mut.survived.join(', ')}. The suite doesn't pin this change; strengthen the assertions (or kill the mutants).`);
       process.exit(2);
     }
     t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };
@@ -1062,6 +1070,14 @@ const cmds = {
       if (i >= 0) t.tests[i] = lock; else t.tests.push(lock);
       console.log(C.dim(`  re-locked ${lock.path} @ ${lock.sha256.slice(0, 12)}`));
     }
+    // A changed locked test INVALIDATES a prior passing review: the adversary approved a different test, so
+    // that verdict is stale. Mark it (a non-'pass' last verdict) so `done`/merge require a fresh review —
+    // closing the bypass "get a pass, then weaken the locked test, then merge on the stale approval" (P5/P6).
+    const lastReview = (t.reviews || []).slice(-1)[0];
+    if (lastReview && lastReview.verdict === 'pass') {
+      t.reviews.push({ at: now(), by: 'amend-spec', verdict: 'stale', note: 'locked test amended after review — re-review required' });
+      console.log(C.y('  ! prior passing review invalidated — re-review required before done.'));
+    }
     s.upsertTask(t);
     s.appendDecision({ title: `Amended acceptance test for "${t.title}"`, why: String(why) });
     ok('spec amended + decision logged.');
@@ -1076,8 +1092,10 @@ const cmds = {
 
     // Idempotent on resume: a passing review advances the stage to 'reviewed' (only on pass — a
     // block leaves the stage at 'pr-open' so the re-run after a fix re-reviews). So if we're already
-    // past 'reviewed', short-circuit: don't re-invoke the reviewer or append a DUPLICATE review.
-    if (stageDone(t, 'reviewed')) return ok(`review ${C.dim('(already passed)')}`);
+    // past 'reviewed', short-circuit: don't re-invoke the reviewer or append a DUPLICATE review. But only
+    // while the last verdict still STANDS — `amend-spec` invalidates a prior pass (verdict 'stale'), and a
+    // changed locked test must be re-reviewed even though the stage is still 'reviewed'.
+    if (stageDone(t, 'reviewed') && t.reviews.slice(-1)[0]?.verdict === 'pass') return ok(`review ${C.dim('(already passed)')}`);
 
     if (!meta.protocol?.review?.command) {
       const note = flags.note || _.slice(1).join(' ');
@@ -1161,6 +1179,11 @@ const cmds = {
       }
     }
     console.log(C.dim(`  code size: ${r.size.loc} LOC across ${r.size.files} file(s)`));
+    // P7 stringency scales with code size (SpecBench): warn (non-fatal — audit is about correctness) when
+    // the held-out set has not grown with the code. The `phase` gate turns this into a refusal.
+    const heldCount = s.protocol().regression?.tests?.length || 0;
+    const floorNow = heldOutFloor(r.size.loc, s.protocol().regression?.locPerTest);
+    if (floorNow > heldCount) console.log(C.y(`  ⚠ held-out set (${heldCount}) is below the size floor (${floorNow} for ${r.size.loc} LOC) — P7 stringency scales with code; author more via \`chalk guard\`.`));
     const m = s.meta();
     m.protocol = m.protocol || {};
     const reg = m.protocol.regression = m.protocol.regression || {};
@@ -1182,10 +1205,16 @@ const cmds = {
       const la = reg.lastAudit;
       const size = codeSize(s.root);
       const changed = la && la.size && la.size.loc !== size.loc;
-      if (!la || !la.green || changed) {
+      // P7 stringency scales with code size (SpecBench): the held-out set must GROW with the code, so a set
+      // below the size floor blocks advance even when the audit is green — the oracle has decayed.
+      const floor = heldOutFloor(size.loc, reg.locPerTest);
+      const understaffed = (reg.tests?.length || 0) < floor;
+      if (!la || !la.green || changed || understaffed) {
         if (!flags['force-audit']) {
-          const why = !la ? 'never audited' : !la.green ? 'last audit was RED' : 'code changed since last audit';
-          die(`GATE P7: run a green \`chalk audit\` before advancing phase (${why}).\n    To override (logged): chalk phase ${p} --force-audit --why "..."`);
+          const msg = (!la || !la.green || changed)
+            ? `run a green \`chalk audit\` before advancing phase (${!la ? 'never audited' : !la.green ? 'last audit was RED' : 'code changed since last audit'})`
+            : `held-out set too small for ${size.loc} LOC — need ≥${floor} held-out test(s), have ${reg.tests?.length || 0}; P7 stringency scales with code size (author more via \`chalk guard\`)`;
+          die(`GATE P7: ${msg}.\n    To override (logged): chalk phase ${p} --force-audit --why "..."`);
         }
         if (!flags.why) die('--force-audit requires --why "<reason>" (it is logged as a decision).');
         s.appendDecision({ title: `Overrode held-out audit gate advancing to phase "${p}"`, why: String(flags.why) });

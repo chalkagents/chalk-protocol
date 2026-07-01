@@ -159,6 +159,7 @@ input on stdin and prints a result; **leave a command empty to turn that stage o
     "regression": { "command": "npm test -- .chalk/held-out", "required": true }, // held-out audit (P7)
     "plan":       { "required": true },        // gate work on an approved plan (the human checkpoint)
     "breakTest":  "npm test -- {test}",        // lever 3: prove a locked test fails without the change
+    "mutation":   "npx stryker run --mutate {file}",  // lever 3 (rigorous): tests must KILL seeded mutants in changed code
     "discovery":  { "command": "claude -p" },  // brief → backlog
     "feedback":   { "command": "claude -p" },  // signals → issues
     "github":     { "command": "gh", "base": "main", "mergeMethod": "squash" },
@@ -169,8 +170,9 @@ input on stdin and prints a result; **leave a command empty to turn that stage o
 
 Two gates worth understanding:
 - **Review (P5)** runs *adversarially* — it tries to *refute* the change (test-adequacy, design-intent,
-  regressions), so it catches a green-but-inadequate test. Overridable with `chalk done <id>
-  --force-review --why "..."` (logged).
+  regressions), so it catches a green-but-inadequate test. Run it on a **different model family** than the
+  executor — a same-model reviewer self-prefers and shares the author's blind spots; `chalk doctor` warns
+  when they match. Overridable with `chalk done <id> --force-review --why "..."` (logged).
 - **Held-out (P7)** keeps a regression set under `.chalk/held-out/` the implementing agent **never
   reads**: `chalk guard` authors it from the *spec* (blind to the code), `chalk audit` runs it with
   results withheld (pass/fail only — nothing to overfit to) and gates `phase` advances.
