@@ -10,7 +10,7 @@ import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
-import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo } from '../lib/git.mjs';
+import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
 import { postReviewToPr } from '../lib/prreview.mjs';
 import { brokeCheck } from '../lib/brokecheck.mjs';
@@ -438,6 +438,17 @@ const cmds = {
       return ok(`release ${C.b('v' + version)} ${C.dim(`(dry-run) — ${tasks.length} change(s); nothing written`)}`);
     }
 
+    // Tag FIRST — a colliding version is the most likely failure, and it must not leave work marked
+    // "released" on a version with no tag (the next release, seeing them marked, would never re-tag). A
+    // non-git project legitimately can't tag (a CHANGELOG/pkg-only release); in a git repo a tag failure is
+    // fatal BEFORE anything is written or marked.
+    let tagged = false;
+    const isRepo = gitTry(s.root, 'rev-parse --is-inside-work-tree') === 'true';
+    if (flags['no-tag'] !== true && isRepo) {
+      try { runGit(s.root, `tag -a v${version} -m ${shq('release v' + version)}`); tagged = true; }
+      catch (e) { die(`release: git tag v${version} failed — ${String(e.message || e).split('\n')[0]}.\n    Likely the tag already exists; bump past it (--version/--major/…) or re-run with --no-tag. Nothing was released.`); }
+    }
+
     // CHANGELOG.md — keep the title line, prepend the new section above older ones.
     const clPath = join(s.root, 'CHANGELOG.md');
     const prev = existsSync(clPath) ? readFileSync(clPath, 'utf8') : '# Changelog\n';
@@ -447,11 +458,6 @@ const cmds = {
     writeFileSync(clPath, `${title}\n${notes}\n${older}`.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
 
     if (pkg) { pkg.version = version; writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n'); }
-
-    let tagged = false;
-    if (flags['no-tag'] !== true) {
-      try { runGit(s.root, `tag -a v${version} -m ${shq('release v' + version)}`); tagged = true; } catch { /* non-git, or tag already exists */ }
-    }
 
     for (const t of tasks) { t.released = version; s.upsertTask(t); }
     s.appendDecision({ title: `Released v${version}`, why: `${tasks.length} change(s)${tagged ? `; tagged v${version}` : ''}` });
