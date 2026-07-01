@@ -99,3 +99,38 @@ test('opencode-json adapter — wraps the prompt, runs opencode, prints only par
   });
   assert.deepEqual(JSON.parse(out), { verdict: 'pass', findings: [] }); // stdout is pure JSON, no prose/fences
 });
+
+// ── security: the JSON-contract roles (review/discovery/feedback) must run opencode READ-ONLY ─────────
+test('buildRunArgs — auto:false OMITS --auto (read-only for the JSON-contract roles)', () => {
+  assert.deepEqual(buildRunArgs('review this', { auto: false }), ['run', 'review this']);
+  assert.deepEqual(buildRunArgs('review', { model: 'm', auto: false }), ['run', '-m', 'm', 'review']);
+  assert.ok(!buildRunArgs('x', { auto: false }).includes('--auto'), 'no --auto when auto:false');
+});
+
+test('opencode-json adapter — runs opencode WITHOUT --auto (P5 reviewer can NOT edit/execute the code it judges)', () => {
+  const d = mkdtempSync(join(tmpdir(), 'oc-json-ro-'));
+  const argsFile = join(d, 'argv.json');
+  // fake opencode: record argv, then emit a valid verdict so the adapter exits 0.
+  fakeOpencode(d, `require('fs').writeFileSync(${JSON.stringify(argsFile)}, JSON.stringify(process.argv.slice(2))); process.stdout.write('{"verdict":"pass","findings":[]}')`);
+  execFileSync('node', [JSON_ADAPTER], {
+    input: 'Review this diff',
+    env: { ...process.env, CHALK_OPENCODE_BIN: join(d, 'opencode') },
+    encoding: 'utf8',
+  });
+  const argv = JSON.parse(readFileSync(argsFile, 'utf8'));
+  assert.equal(argv[0], 'run');
+  assert.ok(!argv.includes('--auto'), 'the review/JSON adapter must NOT pass --auto (stays read-only)');
+});
+
+test('opencode-exec adapter — a missing opencode binary fails loudly (non-zero + stderr), not a silent no-op', () => {
+  let code = 0, stderr = '';
+  try {
+    execFileSync('node', [EXEC_ADAPTER], {
+      input: 'do X',
+      env: { ...process.env, CHALK_OPENCODE_BIN: '/nonexistent/opencode-xyz-should-not-exist' },
+      encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'],
+    });
+  } catch (e) { code = e.status; stderr = String(e.stderr || ''); }
+  assert.notEqual(code, 0, 'a missing binary must not exit 0 (a silent no-op that only fails later at verify)');
+  assert.match(stderr, /could not run|opencode/i, 'the failure names the problem');
+});

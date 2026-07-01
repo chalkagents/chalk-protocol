@@ -15,8 +15,11 @@ const bin = process.env.CHALK_OPENCODE_BIN || 'opencode';
 const model = process.env.CHALK_OPENCODE_MODEL;
 const attach = process.env.CHALK_OPENCODE_ATTACH;
 
-const args = buildRunArgs(wrappedPrompt, { model, attach });
+// JSON-contract roles (review/discovery/feedback) are READ-ONLY judges: no `--auto`, so opencode can't
+// edit the code it's reviewing or execute a prompt-injected diff's commands.
+const args = buildRunArgs(wrappedPrompt, { model, attach, auto: false });
 const res = spawnSync(bin, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
+if (res.error) console.error(`opencode-json: could not run '${bin}': ${res.error.message}`); // surface ENOENT etc.
 
 const stdout = res.stdout || '';
 const obj = extractJson(stdout);
