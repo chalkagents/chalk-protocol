@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1782968535756,
+  "updatedAt": 1782974286968,
   "order": 0,
   "cards": [
     {
@@ -708,86 +708,171 @@
     {
       "id": "task-5223a193",
       "title": "chore: OSS hygiene — LICENSE, neutral pipeline-test fixtures, issue/PR templates, CONTRIBUTING/SECURITY/CODE_OF_CONDUCT",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1782968452825,
-      "updatedAt": 1782968535756,
+      "updatedAt": 1782969011834,
       "order": 40,
       "description": "- LICENSE file exists at repo root with the full MIT text (matches package.json license: MIT)\n- test/pipeline.test.mjs uses neutral fixtures — no github.com-devid or personal remote; full suite green\n- .github/ISSUE_TEMPLATE has bug_report.yml (asks chalk version + doctor output), friction_report.yml (where did you get stuck), feature_request.yml; PULL_REQUEST_TEMPLATE.md exists\n- CONTRIBUTING.md (chalk-loop contribution flow + node --test), SECURITY.md (private disclosure), CODE_OF_CONDUCT.md exist at root\n- README has a Status & feedback section linking the friction-report template",
       "testArtifact": {
-        "specPath": "test/oss-files.test.mjs"
+        "specPath": "test/oss-files.test.mjs",
+        "lastRun": {
+          "runId": "done-task-5223a193",
+          "status": "passed",
+          "at": 1782969011834
+        }
       }
     },
     {
       "id": "task-389663ac",
       "title": "feat: gate hardening — probe-error disambiguation, reviewer diff truncation marker + file stat, silent-failure warnings, mutation CLI wiring test",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1782968452887,
-      "updatedAt": 1782968452887,
-      "order": 41
+      "updatedAt": 1782970050681,
+      "order": 41,
+      "description": "- runBreakit reports probe-command failures (ENOENT/127/timeout/kill) as inconclusive — never as fails-on-base rigor; vacuous detection unchanged\n- runMutation reports an unrunnable mutation tool as inconclusive instead of silently clean; real survivors still flagged\n- chalk work prints a loud INCONCLUSIVE warning for unrunnable probes and still exits 2 on real survivors (M2 CLI wiring pinned)\n- review prompt diff: truncation is explicitly marked and the git diff --stat changed-file list is always appended (formatDiffForReview exported)\n- silent-failure sweep: handoff narrator failure warns and falls back to template-only; cost-ledger write failure warns once per process; merge broke-check local-fallback is labeled",
+      "testArtifact": {
+        "specPath": "test/gate-hardening.test.mjs",
+        "lastRun": {
+          "runId": "done-task-389663ac",
+          "status": "passed",
+          "at": 1782970050681
+        }
+      }
     },
     {
       "id": "task-6c33ba19",
       "title": "feat: chalk demo — built-in 1-minute no-LLM lifecycle demo with two visible gate refusals",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1782968452939,
-      "updatedAt": 1782968452939,
-      "order": 42
+      "updatedAt": 1782970804772,
+      "order": 42,
+      "description": "- chalk demo runs the full lifecycle (discover→plan→approval→work→lock→review→done→release→feedback→portal) on a throwaway temp project with stub agents, no LLM/gh/network, exiting 0\n- exactly two staged gate refusals are shown on-screen (work-before-plan-approval, P6 locked-test tamper) and the refusal is labeled GATE REFUSED\n- the tampered locked test is caught visibly (test-integrity VIOLATED (P6)) and restored via the sanctioned narrative\n- the temp project is removed by default and kept with --keep; failure keeps it and prints the path\n- examples/lifecycle-demo.sh delegates to chalk demo (single source of truth); chalk help lists demo under setup",
+      "testArtifact": {
+        "specPath": "test/demo.test.mjs",
+        "lastRun": {
+          "runId": "done-task-6c33ba19",
+          "status": "passed",
+          "at": 1782970804772
+        }
+      }
     },
     {
       "id": "task-918646d8",
       "title": "feat: init hardening — preset auto-detect default, vacuous-verify warning, --verify-test/--bare, next-steps epilogue, presets set breakTest",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1782968452992,
-      "updatedAt": 1782968452992,
-      "order": 43
+      "updatedAt": 1782971572865,
+      "order": 43,
+      "description": "- bare chalk init auto-detects the stack preset from marker files by default and labels it (auto-detected); explicit --preset wins; --bare opts out\n- init with no detectable stack warns loudly about VACUOUS verify (exit 0); --bare acknowledges and silences; --verify-test <cmd> sets verify.test inline\n- chalk verify prints a VACUOUS label whenever green rests on zero configured commands (exit code unchanged); honest greens are unlabeled\n- presets with a truthful per-file test command set protocol.breakTest by default (node/flutter/dart/python; go deliberately omitted)\n- init always ends with the numbered next-steps block naming task add, spec+lock, start, verify/done, doctor and demo",
+      "testArtifact": {
+        "specPath": "test/init-onboard.test.mjs",
+        "lastRun": {
+          "runId": "done-task-918646d8",
+          "status": "passed",
+          "at": 1782971572865
+        }
+      }
     },
     {
       "id": "task-58f6359e",
       "title": "feat: init --executor claude|none — ship agent templates in share/agents, retrofit via chalk agents --claude",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1782968461452,
-      "updatedAt": 1782968461452,
-      "order": 44
+      "updatedAt": 1782972261700,
+      "order": 44,
+      "description": "- share/agents/ ships the four Claude agent definitions as copies of .claude/agents/* minus repo-local skills front-matter, pinned by a drift-gate test that fails if either side changes alone\n- chalk init --executor claude installs the four agent files (write-if-absent) and wires executor/planner/retro commands plus review.requiredAt per-task; states the claude-CLI PATH prerequisite\n- a user-edited installed agent survives re-runs (exists, kept); chalk agents --claude is the retrofit path for already-inited projects\n- chalk init --executor none prints the first-class manual loop; unknown executor values are refused listing claude|opencode|none",
+      "testArtifact": {
+        "specPath": "test/agents-sync.test.mjs",
+        "lastRun": {
+          "runId": "done-task-58f6359e",
+          "status": "passed",
+          "at": 1782972261700
+        }
+      }
     },
     {
       "id": "task-2a7025bb",
       "title": "feat: doctor for strangers — per-OS gh install hints, optional-executor framing, --json output, unused-gates nudge",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1782968461510,
-      "updatedAt": 1782968461510,
-      "order": 45
+      "updatedAt": 1782972916557,
+      "order": 45,
+      "description": "- missing gh/git produce per-OS copy-paste install hints (installHint exported+pure); gh is scoped 'needed for the issue/PR pipeline, NOT for the local loop'\n- no-executor stays a FAIL (autopilot gates on it) but is framed OPTIONAL for the manual loop with the loop spelled out\n- an info-level nudge names exactly the opt-in levers that are OFF (breakTest, mutation, held-out, review, plan-approval); armed levers drop out\n- chalk doctor --json emits {at,node,platform,results} for bug reports with the exit code preserved\n- a NOT READY verdict prints that it concerns UNATTENDED runs and offers the manual loop",
+      "testArtifact": {
+        "specPath": "test/doctor.test.mjs",
+        "lastRun": {
+          "runId": "done-task-2a7025bb",
+          "status": "passed",
+          "at": 1782972916557
+        }
+      }
     },
     {
       "id": "task-a16e36ea",
       "title": "feat: chalk archive — compact released tasks + old events into .chalk/archive",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1782968461565,
-      "updatedAt": 1782968461565,
-      "order": 46
+      "updatedAt": 1782973366913,
+      "order": 46,
+      "description": "- chalk archive moves done+released tasks (stamped archivedAt) to .chalk/archive/tasks-<year>.json and only their event lines to updates-<year>.jsonl; global events and other tasks' events stay live\n- a candidate referenced by a remaining task's after is KEPT with a printed reason; done-unreleased tasks stay (release idempotency); archived tasks are never re-released\n- true\n- the portal still shows archived delivered scope (portalModel reads the archive); backlog stays coherent after compaction",
+      "testArtifact": {
+        "specPath": "test/archive.test.mjs",
+        "lastRun": {
+          "runId": "done-task-a16e36ea",
+          "status": "passed",
+          "at": 1782973366913
+        }
+      }
     },
     {
       "id": "task-46471f9d",
       "title": "docs: onboarding — README rewrite (demo top-fold, comparison table), QUICKSTART.md, docs/CONFIG.md, claude-code integration doc",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1782968469111,
-      "updatedAt": 1782968469111,
-      "order": 47
+      "updatedAt": 1782973980462,
+      "order": 47,
+      "description": "- README leads with the runnable proof (npx chalk-protocol demo), an Install section, a comparison table naming prior art (Spec-Kit/AGENTS.md/CI), and the-gate-decides thesis; config block moves to docs/CONFIG.md\n- QUICKSTART.md (shipped in the npm files array) walks prereqs, demo, init, MANUAL mode first-class incl. deliberately tripping P6 and the amend-spec path, Claude Code mode, and a troubleshooting table\n- docs/CONFIG.md documents every protocol.* key with a bidirectional drift gate against initSpine (missing or stale sections fail the suite)\n- docs/assets/demo.tape is the reproducible vhs recipe for the README GIF (recording itself is a manual step)",
+      "testArtifact": {
+        "specPath": "test/docs.test.mjs",
+        "lastRun": {
+          "runId": "done-task-46471f9d",
+          "status": "passed",
+          "at": 1782973980462
+        }
+      }
     },
     {
       "id": "task-76eda7af",
       "title": "chore: npm publish readiness — package metadata + files array, release.yml trusted publishing, pack-manifest test",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1782968469171,
-      "updatedAt": 1782968469171,
-      "order": 48
+      "updatedAt": 1782974286968,
+      "order": 48,
+      "description": "- npm tarball carries all runtime-resolved + onboarding files (adapters, share/agents, LICENSE, QUICKSTART/PROTOCOL/RESEARCH) and never the dogfood spine or tests (npm pack pinned)\n- registry metadata set: repository/bugs/homepage/keywords, MIT, bin.chalk, engines node>=18\n- publishConfig: public access + provenance by default\n- release.yml publishes via OIDC trusted publishing on v* tags (id-token write, no secrets wired), runs node --test BEFORE publish, normalizes version from the tag; follow-up task queued for chalk release --commit",
+      "testArtifact": {
+        "specPath": "test/package.test.mjs",
+        "lastRun": {
+          "runId": "done-task-76eda7af",
+          "status": "passed",
+          "at": 1782974286968
+        }
+      }
     },
     {
       "id": "task-f6bb962a",
       "title": "chore: cut v0.1.0 via chalk release, seed v0.2 roadmap issues, enable GitHub Discussions",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1782968469230,
       "updatedAt": 1782968469230,
       "order": 49
+    },
+    {
+      "id": "task-021f4985",
+      "title": "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)",
+      "column": "todo",
+      "createdAt": 1782974047475,
+      "updatedAt": 1782974047475,
+      "order": 50
     }
   ]
 }

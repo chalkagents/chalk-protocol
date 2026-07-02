@@ -184,3 +184,38 @@
 
 - _when:_ 2026-07-01T07:42:53.337Z
 - _why:_ it used to swallow a failed git tag yet mark work released, shipping onto an untagged version that the next release (seeing them marked) would never re-tag. A non-git project legitimately can't tag → stays a CHANGELOG/pkg-only release. First of the silent-failure autonomous-path hardenings.
+
+## Amended acceptance test for "feat: gate hardening — probe-error disambiguation, reviewer diff truncation marker + file stat, silent-failure warnings, mutation CLI wiring test"
+
+- _when:_ 2026-07-02T05:23:14.571Z
+- _why:_ review blocked: criterion-5 cost-ledger and merge-label behaviors were untested (vacuous under the break-it rule); added 3 tests (warn-once-per-process across store instances, merge LOCAL-verify label, no-false-promise truncation marker) and re-locked
+
+## Amended acceptance test for "feat: gate hardening — probe-error disambiguation, reviewer diff truncation marker + file stat, silent-failure warnings, mutation CLI wiring test"
+
+- _when:_ 2026-07-02T05:24:00.369Z
+- _why:_ fix the merge-label scaffold: the stub issue body needed a checklist item so issue-pull yields a P1 criterion (work refused on todo otherwise); suite green before re-lock this time
+
+## Amended acceptance test for "feat: chalk demo — built-in 1-minute no-LLM lifecycle demo with two visible gate refusals"
+
+- _when:_ 2026-07-02T05:35:57.935Z
+- _why:_ review blocked: criterion-5 (wrapper delegation + help listing) and the failure-keeps-dir branch were untested, refusal identity unpinned; added 2 tests + 3 assertions (plan-not-approved identity, restore narrative, CHALK_DEMO_SABOTAGE failure path) — suite green before re-lock
+
+## Amended acceptance test for "feat: init hardening — preset auto-detect default, vacuous-verify warning, --verify-test/--bare, next-steps epilogue, presets set breakTest"
+
+- _when:_ 2026-07-02T05:48:20.358Z
+- _why:_ review blocked: flutter/dart breakTest + go omission, non-node detectPreset branches, and the doctor line were unpinned; added detectPreset/PRESETS unit coverage, doctor + start assertions, and the bare--preset no-detect notice (suite green before re-lock)
+
+## Amended acceptance test for "feat: init --executor claude|none — ship agent templates in share/agents, retrofit via chalk agents --claude"
+
+- _when:_ 2026-07-02T06:00:17.851Z
+- _why:_ review blocked HIGH: share/ was not in package.json files (npm-installed users would ENOENT) — added share to files + npm-pack tarball assertion; created the referenced claude-code.md doc + existence test; drift gate strengthened to whole-file-minus-skills-line equality (suite green before re-lock)
+
+## Amended acceptance test for "feat: doctor for strangers — per-OS gh install hints, optional-executor framing, --json output, unused-gates nudge"
+
+- _when:_ 2026-07-02T06:11:42.603Z
+- _why:_ review blocked HIGH: doctor wiring (hint interpolation + pipeline-only scoping in the fail line) was untested and the custom-command path dangled an em-dash; added PATH-scrub wiring tests, no-dangling-dash fix, READY exit-0 json/pretty parity, all-armed no-nudge case (green before re-lock)
+
+## Amended acceptance test for "docs: onboarding — README rewrite (demo top-fold, comparison table), QUICKSTART.md, docs/CONFIG.md, claude-code integration doc"
+
+- _when:_ 2026-07-02T06:29:32.340Z
+- _why:_ review blocked: demo.tape and the doc-link targets (incl. claude-code.md) were unguarded; added a general dead-relative-link gate across all four onboarding docs + a tape assertion (green before re-lock)
