@@ -17,7 +17,8 @@
     "lib",
     "share",
     "PROTOCOL.md",
-    "RESEARCH.md"
+    "RESEARCH.md",
+    "QUICKSTART.md"
   ],
   "license": "MIT"
 }
