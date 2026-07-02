@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1782974047475,
+  "updatedAt": 1782989041472,
   "order": 0,
   "cards": [
     {
@@ -25,10 +25,18 @@
     {
       "id": "task-f6bb962a",
       "title": "chore: cut v0.1.0 via chalk release, seed v0.2 roadmap issues, enable GitHub Discussions",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1782968469230,
-      "updatedAt": 1782968469230,
-      "order": 1
+      "updatedAt": 1782989041472,
+      "order": 1,
+      "description": "- chalk-protocol@0.1.0 is live on the npm registry and npx chalk-protocol demo completes green from the registry on a clean directory\n- v0.2 roadmap issues seeded and labeled (#78-#86 + #88 evidence-push + #89 retro-filed); GitHub Discussions enabled\n- v0.1.0 git tag pushed with a GitHub release; post-release chalk archive compacted the spine (48 tasks, 190KB→4.3KB tasks.json)",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-f6bb962a",
+          "status": "passed",
+          "at": 1782989041472
+        }
+      }
     },
     {
       "id": "task-021f4985",

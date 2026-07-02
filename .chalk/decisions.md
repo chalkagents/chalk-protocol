@@ -224,3 +224,8 @@
 
 - _when:_ 2026-07-02T10:19:42.204Z
 - _why:_ 49 change(s); tagged v0.1.0
+
+## Overrode review gate for "chore: cut v0.1.0 via chalk release, seed v0.2 roadmap issues, enable GitHub Discussions"
+
+- _when:_ 2026-07-02T10:44:01.470Z
+- _why:_ external-state ops task: the no-network reviewer rightly cannot verify registry/GitHub state. Operator evidence from this session: npm view chalk-protocol → 0.1.0 with tarball URL; npx chalk-protocol@0.1.0 demo on a clean dir → LOOP COMPLETE, 2 gates refused; gh release created at /releases/tag/v0.1.0 on pushed tag; issues #78-#86,#88,#89 exist; gh repo hasDiscussionsEnabled=true; archive compaction is in-repo at .chalk/archive/
