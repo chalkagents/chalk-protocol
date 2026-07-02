@@ -31,6 +31,7 @@ import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { collectSignals, runFeedback, feedbackDir } from '../lib/feedback.mjs';
 import { runDiscovery } from '../lib/discovery.mjs';
+import { runDemo } from '../lib/demo.mjs';
 import { portalModel } from '../lib/portal.mjs';
 import { basename, dirname } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
@@ -70,6 +71,12 @@ const syncBrowser = (s) => { try { projectPlans(s); projectBoard(s); } catch { /
 
 // ---------------------------------------------------------------- commands
 const cmds = {
+  // Pre-init command (no Store): the 1-minute stub-agent lifecycle demo, incl. two gate refusals.
+  demo({ flags }) {
+    try { runDemo({ keep: flags.keep === true }); }
+    catch (e) { die(String(e.message || e)); }
+  },
+
   init({ flags }) {
     const root = process.cwd();
     // --preset flutter|node|… selects a stack; bare --preset auto-detects from marker files.
@@ -1394,6 +1401,7 @@ function printHelp() {
   console.log(`${C.b('chalk')} — Chalk Protocol CLI (v0)  ${C.dim('· read → work → verify → write')}
 
 ${C.b('setup')}
+  chalk demo [--keep]                  ${C.dim('watch the whole gated loop on a throwaway project (~1 min, no LLM needed)')}
   chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--runner fvm] [--executor opencode]
                                        ${C.dim('installs the agent contract; --preset fills verify/regression (bare --preset auto-detects)')}
   chalk agents                         ${C.dim('(re)install the agent contract')}
