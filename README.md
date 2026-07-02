@@ -182,12 +182,20 @@ Two gates worth understanding:
 
 ---
 
-## Status
+## Status & feedback
 
-Zero-dependency proof-of-concept (Node ≥ 18), **dogfooded on itself** — every command above was built
-through Chalk's own gated loop. Enforces all seven primitives (P1–P7) plus the agent contract and the
-full product lifecycle. The `.chalk/` event log uses the Chalk Projects portal's vocabulary, so the
-spine feeds the portal without a separate export.
+Beta (protocol `chalk/0`), zero dependencies (Node ≥ 18), **dogfooded on itself** — every command
+above was built through Chalk's own gated loop, and the `.chalk/` directory in this repo is our
+real, living project state (yours will look like it). Enforces all seven primitives (P1–P7) plus
+the agent contract and the full product lifecycle. The `.chalk/` event log uses the Chalk Projects
+portal's vocabulary, so the spine feeds the portal without a separate export.
+
+Trying chalk and hit a rough edge? A two-minute
+**[friction report](https://github.com/chalkagents/chalk-protocol/issues/new?template=friction_report.yml)** —
+"here's where I got stuck" — is the feedback we want most;
+[bug reports and feature requests](https://github.com/chalkagents/chalk-protocol/issues/new/choose)
+have templates too. Contributions go through the same gates as our own work: see
+[CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Going deeper
 
