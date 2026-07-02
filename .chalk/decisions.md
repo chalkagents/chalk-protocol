@@ -219,3 +219,8 @@
 
 - _when:_ 2026-07-02T06:29:32.340Z
 - _why:_ review blocked: demo.tape and the doc-link targets (incl. claude-code.md) were unguarded; added a general dead-relative-link gate across all four onboarding docs + a tape assertion (green before re-lock)
+
+## Released v0.1.0
+
+- _when:_ 2026-07-02T10:19:42.204Z
+- _why:_ 49 change(s); tagged v0.1.0
