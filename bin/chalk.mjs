@@ -509,6 +509,9 @@ const cmds = {
     // Lever 3 — break-it: a locked test must FAIL against the reverted (pre-change) code, else it
     // asserts nothing about the feature. Opt-in (protocol.breakTest); a vacuous test exits 2 → block.
     const bi = runBreakit(s, t, { cwd: workdir(s, t) });
+    if (!bi.skipped && bi.inconclusive?.length) {
+      console.error(C.y('⚠ ') + `break-it probe INCONCLUSIVE for ${bi.inconclusive.join(', ')} — the probe command could not run (is protocol.breakTest on PATH? did it time out?). Not counted as passing.`);
+    }
     if (!bi.skipped && bi.vacuous.length) {
       console.error(C.r('✗ ') + `vacuous locked test — still passes against the pre-change code, so it asserts nothing: ${bi.vacuous.join(', ')}. Strengthen it to fail without your change.`);
       process.exit(2);
@@ -516,6 +519,9 @@ const cmds = {
     // Lever 3, rigorous — mutation adequacy: seed faults into the CHANGED code; surviving mutants mean the
     // tests don't pin it (coverage can be 100% with a near-zero mutation score). Opt-in (protocol.mutation).
     const mut = runMutation(s, t, { cwd: workdir(s, t) });
+    if (!mut.skipped && mut.inconclusive?.length) {
+      console.error(C.y('⚠ ') + `mutation probe INCONCLUSIVE for ${mut.inconclusive.join(', ')} — the tool could not run (is protocol.mutation on PATH? did it time out?). Not counted as adequate.`);
+    }
     if (!mut.skipped && mut.survived.length) {
       console.error(C.r('✗ ') + `weak tests — mutants survived in: ${mut.survived.join(', ')}. The suite doesn't pin this change; strengthen the assertions (or kill the mutants).`);
       process.exit(2);
@@ -542,6 +548,7 @@ const cmds = {
     // Broke-check: did something break? Remote CI when the PR has it, else local verify. Replaces the
     // bare verify gate (its fallback IS local verify, so non-CI projects behave as before).
     const broke = brokeCheck(s, t);
+    if (broke.source === 'local') console.log(C.y('  ⚠ ') + C.dim('PR has no remote CI checks — merge safety used LOCAL verify.'));
     const reviewReq = reviewRequiredNow(s, t);
     // If the review passed but the LGTM wasn't surfaced on the PR yet (review predated the PR, or a
     // gh hiccup), post it now so the gate can confirm a sign-off precedes the merge.
