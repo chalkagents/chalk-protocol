@@ -15,6 +15,7 @@
   "files": [
     "bin",
     "lib",
+    "share",
     "PROTOCOL.md",
     "RESEARCH.md"
   ],
