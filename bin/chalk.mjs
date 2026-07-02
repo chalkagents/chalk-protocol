@@ -714,18 +714,24 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   },
 
   // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
-  doctor() {
+  doctor({ flags = {} } = {}) {
     const s = Store.open();
     const results = runDoctor(s);
+    const fails = results.filter((r) => r.level === 'fail').length;
+    // --json: the bug-report format (issue templates ask for it) — stable, greppable, exit-coded.
+    if (flags.json === true) {
+      console.log(JSON.stringify({ at: now(), node: process.version, platform: process.platform, results }, null, 2));
+      process.exit(fails ? 2 : 0);
+    }
     console.log(C.b('chalk doctor') + C.dim(' · autonomous-run readiness') + '\n');
-    const icon = { ok: C.g('✓'), warn: C.y('⚠'), fail: C.r('✗') };
+    const icon = { ok: C.g('✓'), warn: C.y('⚠'), fail: C.r('✗'), info: C.dim('·') };
     for (const area of [...new Set(results.map((r) => r.area))]) {
       console.log(C.b(area));
-      for (const r of results.filter((x) => x.area === area)) console.log(`  ${icon[r.level]} ${r.msg}`);
+      for (const r of results.filter((x) => x.area === area)) console.log(`  ${icon[r.level]} ${r.level === 'info' ? C.dim(r.msg) : r.msg}`);
     }
-    const fails = results.filter((r) => r.level === 'fail').length;
     const warns = results.filter((r) => r.level === 'warn').length;
     console.log('\n' + (fails ? C.r(`● NOT READY — ${fails} blocker(s)${warns ? `, ${warns} warning(s)` : ''}`) : warns ? C.y(`● READY with ${warns} warning(s)`) : C.g('● READY')));
+    if (fails) console.log(C.dim('  NOT READY concerns UNATTENDED runs (chalk run/pipeline) — the manual loop works regardless: chalk next'));
     process.exit(fails ? 2 : 0);
   },
 
@@ -1464,7 +1470,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk merge <id>                     ${C.dim('GATED squash-merge + cleanup + done')}
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
-  chalk doctor                         ${C.dim('preflight readiness check for autonomous runs (read-only)')}
+  chalk doctor [--json]                ${C.dim('preflight readiness check for autonomous runs (read-only); --json for bug reports')}
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
   chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
   chalk autopilot [--max N] [--min-severity med]   ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
