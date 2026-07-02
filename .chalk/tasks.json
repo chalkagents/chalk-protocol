@@ -653,5 +653,1902 @@
       "url": "https://github.com/chalkagents/chalk-protocol/pull/45"
     },
     "doneAt": "2026-06-25T23:03:35.086Z"
+  },
+  {
+    "id": "task-00ae9415",
+    "title": "feat: break-it gate — block a vacuous locked test (lever 3)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/breakit.mjs exports runBreakit(store, task) and a pure evaluateBreakit({tests, runsGreenOnBase}) helper"
+      },
+      {
+        "text": "When protocol.breakTest is empty/unset, the gate is OFF (skipped) — opt-in like e2e/regression"
+      },
+      {
+        "text": "A locked CODE test that still PASSES against the reverted (pre-change) implementation is flagged vacuous"
+      },
+      {
+        "text": "A locked test that FAILS against reverted code (because it asserts the change) is NOT flagged"
+      },
+      {
+        "text": "runBreakit restores the working tree (impl changes intact) after the check, even on failure"
+      },
+      {
+        "text": "wired into chalk work and runDriver AFTER the lever-1 testgate; a vacuous locked test blocks (exit 2 / needs:human-input)"
+      },
+      {
+        "text": "protocol.breakTest default is '' in store.mjs init defaults"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/breakit.test.mjs",
+        "sha256": "8b88b88aaa5fd455ecba94da5cab057ee67b0a90cba44fc7c7fb38fedadbe7b2"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-06-28T11:51:46.161Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T11:58:42.686Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 6 (wired into `chalk work` and `runDriver` AFTER the lever-1 testgate; a vacuous locked test blocks with exit 2 / needs:human-input) has NO test coverage. The locked test/breakit.test.mjs only exercises the pure evaluateBreakit and the isolated runBreakit probe; pipeline.test.mjs contains no breakTest/runBreakit assertion (its 'vacuous' matches are the lever-1 testgate). Reverting both wiring calls in bin/chalk.mjs and lib/run.mjs would leave the entire suite green — the new blocking behavior is shipped untested. Per the hard rule this is a vacuous pass for the very criterion this feature is about."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The opt-in OFF path (criterion 2) and the integration block/exit-2/needs:human-input emission are unverified end-to-end; there is no test that configures protocol.breakTest in a real pipeline and asserts the task is blocked with block.needs='human-input' and the surfaced reason, nor that the gate is skipped (task advances) when breakTest is unset."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 5 says the working tree is restored 'even on failure', but if `git stash pop` itself fails the implementation is left in the stash (the code only swallows the error and relies on a downstream RED verify). Tests only cover paths where pop succeeds, so the genuine failure-restoration path is unproven."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "runBreakit reverts ALL changed non-test paths via `git stash push --include-untracked` inside the active worktree during `work`/`runDriver`. In a shared/primary root (non-worktree) or with concurrent state this transient revert + pop mutates the agent's tree mid-pipeline; no test guards against a partial/failed pop corrupting unrelated in-flight changes."
+          }
+        ]
+      },
+      {
+        "at": "2026-06-28T12:06:04.678Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 7 (protocol.breakTest default '' in store.mjs init defaults) is present in the diff but no test directly asserts initSpine emits breakTest:''. The pipeline OFF case sets breakTest='' explicitly rather than relying on the init default, so a regression that drops the default line would not be caught. The meaningful OFF-when-unset semantics are covered, so this is minor."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 5 'restore even on failure': the finally block pops the stash, but if `git stash pop` itself throws (e.g. conflict), the impl is left stashed and only swallowed with reliance on a downstream RED verify. No test exercises a failing pop, so the genuine failure-restoration path is unproven — but the design intentionally surfaces it via RED verify, an acceptable fallback."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "runBreakit performs a transient `git stash push/pop` in the active worktree mid-pipeline. In the worktree path the spine is single-canonical and only the executor's impl is stashed (verified), and .chalk/ is excluded for the primary-root run case, mitigating corruption risk; no test guards a concurrent/partial-pop scenario, but the worktree isolation makes this low risk."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T11:53:03.286Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T12:06:04.678Z"
+    },
+    "doneAt": "2026-06-28T12:08:13.712Z"
+  },
+  {
+    "id": "task-3175f8f5",
+    "title": "feat: chalk handoff — structured handoff doc (template + optional agent)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/handoff.mjs exports writeHandoff(store, task, {reason, note, by}) and latestHandoff(store, task)"
+      },
+      {
+        "text": "writeHandoff renders a structured doc: title, task id, state, reason, acceptance criteria, changed files (from the workdir git status), locked tests, and a 'pickup in a fresh session' instruction"
+      },
+      {
+        "text": "the doc is written under .chalk/handoffs/<shortId>-<seq>.md (seq increments) and a pointer {path, at, reason} is recorded on task.handoff"
+      },
+      {
+        "text": "latestHandoff returns the most recent handoff record for a task (or null), and the file path it points to exists"
+      },
+      {
+        "text": "an optional BYO protocol.handoff.command enriches the narrative; when unset the template alone is produced (no model call), like e2e/regression"
+      },
+      {
+        "text": "chalk handoff <id> [--note] writes a handoff and prints its path; .chalk/handoffs/ is gitignored (single-canonical via store.root)"
+      },
+      {
+        "text": "protocol.handoff default is { command: '', maxAttempts: 3 } in store.mjs init defaults"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/handoff.test.mjs",
+        "sha256": "fa6fb54dfeeda26d3fe932cf4d0b9fd0738f12e62f28340233f9a1ed30d83f7b"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "handoff",
+    "after": [],
+    "createdAt": "2026-06-28T16:41:18.174Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T16:47:28.605Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criteria 6 (CLI `chalk handoff`, prints path, gitignored) and 7 (handoff default {command:'',maxAttempts:3}) are covered only in test/protocol.test.mjs, which is NOT the locked spec (test/handoff.test.mjs). The locked file only exercises writeHandoff/latestHandoff directly. Coverage exists and asserts the behavior (CLI output, .gitignore entry, init default) so this is not a vacuous pass, but those assertions live in a non-locked, editable test and could be weakened without tripping the spec lock."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "narrate() relies on store.protocol().runner via withRunner; the BYO enrichment failure path (nonzero exit/timeout) is swallowed to template-only and is asserted only for the success path. The 'no model call when unset' guarantee (criterion 5) is verified by absence of marker output rather than by asserting the command is never spawned, but the early `if(!cmd) return ''` makes this acceptable."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Criterion 3 specifies the pointer shape {path,at,reason}; the implementation records a superset {path,at,reason,seq}. The locked test's deepEqual(task.handoff, rec) passes because it compares against the returned record, so the extra seq field is unconstrained by the criterion — harmless but unspecified."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T16:41:36.684Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T16:47:28.605Z"
+    },
+    "doneAt": "2026-06-28T16:48:12.180Z"
+  },
+  {
+    "id": "task-58ea7e15",
+    "title": "feat: auto-handoff on block + churn-threshold handoff",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk block <id> writes a handoff (reason=needs, note=the block reason) and records task.handoff — so the pipeline's auto-block, which shells out to chalk block, is covered too"
+      },
+      {
+        "text": "the chalk run loop's auto-block (blockTask) also writes a handoff for the blocked task"
+      },
+      {
+        "text": "each work attempt increments task.attempts — in both chalk work and the run-loop executor"
+      },
+      {
+        "text": "lib/handoff.mjs exports overAttemptBudget(store, task) = task.attempts >= protocol.handoff.maxAttempts"
+      },
+      {
+        "text": "when attempts reach maxAttempts and verify is still red, the run loop auto-blocks with a churn reason that recommends a fresh session"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/handoff-triggers.test.mjs",
+        "sha256": "af531f2afc0fef15d39d23a1d5813a6d028bfb0bcb9ccf23131b2f58cff2d038"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "handoff",
+    "after": [
+      "task-3175f8f5"
+    ],
+    "createdAt": "2026-06-28T16:41:18.259Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T16:53:50.464Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The run-loop churn escalation (criterion 5) is only reachable in practice via maxAttempts=1, as the test does. In normal operation a task is auto-blocked after its FIRST verify-RED attempt and a blocked task is no longer runnable, so attempts never accumulate to a default cap of 3 within `chalk run`; the counter only climbs across manual work/unblock cycles. Behavior matches the spec literally and is tested, but the multi-attempt churn-in-loop scenario the wording implies is not naturally exercised."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Test 4 only asserts the over-budget (churn) block path; the non-churn run-loop block reason ('verify RED after executor') branch of redReason and its handoff emission are not directly asserted. Coverage of the handoff-on-block exists via the churn case, so not vacuous, but the sub-budget branch is unguarded."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "`chalk block` now unconditionally calls writeHandoff (extra file write + emitUpdate + git status read). On spines lacking protocol.handoff this relies on optional-chaining/?? defaults (handled), but any existing test/consumer asserting exact `block` output or update count could be perturbed; locked suite passes, so risk is contained."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T16:49:21.817Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T16:53:50.465Z"
+    },
+    "doneAt": "2026-06-28T16:54:37.564Z"
+  },
+  {
+    "id": "task-1ce3dd65",
+    "title": "feat: feed handoff into context + fresh-session signal (chalk next --json)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "buildContext appends a 'Handoff from the prior session' section containing the latest handoff doc when task.handoff is present, so a fresh session resumes from it"
+      },
+      {
+        "text": "a missing/unreadable handoff file is tolerated — buildContext still renders the rest of the context (no crash)"
+      },
+      {
+        "text": "chalk next --json emits machine-readable JSON: { task: {id,title,state}|null, freshSession: true, handoff: <path|null>, action: 'work'|'start' }"
+      },
+      {
+        "text": "the JSON selects the in-progress task first, else the next runnable task; freshSession is always true (one-session-per-task signal) and handoff is the task's latest handoff path or null"
+      },
+      {
+        "text": "plain chalk next (no --json) output is unchanged"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/handoff-context.test.mjs",
+        "sha256": "80cf62d3b172560fb6c75fa5ea6e7c828f1ec29b6fda6797dbb79b83bbe7bfae"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "handoff",
+    "after": [
+      "task-58ea7e15"
+    ],
+    "createdAt": "2026-06-28T16:41:18.335Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T16:58:27.223Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 3 enumerates action as 'work'|'start', but the empty-backlog case emits action:null. This is consistent with the locked test (deepEqual asserts action:null) and is the only sensible value when task is null, so it's acceptable rather than a contract violation."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Criterion 4 says 'else the next runnable task'; the code uses ready[0] (specd tasks with deps satisfied) and excludes todo tasks lacking criteria. That matches the protocol's notion of runnable, and the locked test covers the specd→start path, so the selection is correctly scoped."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The 'latest' aspect of the handoff path (criterion 4) is verified only with a single handoff, not after multiple writeHandoff calls; reliance on task.handoff being overwritten to the newest pointer is exercised indirectly via handoff.test.mjs (latestHandoff) rather than re-asserted here. Coverage of the path-carrying behavior exists and would fail on revert, so not vacuous."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T16:55:06.417Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T16:58:27.223Z"
+    },
+    "doneAt": "2026-06-28T16:59:09.804Z"
+  },
+  {
+    "id": "task-6f43cfe1",
+    "title": "feat: rich 'what was done' PR body recording",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/prbody.mjs exports buildPrBody(store, task, {changed, narrative}) and hasRecording(task)"
+      },
+      {
+        "text": "buildPrBody renders Summary, 'What was done', Changes (the changed files), Acceptance criteria, and Test plan sections, with a 'Closes #N' footer when the task has an issue"
+      },
+      {
+        "text": "when no narrative is supplied buildPrBody falls back to a structured default line (no empty 'What was done'); an optional BYO protocol.prbody.command authors the narrative, like handoff/e2e"
+      },
+      {
+        "text": "chalk pr builds the body via buildPrBody from the branch's committed changes (diff against base) and sets task.pr.recorded=true when the change set is non-empty"
+      },
+      {
+        "text": "hasRecording(task) returns task.pr?.recorded === true — the hook the later merge gate uses"
+      },
+      {
+        "text": "protocol.prbody default is { command: '' } in store.mjs init defaults"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/prbody.test.mjs",
+        "sha256": "5558d6271608e1c7d2d0385015bd11dfbc919d03d5a76f6c005ed2f57ac134a3"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "pr-merge-discipline",
+    "after": [],
+    "createdAt": "2026-06-28T17:14:58.497Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T17:22:18.723Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 4's empty-change-set branch (recorded=false when diff vs base is empty) is implemented as `changed.length > 0` but no test asserts the false case — only the non-empty path (pipeline.test.mjs:475) is exercised. The positive behavior and all sections are otherwise covered end-to-end."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "prNarrative swallows any BYO command failure/timeout to '' and falls back to the structured default; only the success and absent-command paths are tested, so the failure-fallback path is unproven but low risk given the explicit try/catch and early `if(!cmd) return ''` guard."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "buildPrBody emits the Closes reference twice (inline `(closes #N)` in Summary plus a trailing `Closes #N` footer). Criterion 2 only requires the footer; the duplicate is harmless and the locked test (regex /Closes #11/) tolerates it."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T17:16:35.527Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T17:22:18.723Z"
+    },
+    "doneAt": "2026-06-28T17:24:12.727Z"
+  },
+  {
+    "id": "task-e1a9cb7d",
+    "title": "feat: reviewer posts findings + LGTM to the remote PR",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/prreview.mjs exports postReviewToPr(store, task, {verdict, findings}) and reviewComment({verdict, findings})"
+      },
+      {
+        "text": "reviewComment renders an LGTM-marked comment on pass and a findings list (severity/area/note) on block"
+      },
+      {
+        "text": "postReviewToPr posts the comment to the task's PR via gh pr comment --body-file -; no PR or no gh configured → no-op returning {posted:false}; a gh failure is swallowed (never crashes the review)"
+      },
+      {
+        "text": "chalk review posts the verdict to the PR after computing it and sets task.pr.lgtm=true on a passing post (the merge-gate hook)"
+      },
+      {
+        "text": "the chalk run loop's review also posts to the PR when the task has one"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/prreview.test.mjs",
+        "sha256": "8804bf9d3798253881c66e6607fa11dda508d5cffccc6ec05700788f20139c6c"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "pr-merge-discipline",
+    "after": [],
+    "createdAt": "2026-06-28T17:14:58.551Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T17:31:01.150Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criteria 4 (chalk review wiring → sets task.pr.lgtm) and 5 (run-loop posts to PR) are not covered by the locked spec test/prreview.test.mjs — which only exercises postReviewToPr/reviewComment directly. They ARE asserted by test/protocol.test.mjs:472 (chalk review posts LGTM + records lgtm signal) and :486 (run loop posts LGTM), so the wiring is genuinely tested and not a vacuous pass; however those assertions live in a non-locked, editable file and could be weakened without tripping the spec lock."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "reviewComment renders block findings but if a finding has all fields undefined it falls back to '?'/'' — acceptable; gh failure path returns reason from last line of e.message, relying on e.message being a string. Minor robustness only; tested swallow path confirms no throw."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T17:25:45.750Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T17:31:01.150Z"
+    },
+    "doneAt": "2026-06-28T17:31:52.089Z"
+  },
+  {
+    "id": "task-9bf2a03e",
+    "title": "feat: broke-check — remote CI gate with local fallback",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/brokecheck.mjs exports ciStatus(store, task) and brokeCheck(store, task, {verifyFn})"
+      },
+      {
+        "text": "ciStatus returns 'pass' when all gh pr checks buckets are pass/skipping, 'fail' when any are fail/pending/cancel, and 'none' when there is no PR, no gh, or no checks (empty array)"
+      },
+      {
+        "text": "ciStatus tolerates gh exiting nonzero while still printing the JSON (failing/pending checks) by parsing its stdout"
+      },
+      {
+        "text": "brokeCheck uses CI when present (source:'ci'); when CI is 'none' it falls back to local verify (source:'local'); ok reflects the chosen source"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/brokecheck.test.mjs",
+        "sha256": "3a07ca3504ad4cf609a11eefa09e323d745bde7335f9d981b6da8a10882bf26d"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "pr-merge-discipline",
+    "after": [],
+    "createdAt": "2026-06-28T17:14:58.599Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T17:37:07.104Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2 names three failing buckets (fail/pending/cancel) but the locked test only exercises 'fail' and 'pending'. The 'cancel' bucket relies on the catch-all `!== pass/skipping → fail` logic and is never asserted directly; a regression that special-cased 'cancel' would not be caught. Logic is sound, so this is minor."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "ciStatus treats any unknown/undefined bucket as 'fail' (conservative). Acceptable, but the JSON.parse-of-stdout error path returns 'none' (no CI) on malformed gh output, which could silently downgrade a real CI signal to a local fallback rather than blocking; untested edge, low risk."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T17:34:21.248Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T17:37:07.104Z"
+    },
+    "doneAt": "2026-06-28T17:37:54.041Z"
+  },
+  {
+    "id": "task-30543dfd",
+    "title": "feat: merge gate requires recording + LGTM + broke-check, then merges",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/mergegate.mjs exports mergeBlockers(store, task, {reviewRequired, broke}) returning an array of human-readable blocking reasons (empty = clear to merge)"
+      },
+      {
+        "text": "mergeBlockers blocks when: broke-check not ok, no recording (hasRecording false), or review required and (no passing review OR no LGTM on the PR)"
+      },
+      {
+        "text": "chalk merge replaces the bare verify gate with brokeCheck (remote CI if present, else local verify) and blocks on mergeBlockers with a diagnosable reason"
+      },
+      {
+        "text": "when review is required and the review passed but no LGTM is surfaced, chalk merge posts the LGTM to the PR before merging"
+      },
+      {
+        "text": "ciStatus treats a non-checks JSON payload (elements without a string bucket) as 'none' so a stubbed/garbage gh response falls back to local verify"
+      },
+      {
+        "text": "existing gates preserved (in-progress, PR exists, held-out audit P7, idempotent resume) and the full pipeline still merges end-to-end"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/mergegate.test.mjs",
+        "sha256": "043e486a6b796f14f8d13c579c82d3bfbd5f6fe519b8d2cb524a79b779845570"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "pr-merge-discipline",
+    "after": [
+      "task-e1a9cb7d",
+      "task-9bf2a03e"
+    ],
+    "createdAt": "2026-06-28T17:14:58.646Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T17:48:05.426Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 4 (chalk merge posts the LGTM to the PR before merging when review passed but no LGTM is surfaced) is implemented at bin/chalk.mjs:434-437 but NO test exercises it. The only LGTM end-to-end test (pipeline.test.mjs:567 'merge discipline — reviewer LGTMs') reaches merge with task.pr.lgtm ALREADY true, set by the review stage (run.mjs:92-93), so the merge gate's own posting branch never fires. Reverting lines 434-437 leaves the entire suite green — the merge-time fallback (the precise 'review predated the PR / gh hiccup' edge the criterion is about) is shipped untested. Per the hard rule this is a vacuous pass for criterion 4."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 5 (non-checks/garbage JSON payload → 'none' fallback to local verify) has no explicit assertion. brokecheck.test.mjs only covers empty arrays and well-formed bucket objects; the new guard (brokecheck.mjs:25, `arr.every(c=>typeof c.bucket==='string')`) is only INCIDENTALLY exercised because some pipeline stubs let `pr checks` fall through to the issue-list payload. A dedicated assertion (e.g. ciStatus over `[{number:7,...}]` → 'none') is absent, so an intentional regression to the guard relies on a brittle side effect of unrelated tests rather than a targeted check."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "mergeBlockers determines 'passing review' solely from the LAST element of task.reviews (slice(-1)[0]?.verdict==='pass'). A stale prior pass followed by a later block is handled, but the LGTM check (task.pr.lgtm) is a boolean flag decoupled from WHICH review verdict produced it; nothing ties lgtm to the current passing review, so a previously-posted LGTM could satisfy the gate even if the latest required review semantics changed. No test covers this lgtm/last-review divergence."
+          }
+        ]
+      },
+      {
+        "at": "2026-06-28T17:51:42.731Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The locked test/mergegate.test.mjs only covers the pure mergeBlockers decision and ciStatus garbage-payload case; criteria 3/4/6 (chalk merge wiring, LGTM-post-before-merge, end-to-end pipeline merge, preserved gates) are not asserted in the locked file itself. They ARE covered by non-locked pipeline.test.mjs (lines 567/593/621 — green-CI+LGTM merge, merge-time LGTM post, failing-CI block with diagnosable 'broke-check' reason), which would fail if the change were reverted, so this is not a vacuous pass — but the integration coverage lives outside the task's locked suite."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "mergeBlockers判定 of 'no passing review' uses only the LAST review verdict (task.reviews.slice(-1)[0].verdict==='pass'); a later 'block' after an earlier 'pass' correctly blocks, but no locked test asserts the multi-review ordering edge. Behavior is reasonable and matches design intent."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Preserved gates (in-progress, PR exists, P7 held-out audit, idempotent 'cleaned' resume) are retained in the merge command but not re-asserted by this task's locked test; relies on pre-existing pipeline coverage. No evidence of regression in the inspected code."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T17:40:06.778Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T17:51:42.731Z"
+    },
+    "doneAt": "2026-06-28T17:52:32.335Z"
+  },
+  {
+    "id": "task-133872dc",
+    "title": "feat: fix-reverify-rereview loop with churn budget and handoff",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "buildContext includes the latest blocking review's findings (an 'Address these review findings' section) so a re-run executor knows what to fix"
+      },
+      {
+        "text": "lib/reviewloop.mjs exports reviewFixLoop({store, ref, call, cliPath, maxRounds}) that rewinds the task's pipeline stage and re-runs work then commit then review up to maxRounds, returning {passed, rounds}"
+      },
+      {
+        "text": "reviewFixLoop returns passed:true as soon as a re-review exits 0; passed:false when work fails or the rounds are exhausted"
+      },
+      {
+        "text": "the pipeline, on a genuine review BLOCK (exit 3), runs reviewFixLoop; on pass it proceeds, on exhaustion it writes a handoff and blocks needs:human-input with the findings"
+      },
+      {
+        "text": "transient reviewer errors (nonzero exit that is not a block) keep the existing retry-once behavior"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/reviewloop.test.mjs",
+        "sha256": "684fd825814f68dcdad33b346b41478574a412127f9c1020111273066bad3fca"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "pr-merge-discipline",
+    "after": [
+      "task-30543dfd"
+    ],
+    "createdAt": "2026-06-28T17:14:58.695Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T18:05:54.532Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "reviewFixLoop runs only work→commit→review and rewinds the pipeline stage to 'branched'. The fix commit lands in the worktree's LOCAL branch but is never pushed: the only `git push` is in the `pr` stage (bin/chalk.mjs:328), which the pipeline's ORDER loop already passed before reaching `review` and never revisits after the loop returns. `commit` and `merge` do not push. So on a passing re-review the pipeline proceeds to `merge`, and `gh pr merge` squash-merges the STALE remote branch — the original rejected code — silently dropping the reviewer-approved fix. This defeats the stated goal of the fix-reverify-rereview loop (criterion 4: 'on pass it proceeds' actually merges the un-fixed code)."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The happy-path integration test ('review loop … on pass the pipeline merges', pipeline.test.mjs:621) stubs `gh pr merge` to merely write merged.txt and asserts only task.state==='done', merge-happened, and LGTM. It never inspects the merged/remote branch content (e.g. that feature.js holds the post-fix value f=2 rather than the pre-fix f=1). Thus the missing push of the fix commit is entirely uncovered — a vacuous pass for the core promise that the fix actually reaches the merge."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "reviewFixLoop returns {passed:false, rounds: round-1} on a first-round work failure (rounds:0); the locked test only asserts passed===false and review-not-called, so the rounds value on the work-fail path is unverified against criterion 3."
+          }
+        ]
+      },
+      {
+        "at": "2026-06-28T18:10:37.985Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 4 says the exhaustion path blocks with needs:'human-input'; the integration test asserts state==='blocked', the finding text in block.reason, and handoff.path, but does not explicitly assert block.needs==='human-input'. The wiring passes --needs human-input correctly, so this is a minor coverage gap, not a defect."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "defaultPush in reviewloop.mjs swallows push failures ('surfaced by a later gate'). If a push silently fails mid-loop, merge could squash the stale branch; the merge/broke-check gate is the backstop and the happy-path push is verified end-to-end (remote shows f=2), so risk is bounded but the failed-push branch is unproven by tests."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "reviewFixLoop rewinds the stage to 'branched' each round, re-running work→commit→pr-skip→review; after a passing re-review task.pipeline.stage is left at 'reviewed' while the outer ORDER loop continues to evidence/merge. The end-to-end pipeline test confirms a clean merge, but the stage-bookkeeping coupling between the loop and the outer driver is implicit and could regress if ORDER changes."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T17:53:53.749Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T18:10:37.985Z"
+    },
+    "doneAt": "2026-06-28T18:11:32.932Z"
+  },
+  {
+    "id": "task-18bbd5ec",
+    "title": "feat: planner emits a plan plus scoping questions",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/planning.mjs exports extractQuestions(planText) returning an array of clarifying-question strings"
+      },
+      {
+        "text": "extractQuestions pulls questions from a '## Questions'/'## Open questions' section AND from explicit 'Q:'/'QUESTION:' lines; it trims, strips checkbox prefixes, dedupes, and drops empties"
+      },
+      {
+        "text": "chalk plan, after storing task.plan, records each extracted question to questions.json (status open, awaitingFrom 'human', taskId set)"
+      },
+      {
+        "text": "chalk plan reports how many scoping questions were captured"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/planning.test.mjs",
+        "sha256": "38152dd4f9ccbf4142196b021c23382ae3146eedac5adb7e785f88d26e006858"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "plan-gate",
+    "after": [],
+    "createdAt": "2026-06-28T17:14:58.744Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T18:17:02.693Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The locked test exercises all four criteria: extractQuestions is asserted directly (Questions section + inline Q:/QUESTION:, trim/dedupe/empty-drop/checkbox-strip), and the CLI path is covered end-to-end (questions.json records with status=open, awaitingFrom='human', taskId set, plus the '2 scoping question(s)' count message). Reverting the implementation in lib/planning.mjs or the recording block in bin/chalk.mjs would fail the suite, so the change is not a vacuous pass. Minor gap: the '## Open questions' (vs '## Questions') heading variant and Q:/QUESTION: checkbox stripping are not independently asserted, but the regex covers them and the core behavior is verified."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "extractQuestions correctly handles the heading toggle, bullet capture under a Questions section, inline Q:/QUESTION: lines anywhere, checkbox-prefix stripping, trim, dedupe via Set, and empty drop; chalk plan dedupes against existing questions and reports the count. All four acceptance criteria are met."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T18:12:23.247Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T18:17:02.693Z"
+    },
+    "doneAt": "2026-06-28T18:17:57.736Z"
+  },
+  {
+    "id": "task-bb33a342",
+    "title": "feat: chalk approve-plan gate — work refuses an unapproved required plan",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/planning.mjs exports planApprovalRequired(store, task) = protocol.plan.required && !task.planApproved"
+      },
+      {
+        "text": "chalk approve-plan <id> sets task.planApproved {at, by}; refuses if the task has no plan, or has open scoping questions (resolve them first) unless --force --why"
+      },
+      {
+        "text": "when protocol.plan.required, chalk work refuses (exit 2) an unapproved plan with a diagnosable reason; an approved plan lets work proceed"
+      },
+      {
+        "text": "the run loop blocks an unapproved required plan (needs:human-input) with a handoff instead of running the executor"
+      },
+      {
+        "text": "protocol.plan default is { required: false } in store.mjs init defaults (opt-in; existing flows unaffected)"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/approveplan.test.mjs",
+        "sha256": "1b6b457c3122d3418207a310f060d97b5b2fa846400225247c829d9f54a070a1"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "plan-gate",
+    "after": [
+      "task-18bbd5ec"
+    ],
+    "createdAt": "2026-06-28T17:14:58.797Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T18:22:59.637Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "In bin/chalk.mjs work(), a todo/specd task is flipped to in-progress and persisted (lines 411-414) BEFORE the plan-approval gate (418). When an unapproved required plan exits 2, the task is left mutated to in-progress as a side effect. The locked test calls `start` first so it never exercises this path; harmless but a small ordering wart."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2 specifies planApproved {at, by} but the tests only assert `.at`; the `by` field (flags.by || 'human') is never asserted. Also the --force path requiring --why is covered, but the force WITHOUT open-questions case is not. Coverage is adequate for the core contract."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 3 'an approved plan lets work proceed' is asserted only negatively (output does not mention approve-plan); it does not positively confirm the executor/verify path ran. Acceptable given the gate's diagnosable-reason design, but slightly weak."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T18:18:32.697Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T18:22:59.637Z"
+    },
+    "doneAt": "2026-06-28T18:26:01.776Z"
+  },
+  {
+    "id": "task-40dcf50f",
+    "title": "feat: release notes — collect merged work, bump version, render notes",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/release.mjs exports releasableTasks(store), bumpVersion(current, tasks, opts), and renderReleaseNotes(tasks, version, date)"
+      },
+      {
+        "text": "releasableTasks returns done tasks that have no released marker, oldest-first by doneAt"
+      },
+      {
+        "text": "bumpVersion: an explicit version/level wins; else major if any task is breaking, minor if any is a feat, else patch; a missing current starts from 0.0.0"
+      },
+      {
+        "text": "renderReleaseNotes groups tasks by type (Features/Fixes/etc.) under a '## v<version> — <date>' header, lists each with its '(#<pr>)' link when present, and skips empty groups"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/release.test.mjs",
+        "sha256": "ae2ea4bea694a013339167680430f9fb5e64b1d2ae70b913b699ab25adfe56e8"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "release",
+    "after": [],
+    "createdAt": "2026-06-28T18:34:37.206Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T18:38:04.033Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "renderReleaseNotes 'skips empty groups' is only asserted via absence of '### Docs'; the chore→Chores mapping and section ORDER ordering are not directly asserted, but the four criteria are each exercised by at least one non-vacuous assertion against this new module."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "renderReleaseNotes emits an extra '_No user-facing changes._' line for an empty task list — not required by the criteria but harmless and not contradicting any criterion."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T18:34:49.631Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T18:38:04.033Z"
+    },
+    "doneAt": "2026-06-28T18:38:57.874Z"
+  },
+  {
+    "id": "task-61e20fca",
+    "title": "feat: chalk release — write CHANGELOG, bump package.json, tag, mark released",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk release reads the current version (package.json version if present, else 0.0.0), computes the next via bumpVersion (honoring --version/--major/--minor/--patch), and prints the rendered notes"
+      },
+      {
+        "text": "it prepends the notes to CHANGELOG.md (creating it with a title if absent) and, when package.json exists, updates its version field"
+      },
+      {
+        "text": "it marks each included task with released=<version> so a second run finds nothing new (idempotent), and reports the count"
+      },
+      {
+        "text": "it creates an annotated git tag v<version> unless --no-tag, and tolerates a non-git directory without crashing"
+      },
+      {
+        "text": "with no releasable tasks it exits cleanly without bumping or tagging"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/release-cli.test.mjs",
+        "sha256": "e0abf293faf7305c5b800841a8132e0f36f61b21e21879007bd69b803fce3644"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "release",
+    "after": [],
+    "createdAt": "2026-06-28T18:34:37.255Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T18:44:11.058Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The locked test asserts only that a tag named v1.3.0 exists (git tag) but never verifies it is *annotated* (e.g. via `git cat-file -t` or `git tag -n`). Criterion 4 specifically requires an annotated tag; a regression to a lightweight tag (`git tag` instead of `git tag -a`) would still pass the suite. Implementation correctly uses `tag -a`, so behavior is met, but the coverage is shallow."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "CHANGELOG title handling only preserves the first line when it starts with '# '. If an existing CHANGELOG.md begins with any other content, the code prepends a fresh '# Changelog' title and treats the whole prior file as 'older', which can produce a duplicate/leading title over time. Not exercised by the locked tests (which only test the absent-file path), but acceptable for the stated criteria."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The tag-creation catch swallows ALL git errors (including a pre-existing v<version> tag) silently and still marks tasks released and bumps versions. On a second release that reuses a version this could leave an inconsistent tag state, but this is outside the tested/idempotent path since released tasks are filtered out first."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T18:38:57.977Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T18:44:11.058Z"
+    },
+    "doneAt": "2026-06-28T18:45:06.789Z"
+  },
+  {
+    "id": "task-d8399a80",
+    "title": "feat: feedback signals — collect external signals and run the analysis agent",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/feedback.mjs exports collectSignals(store, opts) and runFeedback(store, signals)"
+      },
+      {
+        "text": "collectSignals gathers signal files from .chalk/feedback/ (.md/.txt/.json, excluding the archive/ subdir) plus any opts.input text, and returns { digest, files } where files are the source paths"
+      },
+      {
+        "text": "runFeedback runs protocol.feedback.command with the signals digest on stdin and tolerantly parses { issues:[{title, body, severity, labels}] }, returning { status, issues } (mirrors runRetro)"
+      },
+      {
+        "text": "collectSignals returns an empty digest and no files when there are no signals"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/feedback.test.mjs",
+        "sha256": "2c29e44656bd2676530b1a9d07248ad35e05d4a469a34ab990d2a354ad956c23"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "feedback",
+    "after": [],
+    "createdAt": "2026-06-28T20:09:50.747Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T20:12:57.726Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "archive/ exclusion is incidental: collectSignals is non-recursive and skips archive/ only because statSync().isFile() is false for directories, not via an explicit name check. Behavior matches the criterion and is tested, but the implementation's intent ('excluding the archive/ subdir') is implicit rather than explicit."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "runFeedback tests cover ok/unconfigured/error paths but do not assert the tolerant-parse fallback when the agent emits a JSON object whose 'issues' is missing/non-array (returns issues:[]). Minor gap; the core contract (status/issues mirroring runRetro) is exercised."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T20:10:02.463Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T20:12:57.726Z"
+    },
+    "doneAt": "2026-06-28T20:13:55.279Z"
+  },
+  {
+    "id": "task-4e547f53",
+    "title": "feat: chalk feedback — file improvement issues from signals, archive processed",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk feedback collects signals, runs the agent, and files each improvement issue via gh with dedup against open issues (titlesSimilar), a severity floor (default med), --dry-run and --max-issues — mirroring chalk retro"
+      },
+      {
+        "text": "after filing (not in --dry-run) it archives the processed signal files into .chalk/feedback/archive/ so re-runs don't re-analyze them"
+      },
+      {
+        "text": "with no signals it exits cleanly without invoking the agent"
+      },
+      {
+        "text": "protocol.feedback default is { command: '' } in store.mjs init defaults"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/feedback-cli.test.mjs",
+        "sha256": "ce6baf1df846ed3930d3dd35f2ef0377a818fc972d4abc627ae0c2864c8560b3"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "feedback",
+    "after": [],
+    "createdAt": "2026-06-28T20:09:50.802Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T20:19:17.238Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 4 (protocol.feedback default = { command: '' } in store.mjs init defaults) is present in lib/store.mjs but no locked test in feedback-cli.test.mjs directly asserts the init default; it's only exercised indirectly. The default itself is correct and shared with the prior signals task, so this is non-blocking."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Archive runs whenever !dry && files.length even if every issue is deduped/deferred and nothing was actually filed; criterion 2 says 'after filing'. Behavior is reasonable (signals were processed) and the locked 'leaves in place on dry-run' test guards the inverse, so acceptable."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T20:13:55.415Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T20:19:17.238Z"
+    },
+    "doneAt": "2026-06-28T20:21:13.000Z"
+  },
+  {
+    "id": "task-e0c99196",
+    "title": "feat: discovery — run the intake agent and normalize a proposed backlog",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/discovery.mjs exports runDiscovery(store, brief) and normalizeProposal(raw)"
+      },
+      {
+        "text": "runDiscovery runs protocol.discovery.command with the brief on stdin and tolerantly parses { tasks:[{title, criteria, milestone?, after?}], spec? }, returning { status, tasks, spec } (mirrors runRetro)"
+      },
+      {
+        "text": "normalizeProposal keeps only well-formed tasks (non-empty title AND at least one non-empty criterion), trims fields, and dedupes by title"
+      },
+      {
+        "text": "runDiscovery returns status 'unconfigured' when no command is set and 'error' when the agent emits no JSON"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/discovery.test.mjs",
+        "sha256": "1c4c7cc13ede6bacfc08b1e5be21faf950ee59556399c69b1ee944fa592ad5b7"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "discovery",
+    "after": [],
+    "createdAt": "2026-06-28T22:04:35.135Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T22:08:31.726Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "runDiscovery's 'error' path is tested via non-JSON stdout, but the 'unconfigured' branch only covers command:'' — the case where protocol().discovery is wholly absent (discovery?.command optional chaining) is exercised indirectly and would still pass; acceptable but not directly asserted."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "normalizeProposal dedupes case-insensitively while the criterion only says 'dedupes by title'; this is a broader behavior than specified but not contradictory, and the locked test only checks exact-title dedupe so the case-insensitive aspect is untested. No criterion violated."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T22:04:52.748Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T22:08:31.726Z"
+    },
+    "doneAt": "2026-06-28T22:09:32.621Z"
+  },
+  {
+    "id": "task-9f55f886",
+    "title": "feat: chalk discover — turn a brief into scoped, criteria-bearing tasks",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk discover (brief from positional args, --input, or --file) runs the agent and creates each proposed task as a specd chalk task with its acceptance criteria and milestone"
+      },
+      {
+        "text": "it dedupes proposed tasks against existing task titles (titlesSimilar) and skips duplicates"
+      },
+      {
+        "text": "a proposed task's after-titles are resolved to dependency ids when they match a created or existing task (best-effort); --dry-run previews without creating"
+      },
+      {
+        "text": "with no brief it errors with usage; protocol.discovery default is { command: '' } in store.mjs init defaults"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/discover-cli.test.mjs",
+        "sha256": "434bf3714819434a644b6a54525ee99e512161a8f7237c3e6019085ee425ea3c"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "discovery",
+    "after": [],
+    "createdAt": "2026-06-28T22:04:35.188Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T22:14:13.062Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "after-title resolution to an EXISTING backlog task (not created this run) is implemented (line 915 existing.find branch) but no locked test exercises it — only resolution to a task created in the same run is asserted. Reverting that half of the resolver would not fail the suite."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "--file brief intake is implemented but untested; only positional args and --input are covered by the locked tests. readFileSync on a missing --file path would throw an unhandled error rather than the friendly usage message, but this is an edge not in the criteria."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "normalizeProposal already dedupes proposals by title, so the in-run created-list dedupe (created.some(titlesSimilar)) is partly redundant; near-similar (not identical) titles within one proposal are the only case it catches, which is consistent with criterion 2's intent."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T22:09:32.760Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T22:14:13.062Z"
+    },
+    "doneAt": "2026-06-28T22:16:56.041Z"
+  },
+  {
+    "id": "task-fb4eadec",
+    "title": "feat: portal model — map the chalk spine to the portal schema",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "lib/portal.mjs exports portalModel(store, opts) returning { slug, meta, scope, milestones, updates } derived from the spine, and scopeState(taskState)"
+      },
+      {
+        "text": "scope maps each task to a scope item: state done->delivered, in-progress->approved, else->defined; title stripped of any conventional prefix; acceptanceCriteria carried as {text}; a verify note when the task is released"
+      },
+      {
+        "text": "milestones are derived from the distinct task.milestone values with status completed/in-progress/pending from their done ratio, a project slug, and a best-effort dueDate"
+      },
+      {
+        "text": "updates are filtered to the client-safe type allow-list — non-client-safe events (e.g. lesson-learned, planning-generated) are DROPPED, not surfaced — each carrying id/project/type/title/at/actorRole"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/portal.test.mjs",
+        "sha256": "f4c650f8cc5c55c9d4345eb42c02cce547dd0db1c8b04534d9996c45511f7db5"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "portal",
+    "after": [],
+    "createdAt": "2026-06-28T22:26:35.969Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T22:29:45.478Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The returned `meta` object (summary from project description/goal, startedAt from firstCommitDate) is part of criterion-1's required return shape but is never asserted by any test. It is incidental to the four core criteria (which are all covered), so this is not a vacuous-pass violation, but meta-content behavior is untested."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Criterion 4 says updates are 'filtered to the client-safe allow-list'; the implementation never drops non-safe events, only relabels their `type` to progress-update — so a non-client-safe event's title/description (e.g. a 'lesson-learned' internal note) still surfaces to the client view. This matches the parenthetical ('unknown types mapped to progress-update') and the locked test (length===3), so it is per-spec, but the leak-prevention claimed in the code comment is only partial (type, not content)."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T22:26:36.116Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T22:29:45.478Z"
+    },
+    "doneAt": "2026-06-28T22:33:53.558Z"
+  },
+  {
+    "id": "task-3a4398cc",
+    "title": "feat: chalk portal — write schema-conformant .project files from the spine",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk portal [--out <dir>] [--slug <slug>] writes four schema-conformant files (projects/<slug>.yaml, scope/defined.yaml, updates/extracted.yaml, milestones.yaml) under the out dir (default .project) from portalModel"
+      },
+      {
+        "text": "the files are valid YAML (JSON is valid YAML; written pretty) and contain the mapped scope/milestones/updates; the command reports the counts written"
+      },
+      {
+        "text": "true"
+      },
+      {
+        "text": "protocol.portal default { dir: '.project' } in store.mjs init defaults"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/portal-cli.test.mjs",
+        "sha256": "4e9e3a24a82e20d8bae517ce76b590539c5cba25f86eea6aa5015ef1e4f2efe0"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "portal",
+    "after": [],
+    "createdAt": "2026-06-28T22:26:36.022Z",
+    "reviews": [
+      {
+        "at": "2026-06-28T22:38:19.418Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "updates/extracted.yaml content is only asserted to exist (existsSync), not that the client-safe filtering/mapping in portalModel actually drops internal event types or maps fields. The CLIENT_SAFE allow-list and update mapping are untested for content, but this is secondary to the stated criteria (scope/milestones are well covered)."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 2 requires the command 'reports the counts written'; the ok() line does print counts but no test asserts the count message — relies on manual inspection. Behavior is present and correct in code (lib/portal.mjs + bin/chalk.mjs portal handler)."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-28T22:33:53.701Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-28T22:38:19.418Z"
+    },
+    "doneAt": "2026-06-28T22:39:19.152Z"
+  },
+  {
+    "id": "task-9a0bfb60",
+    "title": "fix: testing-found bugs — release --dry-run + portal absolute --out",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk release supports --dry-run: it prints the would-be version and notes and reports counts, but writes NO CHANGELOG, does NOT bump package.json, creates NO git tag, and marks NO tasks released"
+      },
+      {
+        "text": "chalk portal resolves --out correctly (resolve, not join): an absolute --out writes to that absolute path (not inside the repo), and a relative --out stays relative to the repo root"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/testfixes.test.mjs",
+        "sha256": "c26333553f6b73155f691b0b4472481e9f1fffbea92dd3f44c06145b19dd50dd"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-06-29T08:21:10.927Z",
+    "reviews": [
+      {
+        "at": "2026-06-29T08:25:13.823Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "release --dry-run (bin/chalk.mjs:434-438) correctly returns before any side effect: it prints notes+version and the '(dry-run)' message, writing no CHANGELOG, no package.json bump, no tag, and marks no task released. Criterion 1 met and asserted by test."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "portal uses resolve(s.root, out) (bin/chalk.mjs:978) so an absolute --out is honored as-is and a relative one is root-relative. Criterion 2 met; both absolute and relative cases are asserted, including the no-mirror-inside-repo check."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Both fixes are guarded by tests that would fail if reverted (path.join would create /repo/tmp/... mirror; ignored --dry-run would write CHANGELOG/tag/mark). The locked suite test/testfixes.test.mjs covers happy + side-effect-absence and a follow-up real run. Adequate."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-29T08:21:11.048Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-29T08:25:13.823Z"
+    },
+    "doneAt": "2026-06-29T08:26:14.198Z"
+  },
+  {
+    "id": "task-706eb3c4",
+    "title": "feat: cross-model review — chalk doctor warns when the reviewer shares the executor model",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk doctor warns when the adversarial reviewer shares the executor's model (same base binary + same/absent --model)"
+      },
+      {
+        "text": "sameModelFamily and modelSignature detect the same-model case and clear on a different model or tool"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/crossmodel.test.mjs",
+        "sha256": "e65766bbb14c516089d6ef2a65f6e7dc221b2773bac61ae77e3ec39429e3290f"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-06-30T14:05:37.582Z",
+    "reviews": [
+      {
+        "at": "2026-06-30T14:08:17.453Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The doctor 'same model' warning fires only when a review cadence is configured AND both executor/review commands are set (doctor.mjs L53). This is a reasonable scoping (only warn when review is actually relied upon), and the locked test sets requiredAt:['per-task'], so it's covered. Worth noting that a same-model reviewer configured without a cadence would not be flagged, but that matches the conservative design intent."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "modelSignature compares bin tokens verbatim, so 'claude' vs '/usr/bin/claude' would be treated as different families (no warning). Conservative-by-design (avoids false alarms) and consistent with the criterion's intent; not a blocker."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Tests fully exercise modelSignature (4 forms incl. --model= and empty), sameModelFamily (same/diff model, diff tool, either-side-empty), and the doctor warn/clear transition. Reverting the change (removing sameModelFamily/modelSignature or the doctor warning) would fail these assertions, so the suite is non-vacuous. No-model edge for --model with no following token is untested but handled (model:'')."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-30T14:05:53.131Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-30T14:08:17.453Z"
+    },
+    "doneAt": "2026-06-30T14:09:31.225Z"
+  },
+  {
+    "id": "task-3c66f66a",
+    "title": "feat: harden P7 blindness — doctor fails on git-tracked held-out + pin audit output withholding",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk doctor fails (exit 2) when held-out files are git-tracked — a worktree checkout would leak them into the agent's sandbox (defeats P7)"
+      },
+      {
+        "text": "chalk audit withholds the held-out command's stdout/stderr so hidden assertions can't reach the agent"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/heldout-blindness.test.mjs",
+        "sha256": "78f45c2eec673ff7a992cbfc95545ef250861ecfdfec137867bf0c2659f2cb1b"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-06-30T14:13:30.776Z",
+    "reviews": [
+      {
+        "at": "2026-06-30T14:16:30.443Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 1 is implemented as a hard 'fail' only when worktree.enabled !== false; when worktrees are explicitly disabled a git-tracked held-out set is only a 'warn' (exit 0). This is defensible (the leak vector is the worktree checkout) and the locked test only exercises the default worktree-enabled path, but the criterion is phrased unconditionally."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The audit-withholding test (test 3) would likely still pass even if stdio:'ignore' were removed, because audit() never prints execSync's return value anyway — the test asserts SECRET is absent from console output rather than that the command output is actively discarded. The guard is correct, but the test does not strongly pin the withholding behavior."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "doctor's tracked-held-out check is implemented in lib/doctor.mjs (lines 86-96) and exit code 2 is produced via fails>0; runAudit uses stdio:'ignore' to discard held-out stdout/stderr. Both acceptance criteria are met and covered by the locked tests (doctor fail+exit2, untracked clean, audit green with secret withheld)."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-30T14:14:16.114Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-30T14:16:30.443Z"
+    },
+    "doneAt": "2026-06-30T14:17:45.266Z"
+  },
+  {
+    "id": "task-d9660b4e",
+    "title": "feat: mutation-testing adequacy gate — block a change whose changed code has surviving mutants (lever 3, rigorous)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "evaluateMutation returns exactly the changed files whose mutants are not all killed (surviving mutants = weak tests)"
+      },
+      {
+        "text": "runMutation is opt-in (protocol.mutation), mutates only changed implementation files, and flags survivors by the command's non-zero exit; skips when unconfigured or no impl change"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/mutation.test.mjs",
+        "sha256": "91ab7f8582850db51158b85c5ed64a3f9ad2883591c5d8e6f8d8a86c3020ab52"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-06-30T14:21:09.758Z",
+    "reviews": [
+      {
+        "at": "2026-06-30T14:25:16.304Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 2 requires runMutation to 'mutate only changed implementation files', but no locked test exercises the implementation-file filter (lib/mutation.mjs:42 excludes looksLikeTest paths and .chalk/ paths). Every integration test only ever changes feature.mjs; a changed TEST file or .chalk/ file is never present in any fixture, so the suite would still pass if `!looksLikeTest(p) && !p.startsWith('.chalk/')` were removed. The exclusion behavior is shipped but unasserted (vacuous coverage)."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The integration stub asserts exit-code→survivor mapping via existsSync('{file}'), but never asserts the {file} token is substituted with the actual changed path (the stub passes for ANY existing path). A regression that mutated the wrong/whole tree, or failed to substitute {file}, could still pass the locked tests."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "runsCleanOnFile swallows ALL exec failures as 'survived' (catch→false), conflating a genuine survivor (tool exit 1) with a misconfigured/crashing command, a timeout, or a missing binary. A broken mutation command would falsely block work as 'weak tests'; no test distinguishes these failure modes."
+          }
+        ]
+      },
+      {
+        "at": "2026-06-30T14:30:02.235Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Both acceptance criteria (evaluateMutation purity + runMutation opt-in/impl-filter/exit-code/skip behaviors) are directly and non-vacuously exercised by test/mutation.test.mjs: {file} substitution, exit-code→survivor mapping, test/spine exclusion, missing-binary inconclusiveness, and no-impl-change skip all have dedicated assertions that would fail if reverted."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The task title frames this as a 'gate' wired into work/done, but the locked criteria are scoped only to the two library functions; CLI wiring is not asserted by any locked test. This is outside the stated criteria, so it does not block, but the gate's actual enforcement path is unverified here."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Inconclusive-tool handling (exit 127/ENOENT/ETIMEDOUT/killed/signal → treated as clean) correctly avoids false-blocking; behavior matches the missing-binary test. No regression risk since this is a new, isolated module reusing existing changedPaths/looksLikeTest/withRunner helpers."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-06-30T14:21:20.483Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-06-30T14:30:02.235Z"
+    },
+    "doneAt": "2026-06-30T14:31:30.177Z"
+  },
+  {
+    "id": "task-654cec3c",
+    "title": "feat: amend-spec invalidates a prior passing review (close the weaken-after-approval bypass)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "amend-spec invalidates a prior passing review — after a locked test changes, done requires a fresh review (closes weaken-after-approval)"
+      },
+      {
+        "text": "done --force-review requires --why and logs a decision (auditable, never silent)"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/amendspec-review.test.mjs",
+        "sha256": "e1c9fc3edeb1dedbc1baed12088a4b83b2175876b2937217ff4b7975f76e080a"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-01T00:55:34.144Z",
+    "reviews": [
+      {
+        "at": "2026-07-01T01:03:22.253Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "amend-spec invalidation is guarded by lastReview.verdict==='pass'; if a task was previously cleared only via force-review (which logs a decision but adds no 'pass' review entry) there is no passing verdict to invalidate — acceptable since no stale approval exists, but worth noting the invalidation only defends against literal reviewer 'pass' verdicts."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The locked test covers both criteria and would fail if either the amend-spec 'stale' push or the force-review --why/decision-logging were reverted. It does not assert the decisions.md content for the amend-spec path itself, only the review-override, but both criteria are directly exercised."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-01T00:55:47.227Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-07-01T01:03:22.253Z"
+    },
+    "doneAt": "2026-07-01T01:04:28.844Z"
+  },
+  {
+    "id": "task-a9a11c5c",
+    "title": "feat: size-scaled P7 stringency — held-out set floor grows with code size (SpecBench)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "heldOutFloor(loc, locPerTest) returns a minimum held-out count that scales with code size (floor = loc/locPerTest, default 2000, safe on non-positive)"
+      },
+      {
+        "text": "chalk audit warns (stays green) and the phase P7 gate refuses (overridable via --force-audit --why) when the held-out set is below the size floor"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/heldout-scaling.test.mjs",
+        "sha256": "afb5cec67607bc7dc508a08312fc8ec23f6e467fe750441ea6b547b27e432524"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-01T01:07:00.654Z",
+    "reviews": [
+      {
+        "at": "2026-07-01T01:09:28.641Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "heldOutFloor correctly implements floor=floor(loc/per) with a non-positive/undefined locPerTest falling back to 2000 (Number() guards NaN); all five locked assertions (0, 6000/2000→3, 1999→0, 30/5→6, 6000/0→3) are satisfied by lib/regression.mjs."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "phase gate (bin/chalk.mjs ~1210) adds an 'understaffed' blocker: tests.length < heldOutFloor(size.loc, reg.locPerTest) blocks advance even with a green/fresh audit, emits a message matching /held-out|floor|scales/, and is overridable only with --force-audit + --why (logged as a decision) — matches criterion 2 and the locked phase test."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "audit prints a non-fatal ⚠ 'below the size floor' warning while still exiting on r.green only (floor does not affect green/exit), satisfying 'warns but stays green'."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Locked test/heldout-scaling.test.mjs exercises the floor helper directly, the phase refusal, the override path (checks decisions.md), and the audit warning; reverting either the helper or the phase/audit wiring would fail these assertions, so the change is genuinely covered."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-01T01:07:09.386Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-07-01T01:09:28.641Z"
+    },
+    "doneAt": "2026-07-01T01:10:41.666Z"
+  },
+  {
+    "id": "task-1f16c4e2",
+    "title": "fix: robust reviewer verdict parsing — recover the verdict JSON amid reasoning/prose (a transient parse failure blocked a real review)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "jsonObjects/parseLastJson extract balanced top-level JSON objects (ignoring braces inside strings) and return the last valid one"
+      },
+      {
+        "text": "parseVerdict recovers the reviewer verdict even amid reasoning/prose with stray braces; invalid/absent verdict → null"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/json-parse.test.mjs",
+        "sha256": "cd0b2035c14178a580a041a8b460c83a0aa777f436737595b31d5e140a116a54"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-01T01:43:23.716Z",
+    "reviews": [
+      {
+        "at": "2026-07-01T01:45:01.967Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "jsonObjects handles a candidate that is balanced but non-JSON (e.g. '{ early return }') by relying on JSON.parse to throw in parseLastJson — correct, but a malformed unclosed object at EOF (depth never returns to 0) is silently dropped; acceptable per criteria since only balanced top-level objects are contracted."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Tests cover the core cases well (string-embedded braces, stray leading close-brace, nested, invalid verdict value, absent JSON) and would fail against a reverted greedy-regex implementation, so the change is genuinely asserted; no coverage for escaped-quote-inside-string (e.g. \\\") though the impl's esc handling supports it — minor gap, not blocking."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-01T01:43:23.863Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-07-01T01:45:01.967Z"
+    },
+    "doneAt": "2026-07-01T01:46:34.816Z"
+  },
+  {
+    "id": "task-9e75f32d",
+    "title": "refactor: adopt robust parseLastJson in retro/feedback/discovery (kill the duplicated greedy JSON regex)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "runRetro/runFeedback/runDiscovery recover their JSON payload ({lessons,issues}/{issues}/{tasks}) even when the agent wraps it in reasoning/prose with stray braces"
+      },
+      {
+        "text": "all three use the shared robust parseLastJson instead of the duplicated greedy /{...}/ regex"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/agent-json.test.mjs",
+        "sha256": "a3d7d85eb46fca74c56ff35f2126e3c3bb4f685bd9d1af9281767349504d9c1a"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-01T01:55:14.074Z",
+    "reviews": [
+      {
+        "at": "2026-07-01T01:58:37.923Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "parseLastJson relies on balanced-brace scanning, so it correctly recovers the payload past balanced stray brace PAIRS in prose (the exact case the criteria/test target). A truly unbalanced lone '{' in the agent's reasoning would leave depth>0 and swallow the real JSON object, yielding status 'error' — but this is outside the stated contract ('stray braces' == the balanced-pair failure that broke the C1 reviewer) and the old greedy regex failed on it too, so it is not a regression."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The locked test is non-vacuous: the stub output prepends a balanced stray-brace pair before the JSON, which the reverted greedy /{...}/ span cannot parse (fails) but parseLastJson recovers (passes), and it exercises all three of runRetro/runFeedback/runDiscovery. Both acceptance criteria are met — all three modules import and use the shared parseLastJson from lib/json.mjs and no duplicated greedy regex remains."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-01T01:56:13.209Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-07-01T01:58:37.923Z"
+    },
+    "doneAt": "2026-07-01T01:59:52.022Z"
+  },
+  {
+    "id": "task-b76c80e5",
+    "title": "fix: chalk review retries once on a transient reviewer failure (match the pipeline stage)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk review retries the reviewer once when the first attempt returns no valid verdict (transient failure), and accepts a valid verdict from the retry"
+      },
+      {
+        "text": "only a second consecutive error is fatal"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/review-retry.test.mjs",
+        "sha256": "07fe46cc6d16c1b66aaed90076f774d8aace68b6e7513e4956f1d0f71c0cc01e"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-01T03:42:30.832Z",
+    "reviews": [
+      {
+        "at": "2026-07-01T03:49:16.400Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2 ('only a second consecutive error is fatal') is only half-covered: the locked test drives error-then-pass and asserts the retry succeeds (exit 0, verdict recorded), which does fail if the retry were reverted. But no test asserts the fatal path — two consecutive errors must still die (exit nonzero) — so a regression that retried indefinitely or swallowed a persistent failure would not be caught."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The implementation (bin/chalk.mjs review handler: runReview → on status 'error' && !--no-retry retry once → die if still error) correctly satisfies both criteria; the retry accepts the second valid verdict and only a second consecutive error calls die(). Change is genuinely exercised by test/review-retry.test.mjs and would fail if reverted."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-01T03:50:43.556Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-01T03:58:39.983Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Tests cover the three material behaviors (flaky→retry→pass with exactly 2 calls, persistent error bounded to 2 calls, --no-retry to 1 call). Reverting the retry would flip both the exit code and the call count, so the suite genuinely guards the change rather than passing vacuously."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Implementation matches both criteria: runReview retries once only on status 'error' (no valid verdict), accepts a valid verdict from the retry, and only a second consecutive error calls die(). A first-call block verdict is status 'ok' so it is not retried, as intended."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-01T03:43:09.336Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-07-01T03:58:39.983Z"
+    },
+    "doneAt": "2026-07-01T04:52:52.306Z"
+  },
+  {
+    "id": "task-a7707c81",
+    "title": "fix: chalk release fails loudly on a git-tag error instead of marking work released with no tag",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "in a git repo, a git-tag failure fails chalk release (nonzero) BEFORE marking any task released or writing the CHANGELOG — no phantom version"
+      },
+      {
+        "text": "the happy path is preserved: a clean release tags and marks tasks released"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/release-tag.test.mjs",
+        "sha256": "64b20ba5f368a1a1e37b5150d98ab05410ddf8c23e1b670c7cf4920705e89f2a"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-01T07:39:02.637Z",
+    "reviews": [
+      {
+        "at": "2026-07-01T07:41:49.071Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Both criteria are covered by non-vacuous tests: the collision test asserts nonzero exit, unreleased task, and absent CHANGELOG (all would fail against the reverted swallow-and-mark implementation), and the happy-path test asserts tag creation + released marker. The change (bin/chalk.mjs release: tag attempted FIRST via throwing runGit, die() on failure with a 'tag'-naming message BEFORE writing CHANGELOG or marking released; non-git tolerated via gitTry rev-parse guard) correctly and completely satisfies criteria 1 and 2. No blocking findings."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-01T07:39:15.178Z",
+    "pipeline": {
+      "stage": "reviewed",
+      "at": "2026-07-01T07:41:49.071Z"
+    },
+    "doneAt": "2026-07-01T07:42:53.273Z"
+  },
+  {
+    "id": "task-5223a193",
+    "title": "chore: OSS hygiene — LICENSE, neutral pipeline-test fixtures, issue/PR templates, CONTRIBUTING/SECURITY/CODE_OF_CONDUCT",
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "LICENSE file exists at repo root with the full MIT text (matches package.json license: MIT)"
+      },
+      {
+        "text": "test/pipeline.test.mjs uses neutral fixtures — no github.com-devid or personal remote; full suite green"
+      },
+      {
+        "text": ".github/ISSUE_TEMPLATE has bug_report.yml (asks chalk version + doctor output), friction_report.yml (where did you get stuck), feature_request.yml; PULL_REQUEST_TEMPLATE.md exists"
+      },
+      {
+        "text": "CONTRIBUTING.md (chalk-loop contribution flow + node --test), SECURITY.md (private disclosure), CODE_OF_CONDUCT.md exist at root"
+      },
+      {
+        "text": "README has a Status & feedback section linking the friction-report template"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/oss-files.test.mjs",
+        "sha256": "ebc9973d4f069cba90524db133e166d8e4fd5561513fe5f405e0de9d3cb78e43"
+      }
+    ],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [],
+    "createdAt": "2026-07-02T05:00:52.825Z",
+    "reviews": [],
+    "startedAt": "2026-07-02T05:02:15.756Z"
+  },
+  {
+    "id": "task-389663ac",
+    "title": "feat: gate hardening — probe-error disambiguation, reviewer diff truncation marker + file stat, silent-failure warnings, mutation CLI wiring test",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [],
+    "createdAt": "2026-07-02T05:00:52.887Z",
+    "reviews": []
+  },
+  {
+    "id": "task-6c33ba19",
+    "title": "feat: chalk demo — built-in 1-minute no-LLM lifecycle demo with two visible gate refusals",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [],
+    "createdAt": "2026-07-02T05:00:52.939Z",
+    "reviews": []
+  },
+  {
+    "id": "task-918646d8",
+    "title": "feat: init hardening — preset auto-detect default, vacuous-verify warning, --verify-test/--bare, next-steps epilogue, presets set breakTest",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [],
+    "createdAt": "2026-07-02T05:00:52.992Z",
+    "reviews": []
+  },
+  {
+    "id": "task-58f6359e",
+    "title": "feat: init --executor claude|none — ship agent templates in share/agents, retrofit via chalk agents --claude",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [
+      "task-918646d8"
+    ],
+    "createdAt": "2026-07-02T05:01:01.452Z",
+    "reviews": []
+  },
+  {
+    "id": "task-2a7025bb",
+    "title": "feat: doctor for strangers — per-OS gh install hints, optional-executor framing, --json output, unused-gates nudge",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [
+      "task-389663ac"
+    ],
+    "createdAt": "2026-07-02T05:01:01.510Z",
+    "reviews": []
+  },
+  {
+    "id": "task-a16e36ea",
+    "title": "feat: chalk archive — compact released tasks + old events into .chalk/archive",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [],
+    "createdAt": "2026-07-02T05:01:01.565Z",
+    "reviews": []
+  },
+  {
+    "id": "task-46471f9d",
+    "title": "docs: onboarding — README rewrite (demo top-fold, comparison table), QUICKSTART.md, docs/CONFIG.md, claude-code integration doc",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [
+      "task-58f6359e"
+    ],
+    "createdAt": "2026-07-02T05:01:09.111Z",
+    "reviews": []
+  },
+  {
+    "id": "task-76eda7af",
+    "title": "chore: npm publish readiness — package metadata + files array, release.yml trusted publishing, pack-manifest test",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [
+      "task-58f6359e"
+    ],
+    "createdAt": "2026-07-02T05:01:09.171Z",
+    "reviews": []
+  },
+  {
+    "id": "task-f6bb962a",
+    "title": "chore: cut v0.1.0 via chalk release, seed v0.2 roadmap issues, enable GitHub Discussions",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "oss-launch",
+    "after": [
+      "task-a16e36ea"
+    ],
+    "createdAt": "2026-07-02T05:01:09.230Z",
+    "reviews": []
   }
 ]
