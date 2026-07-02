@@ -72,20 +72,36 @@ heldOut[], createdAt, startedAt, doneAt, reviews[]`.
 - **P5 — Adversarial review gate.** `chalk review` runs a configured BYO reviewer
   (`review.command`, e.g. `claude -p`) that is prompted to *refute* the change and is forced
   to cover the dimensions agents miss — **test-adequacy, design-intent, regressions**. It
-  returns a JSON verdict; when `review.required`, `done` blocks until it passes. Because
-  AI review is fallible, the gate is overridable via `done --force-review --why "..."`
-  (logged as a decision).
+  returns a JSON verdict; when `review.required`, `done` blocks until it passes. Run it on a
+  **different model family than the executor** — a same-model reviewer self-prefers and shares
+  the author's blind spots (`chalk doctor` warns when they match). A transient reviewer failure
+  is retried once. Because AI review is fallible, the gate is overridable via
+  `done --force-review --why "..."` (logged as a decision).
 - **P6 — Test integrity.** Acceptance tests are read-only to the implementing agent.
   `verify` recomputes their hashes; a mismatch fails the gate with "tests modified — route
-  via `chalk amend-spec`". Grading/scoring logic is kept out of the agent's editable
-  workspace.
+  via `chalk amend-spec`". `amend-spec` is the only sanctioned change, and it **invalidates any
+  prior passing review** — so a locked test weakened after approval forces a fresh review before
+  `done`. Grading/scoring logic is kept out of the agent's editable workspace.
 - **P7 — Held-out regression, size-scaled.** A regression/composition set under
   `.chalk/held-out/` that the implementing agent never reads. In a solo harness "held-out"
   = separation of **role + visibility**, not a second human: `chalk guard` authors it from
   the **spec** (blind to the implementation), it's hash-locked, excluded from `chalk
   context`, and `chalk audit` runs it **with output withheld** (pass/fail only, so the agent
-  can't overfit). `audit` is the system-level gate at **phase boundaries**, and it goes stale
-  (re-required) whenever code size changes — so stringency scales with cumulative code.
+  can't overfit). `chalk doctor` refuses a git-*tracked* held-out set (a committed one would
+  leak into the worktree sandbox where the agent could read it). `audit` is the system-level
+  gate at **phase boundaries**; it goes stale (re-required) when code size changes, **and the
+  required held-out count scales with code size** — the `phase` gate refuses to advance once the
+  set falls below the size floor (SpecBench: the visible-vs-held-out hack-gap grows ~28 pts per
+  10× code). Stringency rises with cumulative code by mechanism, not just by re-audit.
+
+**Non-vacuity levers (the `work` gate).** A green `verify` proves "nothing I assert is broken",
+never "this change *is* asserted" — so three levers stop a vacuously-green feature from merging:
+(1) a feature change must **add or change a test** (`requireTest`); (3a) **break-it** reverts the
+implementation and requires the locked test to go red (opt-in `breakTest`); (3b) **mutation
+testing** (opt-in `mutation`, e.g. Stryker / cargo-mutants) seeds faults into the *changed* code
+and requires the tests to kill them — surviving mutants are weak assertions coverage can't see
+(a benchmark test can hit 100% coverage at ~4% mutation score). Lever (2) is the adversarial
+reviewer (P5) judging adequacy.
 
 ---
 
