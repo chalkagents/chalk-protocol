@@ -33,8 +33,9 @@ import { collectSignals, runFeedback, feedbackDir } from '../lib/feedback.mjs';
 import { runDiscovery } from '../lib/discovery.mjs';
 import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
+import { runArchive } from '../lib/archive.mjs';
 import { portalModel } from '../lib/portal.mjs';
-import { basename, dirname } from 'node:path';
+import { basename, dirname, relative } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
@@ -714,6 +715,21 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   },
 
   // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
+  // Spine compaction: move done+released tasks (and their events) into .chalk/archive/ so the
+  // working spine stays small on long-lived projects. Everything is kept, nothing deleted.
+  archive({ flags }) {
+    const s = Store.open();
+    const r = runArchive(s, { dryRun: flags['dry-run'] === true });
+    for (const k of r.keptWithReason) console.log(C.y('  ⚠ kept ') + `${k.task.title} ${C.dim(`(${k.reason})`)}`);
+    if (!r.archived.length) return ok(`archive: nothing to move ${C.dim('(a task archives once it is done AND released)')}`);
+    if (r.dryRun) {
+      for (const t of r.archived) console.log(`  ${C.y('~ would archive:')} ${t.title} ${C.dim(`(v${t.released})`)}`);
+      return ok(`archive (dry-run): ${C.b(r.archived.length)} task(s), ${r.events} event line(s) — nothing written`);
+    }
+    ok(`archived ${C.b(r.archived.length)} task(s) + ${r.events} event line(s) → ${C.dim(r.files.map((f) => relative(s.root, f)).join(', '))}`);
+    syncBrowser(s);
+  },
+
   doctor({ flags = {} } = {}) {
     const s = Store.open();
     const results = runDoctor(s);
@@ -1472,6 +1488,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk doctor [--json]                ${C.dim('preflight readiness check for autonomous runs (read-only); --json for bug reports')}
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
+  chalk archive [--dry-run]            ${C.dim('compact the spine: move done+released tasks (+their events) to .chalk/archive/')}
   chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
   chalk autopilot [--max N] [--min-severity med]   ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
   chalk loop [--max-rounds N] [--max N] [--min-severity med]   ${C.dim('bounded STANDING loop: pull→sweep→converge, self-terminating')}
