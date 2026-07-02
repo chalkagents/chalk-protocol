@@ -16,7 +16,7 @@ const chalk = (cwd, ...args) => { const r = spawnSync('node', [CLI, ...args], { 
 const scratch = () => mkdtempSync(join(tmpdir(), 'chalk-pipe-'));
 
 // Make a throwaway git repo with one commit on `main` and a fake origin remote.
-function repo(remote = 'git@github.com-devid:chalkagents/chalk-protocol.git') {
+function repo(remote = 'git@github.com-work:acme/widgets.git') {
   const d = scratch();
   const g = (a) => execSync(`git ${a}`, { cwd: d, stdio: 'pipe' });
   g('init -b main');
@@ -50,7 +50,7 @@ const tasksOf = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'ut
 
 test('git foundation — currentRepo parses owner/repo from the ssh-alias remote', () => {
   const d = repo();
-  assert.equal(currentRepo(d), 'chalkagents/chalk-protocol');
+  assert.equal(currentRepo(d), 'acme/widgets');
   assert.equal(currentRepo(repo('https://github.com/foo/bar.git')), 'foo/bar');
 });
 
@@ -947,7 +947,7 @@ test('smoke — refuses without --yes; --dry-run previews; GO when the real flow
   // --dry-run previews the target repo, no actions.
   const dry = chalk(d, 'smoke', '--dry-run');
   assert.equal(dry.code, 0);
-  assert.match(dry.out, /chalkagents\/chalk-protocol|target repo/);
+  assert.match(dry.out, /acme\/widgets|target repo/);
   assert.equal(existsSync(join(d, '.chalk/tasks.json')) ? tasksOf(d).length : 0, 0, 'dry-run created no tasks');
 
   // Real (stubbed) run → GO.

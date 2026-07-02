@@ -26,7 +26,15 @@
       "dir": ".chalk/held-out",
       "required": false,
       "tests": [],
-      "lastAudit": null
+      "lastAudit": {
+        "at": "2026-06-29T12:09:47.202Z",
+        "green": true,
+        "size": {
+          "loc": 7098,
+          "files": 55
+        },
+        "count": 0
+      }
     },
     "executor": {
       "command": "claude -p --agent chalk-executor --permission-mode acceptEdits --max-turns 40"
@@ -39,5 +47,5 @@
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",
-  "updatedAt": "2026-06-24T18:58:15.432Z"
+  "updatedAt": "2026-06-29T12:09:47.203Z"
 }

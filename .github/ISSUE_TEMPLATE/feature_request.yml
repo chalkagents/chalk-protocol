@@ -1,0 +1,24 @@
+name: Feature request
+description: A gate, lever, integration, or workflow chalk should support.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation where chalk falls short — ideally from a real run.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should chalk do? If it's a new gate, what should it refuse, and on what evidence?
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds you're using today
+    validations:
+      required: false

@@ -1,0 +1,35 @@
+name: Friction report
+description: "You don't need a bug: tell us where you got stuck, confused, or gave up. This is the feedback we want most."
+labels: [friction]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks — first-run friction is invisible to us and obvious to you. Two minutes of "here's where I stalled" is worth more than a star.
+  - type: textarea
+    id: stuck
+    attributes:
+      label: Where did you get stuck?
+      description: What were you trying to do, and at what step did it stop making sense? Rough notes are fine.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: false
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Which stage?
+      options:
+        - Installing / first run
+        - chalk init / configuring my project
+        - Wiring an agent (executor / reviewer)
+        - The task loop (spec / verify / review / done)
+        - Autonomous mode (run / pipeline)
+        - Docs — couldn't find or understand something
+        - Other
+    validations:
+      required: false

@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1782428615086,
+  "updatedAt": 1782968535756,
   "order": 0,
   "cards": [
     {
@@ -211,6 +211,583 @@
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/45",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/43"
       }
+    },
+    {
+      "id": "task-00ae9415",
+      "title": "feat: break-it gate — block a vacuous locked test (lever 3)",
+      "column": "done",
+      "createdAt": 1782647506161,
+      "updatedAt": 1782648493712,
+      "order": 11,
+      "description": "- lib/breakit.mjs exports runBreakit(store, task) and a pure evaluateBreakit({tests, runsGreenOnBase}) helper\n- When protocol.breakTest is empty/unset, the gate is OFF (skipped) — opt-in like e2e/regression\n- A locked CODE test that still PASSES against the reverted (pre-change) implementation is flagged vacuous\n- A locked test that FAILS against reverted code (because it asserts the change) is NOT flagged\n- runBreakit restores the working tree (impl changes intact) after the check, even on failure\n- wired into chalk work and runDriver AFTER the lever-1 testgate; a vacuous locked test blocks (exit 2 / needs:human-input)\n- protocol.breakTest default is '' in store.mjs init defaults",
+      "testArtifact": {
+        "specPath": "test/breakit.test.mjs",
+        "lastRun": {
+          "runId": "done-task-00ae9415",
+          "status": "passed",
+          "at": 1782648493712
+        }
+      }
+    },
+    {
+      "id": "task-3175f8f5",
+      "title": "feat: chalk handoff — structured handoff doc (template + optional agent)",
+      "column": "done",
+      "createdAt": 1782664878174,
+      "updatedAt": 1782665292180,
+      "order": 12,
+      "description": "- lib/handoff.mjs exports writeHandoff(store, task, {reason, note, by}) and latestHandoff(store, task)\n- writeHandoff renders a structured doc: title, task id, state, reason, acceptance criteria, changed files (from the workdir git status), locked tests, and a 'pickup in a fresh session' instruction\n- the doc is written under .chalk/handoffs/<shortId>-<seq>.md (seq increments) and a pointer {path, at, reason} is recorded on task.handoff\n- latestHandoff returns the most recent handoff record for a task (or null), and the file path it points to exists\n- an optional BYO protocol.handoff.command enriches the narrative; when unset the template alone is produced (no model call), like e2e/regression\n- chalk handoff <id> [--note] writes a handoff and prints its path; .chalk/handoffs/ is gitignored (single-canonical via store.root)\n- protocol.handoff default is { command: '', maxAttempts: 3 } in store.mjs init defaults",
+      "testArtifact": {
+        "specPath": "test/handoff.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3175f8f5",
+          "status": "passed",
+          "at": 1782665292180
+        }
+      }
+    },
+    {
+      "id": "task-58ea7e15",
+      "title": "feat: auto-handoff on block + churn-threshold handoff",
+      "column": "done",
+      "createdAt": 1782664878259,
+      "updatedAt": 1782665677564,
+      "order": 13,
+      "description": "- chalk block <id> writes a handoff (reason=needs, note=the block reason) and records task.handoff — so the pipeline's auto-block, which shells out to chalk block, is covered too\n- the chalk run loop's auto-block (blockTask) also writes a handoff for the blocked task\n- each work attempt increments task.attempts — in both chalk work and the run-loop executor\n- lib/handoff.mjs exports overAttemptBudget(store, task) = task.attempts >= protocol.handoff.maxAttempts\n- when attempts reach maxAttempts and verify is still red, the run loop auto-blocks with a churn reason that recommends a fresh session",
+      "testArtifact": {
+        "specPath": "test/handoff-triggers.test.mjs",
+        "lastRun": {
+          "runId": "done-task-58ea7e15",
+          "status": "passed",
+          "at": 1782665677564
+        }
+      }
+    },
+    {
+      "id": "task-1ce3dd65",
+      "title": "feat: feed handoff into context + fresh-session signal (chalk next --json)",
+      "column": "done",
+      "createdAt": 1782664878335,
+      "updatedAt": 1782665949804,
+      "order": 14,
+      "description": "- buildContext appends a 'Handoff from the prior session' section containing the latest handoff doc when task.handoff is present, so a fresh session resumes from it\n- a missing/unreadable handoff file is tolerated — buildContext still renders the rest of the context (no crash)\n- chalk next --json emits machine-readable JSON: { task: {id,title,state}|null, freshSession: true, handoff: <path|null>, action: 'work'|'start' }\n- the JSON selects the in-progress task first, else the next runnable task; freshSession is always true (one-session-per-task signal) and handoff is the task's latest handoff path or null\n- plain chalk next (no --json) output is unchanged",
+      "testArtifact": {
+        "specPath": "test/handoff-context.test.mjs",
+        "lastRun": {
+          "runId": "done-task-1ce3dd65",
+          "status": "passed",
+          "at": 1782665949804
+        }
+      }
+    },
+    {
+      "id": "task-6f43cfe1",
+      "title": "feat: rich 'what was done' PR body recording",
+      "column": "done",
+      "createdAt": 1782666898497,
+      "updatedAt": 1782667452727,
+      "order": 15,
+      "description": "- lib/prbody.mjs exports buildPrBody(store, task, {changed, narrative}) and hasRecording(task)\n- buildPrBody renders Summary, 'What was done', Changes (the changed files), Acceptance criteria, and Test plan sections, with a 'Closes #N' footer when the task has an issue\n- when no narrative is supplied buildPrBody falls back to a structured default line (no empty 'What was done'); an optional BYO protocol.prbody.command authors the narrative, like handoff/e2e\n- chalk pr builds the body via buildPrBody from the branch's committed changes (diff against base) and sets task.pr.recorded=true when the change set is non-empty\n- hasRecording(task) returns task.pr?.recorded === true — the hook the later merge gate uses\n- protocol.prbody default is { command: '' } in store.mjs init defaults",
+      "testArtifact": {
+        "specPath": "test/prbody.test.mjs",
+        "lastRun": {
+          "runId": "done-task-6f43cfe1",
+          "status": "passed",
+          "at": 1782667452727
+        }
+      }
+    },
+    {
+      "id": "task-e1a9cb7d",
+      "title": "feat: reviewer posts findings + LGTM to the remote PR",
+      "column": "done",
+      "createdAt": 1782666898551,
+      "updatedAt": 1782667912089,
+      "order": 16,
+      "description": "- lib/prreview.mjs exports postReviewToPr(store, task, {verdict, findings}) and reviewComment({verdict, findings})\n- reviewComment renders an LGTM-marked comment on pass and a findings list (severity/area/note) on block\n- postReviewToPr posts the comment to the task's PR via gh pr comment --body-file -; no PR or no gh configured → no-op returning {posted:false}; a gh failure is swallowed (never crashes the review)\n- chalk review posts the verdict to the PR after computing it and sets task.pr.lgtm=true on a passing post (the merge-gate hook)\n- the chalk run loop's review also posts to the PR when the task has one",
+      "testArtifact": {
+        "specPath": "test/prreview.test.mjs",
+        "lastRun": {
+          "runId": "done-task-e1a9cb7d",
+          "status": "passed",
+          "at": 1782667912089
+        }
+      }
+    },
+    {
+      "id": "task-9bf2a03e",
+      "title": "feat: broke-check — remote CI gate with local fallback",
+      "column": "done",
+      "createdAt": 1782666898599,
+      "updatedAt": 1782668274041,
+      "order": 17,
+      "description": "- lib/brokecheck.mjs exports ciStatus(store, task) and brokeCheck(store, task, {verifyFn})\n- ciStatus returns 'pass' when all gh pr checks buckets are pass/skipping, 'fail' when any are fail/pending/cancel, and 'none' when there is no PR, no gh, or no checks (empty array)\n- ciStatus tolerates gh exiting nonzero while still printing the JSON (failing/pending checks) by parsing its stdout\n- brokeCheck uses CI when present (source:'ci'); when CI is 'none' it falls back to local verify (source:'local'); ok reflects the chosen source",
+      "testArtifact": {
+        "specPath": "test/brokecheck.test.mjs",
+        "lastRun": {
+          "runId": "done-task-9bf2a03e",
+          "status": "passed",
+          "at": 1782668274041
+        }
+      }
+    },
+    {
+      "id": "task-30543dfd",
+      "title": "feat: merge gate requires recording + LGTM + broke-check, then merges",
+      "column": "done",
+      "createdAt": 1782666898646,
+      "updatedAt": 1782669152335,
+      "order": 18,
+      "description": "- lib/mergegate.mjs exports mergeBlockers(store, task, {reviewRequired, broke}) returning an array of human-readable blocking reasons (empty = clear to merge)\n- mergeBlockers blocks when: broke-check not ok, no recording (hasRecording false), or review required and (no passing review OR no LGTM on the PR)\n- chalk merge replaces the bare verify gate with brokeCheck (remote CI if present, else local verify) and blocks on mergeBlockers with a diagnosable reason\n- when review is required and the review passed but no LGTM is surfaced, chalk merge posts the LGTM to the PR before merging\n- ciStatus treats a non-checks JSON payload (elements without a string bucket) as 'none' so a stubbed/garbage gh response falls back to local verify\n- existing gates preserved (in-progress, PR exists, held-out audit P7, idempotent resume) and the full pipeline still merges end-to-end",
+      "testArtifact": {
+        "specPath": "test/mergegate.test.mjs",
+        "lastRun": {
+          "runId": "done-task-30543dfd",
+          "status": "passed",
+          "at": 1782669152335
+        }
+      }
+    },
+    {
+      "id": "task-133872dc",
+      "title": "feat: fix-reverify-rereview loop with churn budget and handoff",
+      "column": "done",
+      "createdAt": 1782666898695,
+      "updatedAt": 1782670292932,
+      "order": 19,
+      "description": "- buildContext includes the latest blocking review's findings (an 'Address these review findings' section) so a re-run executor knows what to fix\n- lib/reviewloop.mjs exports reviewFixLoop({store, ref, call, cliPath, maxRounds}) that rewinds the task's pipeline stage and re-runs work then commit then review up to maxRounds, returning {passed, rounds}\n- reviewFixLoop returns passed:true as soon as a re-review exits 0; passed:false when work fails or the rounds are exhausted\n- the pipeline, on a genuine review BLOCK (exit 3), runs reviewFixLoop; on pass it proceeds, on exhaustion it writes a handoff and blocks needs:human-input with the findings\n- transient reviewer errors (nonzero exit that is not a block) keep the existing retry-once behavior",
+      "testArtifact": {
+        "specPath": "test/reviewloop.test.mjs",
+        "lastRun": {
+          "runId": "done-task-133872dc",
+          "status": "passed",
+          "at": 1782670292932
+        }
+      }
+    },
+    {
+      "id": "task-18bbd5ec",
+      "title": "feat: planner emits a plan plus scoping questions",
+      "column": "done",
+      "createdAt": 1782666898744,
+      "updatedAt": 1782670677736,
+      "order": 20,
+      "description": "- lib/planning.mjs exports extractQuestions(planText) returning an array of clarifying-question strings\n- extractQuestions pulls questions from a '## Questions'/'## Open questions' section AND from explicit 'Q:'/'QUESTION:' lines; it trims, strips checkbox prefixes, dedupes, and drops empties\n- chalk plan, after storing task.plan, records each extracted question to questions.json (status open, awaitingFrom 'human', taskId set)\n- chalk plan reports how many scoping questions were captured",
+      "testArtifact": {
+        "specPath": "test/planning.test.mjs",
+        "lastRun": {
+          "runId": "done-task-18bbd5ec",
+          "status": "passed",
+          "at": 1782670677736
+        }
+      }
+    },
+    {
+      "id": "task-bb33a342",
+      "title": "feat: chalk approve-plan gate — work refuses an unapproved required plan",
+      "column": "done",
+      "createdAt": 1782666898797,
+      "updatedAt": 1782671161776,
+      "order": 21,
+      "description": "- lib/planning.mjs exports planApprovalRequired(store, task) = protocol.plan.required && !task.planApproved\n- chalk approve-plan <id> sets task.planApproved {at, by}; refuses if the task has no plan, or has open scoping questions (resolve them first) unless --force --why\n- when protocol.plan.required, chalk work refuses (exit 2) an unapproved plan with a diagnosable reason; an approved plan lets work proceed\n- the run loop blocks an unapproved required plan (needs:human-input) with a handoff instead of running the executor\n- protocol.plan default is { required: false } in store.mjs init defaults (opt-in; existing flows unaffected)",
+      "testArtifact": {
+        "specPath": "test/approveplan.test.mjs",
+        "lastRun": {
+          "runId": "done-task-bb33a342",
+          "status": "passed",
+          "at": 1782671161776
+        }
+      }
+    },
+    {
+      "id": "task-40dcf50f",
+      "title": "feat: release notes — collect merged work, bump version, render notes",
+      "column": "done",
+      "createdAt": 1782671677206,
+      "updatedAt": 1782671937874,
+      "order": 22,
+      "description": "- lib/release.mjs exports releasableTasks(store), bumpVersion(current, tasks, opts), and renderReleaseNotes(tasks, version, date)\n- releasableTasks returns done tasks that have no released marker, oldest-first by doneAt\n- bumpVersion: an explicit version/level wins; else major if any task is breaking, minor if any is a feat, else patch; a missing current starts from 0.0.0\n- renderReleaseNotes groups tasks by type (Features/Fixes/etc.) under a '## v<version> — <date>' header, lists each with its '(#<pr>)' link when present, and skips empty groups",
+      "testArtifact": {
+        "specPath": "test/release.test.mjs",
+        "lastRun": {
+          "runId": "done-task-40dcf50f",
+          "status": "passed",
+          "at": 1782671937874
+        }
+      }
+    },
+    {
+      "id": "task-61e20fca",
+      "title": "feat: chalk release — write CHANGELOG, bump package.json, tag, mark released",
+      "column": "done",
+      "createdAt": 1782671677255,
+      "updatedAt": 1782672306789,
+      "order": 23,
+      "description": "- chalk release reads the current version (package.json version if present, else 0.0.0), computes the next via bumpVersion (honoring --version/--major/--minor/--patch), and prints the rendered notes\n- it prepends the notes to CHANGELOG.md (creating it with a title if absent) and, when package.json exists, updates its version field\n- it marks each included task with released=<version> so a second run finds nothing new (idempotent), and reports the count\n- it creates an annotated git tag v<version> unless --no-tag, and tolerates a non-git directory without crashing\n- with no releasable tasks it exits cleanly without bumping or tagging",
+      "testArtifact": {
+        "specPath": "test/release-cli.test.mjs",
+        "lastRun": {
+          "runId": "done-task-61e20fca",
+          "status": "passed",
+          "at": 1782672306789
+        }
+      }
+    },
+    {
+      "id": "task-d8399a80",
+      "title": "feat: feedback signals — collect external signals and run the analysis agent",
+      "column": "done",
+      "createdAt": 1782677390747,
+      "updatedAt": 1782677635279,
+      "order": 24,
+      "description": "- lib/feedback.mjs exports collectSignals(store, opts) and runFeedback(store, signals)\n- collectSignals gathers signal files from .chalk/feedback/ (.md/.txt/.json, excluding the archive/ subdir) plus any opts.input text, and returns { digest, files } where files are the source paths\n- runFeedback runs protocol.feedback.command with the signals digest on stdin and tolerantly parses { issues:[{title, body, severity, labels}] }, returning { status, issues } (mirrors runRetro)\n- collectSignals returns an empty digest and no files when there are no signals",
+      "testArtifact": {
+        "specPath": "test/feedback.test.mjs",
+        "lastRun": {
+          "runId": "done-task-d8399a80",
+          "status": "passed",
+          "at": 1782677635279
+        }
+      }
+    },
+    {
+      "id": "task-4e547f53",
+      "title": "feat: chalk feedback — file improvement issues from signals, archive processed",
+      "column": "done",
+      "createdAt": 1782677390802,
+      "updatedAt": 1782678073000,
+      "order": 25,
+      "description": "- chalk feedback collects signals, runs the agent, and files each improvement issue via gh with dedup against open issues (titlesSimilar), a severity floor (default med), --dry-run and --max-issues — mirroring chalk retro\n- after filing (not in --dry-run) it archives the processed signal files into .chalk/feedback/archive/ so re-runs don't re-analyze them\n- with no signals it exits cleanly without invoking the agent\n- protocol.feedback default is { command: '' } in store.mjs init defaults",
+      "testArtifact": {
+        "specPath": "test/feedback-cli.test.mjs",
+        "lastRun": {
+          "runId": "done-task-4e547f53",
+          "status": "passed",
+          "at": 1782678073000
+        }
+      }
+    },
+    {
+      "id": "task-e0c99196",
+      "title": "feat: discovery — run the intake agent and normalize a proposed backlog",
+      "column": "done",
+      "createdAt": 1782684275135,
+      "updatedAt": 1782684572621,
+      "order": 26,
+      "description": "- lib/discovery.mjs exports runDiscovery(store, brief) and normalizeProposal(raw)\n- runDiscovery runs protocol.discovery.command with the brief on stdin and tolerantly parses { tasks:[{title, criteria, milestone?, after?}], spec? }, returning { status, tasks, spec } (mirrors runRetro)\n- normalizeProposal keeps only well-formed tasks (non-empty title AND at least one non-empty criterion), trims fields, and dedupes by title\n- runDiscovery returns status 'unconfigured' when no command is set and 'error' when the agent emits no JSON",
+      "testArtifact": {
+        "specPath": "test/discovery.test.mjs",
+        "lastRun": {
+          "runId": "done-task-e0c99196",
+          "status": "passed",
+          "at": 1782684572621
+        }
+      }
+    },
+    {
+      "id": "task-9f55f886",
+      "title": "feat: chalk discover — turn a brief into scoped, criteria-bearing tasks",
+      "column": "done",
+      "createdAt": 1782684275188,
+      "updatedAt": 1782685016041,
+      "order": 27,
+      "description": "- chalk discover (brief from positional args, --input, or --file) runs the agent and creates each proposed task as a specd chalk task with its acceptance criteria and milestone\n- it dedupes proposed tasks against existing task titles (titlesSimilar) and skips duplicates\n- a proposed task's after-titles are resolved to dependency ids when they match a created or existing task (best-effort); --dry-run previews without creating\n- with no brief it errors with usage; protocol.discovery default is { command: '' } in store.mjs init defaults",
+      "testArtifact": {
+        "specPath": "test/discover-cli.test.mjs",
+        "lastRun": {
+          "runId": "done-task-9f55f886",
+          "status": "passed",
+          "at": 1782685016041
+        }
+      }
+    },
+    {
+      "id": "task-fb4eadec",
+      "title": "feat: portal model — map the chalk spine to the portal schema",
+      "column": "done",
+      "createdAt": 1782685595969,
+      "updatedAt": 1782686033558,
+      "order": 28,
+      "description": "- lib/portal.mjs exports portalModel(store, opts) returning { slug, meta, scope, milestones, updates } derived from the spine, and scopeState(taskState)\n- scope maps each task to a scope item: state done->delivered, in-progress->approved, else->defined; title stripped of any conventional prefix; acceptanceCriteria carried as {text}; a verify note when the task is released\n- milestones are derived from the distinct task.milestone values with status completed/in-progress/pending from their done ratio, a project slug, and a best-effort dueDate\n- updates are filtered to the client-safe type allow-list — non-client-safe events (e.g. lesson-learned, planning-generated) are DROPPED, not surfaced — each carrying id/project/type/title/at/actorRole",
+      "testArtifact": {
+        "specPath": "test/portal.test.mjs",
+        "lastRun": {
+          "runId": "done-task-fb4eadec",
+          "status": "passed",
+          "at": 1782686033558
+        }
+      }
+    },
+    {
+      "id": "task-3a4398cc",
+      "title": "feat: chalk portal — write schema-conformant .project files from the spine",
+      "column": "done",
+      "createdAt": 1782685596022,
+      "updatedAt": 1782686359152,
+      "order": 29,
+      "description": "- chalk portal [--out <dir>] [--slug <slug>] writes four schema-conformant files (projects/<slug>.yaml, scope/defined.yaml, updates/extracted.yaml, milestones.yaml) under the out dir (default .project) from portalModel\n- the files are valid YAML (JSON is valid YAML; written pretty) and contain the mapped scope/milestones/updates; the command reports the counts written\n- true\n- protocol.portal default { dir: '.project' } in store.mjs init defaults",
+      "testArtifact": {
+        "specPath": "test/portal-cli.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3a4398cc",
+          "status": "passed",
+          "at": 1782686359152
+        }
+      }
+    },
+    {
+      "id": "task-9a0bfb60",
+      "title": "fix: testing-found bugs — release --dry-run + portal absolute --out",
+      "column": "done",
+      "createdAt": 1782721270927,
+      "updatedAt": 1782721574198,
+      "order": 30,
+      "description": "- chalk release supports --dry-run: it prints the would-be version and notes and reports counts, but writes NO CHANGELOG, does NOT bump package.json, creates NO git tag, and marks NO tasks released\n- chalk portal resolves --out correctly (resolve, not join): an absolute --out writes to that absolute path (not inside the repo), and a relative --out stays relative to the repo root",
+      "testArtifact": {
+        "specPath": "test/testfixes.test.mjs",
+        "lastRun": {
+          "runId": "done-task-9a0bfb60",
+          "status": "passed",
+          "at": 1782721574198
+        }
+      }
+    },
+    {
+      "id": "task-706eb3c4",
+      "title": "feat: cross-model review — chalk doctor warns when the reviewer shares the executor model",
+      "column": "done",
+      "createdAt": 1782828337582,
+      "updatedAt": 1782828571225,
+      "order": 31,
+      "description": "- chalk doctor warns when the adversarial reviewer shares the executor's model (same base binary + same/absent --model)\n- sameModelFamily and modelSignature detect the same-model case and clear on a different model or tool",
+      "testArtifact": {
+        "specPath": "test/crossmodel.test.mjs",
+        "lastRun": {
+          "runId": "done-task-706eb3c4",
+          "status": "passed",
+          "at": 1782828571225
+        }
+      }
+    },
+    {
+      "id": "task-3c66f66a",
+      "title": "feat: harden P7 blindness — doctor fails on git-tracked held-out + pin audit output withholding",
+      "column": "done",
+      "createdAt": 1782828810776,
+      "updatedAt": 1782829065266,
+      "order": 32,
+      "description": "- chalk doctor fails (exit 2) when held-out files are git-tracked — a worktree checkout would leak them into the agent's sandbox (defeats P7)\n- chalk audit withholds the held-out command's stdout/stderr so hidden assertions can't reach the agent",
+      "testArtifact": {
+        "specPath": "test/heldout-blindness.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3c66f66a",
+          "status": "passed",
+          "at": 1782829065266
+        }
+      }
+    },
+    {
+      "id": "task-d9660b4e",
+      "title": "feat: mutation-testing adequacy gate — block a change whose changed code has surviving mutants (lever 3, rigorous)",
+      "column": "done",
+      "createdAt": 1782829269758,
+      "updatedAt": 1782829890177,
+      "order": 33,
+      "description": "- evaluateMutation returns exactly the changed files whose mutants are not all killed (surviving mutants = weak tests)\n- runMutation is opt-in (protocol.mutation), mutates only changed implementation files, and flags survivors by the command's non-zero exit; skips when unconfigured or no impl change",
+      "testArtifact": {
+        "specPath": "test/mutation.test.mjs",
+        "lastRun": {
+          "runId": "done-task-d9660b4e",
+          "status": "passed",
+          "at": 1782829890177
+        }
+      }
+    },
+    {
+      "id": "task-654cec3c",
+      "title": "feat: amend-spec invalidates a prior passing review (close the weaken-after-approval bypass)",
+      "column": "done",
+      "createdAt": 1782867334144,
+      "updatedAt": 1782867868844,
+      "order": 34,
+      "description": "- amend-spec invalidates a prior passing review — after a locked test changes, done requires a fresh review (closes weaken-after-approval)\n- done --force-review requires --why and logs a decision (auditable, never silent)",
+      "testArtifact": {
+        "specPath": "test/amendspec-review.test.mjs",
+        "lastRun": {
+          "runId": "done-task-654cec3c",
+          "status": "passed",
+          "at": 1782867868844
+        }
+      }
+    },
+    {
+      "id": "task-a9a11c5c",
+      "title": "feat: size-scaled P7 stringency — held-out set floor grows with code size (SpecBench)",
+      "column": "done",
+      "createdAt": 1782868020654,
+      "updatedAt": 1782868241666,
+      "order": 35,
+      "description": "- heldOutFloor(loc, locPerTest) returns a minimum held-out count that scales with code size (floor = loc/locPerTest, default 2000, safe on non-positive)\n- chalk audit warns (stays green) and the phase P7 gate refuses (overridable via --force-audit --why) when the held-out set is below the size floor",
+      "testArtifact": {
+        "specPath": "test/heldout-scaling.test.mjs",
+        "lastRun": {
+          "runId": "done-task-a9a11c5c",
+          "status": "passed",
+          "at": 1782868241666
+        }
+      }
+    },
+    {
+      "id": "task-1f16c4e2",
+      "title": "fix: robust reviewer verdict parsing — recover the verdict JSON amid reasoning/prose (a transient parse failure blocked a real review)",
+      "column": "done",
+      "createdAt": 1782870203716,
+      "updatedAt": 1782870394816,
+      "order": 36,
+      "description": "- jsonObjects/parseLastJson extract balanced top-level JSON objects (ignoring braces inside strings) and return the last valid one\n- parseVerdict recovers the reviewer verdict even amid reasoning/prose with stray braces; invalid/absent verdict → null",
+      "testArtifact": {
+        "specPath": "test/json-parse.test.mjs",
+        "lastRun": {
+          "runId": "done-task-1f16c4e2",
+          "status": "passed",
+          "at": 1782870394816
+        }
+      }
+    },
+    {
+      "id": "task-9e75f32d",
+      "title": "refactor: adopt robust parseLastJson in retro/feedback/discovery (kill the duplicated greedy JSON regex)",
+      "column": "done",
+      "createdAt": 1782870914074,
+      "updatedAt": 1782871192022,
+      "order": 37,
+      "description": "- runRetro/runFeedback/runDiscovery recover their JSON payload ({lessons,issues}/{issues}/{tasks}) even when the agent wraps it in reasoning/prose with stray braces\n- all three use the shared robust parseLastJson instead of the duplicated greedy /{...}/ regex",
+      "testArtifact": {
+        "specPath": "test/agent-json.test.mjs",
+        "lastRun": {
+          "runId": "done-task-9e75f32d",
+          "status": "passed",
+          "at": 1782871192022
+        }
+      }
+    },
+    {
+      "id": "task-b76c80e5",
+      "title": "fix: chalk review retries once on a transient reviewer failure (match the pipeline stage)",
+      "column": "done",
+      "createdAt": 1782877350832,
+      "updatedAt": 1782881572306,
+      "order": 38,
+      "description": "- chalk review retries the reviewer once when the first attempt returns no valid verdict (transient failure), and accepts a valid verdict from the retry\n- only a second consecutive error is fatal",
+      "testArtifact": {
+        "specPath": "test/review-retry.test.mjs",
+        "lastRun": {
+          "runId": "done-task-b76c80e5",
+          "status": "passed",
+          "at": 1782881572306
+        }
+      }
+    },
+    {
+      "id": "task-a7707c81",
+      "title": "fix: chalk release fails loudly on a git-tag error instead of marking work released with no tag",
+      "column": "done",
+      "createdAt": 1782891542637,
+      "updatedAt": 1782891773273,
+      "order": 39,
+      "description": "- in a git repo, a git-tag failure fails chalk release (nonzero) BEFORE marking any task released or writing the CHANGELOG — no phantom version\n- the happy path is preserved: a clean release tags and marks tasks released",
+      "testArtifact": {
+        "specPath": "test/release-tag.test.mjs",
+        "lastRun": {
+          "runId": "done-task-a7707c81",
+          "status": "passed",
+          "at": 1782891773273
+        }
+      }
+    },
+    {
+      "id": "task-5223a193",
+      "title": "chore: OSS hygiene — LICENSE, neutral pipeline-test fixtures, issue/PR templates, CONTRIBUTING/SECURITY/CODE_OF_CONDUCT",
+      "column": "in_progress",
+      "createdAt": 1782968452825,
+      "updatedAt": 1782968535756,
+      "order": 40,
+      "description": "- LICENSE file exists at repo root with the full MIT text (matches package.json license: MIT)\n- test/pipeline.test.mjs uses neutral fixtures — no github.com-devid or personal remote; full suite green\n- .github/ISSUE_TEMPLATE has bug_report.yml (asks chalk version + doctor output), friction_report.yml (where did you get stuck), feature_request.yml; PULL_REQUEST_TEMPLATE.md exists\n- CONTRIBUTING.md (chalk-loop contribution flow + node --test), SECURITY.md (private disclosure), CODE_OF_CONDUCT.md exist at root\n- README has a Status & feedback section linking the friction-report template",
+      "testArtifact": {
+        "specPath": "test/oss-files.test.mjs"
+      }
+    },
+    {
+      "id": "task-389663ac",
+      "title": "feat: gate hardening — probe-error disambiguation, reviewer diff truncation marker + file stat, silent-failure warnings, mutation CLI wiring test",
+      "column": "todo",
+      "createdAt": 1782968452887,
+      "updatedAt": 1782968452887,
+      "order": 41
+    },
+    {
+      "id": "task-6c33ba19",
+      "title": "feat: chalk demo — built-in 1-minute no-LLM lifecycle demo with two visible gate refusals",
+      "column": "todo",
+      "createdAt": 1782968452939,
+      "updatedAt": 1782968452939,
+      "order": 42
+    },
+    {
+      "id": "task-918646d8",
+      "title": "feat: init hardening — preset auto-detect default, vacuous-verify warning, --verify-test/--bare, next-steps epilogue, presets set breakTest",
+      "column": "todo",
+      "createdAt": 1782968452992,
+      "updatedAt": 1782968452992,
+      "order": 43
+    },
+    {
+      "id": "task-58f6359e",
+      "title": "feat: init --executor claude|none — ship agent templates in share/agents, retrofit via chalk agents --claude",
+      "column": "todo",
+      "createdAt": 1782968461452,
+      "updatedAt": 1782968461452,
+      "order": 44
+    },
+    {
+      "id": "task-2a7025bb",
+      "title": "feat: doctor for strangers — per-OS gh install hints, optional-executor framing, --json output, unused-gates nudge",
+      "column": "todo",
+      "createdAt": 1782968461510,
+      "updatedAt": 1782968461510,
+      "order": 45
+    },
+    {
+      "id": "task-a16e36ea",
+      "title": "feat: chalk archive — compact released tasks + old events into .chalk/archive",
+      "column": "todo",
+      "createdAt": 1782968461565,
+      "updatedAt": 1782968461565,
+      "order": 46
+    },
+    {
+      "id": "task-46471f9d",
+      "title": "docs: onboarding — README rewrite (demo top-fold, comparison table), QUICKSTART.md, docs/CONFIG.md, claude-code integration doc",
+      "column": "todo",
+      "createdAt": 1782968469111,
+      "updatedAt": 1782968469111,
+      "order": 47
+    },
+    {
+      "id": "task-76eda7af",
+      "title": "chore: npm publish readiness — package metadata + files array, release.yml trusted publishing, pack-manifest test",
+      "column": "todo",
+      "createdAt": 1782968469171,
+      "updatedAt": 1782968469171,
+      "order": 48
+    },
+    {
+      "id": "task-f6bb962a",
+      "title": "chore: cut v0.1.0 via chalk release, seed v0.2 roadmap issues, enable GitHub Discussions",
+      "column": "todo",
+      "createdAt": 1782968469230,
+      "updatedAt": 1782968469230,
+      "order": 49
     }
   ]
 }
