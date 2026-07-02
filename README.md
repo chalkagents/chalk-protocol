@@ -21,6 +21,8 @@ check, never the agent's word.**
 npx chalk-protocol demo        # or: chalk demo, once installed
 ```
 
+![chalk demo — the full gated lifecycle, including two refusals](./docs/assets/demo.gif)
+
 A throwaway project + stub agents (no LLM, no GitHub, no network) runs the **entire lifecycle** —
 discover → plan → work → verify → review → done → release → feedback → portal — and stages the two
 moments that make chalk chalk:

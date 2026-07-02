@@ -10,4 +10,4 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 40ms
 Type "npx chalk-protocol demo"
 Enter
-Sleep 75s
+Sleep 30s
