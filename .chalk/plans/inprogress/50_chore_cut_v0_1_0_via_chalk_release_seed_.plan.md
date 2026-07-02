@@ -8,7 +8,7 @@ created: "2026-07-02T05:01:09.230Z"
 
 # chore: cut v0.1.0 via chalk release, seed v0.2 roadmap issues, enable GitHub Discussions
 
-> state: **todo** · phase: discovery
+> state: **blocked** · phase: discovery
 
 ## Objective
 
