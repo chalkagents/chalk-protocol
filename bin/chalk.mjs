@@ -32,6 +32,7 @@ import { runRetro, titlesSimilar } from '../lib/retro.mjs';
 import { collectSignals, runFeedback, feedbackDir } from '../lib/feedback.mjs';
 import { runDiscovery } from '../lib/discovery.mjs';
 import { runDemo } from '../lib/demo.mjs';
+import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
 import { portalModel } from '../lib/portal.mjs';
 import { basename, dirname } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
@@ -89,9 +90,9 @@ const cmds = {
     // The user explicitly asked for detection (bare --preset) and got nothing — say so.
     if (flags.preset === true && !preset) console.error(C.y('  could not detect a preset (no pubspec.yaml / go.mod / package.json / pyproject.toml found) — proceeding without one.'));
     if (preset && !PRESETS[preset]) die(`unknown --preset: ${preset} (choose ${Object.keys(PRESETS).join('|')})`);
-    // --executor opencode: scaffold the bundled opencode executor config (only supported value).
+    // --executor claude|opencode|none: scaffold a runnable agent setup (or explicitly skip one).
     const executor = flags.executor ? String(flags.executor) : undefined;
-    if (executor && executor !== 'opencode') die(`unknown --executor: ${executor} (supported: opencode)`);
+    if (executor && !['claude', 'opencode', 'none'].includes(executor)) die(`unknown --executor: ${executor} (supported: claude|opencode|none)`);
     const meta = initSpine(root, { name: flags.name, goal: flags.goal, preset, runner: flags.runner ? String(flags.runner) : undefined, executor });
     // --verify-test "<cmd>": set the one required gate inline, no chalk.json editing needed.
     if (flags['verify-test'] && flags['verify-test'] !== true) {
@@ -100,6 +101,11 @@ const cmds = {
     }
     ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})${preset ? C.dim(` · preset ${preset}${auto ? ' (auto-detected — override with --preset <stack> or --bare)' : ''}`) : ''}`);
     if (executor === 'opencode') console.log(C.dim('  opencode executor configured · set CHALK_OPENCODE_MODEL (e.g. anthropic/claude-opus-4-8); see docs/integrations/opencode.md'));
+    if (executor === 'claude') {
+      for (const r of installClaudeAgents(root)) console.log(C.dim(`  ${r.action} .claude/agents/${r.name}`));
+      console.log(C.dim('  claude executor + planner + retro + REQUIRED per-task reviewer wired (needs the `claude` CLI on PATH)'));
+    }
+    if (executor === 'none') console.log(C.dim(manualLoopText()));
     if (flags['no-agents'] !== true) {
       for (const r of installAgentDocs(root)) console.log(C.dim(`  ${r.action} ${r.name} (agent contract)`));
     }
@@ -121,10 +127,15 @@ const cmds = {
 ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chalk demo')}`);
   },
 
-  // (Re)install the agent contract into AGENTS.md / CLAUDE.md.
-  agents() {
+  // (Re)install the agent contract into AGENTS.md / CLAUDE.md. --claude additionally installs the
+  // shipped Claude Code agent definitions — the retrofit path for a project inited without them.
+  agents({ flags = {} } = {}) {
     const s = Store.open();
     for (const r of installAgentDocs(s.root)) ok(`${r.action} ${r.name}`);
+    if (flags.claude === true) {
+      for (const r of installClaudeAgents(s.root)) ok(`${r.action} .claude/agents/${r.name}`);
+      console.log(C.dim('  wire the commands in .chalk/chalk.json → protocol.{executor,planner,review,retro}.command (see docs/integrations/claude-code.md)'));
+    }
     console.log(C.dim('  any CLI (Claude Code, Codex, Gemini) will now auto-load the Chalk contract.'));
   },
 
@@ -1433,9 +1444,9 @@ function printHelp() {
 
 ${C.b('setup')}
   chalk demo [--keep]                  ${C.dim('watch the whole gated loop on a throwaway project (~1 min, no LLM needed)')}
-  chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--verify-test "cmd"] [--bare] [--runner fvm] [--executor opencode]
-                                       ${C.dim('auto-detects the stack preset (verify/regression/break-it); --bare = intentionally empty verify')}
-  chalk agents                         ${C.dim('(re)install the agent contract')}
+  chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--verify-test "cmd"] [--bare] [--runner fvm] [--executor claude|opencode|none]
+                                       ${C.dim('auto-detects the stack preset (verify/regression/break-it); --executor claude ships the agent files')}
+  chalk agents [--claude]              ${C.dim('(re)install the agent contract; --claude adds the Claude Code agent definitions')}
   chalk status
   chalk next                           ${C.dim('the agent entrypoint: what to do next')}
   chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
