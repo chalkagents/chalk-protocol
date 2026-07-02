@@ -8,7 +8,7 @@ import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
-import { PRESETS, detectPreset, withRunner, reviewCadences } from '../lib/config.mjs';
+import { PRESETS, detectPreset, withRunner, reviewCadences, normGate } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
@@ -79,20 +79,46 @@ const cmds = {
 
   init({ flags }) {
     const root = process.cwd();
-    // --preset flutter|node|… selects a stack; bare --preset auto-detects from marker files.
-    let preset = flags.preset === true ? detectPreset(root) : (flags.preset ? String(flags.preset) : null);
-    const auto = flags.preset === true && preset;
+    // Preset resolution: explicit --preset X wins; bare --preset OR no flag at all auto-detects from
+    // marker files (the path of least resistance must be the safe one); --bare opts out explicitly.
+    const bare = flags.bare === true;
+    let preset = flags.preset === true ? detectPreset(root)
+      : flags.preset ? String(flags.preset)
+      : bare ? null : detectPreset(root);
+    const auto = !!preset && (flags.preset === true || !flags.preset);
+    // The user explicitly asked for detection (bare --preset) and got nothing — say so.
+    if (flags.preset === true && !preset) console.error(C.y('  could not detect a preset (no pubspec.yaml / go.mod / package.json / pyproject.toml found) — proceeding without one.'));
     if (preset && !PRESETS[preset]) die(`unknown --preset: ${preset} (choose ${Object.keys(PRESETS).join('|')})`);
     // --executor opencode: scaffold the bundled opencode executor config (only supported value).
     const executor = flags.executor ? String(flags.executor) : undefined;
     if (executor && executor !== 'opencode') die(`unknown --executor: ${executor} (supported: opencode)`);
     const meta = initSpine(root, { name: flags.name, goal: flags.goal, preset, runner: flags.runner ? String(flags.runner) : undefined, executor });
-    ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})${preset ? C.dim(` · preset ${preset}${auto ? ' (auto-detected)' : ''}`) : ''}`);
+    // --verify-test "<cmd>": set the one required gate inline, no chalk.json editing needed.
+    if (flags['verify-test'] && flags['verify-test'] !== true) {
+      meta.protocol.verify.test = String(flags['verify-test']);
+      writeFileSync(join(root, '.chalk', 'chalk.json'), JSON.stringify(meta, null, 2));
+    }
+    ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})${preset ? C.dim(` · preset ${preset}${auto ? ' (auto-detected — override with --preset <stack> or --bare)' : ''}`) : ''}`);
     if (executor === 'opencode') console.log(C.dim('  opencode executor configured · set CHALK_OPENCODE_MODEL (e.g. anthropic/claude-opus-4-8); see docs/integrations/opencode.md'));
     if (flags['no-agents'] !== true) {
       for (const r of installAgentDocs(root)) console.log(C.dim(`  ${r.action} ${r.name} (agent contract)`));
     }
-    console.log(C.dim(preset ? '  next: `chalk task add "..."` (verify commands set from the preset)' : '  next: set verify commands in .chalk/chalk.json, then `chalk task add "..."`'));
+    // The vacuous-verify trap, surfaced at the source: an empty protocol.verify means every
+    // `chalk verify` prints GREEN while checking NOTHING. Warn loudly unless --bare acknowledged it.
+    const verifyEmpty = !Object.values(meta.protocol.verify).some((v) => normGate(v).cmd);
+    if (verifyEmpty && !bare) {
+      console.error(C.r('⚠ protocol.verify is EMPTY — every `chalk verify` will pass VACUOUSLY (green while checking nothing).'));
+      console.error(C.y('  no stack detected (looked for pubspec.yaml, go.mod, package.json, pyproject.toml/requirements.txt). Fix:'));
+      console.error(C.y('    set protocol.verify.test in .chalk/chalk.json (e.g. "npm test"),'));
+      console.error(C.y('    or re-run in a scaffolded project, or use `chalk init --verify-test "<cmd>"` next time.'));
+      console.error(C.dim('  (--bare acknowledges an intentionally empty verify and silences this warning)'));
+    }
+    console.log(`\n${C.b('next steps')}
+  1. chalk task add "<what to build>"                ${C.dim('queue the first task')}
+  2. chalk spec <id> --criterion "..." --test <path> ${C.dim('criteria + LOCK the test (P1/P2)')}
+  3. chalk start <id>  → write code                  ${C.dim('(or `chalk run` if an executor is configured)')}
+  4. chalk verify  →  chalk done <id>                ${C.dim('the gate decides, not you')}
+${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chalk demo')}`);
   },
 
   // (Re)install the agent contract into AGENTS.md / CLAUDE.md.
@@ -1046,6 +1072,11 @@ const cmds = {
     }
     for (const r of v.e2e || []) console.log(`  ${r.status === 'passed' ? C.g('pass') : C.r('fail')}  ${C.dim('e2e')} ${r.path} ${C.dim(`→ ${r.runDir}`)}`);
     console.log('\n' + (v.green ? C.g('● GREEN — done gate is open') : C.r('● RED — done gate is closed')));
+    // A green made of nothing is a trap, not a pass — label it every time it prints. An e2e spec
+    // that actually RAN is a real check, so its green is not vacuous even with an empty toolchain.
+    if (v.green && v.toolchain.every((r) => r.status === 'skipped') && !(v.e2e || []).length) {
+      console.log(C.y('  ⚠ VACUOUS — no verify commands configured; this green checked NOTHING. Set protocol.verify.test in .chalk/chalk.json (or `chalk init --preset <stack>` on a fresh project).'));
+    }
     process.exit(v.green ? 0 : 2);
   },
 
@@ -1402,8 +1433,8 @@ function printHelp() {
 
 ${C.b('setup')}
   chalk demo [--keep]                  ${C.dim('watch the whole gated loop on a throwaway project (~1 min, no LLM needed)')}
-  chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--runner fvm] [--executor opencode]
-                                       ${C.dim('installs the agent contract; --preset fills verify/regression (bare --preset auto-detects)')}
+  chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--verify-test "cmd"] [--bare] [--runner fvm] [--executor opencode]
+                                       ${C.dim('auto-detects the stack preset (verify/regression/break-it); --bare = intentionally empty verify')}
   chalk agents                         ${C.dim('(re)install the agent contract')}
   chalk status
   chalk next                           ${C.dim('the agent entrypoint: what to do next')}
