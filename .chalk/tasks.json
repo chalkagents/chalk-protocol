@@ -1694,10 +1694,16 @@
       "enhancement"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-07-06T12:28:49.623Z"
+      "stage": "pr-open",
+      "at": "2026-07-06T12:29:41.853Z"
     },
     "createdAt": "2026-07-06T10:05:49.989Z",
-    "reviews": []
+    "reviews": [],
+    "branch": "feat/46-reviewer-blocks-distinct-needs",
+    "pr": {
+      "number": 116,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/116",
+      "recorded": true
+    }
   }
 ]
