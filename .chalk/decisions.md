@@ -229,3 +229,53 @@
 
 - _when:_ 2026-07-02T10:44:01.470Z
 - _why:_ external-state ops task: the no-network reviewer rightly cannot verify registry/GitHub state. Operator evidence from this session: npm view chalk-protocol → 0.1.0 with tarball URL; npx chalk-protocol@0.1.0 demo on a clean dir → LOOP COMPLETE, 2 gates refused; gh release created at /releases/tag/v0.1.0 on pushed tag; issues #78-#86,#88,#89 exist; gh repo hasDiscussionsEnabled=true; archive compaction is in-repo at .chalk/archive/
+
+## Amended acceptance test for "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)"
+
+- _when:_ 2026-07-06T06:51:02.465Z
+- _why:_ release.yml dropped the npm-pkg-set tag-normalization step (chalk release --commit now tags the bumped commit); the workflow assertion flips from requiring the step to requiring its absence
+
+## Amended acceptance test for "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)"
+
+- _when:_ 2026-07-06T06:54:27.222Z
+- _why:_ sweep the stale header prose flagged by review: the comment still described the tag-normalization flow the assertion below now forbids
+
+## chalk release --commit commits the release artifacts then tags that commit; release.yml publishes the tagged tree as-is
+
+- _when:_ 2026-07-06T06:57:47.934Z
+- _why:_ tag-first left the tagged tree on the pre-bump version, forcing release.yml to normalize from the tag name; commit-then-tag makes the tag self-contained while keeping collision safety as an up-front probe
+
+## Amended acceptance test for "fix: CONFIG.md drift gate only validates top-level protocol keys"
+
+- _when:_ 2026-07-06T07:04:31.068Z
+- _why:_ the CONFIG.md drift gate recursed one nested level (issue #89): the inline top-level-only comparison is replaced by lib/config.mjs configDrift(), which also pins each section's { … } key list to the initSpine nested keys
+
+## Amended acceptance test for "fix: CONFIG.md drift gate only validates top-level protocol keys"
+
+- _when:_ 2026-07-06T07:07:54.053Z
+- _why:_ close the review's med finding: a default degrading to a scalar/empty object while the doc still lists a { … } key set now flags every documented key as stale instead of silently skipping the section
+
+## CONFIG.md drift gate goes one nested level deep via lib/config.mjs configDrift(); each doc section's { … } key list must equal initSpine's nested keys, both directions
+
+- _when:_ 2026-07-06T07:10:50.312Z
+- _why:_ the old gate compared Object.keys(meta.protocol) only, so nested keys could drift or appear undocumented; one level is the depth CONFIG.md's format can express — deeper levels (labelType map entries, {cmd,when} value shapes) are data, not schema. Forced by honesty: initSpine now writes the documented-but-uninitialized defaults (review.requiredAt, regression.locPerTest, github.ciPoll*)
+
+## Amended acceptance test for "fix: evidence-push failures are swallowed (catch{}) — blob-SHA 404s surface as broken PR images"
+
+- _when:_ 2026-07-06T07:19:16.809Z
+- _why:_ review blocked on a vacuous warning: execSync's message line 0 is only 'Command failed: git push', so the warning now extracts git's stderr cause and the locked test asserts the actual git error text appears
+
+## chalk evidence surfaces push failures: git's stderr cause in a ⚠ line, PR body edit skipped (no 404 blob URLs), honest update-feed title
+
+- _when:_ 2026-07-06T07:25:50.398Z
+- _why:_ the swallowed catch{} shipped broken image links with no warning at the source (harness review finding 7); the stage still advances by design — evidence is best-effort and re-runs must not duplicate the commit
+
+## modelSignature resolves the opencode adapters to their real identity: bin 'opencode' + CHALK_OPENCODE_MODEL (explicit --model wins); env injectable for tests
+
+- _when:_ 2026-07-06T07:31:31.112Z
+- _why:_ the command string hid both identity halves (bin was 'node', model lived in the env), so the doctor's same-model-reviewer warning was blind for opencode users and false-matched arbitrary node scripts
+
+## Retrofitted the 2026-07-06 sweep onto the pipeline: 4 hand-made main commits became PRs #93-#96, each landed by chalk merge (CI broke-check + review LGTM), not by hand
+
+- _when:_ 2026-07-06T07:48:22.696Z
+- _why:_ the manual loop had gated the WORK (verify+review) but skipped the LANDING gate; tasks were flipped back to in-progress and pointed at their PRs so the gate could rule — also surfaced that this repo's chalk.json predated protocol.github (now configured), which had silently disabled remote-CI broke-checks

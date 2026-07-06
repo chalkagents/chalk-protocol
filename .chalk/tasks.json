@@ -127,13 +127,410 @@
   {
     "id": "task-021f4985",
     "title": "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk release --commit writes CHANGELOG.md + the package.json bump, creates a git commit containing exactly those release artifacts (conventional message chore(release): vX.Y.Z), then tags vX.Y.Z on that commit — git show vX.Y.Z:package.json reports the bumped version"
+      },
+      {
+        "text": "tag-collision safety is preserved under --commit: when tag vX.Y.Z already exists the command dies BEFORE writing CHANGELOG, bumping package.json, committing, or marking any task released"
+      },
+      {
+        "text": "without --commit the existing tag-first behavior is unchanged (all existing release tests stay green)"
+      },
+      {
+        "text": "release.yml drops the 'npm pkg set version' tag-normalization step (the tagged tree is published as-is) and its header comment reflects the commit-then-tag flow"
+      },
+      {
+        "text": "chalk help documents the --commit flag on the release line"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/package.test.mjs",
+        "sha256": "e612e65441724f18d3f457079a3a0766148ffe583dc7254e4f9412ca05a43554"
+      },
+      {
+        "path": "test/release-commit.test.mjs",
+        "sha256": "526ff248659bb61969c0568ac8f91db947243251d71c540311440f6deff162e3"
+      }
+    ],
     "heldOut": [],
     "milestone": "v0.2",
     "after": [],
     "createdAt": "2026-07-02T06:34:07.475Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-06T06:53:57.277Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "test/package.test.mjs was legitimately amended (amend-spec logged in .chalk/decisions.md) and its assertion now requires the ABSENCE of 'npm pkg set version', but the file's header comment (lines 6–7) still says the workflow 'normalizes the version from the tag (chalk tags before the bump lands)' — stale prose contradicting the flipped assertion; should have been cleaned in the same amendment."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Partial-failure edge under --commit: the collision is probed up front (gitTry rev-parse), but if `git tag` fails AFTER the release commit for a non-collision reason (hook, perms, or a tag created in the probe→tag window), the die() leaves an untagged chore(release) commit at HEAD with the bumped package.json; a re-run then computes the NEXT version from the already-bumped version (version skip). Criterion 2 (pre-existing tag dies before writing) is still satisfied and tested, but this recovery path is untested and slightly worse than tag-first."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "test/release-commit.test.mjs — the locked contract for this task — does not appear in the git diff --stat (8 files, none of them this file), implying it is untracked-new in the working tree. It exists and its sha256 is pinned in .chalk/tasks.json, but make sure it is committed with the change; otherwise CI (node --test in release.yml) and any fresh checkout would run without the very tests that pin --commit behavior."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "--commit --no-tag skips the up-front collision probe entirely (wantTag=false), committing the bump with no tag check — consistent with --no-tag semantics and the documented escape hatch, but the combination is untested; noting for completeness, not a blocker."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T06:54:27.221Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-06T06:56:41.377Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "test/release-commit.test.mjs — the locked contract pinning every --commit behavior — does not appear in git diff --stat (8 changed files, none of them this one), meaning it is an untracked NEW file in the working tree. Its sha256 is pinned in .chalk/tasks.json and it exists on disk, but if it is not committed with the change, CI (node --test in release.yml) and any fresh checkout run WITHOUT the tests that guard criteria 1–3 and 5 — a vacuous green. Ensure `git add test/release-commit.test.mjs` lands in the same commit before `chalk done`."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Partial-failure path under --commit: the collision is probed up front (gitTry rev-parse refs/tags/vX.Y.Z), but if `git tag` fails AFTER the release commit for a non-collision reason (hook, perms, probe→tag race), die() leaves an untagged chore(release) commit at HEAD with the bumped package.json; a re-run then bumps FROM the already-bumped version (version skip) and would produce a second release commit. Criterion 2 (pre-existing tag) is satisfied and tested; this adjacent recovery path is untested and slightly worse than tag-first."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "--commit --no-tag skips the up-front collision probe entirely (wantTag=false), committing the bump with no tag check; the combination is consistent with --no-tag semantics but exercised by no test."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 4's second clause ('header comment reflects the commit-then-tag flow') is prose-only: the locked test asserts the absence of `npm pkg set version` but nothing about the comment. Verified manually that release.yml lines 5–7 now describe commit-then-tag; acceptable since comments are not machine-testable behavior."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "test/package.test.mjs (locked) was modified, but via two sanctioned amend-spec entries logged in .chalk/decisions.md (flip the workflow assertion to forbid the normalization step; sweep the stale header prose the prior review flagged), the sha256 is re-pinned in tasks.json, and this re-review covers the post-amendment state — the legitimate path was followed."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-06T06:46:13.619Z",
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-07-06T07:46:35.875Z"
+    },
+    "branch": "fix/release-commit-tags-bumped-commit",
+    "branchType": "fix",
+    "pr": {
+      "number": 93,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/93",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T07:46:35.874Z"
+  },
+  {
+    "id": "task-11b3c047",
+    "title": "fix: CONFIG.md drift gate only validates top-level protocol keys",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Recurse into nested protocol.* keys (dotted paths) when comparing documented vs initialized config"
+      },
+      {
+        "text": "Add a test asserting a documented-but-removed nested key (and an undocumented new nested key) fails the gate"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/docs.test.mjs",
+        "sha256": "a4874a65580e75221f623b76c576aacd562bdd18dfd3b2ad663ce4e5ce55191e"
+      },
+      {
+        "path": "test/config-drift.test.mjs",
+        "sha256": "60e9617ee7edf3c94188f759e54717e42f1a449d54cb3945bf9d47acdc1ff58e"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 89,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/89",
+      "body": "test/docs.test.mjs compares docs/CONFIG.md against `Object.keys(meta.protocol)` — only top-level keys. Nested keys (verify.test, review.requiredAt, github.mergeMethod, handoff.maxAttempts, etc.) can drift from the docs or be added to initSpine without the gate noticing, so the intended 'every protocol.* key is documented' guarantee holds only at the top level.\n\n- [ ] Recurse into nested protocol.* keys (dotted paths) when comparing documented vs initialized config\n- [ ] Add a test asserting a documented-but-removed nested key (and an undocumented new nested key) fails the gate\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "fix",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-07-06T07:47:03.937Z"
+    },
+    "createdAt": "2026-07-06T06:46:13.554Z",
+    "reviews": [
+      {
+        "at": "2026-07-06T07:06:07.369Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "configDrift checks exactly ONE nested level, not true recursion: level-3 keys (e.g. protocol.github.labelType.bug) are explicitly out of scope. Criterion 1 says 'recurse into nested protocol.* keys'. Mitigated: every schema-bearing key in initSpine is at depth ≤2 (deeper levels are data maps / gate value shapes), the scope choice is documented in the code comment, logged via the sanctioned amend-spec decision, and locked by a dedicated test ('recursion stops one level deep'), so the shipped behavior matches the locked contract."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "False-negative edge: `if (!isPlainObj(val) || !Object.keys(val).length) continue;` means if a protocol key's default becomes an EMPTY object (all nested keys removed) or degrades to a scalar/array while the doc still lists a `{ … }` key list, the documented-but-removed nested keys are NOT flagged. Criterion 2's specific single-key-removal scenario is covered, but the all-keys-removed case silently passes and no test pins it."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The `{ … }` key list is taken from the FIRST inline-code brace group in a section (`/`\\{([^}`]*)\\}/`). If future prose adds an illustrative `{ … }` snippet before the real key list (as `verify` already does after its list), the gate compares against the wrong group. Duplicate `### `key`` headings also silently overwrite each other in the sections Map."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "lib/store.mjs default-config changes (review.required→requiredAt:[], regression.locPerTest:2000, github.ciPollIntervalMs/ciPollAttempts) are scope creep for a docs-drift task, but they are forced by the new gate (docs already documented those keys), behavior-neutral (reviewCadences, heldOutFloor, and brokecheck all carry identical fallbacks), and covered — reverting store.mjs alone now fails the real-config drift tests."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Test adequacy is genuinely strong: test/config-drift.test.mjs asserts both required negative cases (undocumented NEW nested key, documented-but-REMOVED nested key) with exact problem counts and dotted-path messages, plus bidirectional top-level drift, missing-key-list failure, and a non-vacuity guard (verify must still carry ≥4 nested keys). Reverting to the old top-level-only gate would fail these tests, so the change is non-vacuously covered. Locked test/docs.test.mjs was modified, but via the sanctioned amend-spec path (decision logged, sha256 re-pinned in tasks.json)."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T07:07:54.053Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-06T07:09:24.582Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "Criterion 1 says 'recurse' but configDrift() checks exactly ONE nested level: depth-3 keys (e.g. protocol.github.labelType.bug) are explicitly out of scope. Mitigated: CONFIG.md's format can only express one level of schema (a `{ … }` key list per section), every schema-bearing initSpine key is at depth ≤2 (deeper levels are data maps / value shapes), the scope is documented in the code comment, logged via the sanctioned amend-spec decisions, and pinned by a dedicated locked test ('recursion stops one level deep'). The shipped behavior satisfies the issue's intent (nested keys can no longer drift silently) and both required negative cases emit dotted-path problems (protocol.verify.build, protocol.handoff.maxAttempts)."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2 is directly and non-vacuously covered: test/config-drift.test.mjs asserts the undocumented-NEW-nested-key and documented-but-REMOVED-nested-key failures with exact problem counts and dotted-path regexes, plus the degraded-to-scalar/empty-object edge (both '' and {}), bidirectional top-level drift, the missing-`{ … }`-list failure, the one-level scope, and a real-config non-vacuity guard (verify must carry ≥4 nested keys). Reverting configDrift or the store.mjs default additions alone fails these tests. Note: test/config-drift.test.mjs does not appear in the diff stat — it is presumably a new untracked file; confirm it is committed alongside the change, or the locked pin in tasks.json points at a file that never ships."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The `{ … }` key list is the FIRST `` `{ `` group in a section (/`\\{([^}`]*)\\}/). If future prose inserts an illustrative brace snippet before the real key list (the review section already carries `{\"verdict\":…}` later in its body), the gate compares the wrong group — this fails LOUD (false positive), not silent, so drift cannot slip through, but it is a maintenance trap. Duplicate `### `key`` headings also silently overwrite each other in the sections Map."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "lib/store.mjs default changes (review.required:false → requiredAt:[], regression.locPerTest:2000, github.ciPollIntervalMs:5000/ciPollAttempts:24) are scope creep for a docs-drift task, but they are forced by the now-honest gate (docs documented those keys), behavior-neutral for new inits (reviewCadences honors legacy required, heldOutFloor defaults to 2000, brokecheck falls back to 5000/24), and cannot touch existing configs (initSpine only runs at init). The locked test/docs.test.mjs was modified, but via the sanctioned amend-spec path — two decisions logged, sha256 re-pinned, prior review correctly marked stale triggering this re-review."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-06T07:09:53.878Z",
+    "branch": "fix/89-config-drift-nested-keys",
+    "pr": {
+      "number": 94,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/94",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T07:47:03.936Z"
+  },
+  {
+    "id": "task-459bc189",
+    "title": "fix: evidence-push failures are swallowed (catch{}) — blob-SHA 404s surface as broken PR images",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "a failed git push in chalk evidence is no longer swallowed: a visible ⚠ warning line names the push failure and its cause"
+      },
+      {
+        "text": "when the push fails, the PR body is NOT edited with blob-SHA image URLs (no 404 images land in the PR); the final status line says the screenshots were captured but not attached"
+      },
+      {
+        "text": "when the push succeeds, behavior is unchanged: the evidence markdown with commit-SHA blob URLs is appended to the PR body"
+      },
+      {
+        "text": "an e2e test drives the REAL push path via the bare-remote + stub-gh fixture pattern (per repoWithBare in test/gate-hardening.test.mjs): one case with a working remote asserting the body edit, one with a broken remote asserting the ⚠ line and the skipped body edit"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/evidence-push.test.mjs",
+        "sha256": "ea372902aa3ffa7008d446d2e7bec481d94655f76147164a5974db196a00edda"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 88,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/88",
+      "body": "**From the harness review (finding 7, the last unswept silent failure).** `chalk evidence` attaches screenshots to the PR via blob-SHA URLs; the push path swallows errors (`catch {}`), so a failed push yields 404 image links in the PR body with no warning at the source.\n\n**Why it wasn't fixed in the gate-hardening PR (#70):** pinning it honestly needs an e2e/gh worktree fixture (a bare-remote + stub-gh scaffold that exercises the real push path) — heavier than the one-line warn, and the wave's break-it rule forbids shipping the warn untested.\n\n**Sketch:** reuse the `repoWithBare()` + stub-gh pattern from test/gate-hardening.test.mjs to drive `chalk evidence` against a push that fails, assert a ⚠ line and that the PR body skips (not 404s) the missing asset."
+    },
+    "branchType": "fix",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-07-06T07:47:28.787Z"
+    },
+    "createdAt": "2026-07-06T06:46:13.557Z",
+    "reviews": [
+      {
+        "at": "2026-07-06T07:17:32.251Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "Criterion 1 requires the ⚠ line to name the push failure AND its cause. The code prints `String(e.message || e).split('\\n')[0]`, but for Node's execSync (lib/git.mjs git()) the error message is `Command failed: git push\\n<stderr>` — the actual cause (git's stderr, e.g. 'does not appear to be a git repository', auth/network errors) is on subsequent lines and is discarded. The warning therefore only ever says 'Command failed: git push', which names the failure but not its cause. Use the later lines of e.message (or e.stderr) instead of line 0."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The locked test only asserts /⚠.*push failed/i for the failure case; it never asserts that the underlying cause (git stderr text) appears in the warning, so the cause-dropping bug above passes GREEN. A vacuous match on the fixed prefix cannot distinguish 'names the cause' from 'names only the command'."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "On push failure the task still advances to stage 'tested' and t.evidence is recorded, and the emitted update says 'Evidence attached (N screenshot(s))' even though nothing was attached to the PR. The stage advance is locked by the test (re-run idempotency), but a later remote fix leaves the screenshots permanently unattached ('evidence (already done)'), and the update-feed title is misleading."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Happy path is structurally unchanged (same push→rev-parse→pr view→pr edit sequence gated behind pushed=true) and covered by the working-remote e2e case; no regression identified there. Note the locked test file itself does not appear in the diff/stat — it exists in the working tree but appears untracked; ensure it is committed with the change so the locked contract actually ships."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T07:20:32.323Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The prior block is resolved: runGit uses execSync with stdio 'pipe' + utf8, so e.stderr carries git's stderr; the cause extractor skips the 'Command failed: git push' line and the locked test now asserts the real git error text (/does not appear to be a git repository|Could not read from remote/), so the warning cannot regress to a vacuous prefix. Both criteria-4 cases drive the REAL push path (bare remote happy path asserting the pr-edit body with commit-SHA blob URLs; broken remote asserting the ⚠ cause line, the /NOT attached/ status line, the skipped pr edit via gh.log, and the local evidence commit). Reverting the fix would fail the failure-case test, so the coverage is non-vacuous."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "test/evidence-push.test.mjs exists in the working tree and its sha256 is locked in .chalk/tasks.json, but it does not appear in the git diff/stat — it looks untracked. Ensure the locked test is committed alongside bin/chalk.mjs before merge, or the shipped change lands without its contract test in history."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "On push failure the stage still advances to 'tested' and t.evidence is recorded, so a later remote fix leaves screenshots permanently unattached ('evidence (already done)'). This is now an explicit, locked design choice (the test asserts stage==='tested' for re-run idempotency) and the update-feed title honestly says 'push failed, not attached', so it is accepted — but a future 'evidence --retry-attach' path may be worth a follow-up task."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-06T07:12:50.124Z",
+    "branch": "fix/88-evidence-push-honesty",
+    "pr": {
+      "number": 95,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/95",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T07:47:28.787Z"
+  },
+  {
+    "id": "task-9bfdd13a",
+    "title": "fix: sameModelFamily can't see env-var models (CHALK_OPENCODE_MODEL) — cross-model warning inert for opencode",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "sameModelFamily/modelSignature see the model of opencode-adapter commands whose model comes from the CHALK_OPENCODE_MODEL env var, so the doctor's same-model-reviewer warning can fire for opencode users"
+      },
+      {
+        "text": "the fallback stays conservative: no env var and no --model flag means no model identity (no false alarms), and a non-opencode command is unaffected"
+      },
+      {
+        "text": "a test covers: two opencode-adapter commands under the same CHALK_OPENCODE_MODEL → same family (warning fires); differing explicit --model still wins over the env var"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/crossmodel-env.test.mjs",
+        "sha256": "508f1c3685d4cfffec978cf509a88825d3a4c94bae25ca05c6329b30e7fd17c9"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 85,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/85",
+      "body": "**Known nit from the opencode integration (#65 review).** `modelSignature()` parses only the command string (binary + --model flag). opencode users set the model via `CHALK_OPENCODE_MODEL`, so the doctor's same-model-reviewer warning (self-preference bias) can never fire for them.\n\n**Sketch:** teach `modelSignature` an env fallback per adapter (e.g. read `CHALK_OPENCODE_MODEL` when the command resolves to the opencode adapters), or let adapters declare their model via a comment/flag; keep it conservative (no false alarms)."
+    },
+    "branchType": "fix",
+    "labels": [
+      "good first issue"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-07-06T07:47:43.582Z"
+    },
+    "createdAt": "2026-07-06T06:46:13.558Z",
+    "reviews": [
+      {
+        "at": "2026-07-06T07:30:14.902Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Adapter detection requires the script path at toks[1] (`node <path>`); a command like `node --experimental-x …/opencode-exec.mjs` or a quoted path with spaces escapes detection. Consistent with the documented adapter invocation and pre-existing tokenizer limits, but worth knowing."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The regex `/opencode-(exec|json)\\.mjs$/` is only end-anchored, so a user script named e.g. `my-opencode-exec.mjs` would be misclassified as the bundled adapter and inherit the env-var model. Unlikely in practice; would only produce a warning, not a gate failure."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Two opencode adapters with NO env var and no --model still compare equal (bin 'opencode', model '' on both) and flag as same family. This mirrors the existing `claude -p` vs `claude -p` semantics (same binary + absent model is flagged) and is arguably correct — both would use opencode's default model — but no test pins sameModelFamily(EXEC, JSON_, {}) either way, so the intended semantics there are undocumented."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Coverage is genuinely adequate: reverting the lib/config.mjs change fails the locked unit tests (env-var resolution, --model precedence, non-opencode conservatism) AND the e2e doctor test proves the warning fires through the real process.env path via lib/doctor.mjs line 68. The env param is optional with a process.env default, so existing callers (doctor) and the prior locked crossmodel.test.mjs are unaffected — no regression found."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-06T07:27:16.546Z",
+    "branch": "fix/85-crossmodel-env-model",
+    "pr": {
+      "number": 96,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/96",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T07:47:43.581Z"
   }
 ]

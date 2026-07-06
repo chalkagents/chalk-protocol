@@ -27,11 +27,11 @@
       "required": false,
       "tests": [],
       "lastAudit": {
-        "at": "2026-06-29T12:09:47.202Z",
+        "at": "2026-07-06T07:50:13.816Z",
         "green": true,
         "size": {
-          "loc": 7098,
-          "files": 55
+          "loc": 9919,
+          "files": 87
         },
         "count": 0
       }
@@ -44,8 +44,21 @@
     },
     "retro": {
       "command": "claude -p --agent chalk-retro --max-turns 20"
+    },
+    "github": {
+      "command": "gh",
+      "base": "main",
+      "repo": "",
+      "mergeMethod": "squash",
+      "labelType": {
+        "bug": "fix",
+        "enhancement": "feat",
+        "documentation": "docs"
+      },
+      "ciPollIntervalMs": 5000,
+      "ciPollAttempts": 24
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",
-  "updatedAt": "2026-06-29T12:09:47.203Z"
+  "updatedAt": "2026-07-06T07:50:13.817Z"
 }
