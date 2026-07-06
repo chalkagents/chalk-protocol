@@ -235,3 +235,4 @@
 {"id":"evt-e9e05301","at":"2026-07-06T12:19:25.287Z","type":"work-item-submitted","title":"PR #115 opened","description":"","phase":"discovery","actorRole":"agent","taskId":"task-8189ac26"}
 {"id":"evt-a2d55f38","at":"2026-07-06T12:20:42.513Z","type":"progress-update","title":"Review (pass): fix: spec-lock gate never checks locked tests are tracked in git — a pinned test can ship untracked and CI runs a vacuous green","description":"","phase":"discovery","actorRole":"agent","taskId":"task-8189ac26"}
 {"id":"evt-2d89c186","at":"2026-07-06T12:21:06.250Z","type":"work-item-accepted","title":"Merged + cleaned: PR #115","description":"","phase":"discovery","actorRole":"agent","taskId":"task-8189ac26"}
+{"id":"evt-e6c682e2","at":"2026-07-06T12:28:49.632Z","type":"work-item-submitted","title":"Committed: feat: give reviewer-induced auto-blocks a distinct `--needs` categ","description":"","phase":"discovery","actorRole":"agent","taskId":"task-11ea6ea9"}

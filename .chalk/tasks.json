@@ -1676,7 +1676,12 @@
         "text": "Add a test asserting a reviewer block sets the review-specific `needs` while a genuine stage failure stays `human-input`."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/review-block-needs.test.mjs",
+        "sha256": "a49a2f3b08b1e8a1cd65899e47ed1e57ba169f7eb2cc1b0c5bb34c8058e38965"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -1689,8 +1694,8 @@
       "enhancement"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-06T10:05:49.989Z"
+      "stage": "committed",
+      "at": "2026-07-06T12:28:49.623Z"
     },
     "createdAt": "2026-07-06T10:05:49.989Z",
     "reviews": []
