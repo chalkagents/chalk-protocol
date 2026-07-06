@@ -36,6 +36,7 @@ import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
 import { runArchive } from '../lib/archive.mjs';
 import { computeStats } from '../lib/stats.mjs';
+import { REVIEW_OVERRIDE_TITLE, AUDIT_TITLE } from '../lib/markers.mjs';
 import { portalModel } from '../lib/portal.mjs';
 import { basename, dirname, relative } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
@@ -895,7 +896,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   stats({ flags }) {
     const s = Store.open();
     const since = typeof flags.since === 'string' ? flags.since : undefined;
-    if (flags.since && !since) die('--since needs a date, e.g. --since 2026-01-01');
+    if (flags.since && (!since || Number.isNaN(Date.parse(since)))) die(`--since needs a date, e.g. --since 2026-01-01${since ? ` (got "${since}")` : ''}`);
     const st = computeStats(s, { since });
     if (flags.json === true) { console.log(JSON.stringify(st, null, 2)); return; }
     if (!st.tasks.total) { console.log(C.dim(`  no gate activity yet${since ? ' in this window' : ''} — nothing in the spine to report. Run the loop first (chalk next).`)); return; }
@@ -910,7 +911,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
     console.log(C.b('\n  churn'));
     console.log(`  attempts   ${st.churn.attempts} ${C.dim('executor run(s)')} · verify-RED blocks ${st.churn.verifyRedBlocks} · handoffs ${st.churn.handoffs}`);
-    for (const w of st.churn.worst) console.log(C.dim(`    ${w.id.slice(0, 12).padEnd(13)} ${w.attempts} attempts  ${w.title.slice(0, 60)}`));
+    for (const w of st.churn.worst) console.log(C.dim(`    ${w.id.slice(0, 12).padEnd(13)} ${w.attempts} attempt(s) · ${w.handoffs} handoff(s)  ${w.title.slice(0, 60)}`));
     console.log(C.b('\n  landing') + C.dim(` · ${st.landing.done} done task(s) — gate vs bypass`));
     console.log(`  gated      ${pct(st.landing.gated, st.landing.done)} ${C.dim('passed adversarial review')}`);
     if (st.landing.overridden) console.log(`  overridden ${pct(st.landing.overridden, st.landing.done)} ${C.y('review gate overridden (--force-review)')}`);
@@ -1351,7 +1352,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (!passed) {
         if (!flags['force-review']) die(`GATE P5: needs a passing adversarial review — run \`chalk review ${t.id.slice(0, 12)}\`${last ? ` (last verdict: ${last.verdict})` : ''}.\n    To override (logged): chalk done ${t.id.slice(0, 12)} --force-review --why "..."`);
         if (!flags.why) die('--force-review requires --why "<reason>" (it is logged as a decision).');
-        s.appendDecision({ title: `Overrode review gate for "${t.title}"`, why: String(flags.why) });
+        s.appendDecision({ title: REVIEW_OVERRIDE_TITLE(t), why: String(flags.why), taskId: t.id });
         console.log(C.y('  ! review gate overridden (decision logged).'));
       }
     }
@@ -1507,7 +1508,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const reg = m.protocol.regression = m.protocol.regression || {};
     reg.lastAudit = { at: now(), green: r.green, size: r.size, count: (reg.tests || []).length };
     s.saveMeta(m);
-    s.emitUpdate({ type: 'progress-update', title: `Audit ${r.green ? 'green' : 'red'} (held-out regression)` });
+    s.emitUpdate({ type: 'progress-update', title: AUDIT_TITLE(r.green) });
     console.log('\n' + (r.green ? C.g('● AUDIT GREEN') : C.r('● AUDIT RED — phase gate closed')));
     process.exit(r.green ? 0 : 2);
   },
