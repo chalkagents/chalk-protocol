@@ -4,7 +4,8 @@
 //   - the registry metadata a stranger sees (repository/bugs/homepage/keywords) and the
 //     provenance-by-default publishConfig;
 //   - the release workflow publishes via OIDC trusted publishing on v* tags, runs the suite
-//     first, and normalizes the version from the tag (chalk tags before the bump lands).
+//     first, and publishes the tagged tree as-is (`chalk release --commit` tags the bumped commit,
+//     so there is no tag-normalization step).
 // Locked contract for task-76eda7a.
 import { test } from 'node:test';
 import assert from 'node:assert';
@@ -53,13 +54,13 @@ test('publishConfig — public access + provenance by default', () => {
   assert.equal(pkg.publishConfig.provenance, true);
 });
 
-test('release workflow — OIDC trusted publishing on v* tags, suite-gated, tag-normalized version', () => {
+test('release workflow — OIDC trusted publishing on v* tags, suite-gated, publishes the tagged tree as-is', () => {
   const wf = readFileSync(join(ROOT, '.github', 'workflows', 'release.yml'), 'utf8');
   assert.match(wf, /tags:\s*\['v\*'\]/, 'triggers on version tags');
   assert.match(wf, /id-token:\s*write/, 'OIDC permission for trusted publishing (no NPM_TOKEN secret)');
   assert.doesNotMatch(wf, /secrets\.|NODE_AUTH_TOKEN/, 'no long-lived token wired — trusted publishing only');
   assert.match(wf, /node --test/, 'the suite gates the publish');
-  assert.match(wf, /npm pkg set version="\$\{GITHUB_REF_NAME#v\}"/, 'version normalized from the tag (chalk tags before the bump lands)');
+  assert.doesNotMatch(wf, /npm pkg set version/, 'no tag-normalization step — `chalk release --commit` tags the bumped commit, so the tagged tree is published as-is');
   assert.match(wf, /npm publish --provenance --access public/);
   const testIdx = wf.indexOf('node --test');
   const pubIdx = wf.indexOf('npm publish');

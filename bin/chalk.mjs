@@ -490,12 +490,20 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // Tag FIRST — a colliding version is the most likely failure, and it must not leave work marked
     // "released" on a version with no tag (the next release, seeing them marked, would never re-tag). A
     // non-git project legitimately can't tag (a CHANGELOG/pkg-only release); in a git repo a tag failure is
-    // fatal BEFORE anything is written or marked.
+    // fatal BEFORE anything is written or marked. With --commit the order flips — the release artifacts
+    // are committed and the tag lands on that commit, so the tagged tree carries the bumped version —
+    // and the collision is probed up front instead (same invariant: fail before anything is written).
     let tagged = false;
     const isRepo = gitTry(s.root, 'rev-parse --is-inside-work-tree') === 'true';
-    if (flags['no-tag'] !== true && isRepo) {
+    const withCommit = flags.commit === true;
+    if (withCommit && !isRepo) die('release: --commit needs a git repo — drop --commit or run inside one. Nothing was released.');
+    const wantTag = flags['no-tag'] !== true && isRepo;
+    if (wantTag && !withCommit) {
       try { runGit(s.root, `tag -a v${version} -m ${shq('release v' + version)}`); tagged = true; }
       catch (e) { die(`release: git tag v${version} failed — ${String(e.message || e).split('\n')[0]}.\n    Likely the tag already exists; bump past it (--version/--major/…) or re-run with --no-tag. Nothing was released.`); }
+    }
+    if (wantTag && withCommit && gitTry(s.root, `rev-parse --verify --quiet refs/tags/v${version}`) !== '') {
+      die(`release: tag v${version} already exists.\n    Bump past it (--version/--major/…) or re-run with --no-tag. Nothing was released.`);
     }
 
     // CHANGELOG.md — keep the title line, prepend the new section above older ones.
@@ -507,6 +515,18 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     writeFileSync(clPath, `${title}\n${notes}\n${older}`.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
 
     if (pkg) { pkg.version = version; writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n'); }
+
+    // --commit: commit exactly the release artifacts (pathspec commit — staged unrelated work stays
+    // staged), then tag that commit so the tagged tree carries the bumped version.
+    if (withCommit) {
+      const artifacts = ['CHANGELOG.md', ...(pkg ? ['package.json'] : [])];
+      try { gitAdd(s.root, artifacts); runGit(s.root, `commit -m ${shq(`chore(release): v${version}`)} -- ${artifacts.map(shq).join(' ')}`); }
+      catch (e) { die(`release: git commit failed — ${String(e.message || e).split('\n')[0]}. Nothing was marked released.`); }
+      if (wantTag) {
+        try { runGit(s.root, `tag -a v${version} -m ${shq('release v' + version)}`); tagged = true; }
+        catch (e) { die(`release: git tag v${version} failed after the release commit — ${String(e.message || e).split('\n')[0]}. Nothing was marked released.`); }
+      }
+    }
 
     for (const t of tasks) { t.released = version; s.upsertTask(t); }
     s.appendDecision({ title: `Released v${version}`, why: `${tasks.length} change(s)${tagged ? `; tagged v${version}` : ''}` });
@@ -1504,7 +1524,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
   chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
-  chalk release [--version x|--major|--minor|--patch] [--no-tag] [--dry-run]  ${C.dim('ship merged work: CHANGELOG + version + tag')}
+  chalk release [--version x|--major|--minor|--patch] [--commit] [--no-tag] [--dry-run]  ${C.dim('ship merged work: CHANGELOG + version + tag (--commit: commit the bump, tag that commit)')}
   chalk discover "<brief>" [--file <path>] [--dry-run]  ${C.dim('intake: brief → scoped tasks with criteria')}
   chalk feedback [--input "..."] [--dry-run] [--min-severity low|med|high]  ${C.dim('signals → improvement issues')}
   chalk portal [--out <dir>] [--slug <slug>] [--dry-run]  ${C.dim('publish spine → client portal data')}
