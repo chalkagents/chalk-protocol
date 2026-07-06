@@ -13,6 +13,8 @@ check, never the agent's word.**
 > **BYO agent.** The agent is a pluggable executor (`claude -p`, `opencode run`, any stdin/stdout
 > command); Chalk is the referee. **The agent never self-declares success — the gate decides.**
 
+**Website:** [protocol.chalkagents.com](https://protocol.chalkagents.com) — the protocol in one page.
+
 ---
 
 ## See it refuse in 60 seconds
