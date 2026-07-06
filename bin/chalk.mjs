@@ -24,7 +24,7 @@ import { runDoctor } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
-import { missingRequiredTest } from '../lib/testgate.mjs';
+import { missingRequiredTest, untrackedLockedTests } from '../lib/testgate.mjs';
 import { runBreakit } from '../lib/breakit.mjs';
 import { withJsonOutput, unwrapAgentOutput, runExecutorCaptured } from '../lib/cost.mjs';
 import { runMutation } from '../lib/mutation.mjs';
@@ -395,6 +395,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
     const wd = workdir(s, t);
     if (!t.branch) die('no branch — run `chalk branch <id>` first.');
+    // GATE P6 (tracking, #107) — refuse to open a PR whose pinned test isn't in git: the branch
+    // would push without the contract test and CI runs a vacuous green.
+    const untracked = untrackedLockedTests(s, t);
+    if (untracked.length) {
+      die(`locked test(s) not tracked in git — the PR would ship without them:\n` +
+        untracked.map((p) => `      ✗ ${p}`).join('\n') +
+        `\n    fix: git add ${untracked.join(' ')}   (then re-run \`chalk commit ${t.id.slice(0, 12)}\`)`);
+    }
     try { runGit(wd, `push -u origin ${t.branch}`); } catch (e) { die(`git push failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
     const type = t.branchType || 'feat';
     const title = `${type}: ${(t.title || '').replace(/^\s*(feat|fix|chore|docs|refactor|test|perf|style|build|ci)(\([^)]*\))?:\s*/i, '').replace(/^./, (c) => c.toLowerCase())}`;
@@ -1343,6 +1351,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (!v.integrityGreen) reasons.push('locked tests were modified (P6) — use `chalk amend-spec`');
       if (!v.e2eGreen) reasons.push('a browser-spec (e2e) check failed');
       die(`GATE P4+P6: cannot mark done — ${reasons.join('; ')}.`);
+    }
+    // GATE P6 (tracking) — a pinned test that isn't in git ships a vacuous green to CI (#107): the
+    // sha256 verifies against the working tree, but a fresh checkout runs without the contract test.
+    const untracked = untrackedLockedTests(s, t);
+    if (untracked.length) {
+      die(`GATE P6: locked test(s) exist on disk but are NOT tracked in git — CI would run a vacuous green:\n` +
+        untracked.map((p) => `      ✗ ${p}`).join('\n') +
+        `\n    fix: git add ${untracked.join(' ')}   (then commit / re-run \`chalk commit ${t.id.slice(0, 12)}\`)`);
     }
     // GATE P5 — if review is required for this task (per the configured cadence), the latest
     // review must pass (override is logged).
