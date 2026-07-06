@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783338362536,
+  "updatedAt": 1783339050142,
   "order": 0,
   "cards": [
     {
@@ -189,12 +189,17 @@
     {
       "id": "task-10382dc9",
       "title": "chore: dogfood — make chalk's own loop (issue pull → autopilot → retro) the default way chalk contributes to chalk",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1783329435842,
-      "updatedAt": 1783338362536,
+      "updatedAt": 1783339050142,
       "order": 10,
       "description": "- A documented sweep runbook in the repo (CONTRIBUTING.md or RUNNING-AUTONOMOUSLY.md): issue pull → spec → autopilot → retro, runnable on this repo as-is with the committed `.chalk/chalk.json` agent config.\n- `chalk issue pull` → pipeline → merge demonstrably works end-to-end on this repo: at least one real issue from the open backlog lands through it, and the PR/task cross-references the issue.\n- Retro runs at the end of a sweep and files friction it finds (already wired in autopilot — criterion is that a chalk-on-chalk sweep exercises it and the filed issues reference the dogfood run).\n- The dogfooding claim is auditable: some command or doc (e.g. `chalk stats`, once #78 lands) can show what fraction of merged PRs went through the gate vs bypassed it.",
       "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-10382dc9",
+          "status": "passed",
+          "at": 1783339050142
+        },
         "prNumber": 112,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/112",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/101"
