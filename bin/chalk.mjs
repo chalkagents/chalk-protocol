@@ -35,6 +35,8 @@ import { runDiscovery } from '../lib/discovery.mjs';
 import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
 import { runArchive } from '../lib/archive.mjs';
+import { computeStats } from '../lib/stats.mjs';
+import { REVIEW_OVERRIDE_TITLE, AUDIT_TITLE } from '../lib/markers.mjs';
 import { portalModel } from '../lib/portal.mjs';
 import { basename, dirname, relative } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
@@ -888,6 +890,36 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (usd) console.log(`  ${C.b('total cost')} $${usd.toFixed(2)} ${C.dim('(API-metered calls only)')}`);
   },
 
+  // Gate-efficacy report (#78): what the gates actually caught — review blocks-then-passes,
+  // findings by severity/area, churn (attempts/handoffs/verify-RED), and the gate-vs-bypass
+  // fraction over done tasks. Pure read over the live spine + .chalk/archive/.
+  stats({ flags }) {
+    const s = Store.open();
+    const since = typeof flags.since === 'string' ? flags.since : undefined;
+    if (flags.since && (!since || Number.isNaN(Date.parse(since)))) die(`--since needs a date, e.g. --since 2026-01-01${since ? ` (got "${since}")` : ''}`);
+    const st = computeStats(s, { since });
+    if (flags.json === true) { console.log(JSON.stringify(st, null, 2)); return; }
+    if (!st.tasks.total) { console.log(C.dim(`  no gate activity yet${since ? ' in this window' : ''} — nothing in the spine to report. Run the loop first (chalk next).`)); return; }
+    const pct = (n, d) => (d ? `${n}/${d} (${Math.round((100 * n) / d)}%)` : '0/0');
+    console.log(C.b('chalk stats') + C.dim(` · ${st.tasks.total} task(s)${since ? ` since ${since}` : ''} · live spine + archive`));
+    console.log(C.b('\n  review gate') + C.dim(` (P5) · ${st.review.reviewed} task(s) reviewed`));
+    console.log(`  caught     ${C.b(String(st.review.caught))} ${C.dim('task(s) BLOCKED at least once before passing')}`);
+    console.log(`  verdicts   ${st.review.blocks} block / ${st.review.passes} pass`);
+    if (st.review.findings.total) {
+      const fmt = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(C.dim(' · '));
+      console.log(`  findings   ${st.review.findings.total}  ${C.dim('severity:')} ${fmt(st.review.findings.bySeverity)}  ${C.dim('area:')} ${fmt(st.review.findings.byArea)}`);
+    }
+    console.log(C.b('\n  churn'));
+    console.log(`  attempts   ${st.churn.attempts} ${C.dim('executor run(s)')} · verify-RED blocks ${st.churn.verifyRedBlocks} · handoffs ${st.churn.handoffs}`);
+    for (const w of st.churn.worst) console.log(C.dim(`    ${w.id.slice(0, 12).padEnd(13)} ${w.attempts} attempt(s) · ${w.handoffs} handoff(s)  ${w.title.slice(0, 60)}`));
+    console.log(C.b('\n  landing') + C.dim(` · ${st.landing.done} done task(s) — gate vs bypass`));
+    console.log(`  gated      ${pct(st.landing.gated, st.landing.done)} ${C.dim('passed adversarial review')}`);
+    if (st.landing.overridden) console.log(`  overridden ${pct(st.landing.overridden, st.landing.done)} ${C.y('review gate overridden (--force-review)')}`);
+    if (st.landing.unreviewed) console.log(`  unreviewed ${pct(st.landing.unreviewed, st.landing.done)} ${C.y('done without the review gate weighing in')}`);
+    console.log(`  pipeline   ${pct(st.landing.pipelineLanded, st.landing.done)} ${C.dim('landed via PR + gated merge (rest hand-landed)')}`);
+    if (st.audit.green + st.audit.red) console.log(C.b('\n  held-out audit') + ` (P7)  ${st.audit.green} green / ${st.audit.red} red`);
+  },
+
   // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
   // Spine compaction: move done+released tasks (and their events) into .chalk/archive/ so the
   // working spine stays small on long-lived projects. Everything is kept, nothing deleted.
@@ -1320,7 +1352,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (!passed) {
         if (!flags['force-review']) die(`GATE P5: needs a passing adversarial review — run \`chalk review ${t.id.slice(0, 12)}\`${last ? ` (last verdict: ${last.verdict})` : ''}.\n    To override (logged): chalk done ${t.id.slice(0, 12)} --force-review --why "..."`);
         if (!flags.why) die('--force-review requires --why "<reason>" (it is logged as a decision).');
-        s.appendDecision({ title: `Overrode review gate for "${t.title}"`, why: String(flags.why) });
+        s.appendDecision({ title: REVIEW_OVERRIDE_TITLE(t), why: String(flags.why), taskId: t.id });
         console.log(C.y('  ! review gate overridden (decision logged).'));
       }
     }
@@ -1476,7 +1508,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const reg = m.protocol.regression = m.protocol.regression || {};
     reg.lastAudit = { at: now(), green: r.green, size: r.size, count: (reg.tests || []).length };
     s.saveMeta(m);
-    s.emitUpdate({ type: 'progress-update', title: `Audit ${r.green ? 'green' : 'red'} (held-out regression)` });
+    s.emitUpdate({ type: 'progress-update', title: AUDIT_TITLE(r.green) });
     console.log('\n' + (r.green ? C.g('● AUDIT GREEN') : C.r('● AUDIT RED — phase gate closed')));
     process.exit(r.green ? 0 : 2);
   },
@@ -1681,6 +1713,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk doctor [--json]                ${C.dim('preflight readiness check for autonomous runs (read-only); --json for bug reports')}
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
+  chalk stats [--since D] [--json]     ${C.dim('gate-efficacy report: review catches, churn, gate-vs-bypass (pure read)')}
   chalk archive [--dry-run]            ${C.dim('compact the spine: move done+released tasks (+their events) to .chalk/archive/')}
   chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
   chalk autopilot [--max N] [--min-severity med]   ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
