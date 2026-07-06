@@ -289,3 +289,23 @@
 
 - _when:_ 2026-07-06T08:06:00.633Z
 - _why:_ main's deployability is now enforced by GitHub, not convention; dev stays friction-free for the pipeline (required checks on dev would reject direct spine pushes since fresh commits carry no check results). Release flow under protection: release --commit --no-tag on dev, promotion PR merged with a merge commit, tag main's tip (filed #98 to teach chalk release --promote natively)
+
+## Amended acceptance test for "fix: release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips"
+
+- _when:_ 2026-07-06T08:23:16.093Z
+- _why:_ review blocked the HEAD-only/no-discriminator design: recovery now keys on the Released-vX decision as the completion marker, finds buried orphans, and defers post-interruption arrivals — the locked test grew the four cases pinning exactly those behaviors
+
+## Amended acceptance test for "fix: release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips"
+
+- _when:_ 2026-07-06T08:25:52.787Z
+- _why:_ pin the dry-run resume preview flagged by review (the line was silently revertible): a post-interruption --dry-run must say 'would RESUME' and write nothing
+
+## Amended acceptance test for "feat: chalk release --promote — protected-main release flow (promotion PR + tag on main's tip)"
+
+- _when:_ 2026-07-06T08:45:04.267Z
+- _why:_ review blocked three real recovery holes: resume was unreachable with a leftover local tag, a merged PR broke the re-run choreography (pr create dies with 'no commits between'), and the fresh path lost the up-front collision probe — the locked test grew a real-merge-commit stub, the post-merge tag-push-failure resume, the stale-tag collision, and the pending-CI abort
+
+## Amended acceptance test for "feat: chalk release --promote — protected-main release flow (promotion PR + tag on main's tip)"
+
+- _when:_ 2026-07-06T08:48:06.645Z
+- _why:_ pin the two review med findings: the pre-merge re-run must FIND the open PR (creates.length===1 — real gh rejects a duplicate pr create) and the promote resume must defer late-arriving tasks instead of absorbing them into the frozen notes

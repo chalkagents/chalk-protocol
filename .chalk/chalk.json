@@ -22,16 +22,16 @@
     },
     "regression": {
       "command": "",
-      "authorCommand": "",
+      "authorCommand": "claude -p --permission-mode acceptEdits --max-turns 40",
       "dir": ".chalk/held-out",
       "required": false,
       "tests": [],
       "lastAudit": {
-        "at": "2026-07-06T07:50:13.816Z",
+        "at": "2026-07-06T09:08:46.208Z",
         "green": true,
         "size": {
-          "loc": 9919,
-          "files": 87
+          "loc": 10366,
+          "files": 89
         },
         "count": 0
       }
@@ -57,8 +57,13 @@
       },
       "ciPollIntervalMs": 5000,
       "ciPollAttempts": 24
+    },
+    "worktree": {
+      "enabled": false,
+      "dir": "..",
+      "setup": ""
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",
-  "updatedAt": "2026-07-06T07:50:13.817Z"
+  "updatedAt": "2026-07-06T09:08:46.209Z"
 }

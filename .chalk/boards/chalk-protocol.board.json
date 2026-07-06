@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783324063581,
+  "updatedAt": 1783328043352,
   "order": 0,
   "cards": [
     {
@@ -115,6 +115,55 @@
         "prNumber": 96,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/96",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/85"
+      }
+    },
+    {
+      "id": "task-2563a7a0",
+      "title": "feat: chalk release --promote — protected-main release flow (promotion PR + tag on main's tip)",
+      "column": "done",
+      "createdAt": 1783325537231,
+      "updatedAt": 1783327971401,
+      "order": 6,
+      "description": "- run the `--commit --no-tag` flow on the integration branch (github.base)\n- open the promotion PR to the deploy branch (new config, e.g. `github.deployBase` or `release.promoteTo`), wait for CI, merge with a MERGE commit regardless of github.mergeMethod\n- tag the deploy branch's tip vX.Y.Z and push the tag\n- collision/idempotency safety consistent with #93 and #91 (a failed step must not mark tasks released or strand a half-promoted release)",
+      "testArtifact": {
+        "specPath": "test/release-promote.test.mjs",
+        "lastRun": {
+          "runId": "done-task-2563a7a0",
+          "status": "passed",
+          "at": 1783327971401
+        },
+        "prNumber": 103,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/103",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/98"
+      }
+    },
+    {
+      "id": "task-2cae7c80",
+      "title": "chore: author the held-out regression set — audit warns 0 tests vs a floor of 4 (~10k LOC)",
+      "column": "in_progress",
+      "createdAt": 1783325537234,
+      "updatedAt": 1783328043352,
+      "order": 7,
+      "description": "- regression.command and regression.authorCommand are configured (node --test .chalk/held-out + a BYO claude author); .chalk/held-out stays gitignored\n- chalk guard gen authors at least 4 held-out test files derived from the spec (the size floor for ~10k LOC), locked into regression.tests\n- chalk audit runs GREEN with the understaffing warning gone\n- implementer blindness holds: the tests are written by the BYO guard author subprocess; this session never reads .chalk/held-out contents"
+    },
+    {
+      "id": "task-f1308f82",
+      "title": "fix: release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips",
+      "column": "done",
+      "createdAt": 1783325537234,
+      "updatedAt": 1783326615570,
+      "order": 8,
+      "description": "- On a post-commit tag failure, either roll the release commit back (`git reset --hard HEAD~1` is safe — the commit contains only the release artifacts) or make the re-run detect the orphaned release commit and tag it instead of re-bumping\n- Test the recovery path (tag fails once after the commit → next run converges on ONE release commit + tag)\n- While there: cover `--commit --no-tag` (commits the bump, skips the probe) with a test",
+      "testArtifact": {
+        "specPath": "test/release-recovery.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f1308f82",
+          "status": "passed",
+          "at": 1783326615570
+        },
+        "prNumber": 100,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/100",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/91"
       }
     }
   ]

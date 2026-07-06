@@ -532,5 +532,370 @@
       "lgtm": true
     },
     "doneAt": "2026-07-06T07:47:43.581Z"
+  },
+  {
+    "id": "task-2563a7a0",
+    "title": "feat: chalk release --promote — protected-main release flow (promotion PR + tag on main's tip)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "run the `--commit --no-tag` flow on the integration branch (github.base)"
+      },
+      {
+        "text": "open the promotion PR to the deploy branch (new config, e.g. `github.deployBase` or `release.promoteTo`), wait for CI, merge with a MERGE commit regardless of github.mergeMethod"
+      },
+      {
+        "text": "tag the deploy branch's tip vX.Y.Z and push the tag"
+      },
+      {
+        "text": "collision/idempotency safety consistent with #93 and #91 (a failed step must not mark tasks released or strand a half-promoted release)"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/release-promote.test.mjs",
+        "sha256": "16fb0eb3a0ff41e12f0dd9e72053c4d41c2bf4856196dcf2203a16ffa5f1cb0c"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 98,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/98",
+      "body": "**Context:** the repo moved to a dev/main model (2026-07-06): all PRs target `dev` (protocol.github.base=dev), `main` is deployable and protected (PR required, `test` check, enforce_admins, no direct pushes). That protection rejects the push `chalk release --commit` (#93) makes to the branch it runs on.\n\n**Working manual flow today:**\n1. `chalk release --commit --no-tag` on **dev** (CHANGELOG + bump land as a normal commit)\n2. promotion PR dev→main, merged with a **merge commit** (not squash — preserves the release commit SHA)\n3. tag `vX.Y.Z` on main's tip and push the tag (tag pushes bypass branch protection; release.yml publishes the tagged tree as-is)\n\n**Ask:** teach `chalk release` this path natively, e.g. `chalk release --promote`:\n- [ ] run the `--commit --no-tag` flow on the integration branch (github.base)\n- [ ] open the promotion PR to the deploy branch (new config, e.g. `github.deployBase` or `release.promoteTo`), wait for CI, merge with a MERGE commit regardless of github.mergeMethod\n- [ ] tag the deploy branch's tip vX.Y.Z and push the tag\n- [ ] collision/idempotency safety consistent with #93 and #91 (a failed step must not mark tasks released or strand a half-promoted release)\n\n_filed while setting up the dev/main branch model_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-07-06T08:52:51.402Z"
+    },
+    "createdAt": "2026-07-06T08:12:17.231Z",
+    "reviews": [
+      {
+        "at": "2026-07-06T08:39:54.276Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "Criterion 4 is violated in the tag-created-but-push-failed window: if `git tag` (line 616) succeeds but `push origin vX` (line 621) fails, the die says 'Re-run to finish' — but the re-run CANNOT resume. Orphan detection (line 515) requires the tag to be ABSENT locally (`rev-parse refs/tags/vX === ''`), so with the local tag present resume=null, the collision probe is also skipped (wantTag=false under promote), and the run falls into the fresh path: it re-bumps from the already-bumped package.json (0.1.0→0.2.0), writes a second CHANGELOG section for the same tasks, stacks a second `chore(release)` commit, opens a second promotion PR, and never pushes v0.1.0 — the exact #91 version-skip bug reintroduced in the promote flow, plus a stranded half-promoted release. The 'idempotent tagging'/ls-remote skips at lines 615/619 are unreachable in the very scenario they were written for, because reaching them requires resume, and resume requires the tag to not exist."
+          },
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "Post-merge failures (fetch fails at line 613, or tag creation fails at 617) are also un-resumable against real GitHub: the re-run's resume path re-executes the FULL PR choreography — `pr list --state open` finds nothing (the PR is merged), so it runs `pr create dev→main`, which real `gh` rejects with 'no commits between main and dev' once the merge has landed, and the run dies at line 596 before ever reaching the tag step. The die messages promise 'The PR merged; re-run to finish the tagging', but the code never skips ahead to tagging when the deploy branch already contains the release commit. The locked test's gh stub unconditionally succeeds at `pr create`, masking this; the only re-run exercised (test 3) fails PRE-merge at RED CI."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "#93's collision safety ('fail before anything is written') is dropped for --promote: because wantTag=false, the up-front probe at line 551 never runs. With a pre-existing stale local tag vX.Y.Z (pointing anywhere), promote writes the release commit, opens/merges the PR (moving protected main), then line 615 silently SKIPS tag creation because the tag exists, and line 619 pushes the stale tag — publishing a vX.Y.Z tag pointing at the wrong commit while marking all tasks released. No collision case is tested for promote."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The idempotency machinery specific to promote is untested: no test injects a failure after `pr merge` (tag-push failure, fetch failure), so the tag-exists skip (615), the ls-remote-guarded push (619), and the merged-fallback `pr view` recheck (607-608) can all be deleted or inverted with the suite staying green. Test 3's re-run only covers the pre-merge RED-CI interruption, which exercises the pre-existing #91 orphan detection, not the promote-specific recovery the criterion demands. The 'CI still pending' abort path is likewise unpinned (only bucket:fail is tested)."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The stub's `pr merge` performs a fast-forward `push dev:main`, so the deploy tip SHA equals dev's HEAD — the tests cannot distinguish 'tag the deploy tip' from 'tag local HEAD'. A real --merge produces a merge commit whose SHA differs from dev HEAD; the implementation does tag FETCH_HEAD correctly, but the locked assertion (remoteMain === dev HEAD === tag target) would also pass an implementation that tags HEAD, weakening criterion 3's pin."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The diff again bundles unrelated spine changes (new `protocol.worktree` config block in .chalk/chalk.json, imported tasks #92 and the already-done #91 task/board entries) against the repo's 'keep diffs small and scoped' rule — carried-over noise, not a gate by itself."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T08:47:20.567Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The find-or-create PR resolution (line 612 `pr list --head … --state open`) is exercised by test 3's re-run but never ASSERTED: test 3 doesn't count `pr create` lines, and the stub's `pr create` happily succeeds when a PR already exists, so deleting the `pr list` lookup keeps the suite green while real gh would die with 'a pull request already exists' on every pre-merge re-run — an un-resumable pre-merge interruption in production. Add `creates.length === 1` to test 3 (mirroring test 4) next cycle."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The later-arrival cutoff on promote RESUME (lines 644-645: tasks done after the orphan commit are deferred to the next release) is untested in the promote suite — mutating `cutoff` to Infinity on resume stays green, silently absorbing post-interruption tasks into a frozen CHANGELOG. The equivalent behavior is pinned only in release-recovery's non-promote path; the promote path shares the shape but not a test."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The completion marker remains the working-tree `Released vX` decision: on a fresh clone missing .chalk/decisions.md, the first promote after a completed release false-resumes on the old release commit — but the cutoff excludes newer tasks and origin already has the tag, so it degrades to a confusing no-op 'released vOLD' success plus a duplicate decision, then self-heals on the next run. Same accepted residual as the #91 pass review; decisions.md is committed, so the window is narrow."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The `pr view --json state` merged-fallback (lines 628-630) and the ls-remote tag-already-pushed skip (line 638) are individually revertible with the suite green (the stub's merge never fails non-zero-but-merged, and re-pushing an identical tag is a no-op). Both are defensive mirrors of existing `chalk merge` behavior rather than criterion-bearing paths."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "All four previously blocking findings are demonstrably fixed and pinned by the amended locked test: the post-merge tag-push failure now resumes (decision-keyed detection tolerates the leftover local tag, `tag -fa` + ls-remote guard, test 4 asserts ONE `pr create` and 'already merged'), the merged-PR re-run skips the choreography via fetch-first `merge-base --is-ancestor`, the fresh-path collision probe (local+remote, line 561) fails before any write (test 5), pending-CI exhaustion aborts (test 6), and the stub's real commit-tree merge makes 'tag the deploy TIP' distinguishable from 'tag local HEAD' (test 1 asserts remoteMain ≠ dev HEAD and tag→merge-commit). Criterion 2's 'regardless of mergeMethod' is honestly pinned: the config carries the default squash while the log asserts `pr merge 7 --merge`. The lingering diff noise (worktree config block, imported task entries) is carried-over spine state, not code risk."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T08:48:06.644Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-06T08:51:05.478Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The remote-tag arm of the fresh-path collision probe (line 561, `ls-remote --tags origin`) is revertible with the suite green: test 5 only plants a LOCAL stale tag. If origin carries vX.Y.Z but the local clone doesn't (fresh clone after a foreign push), deleting that arm lets promote commit + merge, then line 638's ls-remote skip silently treats the stale remote tag as 'already shipped' and marks everything released against a wrong-pointing tag. Add a remote-only-collision case next cycle."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "`push origin ${ghBase}` (line 609) is revertible with the suite green: the gh stub's `pr merge` builds the merge commit from the LOCAL dev ref and pushes the objects itself, so the deploy-tip/tag/package.json assertions all pass even if the release commit never reaches origin/dev — against real GitHub the promotion PR would not contain the release commit. An assertion that the bare repo's dev ref equals the local release commit would pin criterion 1's push."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Two defensive paths remain individually revertible: the `pr view --json state` merged-despite-nonzero fallback (lines 628-630; the stub's merge never fails-but-merges) and the ls-remote tag-already-pushed skip (line 638; re-pushing an identical tag is a no-op). Both mirror existing `chalk merge` behavior and are not criterion-bearing — same accepted residual as the prior review."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The completion marker is still the working-tree `Released vX` decision: on a clone missing .chalk/decisions.md the first promote after a completed release false-resumes on the old release commit, degrading to a confusing no-op 'released vOLD' plus a duplicate decision before self-healing. Same narrow accepted residual as #91; decisions.md is committed."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The diff still bundles unrelated spine noise (the `protocol.worktree` config block in .chalk/chalk.json, imported #92/#91 task and board entries) against the 'keep diffs small and scoped' rule — carried-over state, not code risk."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Non-promote paths verified unchanged: `wantTag` only adds `!promote`, and the #91 resume gate `(promote || !tagLocal)` preserves the tag-absent requirement for --commit; release-recovery's locked contract is untouched. Both prior blocking reviews' findings are demonstrably fixed and now pinned by the amended locked test: post-merge tag-push failure resumes past the leftover local tag (test 4, ONE `pr create`, 'already merged'), the merged-PR re-run skips choreography via fetch-first `merge-base --is-ancestor`, the fresh collision probe fails before any write (test 5), pending-CI exhaustion aborts (test 6), the pre-merge re-run FINDS the open PR (test 3 `creates.length===1`), late arrivals are deferred on resume (test 3), and the stub's real commit-tree merge makes 'tag the deploy TIP' distinguishable from 'tag local HEAD' (test 1)."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-06T08:31:24.320Z",
+    "branch": "feat/98-feat-chalk-release-promote-protected",
+    "pr": {
+      "number": 103,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/103",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T08:52:51.401Z"
+  },
+  {
+    "id": "task-2cae7c80",
+    "title": "chore: author the held-out regression set — audit warns 0 tests vs a floor of 4 (~10k LOC)",
+    "state": "blocked",
+    "acceptanceCriteria": [
+      {
+        "text": "regression.command and regression.authorCommand are configured (node --test .chalk/held-out + a BYO claude author); .chalk/held-out stays gitignored"
+      },
+      {
+        "text": "chalk guard gen authors at least 4 held-out test files derived from the spec (the size floor for ~10k LOC), locked into regression.tests"
+      },
+      {
+        "text": "chalk audit runs GREEN with the understaffing warning gone"
+      },
+      {
+        "text": "implementer blindness holds: the tests are written by the BYO guard author subprocess; this session never reads .chalk/held-out contents"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 92,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/92",
+      "body": "`chalk audit` is GREEN but warns:\n\n> ⚠ held-out set (0) is below the size floor (4 for 9919 LOC) — P7 stringency scales with code; author more via `chalk guard`.\n\nDogfooding gap: the protocol's own P7 lever is unarmed. Author 4+ held-out tests from the spec's durable criteria (`chalk guard gen` can draft them), keep `.chalk/held-out/` gitignored per the doctor rule.\n\n_filed during the 2026-07-06 issue sweep_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "help wanted"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T08:12:17.234Z"
+    },
+    "createdAt": "2026-07-06T08:12:17.234Z",
+    "reviews": [],
+    "startedAt": "2026-07-06T08:54:03.352Z",
+    "blockedFrom": "in-progress",
+    "block": {
+      "needs": "human-input",
+      "reason": "The held-out set must be authored OUTSIDE this session (implementer blindness): the sandbox classifier refuses to let this agent spawn an auto-writing author into .chalk/held-out. Human steps: run 'chalk guard gen' in your own terminal (authorCommand is configured), then set protocol.regression.command='node --test .chalk/held-out', run 'chalk audit' (expect GREEN, floor 5 for ~10k LOC), and 'chalk unblock task-2cae7c80'.",
+      "at": "2026-07-06T09:07:43.229Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-2cae7c8-1.md",
+      "at": "2026-07-06T09:07:43.267Z",
+      "reason": "human-input",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-f1308f82",
+    "title": "fix: release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "On a post-commit tag failure, either roll the release commit back (`git reset --hard HEAD~1` is safe — the commit contains only the release artifacts) or make the re-run detect the orphaned release commit and tag it instead of re-bumping"
+      },
+      {
+        "text": "Test the recovery path (tag fails once after the commit → next run converges on ONE release commit + tag)"
+      },
+      {
+        "text": "While there: cover `--commit --no-tag` (commits the bump, skips the probe) with a test"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/release-recovery.test.mjs",
+        "sha256": "cf95ca1bb156c91210a523c2eb13574b40bdb2250eb7379aa555fb6f50ee4619"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 91,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/91",
+      "body": "From the task-021f498 adversarial review (low, non-blocking, shipped as-is).\n\n`chalk release --commit` probes the tag collision up front, but if `git tag` fails AFTER the release commit for a non-collision reason (hook, perms, probe→tag race), `die()` leaves an untagged `chore(release)` commit at HEAD with the bumped package.json. A re-run then bumps FROM the already-bumped version (version skip) and produces a second release commit.\n\n- [ ] On a post-commit tag failure, either roll the release commit back (`git reset --hard HEAD~1` is safe — the commit contains only the release artifacts) or make the re-run detect the orphaned release commit and tag it instead of re-bumping\n- [ ] Test the recovery path (tag fails once after the commit → next run converges on ONE release commit + tag)\n- [ ] While there: cover `--commit --no-tag` (commits the bump, skips the probe) with a test\n\n_filed from the chalk review of task-021f498_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-07-06T08:30:15.571Z"
+    },
+    "createdAt": "2026-07-06T08:12:17.234Z",
+    "reviews": [
+      {
+        "at": "2026-07-06T08:19:01.652Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "regression",
+            "note": "The resume detector cannot distinguish an INTERRUPTED --commit run from a completed, INTENTIONAL `--commit --no-tag` release — which is now this repo's own release path (dev/main promote flow, #98/decision evt-0e49e19e: `release --commit --no-tag` on dev, tag lands on main's tip). After such a release, HEAD on dev is a `chore(release): vX` commit whose tag is legitimately absent locally (never created there, or on main and not yet fetched). The next `release --commit` with new done tasks then falsely 'resumes': it tags vOLD onto dev's commit and/or marks the NEW tasks released at the OLD version with no changelog entry and no bump — new work is silently swallowed. No test covers 'completed --no-tag release, then a subsequent release'; test 2 only covers the tagged-success case."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "On resume, `for (const t of tasks) t.released = v` marks ALL currently releasable tasks released at the orphan version — including tasks that became done AFTER the interrupted run. Those tasks are absorbed into a v that already has a frozen CHANGELOG entry not mentioning them, so they never appear in any release notes. The interrupted run's task set should be what gets marked (or later arrivals excluded); untested."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "Orphan detection inspects only HEAD's subject (`log -1`). If any commit lands on top of the orphaned release commit before the re-run — routine on a shared dev branch or under `chalk run` — the recovery is skipped and the original bug (bump-from-bumped version skip + stacked release commit) returns. Criterion 1 is satisfied only for an immediate re-run with an untouched HEAD; this limitation is neither handled nor pinned by a test. Also `--dry-run` returns before the recovery block, so a post-interruption dry-run previews the wrong, double-bumped version."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Test 1 is genuinely non-vacuous (the refs/tags/v0.1.0/block injection is a real post-commit tag failure, and the convergence assertions fail if the recovery is reverted), and test 2 guards false-resume after a tagged success — good. But test 3 (--no-tag) stops at the first release; nothing asserts that an intentional --no-tag release commit at HEAD doesn't poison a later run, which is exactly the high-severity gap above."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The diff bundles unrelated spine changes — a new `protocol.worktree` block in .chalk/chalk.json and two unrelated imported tasks (#98, #92) — against the repo rule 'keep diffs small and scoped to the current task'. Not blocking on its own, but it widens the review surface of a release-safety fix."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T08:25:16.551Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "The completion marker (`Released vX` in .chalk/decisions.md) is written to the WORKING TREE only — the release commit itself contains just CHANGELOG.md + package.json. After an intentional `--commit --no-tag` release, if the decisions.md change is lost before the next run (fresh clone, new worktree, checkout/reset, or the spine push not yet landed), the completed release commit again looks like an orphan and the false-resume the prior review blocked (tag vOLD, swallow new work) returns. The locked test only exercises the same-working-tree case; in-repo flows push the spine so this is an edge, but it is the one hole left in the discriminator."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The new dry-run resume branch (line 509: post-interruption `--dry-run` previews 'would RESUME' instead of a double-bumped version — explicitly called out in the prior review) has no test; reverting just that line leaves the suite green. Also nothing pins the resume-fails-again path (tag fails a second time → 'Nothing was marked released')."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Orphan detection scans only `log -50`; an orphan buried >50 commits deep (plausible under `chalk run` on a busy dev branch) silently reverts to the original bump-from-bumped behavior. Likewise a plain `release` (no --commit) run after an interruption bypasses the recovery block entirely and tags HEAD at a skipped version — outside the stated criteria but an adjacent trap. If the orphan's %cI can't be parsed, cutoff=0 defers ALL tasks and tags an empty release."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The completion check is a substring regex over all of decisions.md — any decision title/why that happens to contain `Released vX.Y.Z` for the orphan's version (e.g. a forced/manual note about that version) marks it completed and suppresses a legitimate resume. Narrow, but the marker is not namespaced."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The diff again bundles unrelated spine changes (new `protocol.worktree` config block, imported tasks #98/#92, board entries) against the 'keep diffs small and scoped' rule. The locked-test amendment itself went through the sanctioned path (amend-spec decision logged, sha256 updated), and all four previously blocking findings are now each pinned by a dedicated locked test (decision marker, --no-tag non-orphan, buried orphan, late-arrival deferral), so this is noise, not a gate."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T08:25:52.786Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-06T08:28:08.280Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 3's parenthetical 'skips the probe' is not directly pinned: test 3 ('--commit --no-tag') runs in a repo with no colliding tag, so it would still pass if the up-front collision probe ran under --no-tag. The observable of probe-skipping (a pre-existing v0.1.0 tag does not abort a --no-tag release) is unasserted. Non-blocking because the probe-guard (`wantTag && withCommit` at line 539) is pre-existing behavior, not part of this change, and the criterion's main clause — cover the --commit --no-tag flow — is met (commit exists, no tag, released marked, bump landed)."
+          },
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "The completion marker ('Released vX' in .chalk/decisions.md) still lives outside the release commit (which contains only CHANGELOG.md + package.json). If the decisions.md append is lost before the next run (fresh clone/worktree, reset, spine push not landed), a completed --no-tag release commit re-qualifies as an orphan and the false-resume returns. The locked tests only exercise the same-working-tree case. In-repo flows commit/push the spine, so this is an accepted edge carried over from the prior pass review, not a new defect."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The resume-fails-again path (tag fails a SECOND time during resume → die 'Nothing was marked released', line 512) is untested; deleting that catch leaves the suite green (crash vs. clean die is indistinguishable to the tests). The dry-run resume preview flagged last round IS now pinned and non-vacuous (test 5 lines 112–116: reverting line 509 yields 'release v0.2.0 (dry-run)', which fails both /would RESUME/ and doesNotMatch(/v0\\.2\\.0/))."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Residual edges, all outside the stated criteria: orphan scan depth is `log -50` (an orphan buried deeper silently reverts to bump-from-bumped); the completion check is an un-namespaced substring regex over all of decisions.md (a manual note containing 'Released vX.Y.Z' suppresses a legitimate resume); an unparseable %cI yields cutoff=0, deferring ALL tasks into an empty resumed release; a plain `release` (no --commit) after an interruption bypasses the recovery block entirely."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The diff bundles unrelated spine changes (new `protocol.worktree` config block, imported tasks #98/#92, board entries) against the 'keep diffs small and scoped' rule — noise, not a gate. The amend-spec path was used correctly (two amendment decisions logged, sha256 updated in tasks.json), and each previously blocking finding — decision-marker discriminator, intentional --no-tag non-orphan, buried orphan, late-arrival deferral, dry-run resume preview — is now pinned by a dedicated locked test that fails if the corresponding behavior is reverted. All three acceptance criteria are substantively satisfied."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-06T08:14:39.294Z",
+    "branch": "feat/91-fix-release-commit-partial-failure",
+    "pr": {
+      "number": 100,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/100",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T08:30:15.570Z"
   }
 ]
