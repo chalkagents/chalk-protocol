@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783328043352,
+  "updatedAt": 1783331615094,
   "order": 0,
   "cards": [
     {
@@ -164,6 +164,55 @@
         "prNumber": 100,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/100",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/91"
+      }
+    },
+    {
+      "id": "task-124fde8a",
+      "title": "fix: chalk review advances pipeline.stage to 'reviewed' even when no PR exists — manual-order review pollutes the commit/pr stage guards",
+      "column": "done",
+      "createdAt": 1783329435836,
+      "updatedAt": 1783329982751,
+      "order": 9,
+      "description": "- `chalk review` should only advance the stage when the task is actually past pr-open (or track review separately from the pipeline progression)\n- `chalk pr`'s already-open path should not report success when `t.pr` is null/number-less",
+      "testArtifact": {
+        "specPath": "test/review-stage-order.test.mjs",
+        "lastRun": {
+          "runId": "done-task-124fde8a",
+          "status": "passed",
+          "at": 1783329982751
+        },
+        "prNumber": 104,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/104",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/102"
+      }
+    },
+    {
+      "id": "task-10382dc9",
+      "title": "chore: dogfood — make chalk's own loop (issue pull → autopilot → retro) the default way chalk contributes to chalk",
+      "column": "in_progress",
+      "createdAt": 1783329435842,
+      "updatedAt": 1783329435842,
+      "order": 10,
+      "description": "- A documented sweep runbook in the repo (CONTRIBUTING.md or RUNNING-AUTONOMOUSLY.md): issue pull → spec → autopilot → retro, runnable on this repo as-is with the committed `.chalk/chalk.json` agent config.\n- `chalk issue pull` → pipeline → merge demonstrably works end-to-end on this repo: at least one real issue from the open backlog lands through it, and the PR/task cross-references the issue.\n- Retro runs at the end of a sweep and files friction it finds (already wired in autopilot — criterion is that a chalk-on-chalk sweep exercises it and the filed issues reference the dogfood run).\n- The dogfooding claim is auditable: some command or doc (e.g. `chalk stats`, once #78 lands) can show what fraction of merged PRs went through the gate vs bypassed it."
+    },
+    {
+      "id": "task-a8aa7559",
+      "title": "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable",
+      "column": "done",
+      "createdAt": 1783329435843,
+      "updatedAt": 1783331615094,
+      "order": 11,
+      "description": "- Agent calls through a claude-shaped command record `tokens`, `costUsd`, and `turns` in `.chalk/local/cost.jsonl`; non-claude runners still record ms-only, and a malformed/missing envelope never fails the stage.\n- The executor invocation in `chalk run` captures usage without losing live terminal output.\n- Injecting `--output-format json` does not break the reviewer/retro/discovery/feedback JSON parsing (envelope is unwrapped before the existing parsers see it), and commands that already pin `--output-format` are left untouched.\n- `chalk cost` shows per-stage/per-task tokens, overhead share, and tokens-per-accepted-task, and still renders correctly against a ledger containing only legacy ms-only records.",
+      "testArtifact": {
+        "specPath": "test/cost-ledger.test.mjs",
+        "lastRun": {
+          "runId": "done-task-a8aa7559",
+          "status": "passed",
+          "at": 1783331615094
+        },
+        "prNumber": 105,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/105",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/99"
       }
     }
   ]

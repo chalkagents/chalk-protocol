@@ -897,5 +897,313 @@
       "lgtm": true
     },
     "doneAt": "2026-07-06T08:30:15.570Z"
+  },
+  {
+    "id": "task-124fde8a",
+    "title": "fix: chalk review advances pipeline.stage to 'reviewed' even when no PR exists — manual-order review pollutes the commit/pr stage guards",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk review` should only advance the stage when the task is actually past pr-open (or track review separately from the pipeline progression)"
+      },
+      {
+        "text": "`chalk pr`'s already-open path should not report success when `t.pr` is null/number-less"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/review-stage-order.test.mjs",
+        "sha256": "cd300c78dfb25e906cb32eacc9215bc8a2c95b31a4e32c1c1ae8d48129071896"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 102,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/102",
+      "body": "Manual mode encourages review as soon as verify is green — often BEFORE `chalk commit`/`chalk pr`. But `chalk review` sets `pipeline.stage='reviewed'` (rank 6), so the later `chalk commit` (rank 4) and `chalk pr` (rank 5) no-op via their stage guards ('already done') even though nothing was committed and no PR exists — `chalk pr` even prints `PR #?`.\n\n- [ ] `chalk review` should only advance the stage when the task is actually past pr-open (or track review separately from the pipeline progression)\n- [ ] `chalk pr`'s already-open path should not report success when `t.pr` is null/number-less\n\n_hit live on task-f1308f82 (#91); worked around by rewinding the stage marker_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-07-06T09:26:22.752Z"
+    },
+    "createdAt": "2026-07-06T09:17:15.836Z",
+    "reviews": [
+      {
+        "at": "2026-07-06T09:22:15.297Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The stage-advance guard is duplicated on two paths — manual --note (bin/chalk.mjs:1352) and adversary reviewer (bin/chalk.mjs:1374) — but the locked test only exercises the manual path (no reviewer configured). Reverting line 1374 alone would still pass the suite; a stub reviewer command (e.g. node -e emitting a pass verdict JSON) could cover the adversary path in a follow-up (non-locked) test."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "A legacy task with stage=pr-open but a number-less t.pr (e.g. gh output that didn't match /pull/(\\d+)/ at pr-create time, line 410) now falls through the guard and re-runs push + `gh pr create`, which will die with 'a pull request already exists' instead of the old (false) success. This is what criterion 2 demands, but the recovery is a hard die rather than re-resolving the existing PR number — an operator hitting this must fix t.pr by hand."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "After a manual-order pass (verdict recorded, stage stays 'branched'), the idempotency guard at line 1342 (stageDone 'reviewed') no longer short-circuits, so re-running `chalk review` pre-PR appends duplicate review entries / re-invokes the reviewer. Converges harmlessly (done/merge gates read only the last verdict), but slightly weakens the 'don't append a DUPLICATE review' intent documented at lines 1337–1341."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Criterion 1's chosen branch ('track review separately') means a review that passed against the pre-commit tree still satisfies the merge gate later — merge (line 744) even backfills the LGTM onto a PR the reviewer never saw. Consistent with the criterion as written and with pre-existing behavior, but worth noting the reviewed artifact and the merged artifact can differ in manual order."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T09:22:47.010Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-06T09:24:56.856Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Coverage of the change is now genuine and revert-detecting: test 1 pins the manual-path guard (bin/chalk.mjs:1352), test 3 pins the adversary-path guard (line 1374) via a stub reviewer — closing the revertible-line gap flagged in the prior review — and tests 4/5 pin the `t.pr?.number` requirement in the `chalk pr` idempotency guard (line 383) plus the legitimate short-circuit and `recorded` backfill. Reverting any of the three changed guards fails a locked assertion. The amendment went through the sanctioned amend-spec path (prior pass correctly marked stale)."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "After a manual-order pass the stage stays 'branched', so the idempotency short-circuit at line 1342 (requires stage>=reviewed) no longer stops a pre-PR re-run of `chalk review`: it appends a duplicate review entry / re-invokes the reviewer. Converges harmlessly — done/merge gates read only the last verdict (line 744) — and once the PR opens a re-run advances the stage, so nothing strands. Acceptable residue of the 'track review separately' branch of criterion 1."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "A legacy task at stage=pr-open with a number-less t.pr (gh output that missed /pull\\/(\\d+)/ at create time, line 410) now falls through the guard and re-runs push + `gh pr create`, which dies with 'a pull request already exists' instead of the old false success. This is exactly what criterion 2 demands, but recovery requires an operator to fix t.pr.number by hand rather than the code re-resolving the existing PR. Merge itself was already hard-gated on t.pr?.number (line 736), so no new stranding — the lie just surfaces earlier and honestly."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "With 'track review separately' chosen, a review that passed against the pre-commit tree still satisfies the merge gate later (line 744 even backfills the LGTM onto a PR the reviewer never saw). Consistent with the criterion as written and with pre-existing behavior, but the reviewed artifact and merged artifact can differ in manual order. Also: the diff bundles two unrelated newly-specced tasks (task-10382dc9, task-a8aa7559) into .chalk/tasks.json/board — inert queue metadata from issue intake, not behavior, but slightly outside the 'diffs scoped to the current task' rule."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-06T09:18:00.361Z",
+    "branch": "feat/102-fix-chalk-review-advances-pipeline",
+    "pr": {
+      "number": 104,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/104",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T09:26:22.751Z"
+  },
+  {
+    "id": "task-10382dc9",
+    "title": "chore: dogfood — make chalk's own loop (issue pull → autopilot → retro) the default way chalk contributes to chalk",
+    "state": "blocked",
+    "acceptanceCriteria": [
+      {
+        "text": "A documented sweep runbook in the repo (CONTRIBUTING.md or RUNNING-AUTONOMOUSLY.md): issue pull → spec → autopilot → retro, runnable on this repo as-is with the committed `.chalk/chalk.json` agent config."
+      },
+      {
+        "text": "`chalk issue pull` → pipeline → merge demonstrably works end-to-end on this repo: at least one real issue from the open backlog lands through it, and the PR/task cross-references the issue."
+      },
+      {
+        "text": "Retro runs at the end of a sweep and files friction it finds (already wired in autopilot — criterion is that a chalk-on-chalk sweep exercises it and the filed issues reference the dogfood run)."
+      },
+      {
+        "text": "The dogfooding claim is auditable: some command or doc (e.g. `chalk stats`, once #78 lands) can show what fraction of merged PRs went through the gate vs bypassed it."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 101,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/101",
+      "body": "## Problem\n\n\"chalk builds itself\" is the first line of CONTRIBUTING.md, and it's *mostly* true — the `.chalk/` spine is live, and the 2026-07-06 issue sweep (PRs #93–#96) landed entirely through the pipeline's merge gate. But dogfooding today is ad hoc: it happens when a session chooses to drive the loop, not because the repo's default contribution path *is* the loop. That leaves value on the table twice over:\n\n1. **Credibility** — the strongest evidence chalk works is that chalk ships chalk. Right now that claim is anecdotal (buried in commit history) rather than demonstrated and measurable.\n2. **Feedback pressure** — every gap in the harness (context too thin, gate too slow, block reason unhelpful) is felt first by chalk-on-chalk. If contributions can silently bypass the protocol, the friction that should become issues never gets logged.\n\n## What \"dogfooded\" should mean here\n\nThe full loop, not just the manual per-task loop CONTRIBUTING.md already documents:\n\n- **Intake:** GitHub issues are the backlog; `chalk issue pull` turns them into tasks. Specing (criteria + locked tests) is part of intake, not an afterthought — a pulled task that can't be specced is itself a friction finding.\n- **Execution:** sweeps run through the pipeline (`chalk branch → run → pr → merge`), driven by the configured executor/planner/reviewer agents — `chalk autopilot` as the standard sweep entrypoint rather than a hand-driven session.\n- **Close the loop:** every sweep ends in `chalk retro` — lessons appended, friction auto-filed as new issues. Dogfooding is the primary *source* of harness-improvement issues, not just a consumer of them.\n- **Bypass is visible:** hand-commits to dev that skip the gate should be detectable (overlaps #79 tamper-evident spine; #78 `chalk stats` is the natural place to report gate-vs-bypass ratio).\n\n## Acceptance criteria\n\n- [ ] A documented sweep runbook in the repo (CONTRIBUTING.md or RUNNING-AUTONOMOUSLY.md): issue pull → spec → autopilot → retro, runnable on this repo as-is with the committed `.chalk/chalk.json` agent config.\n- [ ] `chalk issue pull` → pipeline → merge demonstrably works end-to-end on this repo: at least one real issue from the open backlog lands through it, and the PR/task cross-references the issue.\n- [ ] Retro runs at the end of a sweep and files friction it finds (already wired in autopilot — criterion is that a chalk-on-chalk sweep exercises it and the filed issues reference the dogfood run).\n- [ ] The dogfooding claim is auditable: some command or doc (e.g. `chalk stats`, once #78 lands) can show what fraction of merged PRs went through the gate vs bypassed it.\n\n## Relationship to open issues\n\n#78 (stats) and #79 (tamper-evidence) supply the measurement/enforcement pieces; #99 (token ledger) makes each dogfood sweep's cost visible. This issue is the umbrella that makes the loop the *default path*, and the others its instruments.\n\n## Non-goals\n\n- Forbidding manual work entirely — humans and interactive sessions still use the manual loop CONTRIBUTING.md describes; the point is that both paths go through the same gates and bypasses are visible, not that only autopilot may commit.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T09:17:15.842Z"
+    },
+    "createdAt": "2026-07-06T09:17:15.842Z",
+    "reviews": [],
+    "blockedFrom": "specd",
+    "block": {
+      "needs": "upstream",
+      "reason": "Criteria 1-3 delivered: the dogfood-sweep runbook landed (PR #108), the issue-pull→pipeline→merge path is demonstrated (PRs #100/#103/#104/#105 cross-referencing #91/#98/#102/#99), and chalk retro closed this sweep (lessons + #107 filed). Criterion 4 — the auditable gate-vs-bypass fraction — waits on #78 (chalk stats). Unblock when #78 lands.",
+      "at": "2026-07-06T09:59:22.276Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-10382dc-1.md",
+      "at": "2026-07-06T09:59:22.328Z",
+      "reason": "upstream",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-a8aa7559",
+    "title": "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Agent calls through a claude-shaped command record `tokens`, `costUsd`, and `turns` in `.chalk/local/cost.jsonl`; non-claude runners still record ms-only, and a malformed/missing envelope never fails the stage."
+      },
+      {
+        "text": "The executor invocation in `chalk run` captures usage without losing live terminal output."
+      },
+      {
+        "text": "Injecting `--output-format json` does not break the reviewer/retro/discovery/feedback JSON parsing (envelope is unwrapped before the existing parsers see it), and commands that already pin `--output-format` are left untouched."
+      },
+      {
+        "text": "`chalk cost` shows per-stage/per-task tokens, overhead share, and tokens-per-accepted-task, and still renders correctly against a ledger containing only legacy ms-only records."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/cost-ledger.test.mjs",
+        "sha256": "7616e231580f87e2fff59c33b5691631802f2b8145ce37a0fbc06190ec5819cd"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 99,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/99",
+      "body": "## Problem\n\nChalk's pitch is that the harness pays for itself — gates catch churn early, context injection avoids re-derivation. But we can't back that claim (or refute it) because the cost ledger records only *that* an agent was called, not *what it consumed*.\n\nToday `store.logCost()` (`lib/store.mjs:193`) appends `{at, taskId, stage, agent, ms}` per BYO agent call, and `chalk cost` summarizes calls + wall-clock. The comment above it explicitly punts on tokens. Meanwhile every configured stage runs `claude -p`, and `claude -p --output-format json` returns an envelope with `usage` (input / output / cache-read / cache-write tokens), `total_cost_usd`, and `num_turns` — the data is one flag away and we drop it on the floor.\n\n## What token visibility buys\n\nSavings are a counterfactual — chalk can't measure them directly, only make the comparison cheap:\n\n1. **Overhead share** — fraction of tokens spent on gates (plan + review + retro) vs the work stage. The \"cost of the harness\" number.\n2. **Tokens per accepted task** — unit economics including retries. A verify-RED loop that burns 3 executor attempts becomes visible instead of anecdotal.\n3. **Baseline experiment (enabled, not built)** — run the same task set executor-only vs full chalk and compare tokens-per-accepted-task + defect escape rate. A one-off study on top of the ledger, but the ledger has to record tokens first.\n\n## Design sketch\n\n**Capture (adapter-shaped, BYO-safe):**\n- If a stage command is claude-shaped (`claude -p ...` without an explicit `--output-format`), inject `--output-format json`, unwrap the envelope: harvest `usage` / `total_cost_usd` / `num_turns`, pass the inner `result` to the existing parsers (reviewer/retro/discovery/feedback already pipe + parse stdout, e.g. `lib/review.mjs:99`).\n- Opportunistic fallback: if the command isn't recognized but stdout parses as a claude envelope, still harvest it.\n- opencode runner: harvest its usage output if available; unknown runners fall back to today's ms-only record.\n- Accounting must never fail a run — parse errors degrade to ms-only, silently correct rather than loudly broken.\n\n**Executor call site (the structural bit):** `lib/run.mjs:24` runs the executor with `stdio: ['pipe','inherit','inherit']`, so stdout is never captured. Switch to capturing stdout while preserving terminal visibility (tee/stream + re-emit), then harvest usage the same way.\n\n**Ledger + report:**\n- Extend `logCost` records with optional `tokens: {in, out, cacheRead, cacheWrite}`, `costUsd`, `turns`. Old records stay valid.\n- `chalk cost` reports per-stage and per-task token totals, overhead share (gate tokens vs work tokens), tokens-per-accepted-task, and `costUsd` totals when present — degrading gracefully to the calls+wall-clock view for records without tokens.\n\n## Acceptance criteria\n\n- [ ] Agent calls through a claude-shaped command record `tokens`, `costUsd`, and `turns` in `.chalk/local/cost.jsonl`; non-claude runners still record ms-only, and a malformed/missing envelope never fails the stage.\n- [ ] The executor invocation in `chalk run` captures usage without losing live terminal output.\n- [ ] Injecting `--output-format json` does not break the reviewer/retro/discovery/feedback JSON parsing (envelope is unwrapped before the existing parsers see it), and commands that already pin `--output-format` are left untouched.\n- [ ] `chalk cost` shows per-stage/per-task tokens, overhead share, and tokens-per-accepted-task, and still renders correctly against a ledger containing only legacy ms-only records.\n\n## Non-goals\n\n- The executor-only vs full-chalk baseline study itself (separate experiment once this lands).\n- Pricing tables / cost estimation beyond what the CLI already reports (`total_cost_usd` is authoritative enough; subscription users read tokens, API users read USD).\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-07-06T09:53:35.095Z"
+    },
+    "createdAt": "2026-07-06T09:17:15.843Z",
+    "reviews": [
+      {
+        "at": "2026-07-06T09:37:02.442Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 3 names FOUR parsers — reviewer/retro/discovery/feedback — plus the plan stage got the same injection+unwrap wiring (bin/chalk.mjs:429-432, lib/retro.mjs:40-43, lib/discovery.mjs:39-42, lib/feedback.mjs:44-47), but the locked suite integration-tests only the reviewer path (opportunistic unwrap) and the executor path. Reverting the retro, discovery, feedback, or plan call-sites individually (back to plain execSync + parseLastJson(raw), ms-only logCost) leaves every test green while silently violating criteria 1 and 3 for those stages. The helpers are unit-tested, but the wiring is the behavior — this is the same revertible-line gap the previous task's review flagged and that was ultimately pinned via amend-spec. At least one of retro/discovery/feedback should be exercised end-to-end with an envelope-wrapped payload (stub agent emitting ENVELOPE('{\"lessons\":[],\"issues\":[]}')) asserting both the parse survives and tokens land in the ledger."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "isClaudeShaped tokenizes the raw string, so a runner-prefixed command (withRunner → 'fvm claude -p …', lib/config.mjs:24 applied BEFORE withJsonOutput at every gate site) is never detected → no injection, ms-only. Also a quoted argument containing '--output-format' (e.g. --append-system-prompt \"… --output-format …\") false-positives as pinned. Both degrade gracefully to legacy behavior rather than fail, so acceptable under criterion 1, but the dogfood claim 'every configured stage records tokens' quietly breaks the moment protocol.runner is set."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "runExecutorCaptured pipes claude stdout through execSync's default 1 MiB maxBuffer (lib/cost.mjs:59 sets no maxBuffer). A long session envelope over 1 MiB throws ENOBUFS → raw = truncated e.stdout → unwrap fails → the operator sees a garbled partial JSON blob as the 'narrative' and the record is ms-only. Never fails the stage (criterion 1 holds) but criterion 2's 'without losing live terminal output' degrades to raw envelope fragments in exactly the long-run case where output matters most."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "In runReview, a claude reviewer that exits non-zero concatenates stdout+stderr (lib/review.mjs:102); with injection now on, the envelope+stderr mix fails parseEnvelope AND the verdict is JSON-escaped inside the envelope's result string, so parseLastJson cannot recover it → status:'error' where the pre-change text-mode output would have parsed. Narrow (claude -p normally exits 0), but it is a new failure mode introduced by the injection with no test."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "handoff (lib/handoff.mjs:43) and prbody (lib/prbody.mjs:23) agent calls got neither injection nor logCost, so claude-shaped calls there stay invisible to the ledger — defensible (their output is prose, not JSON), but criterion 1 says 'agent calls', so the overhead-share number `chalk cost` reports undercounts the harness. Also the diff again bundles unrelated queue metadata (task-10382dc9, the done task-124fde8a records) into .chalk/tasks.json/board — inert, but outside the 'diffs scoped to the current task' rule, same as flagged last review."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T09:41:24.040Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 3 explicitly names discovery and feedback, but the locked suite never exercises `chalk discover` or `chalk feedback` through an envelope. The wirings in lib/discovery.mjs (lines 39–42) and lib/feedback.mjs (lines 44–47) are individually revertible: dropping withJsonOutput+unwrapAgentOutput from either file (back to bare execSync + parseLastJson) passes every locked test, since the unit tests only pin the lib/cost.mjs helpers, not these call sites. This is exactly the revertible-stage-wiring gap the prior review blocked on for retro/plan — the amendment closed those two but left discovery/feedback open."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The --output-format injection half of criterion 1 is only pinned for the EXECUTOR stage (the fake-claude-on-PATH test). The review/retro/plan e2e tests use node stubs that self-emit envelopes, so they pin the unwrap but not the injection: reverting withJsonOutput at review.mjs:100, retro.mjs:40, or bin/chalk.mjs:429 (keeping unwrapAgentOutput) still passes the whole suite — a real claude-shaped reviewer/retro/planner would silently regress to ms-only records with no test failing."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Two changes cited in the amend-spec decision note are NOT actually asserted by the locked test: (a) the stdout-first-on-nonzero-exit change in review.mjs:105 (previously stdout+stderr concatenated; test 3's stub exits 0, so the catch path is never exercised — reverting to concat passes), and (b) the 64MiB maxBuffer in runExecutorCaptured. Both are behavior-altering and revertible without a test failure."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "parseEnvelope requires the ENTIRE stdout to be one JSON envelope (JSON.parse of trimmed raw). If an injected claude call prepends anything to stdout (warning line, MCP banner), the unwrap fails and the verdict/lessons JSON stays escaped inside the envelope's result string, where parseLastJson cannot recover it (escaped quotes break the balanced-brace parse) — the review/retro stage then errors. So 'a malformed envelope never fails the stage' holds for the ledger write but not for the downstream parse in this plausible edge; before this change no injection happened, so the parsers saw plain text."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "For a claude-shaped executor, runExecutorCaptured buffers stdout until the process exits (up to the 10-minute timeout) and re-emits the narrative afterward. Defensible for -p's single final blob (and stderr stays live), but 'without losing live terminal output' is satisfied only in the eventual-re-emit sense: an operator watching a long run sees no stdout until completion, and on timeout/kill the partial e.stdout is all that survives."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The diff bundles unrelated spine metadata (task-124fde8a's full done record, board entries for task-10382dc9) alongside the cost-ledger change — inert queue state, but outside the 'diffs scoped to the current task' rule."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T09:49:27.052Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "The executor is now the ONLY agent call site that does not apply withRunner: bin/chalk.mjs:685 and lib/run.mjs:25 pass protocol.executor.command raw into runExecutorCaptured, while plan (bin/chalk.mjs:429), review (lib/review.mjs:100), retro, discovery and feedback all wrap with withRunner(protocol.runner, cmd). If a repo sets protocol.runner (docs/CONFIG.md: prefix 'prepended to every gate command'), the executor invocation loses the prefix that every sibling stage gets, and no test exercises executor+runner. lib/cost.mjs's own comment ('a runner-prefixed command (fvm claude …) reads as not-claude') assumes callers pass the wrapped command — they don't. Verify on a runner-configured repo before relying on chalk run there."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Only runExecutorCaptured got the 64MiB maxBuffer; review/retro/discovery/feedback keep execSync's 1MiB default while --output-format json now folds the agent's ENTIRE session output into one envelope line. A verbose reviewer whose envelope exceeds 1MiB hits ENOBUFS with truncated e.stdout, the unwrap fails, and the stage degrades to ms-only/parse-error. Pre-change output size was comparable so this is a narrow new edge, but the buffer fix was applied asymmetrically."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 2's 'without losing live terminal output' is satisfied by buffering a claude-shaped executor and re-emitting the inner result after exit (lib/cost.mjs:72-75) — content is preserved, liveness is not. Defensible because `claude -p` prints one final blob anyway, but a claude-shaped command that streams progress will appear frozen for up to the 10-minute timeout; the test pins re-emission, not liveness."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Coverage is genuinely revert-detecting: every wired stage (review/retro/plan/discovery/feedback/executor) is pinned e2e through a fake `claude` on PATH that emits the envelope ONLY when the flag was injected, plus nonzero-exit stdout-first, banner-tolerant parse, >1MiB capture, pinned-format passthrough, non-claude ms-only, opportunistic self-emitted envelope, and legacy-only `chalk cost`. Residual gaps are minor: `turns` is never asserted in a live-harvested ledger record (only via parseEnvelope unit and the hand-written cost fixture), and non-claude executor live streaming (stdio-inherit) is untested. Ledger write failure (store.mjs logCost catch) is untested but fail-safe by construction."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "unwrapAgentOutput opportunistically unwraps ANY agent stdout that parses as a type:'result' envelope, including non-claude runners — intentional and tested, but a non-claude agent whose legitimate payload happens to be claude-envelope-shaped would be silently rewritten to its .result string. The type+result-string guard makes collision unlikely. Also, the diff again bundles unrelated queue metadata (task-10382dc9 spec, board rows) into .chalk/tasks.json — inert intake artifacts, slightly outside the 'diffs scoped to the current task' rule."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-06T09:26:40.228Z",
+    "branch": "feat/99-feat-token-level-cost-ledger",
+    "pr": {
+      "number": 105,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/105",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T09:53:35.094Z"
   }
 ]

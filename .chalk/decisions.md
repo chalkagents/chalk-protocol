@@ -309,3 +309,18 @@
 
 - _when:_ 2026-07-06T08:48:06.645Z
 - _why:_ pin the two review med findings: the pre-merge re-run must FIND the open PR (creates.length===1 — real gh rejects a duplicate pr create) and the promote resume must defer late-arriving tasks instead of absorbing them into the frozen notes
+
+## Amended acceptance test for "fix: chalk review advances pipeline.stage to 'reviewed' even when no PR exists — manual-order review pollutes the commit/pr stage guards"
+
+- _when:_ 2026-07-06T09:22:47.012Z
+- _why:_ pin the adversary-path stage guard flagged by review (line 1374 was revertible alone): a stub reviewer passing pre-PR must leave the stage untouched
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-07-06T09:39:26.764Z
+- _why:_ review blocked on individually-revertible stage wirings: retro and plan envelope e2e pins added (a reverted call site now fails the suite); also stdout-first on reviewer nonzero exit (stderr after the envelope hid the verdict) and a 64MiB capture buffer
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-07-06T09:46:05.272Z
+- _why:_ review blocked twice on revertible wirings: every stage (review/retro/plan/discovery/feedback/executor) is now pinned e2e through a fake claude on PATH that emits the envelope ONLY when the flag was injected; also pinned stdout-first on nonzero exit, the banner-tolerant envelope parse, and the >1MiB capture buffer
