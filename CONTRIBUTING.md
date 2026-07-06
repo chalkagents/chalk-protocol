@@ -46,6 +46,8 @@ chalk autopilot --max 3        # the standard sweep unit: branch → work → ve
                                #   → gated merge, per task (or drive stages by hand, same gates)
 chalk retro                    # close the loop: lessons appended, friction filed as new issues
 chalk cost                     # what the sweep consumed — tokens per stage, overhead share
+chalk stats                    # what the gates caught — review catches, churn, and the
+                               #   gate-vs-bypass fraction over done tasks
 ```
 
 Ground rules that make the sweep honest: **PRs target `dev`** (`main` is deploy-only, promoted
@@ -53,8 +55,10 @@ via `chalk release --promote`); **issue-backed tasks go through the pipeline** �
 skip the landing gate and leave the pipeline stages stale; every merged PR cross-references its
 issue and carries the gate trail (verify green, adversarial review verdict, LGTM). See
 [RUNNING-AUTONOMOUSLY.md](./RUNNING-AUTONOMOUSLY.md) for the unattended version (cron,
-`chalk loop`, convergence). Receipts, not claims: the 2026-07-06 sweeps landed #89/#88/#85/#91/#98/#102/#99
-through this exact flow (PRs #93–#96, #100, #103–#105).
+`chalk loop`, convergence). Receipts, not claims: the 2026-07-06 sweeps landed #89/#88/#85/#91/#98/#102/#99/#78
+through this exact flow (PRs #93–#96, #100, #103–#105, #109), and the dogfooding claim itself is
+auditable — `chalk stats` reports what fraction of done tasks passed the adversarial review vs
+overrode or skipped it, and how many landed via the gated pipeline vs by hand.
 
 ## Rules the gates will hold you to anyway
 
