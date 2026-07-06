@@ -65,11 +65,15 @@ test('pipeline — an unfixable review BLOCK parks with needs:review; chalk next
   assert.equal(t.state, 'blocked');
   assert.equal(t.block.needs, 'review', 'reviewer-induced block gets the review category, not human-input');
   assert.match(t.block.reason, /UNFIXABLE_FINDING/, 'the finding text still travels in the reason');
-  // `chalk next` renders it as the agent's own work, not a pending human dependency.
+  // `chalk next` AND `chalk status` render it as the agent's own work, not a human dependency.
   const next = chalk(d, 'next');
-  assert.match(next.out, /review-blocked/i, 'review blocks get their own shape');
-  assert.match(next.out, /fix the findings.*chalk review/i, 'tells the agent the unblock path');
-  assert.doesNotMatch(next.out, /needs human-input/, 'not conflated with a human dependency');
+  assert.match(next.out, /review-blocked/i, 'next: review blocks get their own shape');
+  assert.match(next.out, /fix the findings.*chalk review/i, 'next: tells the agent the unblock path');
+  assert.doesNotMatch(next.out, /needs human-input/, 'next: not conflated with a human dependency');
+  const status = chalk(d, 'status');
+  assert.match(status.out, /review-blocked/i, 'status: review blocks get their own shape');
+  assert.match(status.out, /agent-owned/i, 'status: says whose work it is');
+  assert.doesNotMatch(status.out, /needs review:/, 'status: not rendered with the generic human-dependency shape');
 });
 
 test('pipeline — a genuine non-review stage failure still parks with needs:human-input', () => {
@@ -105,4 +109,18 @@ test('run loop — a blocking review verdict parks with needs:review; the verify
   chalk(d2, 'spec', tasksOf(d2)[0].id, '--criterion', 'x');
   chalk(d2, 'run', '--max', '1');
   assert.equal(tasksOf(d2)[0].block.needs, 'human-input', 'verify-RED is not reviewer-induced');
+});
+
+test('run loop — a reviewer that ERRORS (no verdict) stays human-input: there are no findings to fix', () => {
+  const d = scratch();
+  chalk(d, 'init', '--name', 'p');
+  writeFileSync(join(d, 'exec.mjs'), `import {readFileSync,writeFileSync} from 'node:fs'; try{readFileSync(0)}catch{} writeFileSync('f.test.js','// t\\n');`);
+  // Garbage output, nonzero exit — a crashed/misconfigured reviewer, not a refutation.
+  writeFileSync(join(d, 'rev.mjs'), `console.error('reviewer exploded'); process.exit(1);`);
+  conf(d, (o) => { o.executor = { command: `node ${join(d, 'exec.mjs')}` }; o.review = { command: `node ${join(d, 'rev.mjs')}`, requiredAt: ['per-task'] }; });
+  chalk(d, 'task', 'add', 'T');
+  chalk(d, 'spec', tasksOf(d)[0].id, '--criterion', 'x');
+  chalk(d, 'run', '--max', '1');
+  assert.equal(tasksOf(d)[0].state, 'blocked');
+  assert.equal(tasksOf(d)[0].block.needs, 'human-input', 'reviewer error is a config/human problem, not agent-owned findings');
 });

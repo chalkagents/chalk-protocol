@@ -1679,7 +1679,7 @@
     "tests": [
       {
         "path": "test/review-block-needs.test.mjs",
-        "sha256": "a49a2f3b08b1e8a1cd65899e47ed1e57ba169f7eb2cc1b0c5bb34c8058e38965"
+        "sha256": "e27215319ba055b96526a1e7378c165ecaeab7f847eb5ee8ee7dc6e53b74eb36"
       }
     ],
     "heldOut": [],
@@ -1698,7 +1698,35 @@
       "at": "2026-07-06T12:29:41.853Z"
     },
     "createdAt": "2026-07-06T10:05:49.989Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-06T12:31:26.741Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "Criterion 3 explicitly names BOTH `chalk status` and `next`, but only `next` (bin/chalk.mjs:177-181) got the distinct agent-owned rendering. `status` (bin/chalk.mjs:1073) still renders every block with the identical generic shape `⊘ needs <x>: <reason>`, and `backlog` (line 241) likewise — a review block there carries no cue that it is agent-owned rather than a human dependency, which is the exact conflation the task exists to prevent. Criterion 3 is only half-implemented."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The locked test asserts the distinct surfacing only for `chalk next` output; nothing exercises `chalk status` with a review-blocked task. The status half of criterion 3 is therefore both unimplemented and untested — the suite would stay green if status rendering never distinguishes review blocks."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 1 says add the value to 'the taxonomy in CLAUDE.md'. CLAUDE.md (and the managed template in lib/store.mjs:270) still enumerate the block command as `--needs <creds|decision|human-input|upstream>` — `review` is described in a new bullet but omitted from the actual taxonomy list, and the CLI help text (bin/chalk.mjs:1749) also still omits it. The documented taxonomy is inconsistent with the validation (NEEDS) that now accepts `review`."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "pipeline.mjs:84 — a reviewer that ERRORS twice (crash/misconfiguration, no verdict, no findings) now also parks as needs:review, and `chalk next` then instructs 'fix the findings, then chalk review' when there are no findings to fix. A broken reviewer command is plausibly a real config/human dependency; lumping reviewer crashes with reviewer refutations may re-create the same triage conflation in the other direction. The locked test only exercises the verdict:block path, not the reviewer-error path, so this categorization choice is untested either way."
+          }
+        ]
+      }
+    ],
     "branch": "feat/46-reviewer-blocks-distinct-needs",
     "pr": {
       "number": 116,
