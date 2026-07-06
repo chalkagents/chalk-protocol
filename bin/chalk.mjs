@@ -174,8 +174,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       const stale = !la || !la.green || (la.size && la.size.loc !== codeSize(s.root).loc);
       if (stale) console.log(C.y('  ⚠ held-out audit is stale — run `chalk audit` (required to advance phase).'));
     }
-    for (const t of tasks.filter((x) => x.state === 'blocked'))
-      console.log(C.y(`  ⊘ blocked: ${t.title} — needs ${t.block?.needs} (${t.block?.reason}). unblock: chalk unblock ${t.id.slice(0, 12)}`));
+    for (const t of tasks.filter((x) => x.state === 'blocked')) {
+      // A review block is agent-owned work (the adversarial reviewer refuted the change), not a
+      // pending human dependency — surface it with its own shape so triage never conflates the two.
+      if (t.block?.needs === 'review') console.log(C.y(`  ⊘ review-blocked: ${t.title} — fix the findings, then \`chalk review ${t.id.slice(0, 12)}\` (agent-owned, not a human dependency). (${t.block?.reason})`));
+      else console.log(C.y(`  ⊘ blocked: ${t.title} — needs ${t.block?.needs} (${t.block?.reason}). unblock: chalk unblock ${t.id.slice(0, 12)}`));
+    }
 
     if (wip.length) {
       if (wip.length > 1) console.log(C.y(`  ! ${wip.length} tasks in-progress — protocol prefers ONE at a time; finish one first.`));
