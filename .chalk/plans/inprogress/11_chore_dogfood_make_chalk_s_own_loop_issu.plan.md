@@ -21,7 +21,7 @@ todos:
 
 # chore: dogfood — make chalk's own loop (issue pull → autopilot → retro) the default way chalk contributes to chalk
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
