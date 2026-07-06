@@ -1661,7 +1661,7 @@
   {
     "id": "task-11ea6ea9",
     "title": "feat: give reviewer-induced auto-blocks a distinct `--needs` category instead of `human-input`",
-    "state": "specd",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Add a dedicated `--needs` value (e.g. `review`) to the taxonomy in CLAUDE.md and the block command validation."
@@ -1694,8 +1694,8 @@
       "enhancement"
     ],
     "pipeline": {
-      "stage": "pr-open",
-      "at": "2026-07-06T12:29:41.853Z"
+      "stage": "cleaned",
+      "at": "2026-07-06T12:35:31.880Z"
     },
     "createdAt": "2026-07-06T10:05:49.989Z",
     "reviews": [
@@ -1725,13 +1725,43 @@
             "note": "pipeline.mjs:84 — a reviewer that ERRORS twice (crash/misconfiguration, no verdict, no findings) now also parks as needs:review, and `chalk next` then instructs 'fix the findings, then chalk review' when there are no findings to fix. A broken reviewer command is plausibly a real config/human dependency; lumping reviewer crashes with reviewer refutations may re-create the same triage conflation in the other direction. The locked test only exercises the verdict:block path, not the reviewer-error path, so this categorization choice is untested either way."
           }
         ]
+      },
+      {
+        "at": "2026-07-06T12:35:03.668Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The pipeline's own reviewer-double-ERROR branch (lib/pipeline.mjs:86 — retry fails twice, stays human-input) is not directly exercised; only the run-loop's reviewer-error path (lib/run.mjs:119) is pinned by test 4. If the pipeline branch were flipped to needs:review the suite would still pass. Mitigated by the shared design comment and the run-loop test pinning the crash≠refutation rule, but the pipeline copy is unguarded."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 3 rendering is asserted for `next` and `status` (matching the criterion text), but the `backlog` review-blocked mark added at bin/chalk.mjs:241 ('⊘ review-blocked (agent-owned)') has no test — that surface could regress to the generic shape without a failure. Outside the literal criterion, so low."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`chalk next` guidance for a review block says 'fix the findings, then `chalk review <id>`', but the task is in state=blocked; if `chalk review` refuses to run on a blocked task the agent must first `chalk unblock`, which the message omits. Verify the re-review path actually works from the blocked state end-to-end (the locked test asserts the message, not the unblock→re-review round trip)."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "lib/run.mjs blockTask gained an optional `needs` parameter defaulting to 'human-input'; all other call sites (verify-RED, no-criteria, executor failure) keep prior behavior and the verify-RED case is explicitly re-pinned in test 3 — regression risk here looks contained."
+          }
+        ]
       }
     ],
     "branch": "feat/46-reviewer-blocks-distinct-needs",
     "pr": {
       "number": 116,
       "url": "https://github.com/chalkagents/chalk-protocol/pull/116",
-      "recorded": true
-    }
+      "recorded": true,
+      "lgtm": true
+    },
+    "startedAt": "2026-07-06T12:35:25.429Z",
+    "doneAt": "2026-07-06T12:35:31.879Z"
   }
 ]

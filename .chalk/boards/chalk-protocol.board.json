@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783340466239,
+  "updatedAt": 1783341331879,
   "order": 0,
   "cards": [
     {
@@ -316,13 +316,18 @@
     {
       "id": "task-11ea6ea9",
       "title": "feat: give reviewer-induced auto-blocks a distinct `--needs` category instead of `human-input`",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783332349989,
-      "updatedAt": 1783332349989,
+      "updatedAt": 1783341331879,
       "order": 20,
       "description": "- Add a dedicated `--needs` value (e.g. `review`) to the taxonomy in CLAUDE.md and the block command validation.\n- Emit reviewer-induced blocks in lib/pipeline.mjs with the new category instead of `human-input`.\n- `chalk status` / next surface the review block distinctly so it is not confused with a real human dependency.\n- Add a test asserting a reviewer block sets the review-specific `needs` while a genuine stage failure stays `human-input`.",
       "testArtifact": {
         "specPath": "test/review-block-needs.test.mjs",
+        "lastRun": {
+          "runId": "done-task-11ea6ea9",
+          "status": "passed",
+          "at": 1783341331879
+        },
         "prNumber": 116,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/116",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/46"
