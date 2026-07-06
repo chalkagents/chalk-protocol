@@ -18,13 +18,17 @@ todos:
 
 # fix: spec-lock gate never checks locked tests are tracked in git — a pinned test can ship untracked and CI runs a vacuous green
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
 - `chalk done` (and/or `chalk pr`) verifies every locked test path pinned in the task spec is tracked (`git ls-files`) in the task's worktree, and fails with an error naming the untracked path(s)
 - the error message suggests the fix (`git add <path>` / re-run `chalk commit`)
 - locked test: `chalk done` refuses when a pinned test file exists on disk but is untracked, and succeeds once the file is tracked
+
+## Locked tests (read-only — P6)
+
+- `test/spec-lock-tracking.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._
