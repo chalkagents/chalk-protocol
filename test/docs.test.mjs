@@ -1,6 +1,7 @@
 // Docs drift gates. Prose rots silently, so the load-bearing docs are pinned to the code:
-//   - docs/CONFIG.md ↔ initSpine(): every default protocol key has a `### `key`` section and every
-//     section is a real key — the reference cannot drift from the config it documents;
+//   - docs/CONFIG.md ↔ initSpine(): every default protocol key has a `### `key`` section, every
+//     section is a real key, and each section's `{ … }` key list matches the NESTED keys the
+//     default config carries — the reference cannot drift from the config it documents;
 //   - README leads with the runnable proof (npx chalk-protocol demo), an Install section, the
 //     comparison table, and the one-line thesis;
 //   - QUICKSTART walks manual mode (including the deliberate locked-test tamper) and names the
@@ -14,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initSpine } from '../lib/store.mjs';
+import { configDrift } from '../lib/config.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -29,17 +31,9 @@ function assertLinksResolve(doc) {
   }
 }
 
-test('docs/CONFIG.md ↔ initSpine — bidirectional drift gate on protocol keys', () => {
+test('docs/CONFIG.md ↔ initSpine — bidirectional drift gate on protocol keys, nested keys included', () => {
   const meta = initSpine(mkdtempSync(join(tmpdir(), 'docs-')), {});
-  const keys = Object.keys(meta.protocol);
-  const config = read('docs/CONFIG.md');
-  for (const k of keys) {
-    assert.match(config, new RegExp(`^### \`${k}\`$`, 'm'), `docs/CONFIG.md is missing a section for protocol.${k}`);
-  }
-  const documented = [...config.matchAll(/^### `([^`]+)`$/gm)].map((m) => m[1]);
-  for (const d of documented) {
-    assert.ok(keys.includes(d), `docs/CONFIG.md documents protocol.${d}, which initSpine no longer writes`);
-  }
+  assert.deepEqual(configDrift(meta.protocol, read('docs/CONFIG.md')), [], 'docs/CONFIG.md has drifted from the initSpine defaults');
 });
 
 test('README — leads with the runnable proof, install, comparison, and the thesis', () => {
