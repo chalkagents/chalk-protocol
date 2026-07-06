@@ -284,3 +284,8 @@
 
 - _when:_ 2026-07-06T07:57:20.007Z
 - _why:_ keeps main always releasable (release.yml publishes on tags cut from main) while the pipeline's issue→merge loop iterates on dev; GitHub default branch flipped to dev so new PRs base there automatically
+
+## Server-side enforcement of the branch model: main protected (PR required, test check, enforce_admins, no force-push/delete), dev protected against force-push/delete only, merge methods = squash (dev PRs) + merge commit (promotions), rebase off
+
+- _when:_ 2026-07-06T08:06:00.633Z
+- _why:_ main's deployability is now enforced by GitHub, not convention; dev stays friction-free for the pipeline (required checks on dev would reject direct spine pushes since fresh commits carry no check results). Release flow under protection: release --commit --no-tag on dev, promotion PR merged with a merge commit, tag main's tip (filed #98 to teach chalk release --promote natively)
