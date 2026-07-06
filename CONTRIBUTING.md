@@ -55,10 +55,28 @@ via `chalk release --promote`); **issue-backed tasks go through the pipeline** �
 skip the landing gate and leave the pipeline stages stale; every merged PR cross-references its
 issue and carries the gate trail (verify green, adversarial review verdict, LGTM). See
 [RUNNING-AUTONOMOUSLY.md](./RUNNING-AUTONOMOUSLY.md) for the unattended version (cron,
-`chalk loop`, convergence). Receipts, not claims: the 2026-07-06 sweeps landed #89/#88/#85/#91/#98/#102/#99/#78
-through this exact flow (PRs #93–#96, #100, #103–#105, #109), and the dogfooding claim itself is
-auditable — `chalk stats` reports what fraction of done tasks passed the adversarial review vs
-overrode or skipped it, and how many landed via the gated pipeline vs by hand.
+`chalk loop`, convergence).
+
+Receipts, not claims — from the 2026-07-06 sweeps that dogfooded this loop:
+
+- **Issues in → gate-merged PRs out:** #89→PR #94, #88→PR #95, #85→PR #96, #91→PR #100,
+  #98→PR #103, #102→PR #104, #99→PR #105, #78→PR #109 — each PR's squash commit carries
+  `Closes #<issue>` and the adversarial-review verdict is posted on the PR thread.
+- **Retro closes the loop:** issue #107 was filed by `chalk retro` at the end of the sweep —
+  its body opens "Three reviews in this sweep independently flagged the same hole" and is
+  signed "_filed by `chalk retro` (self-healing)_".
+- **The claim is auditable, not asserted** — `chalk stats` on this repo's spine (2026-07-06):
+
+  ```
+  landing · 59 done task(s) — gate vs bypass
+  gated      57/59 (97%) passed adversarial review
+  overridden  2/59 (3%)  review gate overridden (--force-review)
+  pipeline   19/59 (32%) landed via PR + gated merge (rest hand-landed)
+  ```
+
+  Rerun `chalk stats` anytime for the live numbers (the snapshot above is dated, the command
+  is the source of truth); the two overrides are logged decisions, visible in
+  `.chalk/decisions.md` — bypasses are counted, never hidden.
 
 ## Rules the gates will hold you to anyway
 
