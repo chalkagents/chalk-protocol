@@ -47,7 +47,7 @@
     },
     "github": {
       "command": "gh",
-      "base": "main",
+      "base": "dev",
       "repo": "",
       "mergeMethod": "squash",
       "labelType": {

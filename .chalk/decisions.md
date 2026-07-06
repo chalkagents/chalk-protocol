@@ -279,3 +279,8 @@
 
 - _when:_ 2026-07-06T07:48:22.696Z
 - _why:_ the manual loop had gated the WORK (verify+review) but skipped the LANDING gate; tasks were flipped back to in-progress and pointed at their PRs so the gate could rule — also surfaced that this repo's chalk.json predated protocol.github (now configured), which had silently disabled remote-CI broke-checks
+
+## Branch model: dev is the integration branch (all PRs target dev; protocol.github.base=dev), main is the deployable branch advanced only by dev→main promotion PRs at release time
+
+- _when:_ 2026-07-06T07:57:20.007Z
+- _why:_ keeps main always releasable (release.yml publishes on tags cut from main) while the pipeline's issue→merge loop iterates on dev; GitHub default branch flipped to dev so new PRs base there automatically
