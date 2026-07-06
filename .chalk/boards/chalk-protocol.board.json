@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783339729593,
+  "updatedAt": 1783340466239,
   "order": 0,
   "cards": [
     {
@@ -228,13 +228,20 @@
     {
       "id": "task-8189ac26",
       "title": "fix: spec-lock gate never checks locked tests are tracked in git — a pinned test can ship untracked and CI runs a vacuous green",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1783332349978,
-      "updatedAt": 1783339729593,
+      "updatedAt": 1783340466239,
       "order": 12,
       "description": "- `chalk done` (and/or `chalk pr`) verifies every locked test path pinned in the task spec is tracked (`git ls-files`) in the task's worktree, and fails with an error naming the untracked path(s)\n- the error message suggests the fix (`git add <path>` / re-run `chalk commit`)\n- locked test: `chalk done` refuses when a pinned test file exists on disk but is untracked, and succeeds once the file is tracked",
       "testArtifact": {
         "specPath": "test/spec-lock-tracking.test.mjs",
+        "lastRun": {
+          "runId": "done-task-8189ac26",
+          "status": "passed",
+          "at": 1783340466239
+        },
+        "prNumber": 115,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/115",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/107"
       }
     },

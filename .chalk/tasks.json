@@ -1309,7 +1309,7 @@
   {
     "id": "task-8189ac26",
     "title": "fix: spec-lock gate never checks locked tests are tracked in git — a pinned test can ship untracked and CI runs a vacuous green",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "`chalk done` (and/or `chalk pr`) verifies every locked test path pinned in the task spec is tracked (`git ls-files`) in the task's worktree, and fails with an error naming the untracked path(s)"
@@ -1339,14 +1339,53 @@
       "bug"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-07-06T12:19:13.453Z"
+      "stage": "cleaned",
+      "at": "2026-07-06T12:21:06.239Z"
     },
     "createdAt": "2026-07-06T10:05:49.978Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-06T12:20:40.936Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "untrackedLockedTests() silently exempts any pinned path starting with '.chalk/' — criterion 1 says EVERY locked test path pinned in the spec must be verified. The exemption is justified in a comment (spine state lands out-of-band), but a task that pins an e2e spec under .chalk/ gets no tracking gate at all, and no test asserts this carve-out's behavior in either direction."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "In `chalk pr`, the already-open-PR early return (t.pr set) exits BEFORE the tracking gate, so a test that becomes untracked after PR open (e.g. `git rm --cached`) is never re-checked on subsequent `chalk pr` invocations; `chalk done` still catches it, so the criterion's 'and/or' is technically satisfied."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Path matching is exact string equality against `git ls-files -z` output — a pinned path written as './contract.test.mjs', with backslashes on Windows, or differing only in case on a case-insensitive filesystem would be reported as untracked (false block). No normalization, no test for these forms."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Core contract is genuinely covered and would fail on revert: locked test/spec-lock-tracking.test.mjs asserts done refuses (naming the path, saying why, suggesting `git add`), does not flip state to done, succeeds after `git add`, that pr blocks BEFORE pushing, and that non-git trees are exempt. Remaining untested surface is only the .chalk/ exemption and multi-path error rendering (tests use a single pinned file)."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Gate runs in `done` only after verify passes and returns [] for empty pins or non-git trees, so existing done/pr flows without pinned tests are unaffected; existing pipeline/testgate suites (missingRequiredTest) are untouched."
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-06T12:08:49.593Z",
     "branch": "fix/107-fix-spec-lock-gate-never",
-    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
+    "pr": {
+      "number": 115,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/115",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T12:21:06.239Z"
   },
   {
     "id": "task-056bac99",
