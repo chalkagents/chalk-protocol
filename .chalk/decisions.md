@@ -334,3 +334,8 @@
 
 - _when:_ 2026-07-06T10:28:57.769Z
 - _why:_ stats matches event-log strings the emitters write; before markers.mjs each side hardcoded its own copy and a reword would silently zero a stat. Emitters (run/handoff/done/audit) and the parser now share constants, coupled end-to-end by the locked test.
+
+## Amended acceptance test for "feat: give reviewer-induced auto-blocks a distinct `--needs` category instead of `human-input`"
+
+- _when:_ 2026-07-06T12:33:03.807Z
+- _why:_ review BLOCK: pin chalk status's distinct review-block rendering (criterion 3 names both surfaces) and the reviewer-ERROR path (crash ≠ refutation — stays human-input per the design-intent finding)

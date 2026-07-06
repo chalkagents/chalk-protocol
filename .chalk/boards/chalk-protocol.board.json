@@ -320,7 +320,13 @@
       "createdAt": 1783332349989,
       "updatedAt": 1783332349989,
       "order": 20,
-      "description": "- Add a dedicated `--needs` value (e.g. `review`) to the taxonomy in CLAUDE.md and the block command validation.\n- Emit reviewer-induced blocks in lib/pipeline.mjs with the new category instead of `human-input`.\n- `chalk status` / next surface the review block distinctly so it is not confused with a real human dependency.\n- Add a test asserting a reviewer block sets the review-specific `needs` while a genuine stage failure stays `human-input`."
+      "description": "- Add a dedicated `--needs` value (e.g. `review`) to the taxonomy in CLAUDE.md and the block command validation.\n- Emit reviewer-induced blocks in lib/pipeline.mjs with the new category instead of `human-input`.\n- `chalk status` / next surface the review block distinctly so it is not confused with a real human dependency.\n- Add a test asserting a reviewer block sets the review-specific `needs` while a genuine stage failure stays `human-input`.",
+      "testArtifact": {
+        "specPath": "test/review-block-needs.test.mjs",
+        "prNumber": 116,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/116",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/46"
+      }
     }
   ]
 }

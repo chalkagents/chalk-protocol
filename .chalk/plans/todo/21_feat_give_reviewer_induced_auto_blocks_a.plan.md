@@ -30,5 +30,9 @@ todos:
 - `chalk status` / next surface the review block distinctly so it is not confused with a real human dependency.
 - Add a test asserting a reviewer block sets the review-specific `needs` while a genuine stage failure stays `human-input`.
 
+## Locked tests (read-only — P6)
+
+- `test/review-block-needs.test.mjs`
+
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

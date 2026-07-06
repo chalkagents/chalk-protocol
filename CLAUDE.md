@@ -37,6 +37,8 @@ an executor is configured (protocol.executor.command).
 - Keep diffs small and scoped to the current task.
 - **When a task needs something only a human can supply** (credentials, a product decision, an
   upstream task, or other human input), do NOT stop. Run
-  `chalk block <id> --needs <creds|decision|human-input|upstream> --reason "..."` and move on
+  `chalk block <id> --needs <creds|decision|human-input|upstream|review> --reason "..."` and move on
   with `chalk next`. Only a fully blocked or empty queue ends the run.
+- A `needs review` block is different: chalk's own adversarial reviewer blocked the change. It is
+  YOURS to fix — address the findings, then re-run `chalk review <id>`; it is not a human dependency.
 <!-- chalk:end -->

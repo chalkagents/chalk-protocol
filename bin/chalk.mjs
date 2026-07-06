@@ -174,8 +174,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       const stale = !la || !la.green || (la.size && la.size.loc !== codeSize(s.root).loc);
       if (stale) console.log(C.y('  ⚠ held-out audit is stale — run `chalk audit` (required to advance phase).'));
     }
-    for (const t of tasks.filter((x) => x.state === 'blocked'))
-      console.log(C.y(`  ⊘ blocked: ${t.title} — needs ${t.block?.needs} (${t.block?.reason}). unblock: chalk unblock ${t.id.slice(0, 12)}`));
+    for (const t of tasks.filter((x) => x.state === 'blocked')) {
+      // A review block is agent-owned work (the adversarial reviewer refuted the change), not a
+      // pending human dependency — surface it with its own shape so triage never conflates the two.
+      if (t.block?.needs === 'review') console.log(C.y(`  ⊘ review-blocked: ${t.title} — fix the findings, then \`chalk review ${t.id.slice(0, 12)}\` (agent-owned, not a human dependency). (${t.block?.reason})`));
+      else console.log(C.y(`  ⊘ blocked: ${t.title} — needs ${t.block?.needs} (${t.block?.reason}). unblock: chalk unblock ${t.id.slice(0, 12)}`));
+    }
 
     if (wip.length) {
       if (wip.length > 1) console.log(C.y(`  ! ${wip.length} tasks in-progress — protocol prefers ONE at a time; finish one first.`));
@@ -234,7 +238,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         const open = deps.filter((d) => d.state !== 'done').map((d) => d.title);
         let mark;
         if (t.state === 'done') mark = C.g('✓ done');
-        else if (t.state === 'blocked') mark = C.y(`⊘ blocked (needs ${t.block?.needs})`);
+        else if (t.state === 'blocked') mark = C.y(t.block?.needs === 'review' ? '⊘ review-blocked (agent-owned)' : `⊘ blocked (needs ${t.block?.needs})`);
         else if (t.state === 'in-progress') mark = C.b('● wip');
         else if (open.length) mark = C.dim(`⧗ waiting on ${open.join(', ')}`);
         else if (t.state === 'specd') mark = C.y('▶ runnable');
@@ -1066,7 +1070,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     for (const st of TASK_STATES) {
       const inState = tasks.filter((t) => t.state === st);
       for (const t of inState) {
-        const meta = st === 'blocked' && t.block ? C.y(`  ⊘ needs ${t.block.needs}: ${t.block.reason}`) : C.dim(`(${(t.acceptanceCriteria || []).length} crit, ${(t.tests || []).length} test)`);
+        const meta = st === 'blocked' && t.block
+          ? (t.block.needs === 'review'
+            ? C.y(`  ⊘ review-blocked (agent-owned — fix findings, re-run \`chalk review\`): ${t.block.reason}`)
+            : C.y(`  ⊘ needs ${t.block.needs}: ${t.block.reason}`))
+          : C.dim(`(${(t.acceptanceCriteria || []).length} crit, ${(t.tests || []).length} test)`);
         console.log(`  ${stateBadge(st)} ${C.dim(t.id.slice(0, 12))} ${t.title} ${meta}`);
       }
     }
@@ -1742,7 +1750,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk review <id>                    ${C.dim('GATE P5: adversarial reviewer; cadence via review.requiredAt (per-task|milestone-boundary|phase-advance)')}
   chalk done <id> [--force-review --why "..."]   ${C.dim('GATE P4+P6(+P5): verify green, locks intact, review passed')}
   chalk amend-spec <id> --test <path> --why "..."   ${C.dim('gated test change (P6)')}
-  chalk block <id> --needs <creds|decision|human-input|upstream> --reason "..."   ${C.dim('park; keep the run moving')}
+  chalk block <id> --needs <creds|decision|human-input|upstream|review> --reason "..."   ${C.dim('park; keep the run moving')}
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
   chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
