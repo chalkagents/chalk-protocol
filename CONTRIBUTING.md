@@ -31,6 +31,31 @@ chalk done <id>
 `chalk next` tells you what to do at any point. See [PROTOCOL.md](./PROTOCOL.md) for why the gates
 refuse what they refuse.
 
+## The dogfood sweep (how chalk ships chalk)
+
+The default contribution path for batch work on this repo is chalk's own full loop, driven
+against the live backlog — GitHub issues in, gate-merged PRs out. The committed
+`.chalk/chalk.json` already wires every agent (executor/planner/reviewer/retro), so this runs
+as-is:
+
+```sh
+chalk issue pull --limit 3     # newest open issues → tasks (criteria from their checklists)
+chalk spec <id> --criterion …  # intake finishes at spec time; a task you can't spec is itself
+                               #   a friction finding — file it
+chalk autopilot --max 3        # the standard sweep unit: branch → work → verify → pr → review
+                               #   → gated merge, per task (or drive stages by hand, same gates)
+chalk retro                    # close the loop: lessons appended, friction filed as new issues
+chalk cost                     # what the sweep consumed — tokens per stage, overhead share
+```
+
+Ground rules that make the sweep honest: **PRs target `dev`** (`main` is deploy-only, promoted
+via `chalk release --promote`); **issue-backed tasks go through the pipeline** — hand-commits
+skip the landing gate and leave the pipeline stages stale; every merged PR cross-references its
+issue and carries the gate trail (verify green, adversarial review verdict, LGTM). See
+[RUNNING-AUTONOMOUSLY.md](./RUNNING-AUTONOMOUSLY.md) for the unattended version (cron,
+`chalk loop`, convergence). Receipts, not claims: the 2026-07-06 sweeps landed #89/#88/#85/#91/#98/#102/#99
+through this exact flow (PRs #93–#96, #100, #103–#105).
+
 ## Rules the gates will hold you to anyway
 
 - **A behavior change ships a test, and the test fails without the change.** A test that passes on
