@@ -26,6 +26,7 @@ import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
 import { missingRequiredTest } from '../lib/testgate.mjs';
 import { runBreakit } from '../lib/breakit.mjs';
+import { withJsonOutput, unwrapAgentOutput, runExecutorCaptured } from '../lib/cost.mjs';
 import { runMutation } from '../lib/mutation.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
@@ -425,10 +426,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (!cmd) die('no planner configured (protocol.planner.command).');
     let out = '';
     const t0 = Date.now();
-    try { out = execSync(withRunner(s.protocol().runner, cmd), { cwd: workdir(s, t), input: buildContext(s, t), encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 10 * 60 * 1000 }); }
+    try { out = execSync(withJsonOutput(withRunner(s.protocol().runner, cmd)), { cwd: workdir(s, t), input: buildContext(s, t), encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 10 * 60 * 1000 }); }
     catch (e) { out = `${e.stdout || ''}`; }
-    s.logCost({ taskId: t.id, stage: 'plan', agent: 'planner', ms: Date.now() - t0 });
-    const planText = out.trim();
+    const { text: planOut, usage } = unwrapAgentOutput(out); // #99: envelope off before the plan is stored
+    s.logCost({ taskId: t.id, stage: 'plan', agent: 'planner', ms: Date.now() - t0, ...(usage || {}) });
+    const planText = planOut.trim();
     if (!planText) die('planner produced no plan.');
     t.plan = planText.slice(0, 8000);
     t.pipeline = { ...(t.pipeline || {}), stage: 'planned', at: now() };
@@ -680,8 +682,8 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (ex) {
       t.attempts = (t.attempts || 0) + 1; s.upsertTask(t);   // churn budget: each work run counts
       const t0 = Date.now();
-      try { execSync(ex, { cwd: workdir(s, t), input: buildContext(s, t), stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); } catch { /* gate decides */ }
-      s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0 });
+      const { usage } = runExecutorCaptured(ex, { cwd: workdir(s, t), input: buildContext(s, t) }); // #99: claude-shaped → usage captured
+      s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0, ...(usage || {}) });
     }
     const v = runVerify(s, { cwd: workdir(s, t) });
     if (!v.green) {
@@ -844,18 +846,46 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     ok(`retro: ${C.b(String(r.lessons.length))} lesson(s)${dry ? ' (dry-run)' : ''}, ${C.b(String(filed))} issue(s) ${dry ? 'would file' : 'filed'}${deferred ? `, ${C.b(String(deferred))} deferred` : ''}` + (converged ? C.dim(' · converged') : ''));
   },
 
-  // Summarize the agent-call cost ledger (.chalk/local/cost.jsonl): calls + wall-clock per agent.
-  // For a subscription this is a proxy (flat cost, rate-capped); for API, the Console is authoritative.
+  // Summarize the agent-call cost ledger (.chalk/local/cost.jsonl): calls + wall-clock per agent,
+  // and — for records that carry harvested usage (#99) — tokens per stage/task, the overhead share
+  // (gate tokens vs work tokens) and tokens-per-accepted-task. Degrades to the calls+wall-clock view
+  // for legacy ms-only records. For a subscription tokens are the practical proxy; for API, costUsd.
   cost() {
     const s = Store.open();
     const recs = s.costRecords();
     if (!recs.length) { console.log(C.dim('  no agent calls recorded yet (.chalk/local/cost.jsonl)')); return; }
     console.log(C.b('chalk cost') + C.dim(` · ${recs.length} agent call(s)`));
+    const tok = (r) => r.tokens ? (r.tokens.in || 0) + (r.tokens.out || 0) + (r.tokens.cacheRead || 0) + (r.tokens.cacheWrite || 0) : 0;
+    const fmtTok = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n));
     const by = {};
-    for (const r of recs) { const k = r.agent || '?'; (by[k] = by[k] || { n: 0, ms: 0 }); by[k].n++; by[k].ms += r.ms || 0; }
-    for (const [agent, v] of Object.entries(by)) console.log(`  ${C.b(agent.padEnd(9))} ${v.n} call(s)  ${C.dim(`${(v.ms / 1000).toFixed(0)}s wall-clock`)}`);
+    for (const r of recs) { const k = r.agent || '?'; (by[k] = by[k] || { n: 0, ms: 0, tok: 0 }); by[k].n++; by[k].ms += r.ms || 0; by[k].tok += tok(r); }
+    for (const [agent, v] of Object.entries(by)) console.log(`  ${C.b(agent.padEnd(9))} ${v.n} call(s)  ${C.dim(`${(v.ms / 1000).toFixed(0)}s wall-clock`)}${v.tok ? C.dim(`  ${fmtTok(v.tok)} tokens`) : ''}`);
     const total = recs.reduce((a, r) => a + (r.ms || 0), 0);
     console.log(C.dim(`  total: ${(total / 1000).toFixed(0)}s across ${recs.length} calls. Subscription = flat + rate-capped; bound a sweep with \`autopilot --max N\`.`));
+
+    const withTok = recs.filter((r) => r.tokens);
+    if (!withTok.length) return; // legacy-only ledger — the view above is the whole story
+    console.log(C.b('\n  tokens') + C.dim(` · ${withTok.length} call(s) with harvested usage`));
+    const byStage = {};
+    for (const r of withTok) { const k = r.stage || '?'; (byStage[k] = byStage[k] || { n: 0, tok: 0, usd: 0, turns: 0 }); byStage[k].n++; byStage[k].tok += tok(r); byStage[k].usd += r.costUsd || 0; byStage[k].turns += r.turns || 0; }
+    for (const [stage, v] of Object.entries(byStage)) console.log(`  ${stage.padEnd(10)} ${fmtTok(v.tok).padStart(8)} tokens  ${C.dim(`${v.n} call(s)${v.turns ? ` · ${v.turns} turns` : ''}${v.usd ? ` · $${v.usd.toFixed(2)}` : ''}`)}`);
+    const allTok = withTok.reduce((a, r) => a + tok(r), 0);
+    const workTok = (byStage.work?.tok || 0);
+    // Overhead share: what fraction of harvested tokens the HARNESS spent (plan/review/retro/…) vs
+    // the work stage itself — "the cost of the gates" number the baseline experiment needs.
+    if (allTok) console.log(`  ${C.b('overhead share')} ${(100 * (allTok - workTok) / allTok).toFixed(0)}% ${C.dim(`(${fmtTok(allTok - workTok)} gate tokens vs ${fmtTok(workTok)} work tokens)`)}`);
+    const byTask = {};
+    for (const r of withTok) { if (r.taskId) byTask[r.taskId] = (byTask[r.taskId] || 0) + tok(r); }
+    const doneIds = new Set(s.tasks().filter((t) => t.state === 'done').map((t) => t.id));
+    const perTask = Object.entries(byTask).sort((a, b) => b[1] - a[1]);
+    for (const [id, n] of perTask.slice(0, 8)) console.log(`  ${C.dim(id.slice(0, 12).padEnd(13))} ${fmtTok(n).padStart(8)} tokens${doneIds.has(id) ? C.dim('  ✓ done') : ''}`);
+    const acceptedTok = perTask.filter(([id]) => doneIds.has(id));
+    if (acceptedTok.length) {
+      const sum = acceptedTok.reduce((a, [, n]) => a + n, 0);
+      console.log(`  ${C.b('tokens per accepted task')} ${fmtTok(Math.round(sum / acceptedTok.length))} ${C.dim(`(${acceptedTok.length} done task(s), retries included)`)}`);
+    }
+    const usd = withTok.reduce((a, r) => a + (r.costUsd || 0), 0);
+    if (usd) console.log(`  ${C.b('total cost')} $${usd.toFixed(2)} ${C.dim('(API-metered calls only)')}`);
   },
 
   // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
