@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1782989041472,
+  "updatedAt": 1783324063581,
   "order": 0,
   "cards": [
     {
@@ -41,10 +41,81 @@
     {
       "id": "task-021f4985",
       "title": "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1782974047475,
-      "updatedAt": 1782974047475,
-      "order": 2
+      "updatedAt": 1783323995874,
+      "order": 2,
+      "description": "- chalk release --commit writes CHANGELOG.md + the package.json bump, creates a git commit containing exactly those release artifacts (conventional message chore(release): vX.Y.Z), then tags vX.Y.Z on that commit — git show vX.Y.Z:package.json reports the bumped version\n- tag-collision safety is preserved under --commit: when tag vX.Y.Z already exists the command dies BEFORE writing CHANGELOG, bumping package.json, committing, or marking any task released\n- without --commit the existing tag-first behavior is unchanged (all existing release tests stay green)\n- release.yml drops the 'npm pkg set version' tag-normalization step (the tagged tree is published as-is) and its header comment reflects the commit-then-tag flow\n- chalk help documents the --commit flag on the release line",
+      "testArtifact": {
+        "specPath": "test/package.test.mjs",
+        "lastRun": {
+          "runId": "done-task-021f4985",
+          "status": "passed",
+          "at": 1783323995874
+        },
+        "prNumber": 93,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/93"
+      }
+    },
+    {
+      "id": "task-11b3c047",
+      "title": "fix: CONFIG.md drift gate only validates top-level protocol keys",
+      "column": "done",
+      "createdAt": 1783320373554,
+      "updatedAt": 1783324023936,
+      "order": 3,
+      "description": "- Recurse into nested protocol.* keys (dotted paths) when comparing documented vs initialized config\n- Add a test asserting a documented-but-removed nested key (and an undocumented new nested key) fails the gate",
+      "testArtifact": {
+        "specPath": "test/docs.test.mjs",
+        "lastRun": {
+          "runId": "done-task-11b3c047",
+          "status": "passed",
+          "at": 1783324023936
+        },
+        "prNumber": 94,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/94",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/89"
+      }
+    },
+    {
+      "id": "task-459bc189",
+      "title": "fix: evidence-push failures are swallowed (catch{}) — blob-SHA 404s surface as broken PR images",
+      "column": "done",
+      "createdAt": 1783320373557,
+      "updatedAt": 1783324048787,
+      "order": 4,
+      "description": "- a failed git push in chalk evidence is no longer swallowed: a visible ⚠ warning line names the push failure and its cause\n- when the push fails, the PR body is NOT edited with blob-SHA image URLs (no 404 images land in the PR); the final status line says the screenshots were captured but not attached\n- when the push succeeds, behavior is unchanged: the evidence markdown with commit-SHA blob URLs is appended to the PR body\n- an e2e test drives the REAL push path via the bare-remote + stub-gh fixture pattern (per repoWithBare in test/gate-hardening.test.mjs): one case with a working remote asserting the body edit, one with a broken remote asserting the ⚠ line and the skipped body edit",
+      "testArtifact": {
+        "specPath": "test/evidence-push.test.mjs",
+        "lastRun": {
+          "runId": "done-task-459bc189",
+          "status": "passed",
+          "at": 1783324048787
+        },
+        "prNumber": 95,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/95",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/88"
+      }
+    },
+    {
+      "id": "task-9bfdd13a",
+      "title": "fix: sameModelFamily can't see env-var models (CHALK_OPENCODE_MODEL) — cross-model warning inert for opencode",
+      "column": "done",
+      "createdAt": 1783320373558,
+      "updatedAt": 1783324063581,
+      "order": 5,
+      "description": "- sameModelFamily/modelSignature see the model of opencode-adapter commands whose model comes from the CHALK_OPENCODE_MODEL env var, so the doctor's same-model-reviewer warning can fire for opencode users\n- the fallback stays conservative: no env var and no --model flag means no model identity (no false alarms), and a non-opencode command is unaffected\n- a test covers: two opencode-adapter commands under the same CHALK_OPENCODE_MODEL → same family (warning fires); differing explicit --model still wins over the env var",
+      "testArtifact": {
+        "specPath": "test/crossmodel-env.test.mjs",
+        "lastRun": {
+          "runId": "done-task-9bfdd13a",
+          "status": "passed",
+          "at": 1783324063581
+        },
+        "prNumber": 96,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/96",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/85"
+      }
     }
   ]
 }
