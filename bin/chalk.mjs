@@ -377,15 +377,18 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const s = Store.open();
     const t = mustTask(s, _[0]);
     const gh0 = s.protocol().github || {};
-    if (stageDone(t, 'pr-open')) {
+    // The idempotency guard needs a REAL PR, not just the stage rank: a stage fast-forwarded past
+    // pr-open with no PR (the #102 pollution) must fall through and actually open one — reporting
+    // "already open" with `PR #?` was a lie that stranded the task at the merge gate.
+    if (stageDone(t, 'pr-open') && t.pr?.number) {
       // Back-compat: a PR opened before recordings existed has no `recorded` flag and `chalk pr`
       // used to no-op here — leaving it permanently stuck at the merge gate. Backfill it from the
       // committed diff so the merge can proceed.
-      if (t.pr && t.pr.recorded === undefined) {
+      if (t.pr.recorded === undefined) {
         t.pr.recorded = diffPaths(workdir(s, t), gh0.base || 'main').length > 0;
         s.upsertTask(t);
       }
-      return ok(`PR ${C.b('#' + (t.pr?.number || '?'))} ${C.dim('(already open)')}`);
+      return ok(`PR ${C.b('#' + t.pr.number)} ${C.dim('(already open)')}`);
     }
     const wd = workdir(s, t);
     if (!t.branch) die('no branch — run `chalk branch <id>` first.');
@@ -1343,7 +1346,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (!note) die('no reviewer configured. Set .chalk/chalk.json → protocol.review.command (e.g. "claude -p"),\n  or record a manual review:  chalk review <id> --note "..."');
       const verdict = flags.block ? 'block' : 'pass';
       t.reviews.push({ at: now(), by: flags.by || 'human', verdict, findings: [], note: String(note), checklist: ['test-adequacy', 'design-intent', 'regressions'] });
-      if (verdict === 'pass') t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
+      // Advance the pipeline stage only when the review happens in PIPELINE order (the PR exists).
+      // A manual-order review (verify green → review → commit/pr later) must not fast-forward the
+      // stage past commit/pr — their guards would then no-op with nothing committed and no PR (#102).
+      if (verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
       const mp = postReviewToPr(s, t, { verdict, findings: [] });
       if (mp.lgtm) t.pr = { ...(t.pr || {}), lgtm: true };
       s.upsertTask(t);
@@ -1363,7 +1369,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
     if (r.status === 'error') die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
     t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings });
-    if (r.verdict === 'pass') t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
+    // Same pipeline-order rule as the manual path above (#102): the verdict is recorded either way —
+    // the done/merge gates read t.reviews — but the stage only advances when the PR already exists.
+    if (r.verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
     // Surface the verdict ON the PR (findings on block, LGTM on pass) so it's visible where a human
     // reviews — and record the LGTM signal the merge gate requires.
     const posted = postReviewToPr(s, t, { verdict: r.verdict, findings: r.findings });
