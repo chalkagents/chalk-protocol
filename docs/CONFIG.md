@@ -4,8 +4,10 @@ Everything chalk does is configured here. Two rules cover most of it: **every ag
 command** (reads its input on stdin, prints its result on stdout; empty command = stage OFF), and
 **gate commands are your real toolchain** (chalk never fakes a check it can't run).
 
-A test (`test/docs.test.mjs`) pins this file to `initSpine()`: every key below exists in the
-default config, and every default-config key has a section below — they cannot drift apart.
+A test (`test/docs.test.mjs`) pins this file to `initSpine()` down to the NESTED keys: every key
+below exists in the default config, every default-config key has a section below, and each
+section's `{ … }` key list names exactly the nested keys the default config carries — the
+reference cannot drift from the config it documents, at any level.
 
 ### `version`
 
@@ -51,8 +53,8 @@ with code size (`locPerTest`, default 2000).
 
 ### `planner`
 
-Optional read-only planning agent: task context in → plan text out (`chalk plan <id>`). Advisory;
-pairs with `plan.required` for the human checkpoint.
+`{ command }` — optional read-only planning agent: task context in → plan text out
+(`chalk plan <id>`). Advisory; pairs with `plan.required` for the human checkpoint.
 
 ### `plan`
 
@@ -61,7 +63,7 @@ pairs with `plan.required` for the human checkpoint.
 
 ### `executor`
 
-The agent that writes code for `chalk run`/`chalk work`/`chalk pipeline`: receives
+`{ command }` — the agent that writes code for `chalk run`/`chalk work`/`chalk pipeline`: receives
 `chalk context` on stdin, edits the working tree; its exit code is IGNORED — the verify gate
 decides. Optional: the manual loop needs none. `chalk init --executor claude|opencode` scaffolds
 one (claude also installs the shipped agent definitions into `.claude/agents/`).
@@ -93,7 +95,8 @@ enriches the narrative (failure warns and falls back to the template). Default m
 
 ### `prbody`
 
-Optional agent that authors the PR-body narrative for `chalk pr` (structured template otherwise).
+`{ command }` — optional agent that authors the PR-body narrative for `chalk pr` (structured
+template otherwise).
 
 ### `github`
 
@@ -115,18 +118,18 @@ the spine stays single-canonical in the main checkout. `setup` bootstraps a fres
 
 ### `retro`
 
-Optional self-healing agent for `chalk retro`: run digest in → `{ lessons, issues }` out; lessons
-append to durable memory, issues file to the backlog (via `github.command`).
+`{ command }` — optional self-healing agent for `chalk retro`: run digest in → lessons + issues
+out; lessons append to durable memory, issues file to the backlog (via `github.command`).
 
 ### `feedback`
 
-Optional product-loop agent for `chalk feedback`: signal files from `.chalk/feedback/` in →
-`{ issues }` out, filed to the backlog. Signals archive after processing.
+`{ command }` — optional product-loop agent for `chalk feedback`: signal files from
+`.chalk/feedback/` in → issues out, filed to the backlog. Signals archive after processing.
 
 ### `discovery`
 
-Optional intake agent for `chalk discover "<brief>"`: brief in → `{ spec, tasks[] }` out — the
-front door that turns an idea into a scoped, criteria-bearing backlog.
+`{ command }` — optional intake agent for `chalk discover "<brief>"`: brief in → a spec + scoped
+tasks out — the front door that turns an idea into a criteria-bearing backlog.
 
 ### `portal`
 
