@@ -13,7 +13,7 @@ import { runDriver } from '../lib/run.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
 import { postReviewToPr } from '../lib/prreview.mjs';
-import { brokeCheck } from '../lib/brokecheck.mjs';
+import { brokeCheck, ciStatus } from '../lib/brokecheck.mjs';
 import { mergeBlockers } from '../lib/mergegate.mjs';
 import { extractQuestions, planApprovalRequired } from '../lib/planning.mjs';
 import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } from '../lib/release.mjs';
@@ -483,9 +483,18 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
     let tagged = false;
     const isRepo = gitTry(s.root, 'rev-parse --is-inside-work-tree') === 'true';
-    const withCommit = flags.commit === true;
-    if (withCommit && !isRepo) die('release: --commit needs a git repo — drop --commit or run inside one. Nothing was released.');
-    const wantTag = flags['no-tag'] !== true && isRepo;
+    const promote = flags.promote === true; // protected-deploy flow (#98): implies --commit; the tag lands on the deploy tip, not here
+    const withCommit = flags.commit === true || promote;
+    if (withCommit && !isRepo) die(`release: --${promote ? 'promote' : 'commit'} needs a git repo — run inside one. Nothing was released.`);
+    const wantTag = !promote && flags['no-tag'] !== true && isRepo;
+    const gh0 = s.protocol().github || {};
+    const ghBase = gh0.base || 'main', deploy = gh0.deployBase || 'main';
+    if (promote) {
+      if (deploy === ghBase) die(`release --promote: github.base and github.deployBase are both '${deploy}' — nothing to promote across. Set protocol.github.deployBase to the protected deploy branch.`);
+      const cur = gitTry(s.root, 'branch --show-current');
+      if (cur !== ghBase) die(`release --promote runs on the integration branch ('${ghBase}') — currently on '${cur || '(detached)'}'.`);
+    }
+    let resume = null; // #91 orphan carried into the promote flow (skip rewriting, finish the promotion)
 
     // Recovery (#91): a prior --commit run can die AFTER the release commit but BEFORE the tag (hook,
     // perms, a ref lock) — nothing is marked released, so a naive re-run would bump FROM the already-
@@ -503,10 +512,16 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       const decisionsPath = join(s.root, '.chalk/decisions.md');
       const decisions = existsSync(decisionsPath) ? readFileSync(decisionsPath, 'utf8') : '';
       const completed = orphan && new RegExp(`Released v${orphan.v.replace(/\./g, '\\.')}\\b`).test(decisions);
-      if (orphan && !completed && gitTry(s.root, `rev-parse --verify --quiet refs/tags/v${orphan.v}`) === '') {
+      // Non-promote resume needs the tag ABSENT (tag present = tagging finished). Promote is keyed on
+      // the decision alone: its failure windows legitimately leave a LOCAL tag behind (created, push
+      // failed), and the resume below must still be reachable to finish the push + marking.
+      const tagLocal = orphan && gitTry(s.root, `rev-parse --verify --quiet refs/tags/v${orphan.v}`) !== '';
+      if (orphan && !completed && (promote || !tagLocal)) {
         const v = orphan.v;
         // A post-interruption dry-run must preview the RESUME, not a double-bumped next version.
         if (flags['dry-run'] === true) return ok(`release ${C.b('v' + v)} ${C.dim(`(dry-run) — would RESUME the interrupted --commit release (tag the existing release commit); nothing written`)}`);
+        if (promote) { resume = orphan; } // the release commit exists — skip rewriting, finish the promotion below
+        else {
         if (wantTag) {
           try { runGit(s.root, `tag -a v${v} -m ${shq('release v' + v)} ${orphan.sha}`); tagged = true; }
           catch (e) { die(`release: git tag v${v} failed again while resuming the interrupted release — ${String(e.message || e).split('\n')[0]}. Nothing was marked released.`); }
@@ -517,6 +532,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         s.appendDecision({ title: `Released v${v}`, why: `${set.length} change(s); resumed an interrupted --commit release${tagged ? `; tagged v${v}` : ''}` });
         s.emitUpdate({ type: 'work-item-accepted', title: `Released v${v} (${set.length} change(s))` });
         return ok(`released ${C.b('v' + v)} ${C.dim(`— resumed the interrupted --commit release ${tagged ? '(tagged the existing release commit)' : '(--no-tag: left untagged)'}${set.length < tasks.length ? `; ${tasks.length - set.length} newer done task(s) left for the next release` : ''}`)}`);
+        }
       }
     }
 
@@ -539,8 +555,16 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (wantTag && withCommit && gitTry(s.root, `rev-parse --verify --quiet refs/tags/v${version}`) !== '') {
       die(`release: tag v${version} already exists.\n    Bump past it (--version/--major/…) or re-run with --no-tag. Nothing was released.`);
     }
+    // Promote keeps #93's collision safety too: a FRESH promote (not a resume) probes both the local
+    // and the remote tag up front — a stale pre-existing tag must fail here, before anything is
+    // written, not silently ship a vX.Y.Z pointing at the wrong commit.
+    if (promote && !resume && (gitTry(s.root, `rev-parse --verify --quiet refs/tags/v${version}`) !== '' || gitTry(s.root, `ls-remote --tags origin refs/tags/v${version}`) !== '')) {
+      die(`release --promote: tag v${version} already exists (locally or on origin).\n    Bump past it (--version/--major/…). Nothing was released.`);
+    }
 
-    // CHANGELOG.md — keep the title line, prepend the new section above older ones.
+    // CHANGELOG.md — keep the title line, prepend the new section above older ones. (Skipped when
+    // resuming an interrupted --promote: the release commit already carries these artifacts.)
+    if (!resume) {
     const clPath = join(s.root, 'CHANGELOG.md');
     const prev = existsSync(clPath) ? readFileSync(clPath, 'utf8') : '# Changelog\n';
     const nl = prev.indexOf('\n');
@@ -549,10 +573,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     writeFileSync(clPath, `${title}\n${notes}\n${older}`.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
 
     if (pkg) { pkg.version = version; writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n'); }
+    }
 
     // --commit: commit exactly the release artifacts (pathspec commit — staged unrelated work stays
     // staged), then tag that commit so the tagged tree carries the bumped version.
-    if (withCommit) {
+    if (withCommit && !resume) {
       const artifacts = ['CHANGELOG.md', ...(pkg ? ['package.json'] : [])];
       try { gitAdd(s.root, artifacts); runGit(s.root, `commit -m ${shq(`chore(release): v${version}`)} -- ${artifacts.map(shq).join(' ')}`); }
       catch (e) { die(`release: git commit failed — ${String(e.message || e).split('\n')[0]}. Nothing was marked released.`); }
@@ -560,6 +585,68 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         try { runGit(s.root, `tag -a v${version} -m ${shq('release v' + version)}`); tagged = true; }
         catch (e) { die(`release: git tag v${version} failed after the release commit — ${String(e.message || e).split('\n')[0]}. Nothing was marked released.`); }
       }
+    }
+
+    // --promote (#98): the protected-deploy release flow. The release commit lives on the integration
+    // branch; a promotion PR carries it to the deploy branch — merged with a MERGE commit so the
+    // commit's SHA survives — and the tag lands on the deploy tip (tag pushes bypass branch
+    // protection). Work is marked released ONLY after the tag is on the remote; every earlier failure
+    // dies cleanly and a re-run resumes from the existing release commit (the #91 orphan detection).
+    if (promote) {
+      const relVersion = resume ? resume.v : version;
+      const relSha = resume ? resume.sha : runGit(s.root, 'rev-parse HEAD'); // fresh path: HEAD IS the release commit just made
+      const lastLine = (e) => String(e.message || e).split('\n').map((l) => l.trim()).filter(Boolean).slice(-1)[0] || 'unknown cause';
+      // Fetch the deploy state FIRST: a resume after the PR already merged (fetch/tag/push failures)
+      // must skip the PR choreography entirely — `pr list` finds nothing once merged, and `pr create`
+      // would die with 'no commits between' before ever reaching the tag step.
+      let deployTip = '';
+      try { runGit(s.root, `fetch origin ${deploy}`); deployTip = runGit(s.root, 'rev-parse FETCH_HEAD'); }
+      catch (e) { die(`release --promote: could not fetch ${deploy} — ${lastLine(e)}. Nothing was marked released.`); }
+      let alreadyMerged = false;
+      try { runGit(s.root, `merge-base --is-ancestor ${relSha} ${deployTip}`); alreadyMerged = true; } catch { /* not merged yet */ }
+      let prNum = null;
+      if (!alreadyMerged) {
+        try { runGit(s.root, `push origin ${ghBase}`); }
+        catch (e) { die(`release --promote: pushing ${ghBase} failed — ${lastLine(e)}. Nothing was marked released.`); }
+        // find-or-create keeps the re-run idempotent (a prior run may have opened the PR already)
+        try { prNum = (JSON.parse(runGh(s.root, gh0.command, `pr list --head ${ghBase} --base ${deploy} --state open --json number --limit 1`) || '[]')[0] || {}).number || null; }
+        catch { /* fall through to create */ }
+        if (!prNum) {
+          let out = '';
+          try { out = runGh(s.root, gh0.command, `pr create --base ${deploy} --head ${ghBase} --title ${shq(`chore(release): promote v${relVersion} to ${deploy}`)} --body ${shq(`Promotes the v${relVersion} release commit from ${ghBase} to ${deploy}. Merged with a MERGE commit; the tag lands on ${deploy}'s tip.`)}`); }
+          catch (e) { die(`release --promote: gh pr create failed — ${lastLine(e)}. Nothing was marked released.`); }
+          prNum = Number((out.match(/\/pull\/(\d+)/) || [])[1]) || null;
+        }
+        if (!prNum) die('release --promote: could not resolve the promotion PR number. Nothing was marked released.');
+        // Wait for the PR's CI with the merge gate's poll knobs; a PR with no checks ('none') passes.
+        const everyMs = gh0.ciPollIntervalMs ?? 5000, maxAttempts = gh0.ciPollAttempts ?? 24;
+        let st = ciStatus(s, { pr: { number: prNum } });
+        for (let i = 0; st === 'pending' && i < maxAttempts; i++) { sleepMs(everyMs); st = ciStatus(s, { pr: { number: prNum } }); }
+        if (st === 'fail' || st === 'pending') die(`release --promote: CI on promotion PR #${prNum} is ${st === 'fail' ? 'RED' : 'still pending'} — resolve it and re-run. Nothing was marked released.`);
+        try { runGh(s.root, gh0.command, `pr merge ${prNum} --merge`); }
+        catch (e) {
+          let merged = false; // mirror `chalk merge`: the merge may have SUCCEEDED even if gh exited non-zero
+          try { merged = /MERGED/i.test(runGh(s.root, gh0.command, `pr view ${prNum} --json state -q .state`)); } catch { /* gh down */ }
+          if (!merged) die(`release --promote: gh pr merge #${prNum} failed — ${lastLine(e)}. Nothing was marked released.`);
+        }
+        try { runGit(s.root, `fetch origin ${deploy}`); deployTip = runGit(s.root, 'rev-parse FETCH_HEAD'); }
+        catch (e) { die(`release --promote: could not fetch ${deploy} to tag it — ${lastLine(e)}. The PR merged; re-run to finish the tagging. Nothing was marked released.`); }
+      }
+      // Tagging, resume-safe: if origin already has the tag, everything shipped — only the marking is
+      // left. Otherwise FORCE-create the local tag at the deploy tip (a failed prior run may have left
+      // one behind; it is not on origin, so re-pointing it is safe) and push it.
+      if (gitTry(s.root, `ls-remote --tags origin refs/tags/v${relVersion}`) === '') {
+        try { runGit(s.root, `tag -fa v${relVersion} -m ${shq('release v' + relVersion)} ${deployTip}`); }
+        catch (e) { die(`release --promote: git tag v${relVersion} failed — ${lastLine(e)}. The PR merged; re-run to finish the tagging. Nothing was marked released.`); }
+        try { runGit(s.root, `push origin v${relVersion}`); }
+        catch (e) { die(`release --promote: pushing tag v${relVersion} failed — ${lastLine(e)}. Re-run to finish. Nothing was marked released.`); }
+      }
+      const cutoff = resume ? (Date.parse(gitTry(s.root, `show -s --format=%cI ${resume.sha}`)) || 0) : Infinity;
+      const set = tasks.filter((t) => (Date.parse(t.doneAt || '') || 0) <= cutoff);
+      for (const t of set) { t.released = relVersion; s.upsertTask(t); }
+      s.appendDecision({ title: `Released v${relVersion}`, why: `${set.length} change(s); promoted ${ghBase}→${deploy}${prNum ? ` via PR #${prNum}` : ' (PR already merged)'}; tagged v${relVersion} on ${deploy}` });
+      s.emitUpdate({ type: 'work-item-accepted', title: `Released v${relVersion} (${set.length} change(s))` });
+      return ok(`released ${C.b('v' + relVersion)} ${C.dim(`— promoted ${ghBase}→${deploy}${prNum ? ` via PR #${prNum}` : ' (resume: the promotion PR had already merged)'}, tagged v${relVersion} on the ${deploy} tip${set.length < tasks.length ? `; ${tasks.length - set.length} newer done task(s) left for the next release` : ''}`)}`);
     }
 
     for (const t of tasks) { t.released = version; s.upsertTask(t); }
@@ -1503,6 +1590,8 @@ function parseChecklist(body) {
 }
 // Shell single-quote (for titles/bodies passed to gh).
 function shq(s) { return `'${String(s).replace(/'/g, `'\\''`)}'`; }
+// Synchronous sleep for CI polling (mirrors lib/brokecheck.mjs) — no async plumbing in the CLI table.
+function sleepMs(ms) { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch { /* noop */ } }
 // Branch-name slug: lowercase, non-alphanumeric → '-', trimmed, max ~4 words.
 function pipelineSlug(title) {
   return (String(title || 'task').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').split('-').slice(0, 5).join('-')) || 'task';
@@ -1570,7 +1659,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
   chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
-  chalk release [--version x|--major|--minor|--patch] [--commit] [--no-tag] [--dry-run]  ${C.dim('ship merged work: CHANGELOG + version + tag (--commit: commit the bump, tag that commit)')}
+  chalk release [--version x|--major|--minor|--patch] [--commit] [--promote] [--no-tag] [--dry-run]  ${C.dim('ship merged work: CHANGELOG + version + tag (--commit: commit the bump, tag that commit; --promote: PR github.base→github.deployBase, tag the deploy tip)')}
   chalk discover "<brief>" [--file <path>] [--dry-run]  ${C.dim('intake: brief → scoped tasks with criteria')}
   chalk feedback [--input "..."] [--dry-run] [--min-severity low|med|high]  ${C.dim('signals → improvement issues')}
   chalk portal [--out <dir>] [--slug <slug>] [--dry-run]  ${C.dim('publish spine → client portal data')}
