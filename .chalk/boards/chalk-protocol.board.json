@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783331615094,
+  "updatedAt": 1783333704326,
   "order": 0,
   "cards": [
     {
@@ -189,7 +189,7 @@
     {
       "id": "task-10382dc9",
       "title": "chore: dogfood — make chalk's own loop (issue pull → autopilot → retro) the default way chalk contributes to chalk",
-      "column": "in_progress",
+      "column": "todo",
       "createdAt": 1783329435842,
       "updatedAt": 1783329435842,
       "order": 10,
@@ -214,6 +214,92 @@
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/105",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/99"
       }
+    },
+    {
+      "id": "task-8189ac26",
+      "title": "fix: spec-lock gate never checks locked tests are tracked in git — a pinned test can ship untracked and CI runs a vacuous green",
+      "column": "todo",
+      "createdAt": 1783332349978,
+      "updatedAt": 1783332349978,
+      "order": 12,
+      "description": "- `chalk done` (and/or `chalk pr`) verifies every locked test path pinned in the task spec is tracked (`git ls-files`) in the task's worktree, and fails with an error naming the untracked path(s)\n- the error message suggests the fix (`git add <path>` / re-run `chalk commit`)\n- locked test: `chalk done` refuses when a pinned test file exists on disk but is untracked, and succeeds once the file is tracked"
+    },
+    {
+      "id": "task-056bac99",
+      "title": "ci: add a windows-latest lane and fix what breaks",
+      "column": "todo",
+      "createdAt": 1783332349982,
+      "updatedAt": 1783332349982,
+      "order": 13
+    },
+    {
+      "id": "task-b9b5128a",
+      "title": "feat: configurable e2e spec pattern (not just *.test.yaml)",
+      "column": "todo",
+      "createdAt": 1783332349983,
+      "updatedAt": 1783332349983,
+      "order": 14
+    },
+    {
+      "id": "task-4bcc8640",
+      "title": "feat: held-out set outside the repo root (manual-mode blindness)",
+      "column": "todo",
+      "createdAt": 1783332349984,
+      "updatedAt": 1783332349984,
+      "order": 15
+    },
+    {
+      "id": "task-2c8e0e36",
+      "title": "feat: context budget — cap buildContext size and prune injected lessons",
+      "column": "todo",
+      "createdAt": 1783332349986,
+      "updatedAt": 1783332349986,
+      "order": 16
+    },
+    {
+      "id": "task-86b9cfe4",
+      "title": "feat: opt-in all-locks integrity — done tasks' locked tests stay protected",
+      "column": "todo",
+      "createdAt": 1783332349986,
+      "updatedAt": 1783332349986,
+      "order": 17
+    },
+    {
+      "id": "task-30ee8dd7",
+      "title": "feat: tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk",
+      "column": "todo",
+      "createdAt": 1783332349987,
+      "updatedAt": 1783332349987,
+      "order": 18
+    },
+    {
+      "id": "task-4d462e08",
+      "title": "feat: chalk stats — gate-efficacy report from the event log",
+      "column": "done",
+      "createdAt": 1783332349988,
+      "updatedAt": 1783333704326,
+      "order": 19,
+      "description": "- chalk stats reads tasks and events from the live spine AND .chalk/archive/, and reports review-gate efficacy: reviewed-task count, tasks blocked at least once before passing (catches), total block verdicts, and findings broken down by severity and by area\n- It reports churn: executor attempts and handoffs (totals and the worst offenders), and counts verify-RED blocks from the event log\n- It reports the gate-vs-bypass fraction over done tasks: the share that passed adversarial review vs done via review override (Overrode review gate decisions) or with no review, and the share landed through the pipeline (pipeline stage merged/cleaned) vs hand-landed\n- chalk stats --json emits the same report as machine-readable JSON; --since <date> restricts to tasks done and events emitted at/after that date; the command is pure read (never writes the spine), zero new dependencies\n- On a fresh spine with no tasks or events it prints a friendly empty-state message and exits 0 instead of throwing",
+      "testArtifact": {
+        "specPath": "test/stats.test.mjs",
+        "lastRun": {
+          "runId": "done-task-4d462e08",
+          "status": "passed",
+          "at": 1783333704326
+        },
+        "prNumber": 109,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/109",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/78"
+      }
+    },
+    {
+      "id": "task-11ea6ea9",
+      "title": "feat: give reviewer-induced auto-blocks a distinct `--needs` category instead of `human-input`",
+      "column": "todo",
+      "createdAt": 1783332349989,
+      "updatedAt": 1783332349989,
+      "order": 20,
+      "description": "- Add a dedicated `--needs` value (e.g. `review`) to the taxonomy in CLAUDE.md and the block command validation.\n- Emit reviewer-induced blocks in lib/pipeline.mjs with the new category instead of `human-input`.\n- `chalk status` / next surface the review block distinctly so it is not confused with a real human dependency.\n- Add a test asserting a reviewer block sets the review-specific `needs` while a genuine stage failure stays `human-input`."
     }
   ]
 }

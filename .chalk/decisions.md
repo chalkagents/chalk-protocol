@@ -324,3 +324,13 @@
 
 - _when:_ 2026-07-06T09:46:05.272Z
 - _why:_ review blocked twice on revertible wirings: every stage (review/retro/plan/discovery/feedback/executor) is now pinned e2e through a fake claude on PATH that emits the envelope ONLY when the flag was injected; also pinned stdout-first on nonzero exit, the banner-tolerant envelope parse, and the >1MiB capture buffer
+
+## Amended acceptance test for "feat: chalk stats — gate-efficacy report from the event log"
+
+- _when:_ 2026-07-06T10:24:33.478Z
+- _why:_ review BLOCK findings: pin churn.worst (attempts+handoffs per task), reject garbage --since, cover the unreviewed bucket/handLanded/passes/audit.red, and couple the real emitters (chalk run verify-RED+handoff, chalk done --force-review) to the stats parser via lib/markers.mjs
+
+## chalk stats mines the spine+archive via shared event markers (lib/markers.mjs)
+
+- _when:_ 2026-07-06T10:28:57.769Z
+- _why:_ stats matches event-log strings the emitters write; before markers.mjs each side hardcoded its own copy and a reword would silently zero a stat. Emitters (run/handoff/done/audit) and the parser now share constants, coupled end-to-end by the locked test.

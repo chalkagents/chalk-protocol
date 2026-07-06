@@ -1007,7 +1007,7 @@
   {
     "id": "task-10382dc9",
     "title": "chore: dogfood — make chalk's own loop (issue pull → autopilot → retro) the default way chalk contributes to chalk",
-    "state": "blocked",
+    "state": "specd",
     "acceptanceCriteria": [
       {
         "text": "A documented sweep runbook in the repo (CONTRIBUTING.md or RUNNING-AUTONOMOUSLY.md): issue pull → spec → autopilot → retro, runnable on this repo as-is with the committed `.chalk/chalk.json` agent config."
@@ -1040,12 +1040,6 @@
     },
     "createdAt": "2026-07-06T09:17:15.842Z",
     "reviews": [],
-    "blockedFrom": "specd",
-    "block": {
-      "needs": "upstream",
-      "reason": "Criteria 1-3 delivered: the dogfood-sweep runbook landed (PR #108), the issue-pull→pipeline→merge path is demonstrated (PRs #100/#103/#104/#105 cross-referencing #91/#98/#102/#99), and chalk retro closed this sweep (lessons + #107 filed). Criterion 4 — the auditable gate-vs-bypass fraction — waits on #78 (chalk stats). Unblock when #78 lands.",
-      "at": "2026-07-06T09:59:22.276Z"
-    },
     "handoff": {
       "path": ".chalk/handoffs/task-10382dc-1.md",
       "at": "2026-07-06T09:59:22.328Z",
@@ -1205,5 +1199,347 @@
       "lgtm": true
     },
     "doneAt": "2026-07-06T09:53:35.094Z"
+  },
+  {
+    "id": "task-8189ac26",
+    "title": "fix: spec-lock gate never checks locked tests are tracked in git — a pinned test can ship untracked and CI runs a vacuous green",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk done` (and/or `chalk pr`) verifies every locked test path pinned in the task spec is tracked (`git ls-files`) in the task's worktree, and fails with an error naming the untracked path(s)"
+      },
+      {
+        "text": "the error message suggests the fix (`git add <path>` / re-run `chalk commit`)"
+      },
+      {
+        "text": "locked test: `chalk done` refuses when a pinned test file exists on disk but is untracked, and succeeds once the file is tracked"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 107,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/107",
+      "body": "Three reviews in this sweep (release --commit, config-drift gate, evidence-push) independently flagged the same hole: a locked test exists on disk with its sha256 pinned in `.chalk/tasks.json`, but the file is untracked — absent from `git diff --stat` — so a fresh checkout / CI (`node --test`) runs WITHOUT the contract tests guarding the criteria. `chalk done` verifies the sha256 against the working tree only; nothing checks the file is in git. The pipeline `commit` stage happens to sweep untracked files via `changedPaths` (`status --porcelain -uall`), but manual-order flows and anything done before/around the commit stage escape it, and the reviewer had to catch it every single time.\n\n- [ ] `chalk done` (and/or `chalk pr`) verifies every locked test path pinned in the task spec is tracked (`git ls-files`) in the task's worktree, and fails with an error naming the untracked path(s)\n- [ ] the error message suggests the fix (`git add <path>` / re-run `chalk commit`)\n- [ ] locked test: `chalk done` refuses when a pinned test file exists on disk but is untracked, and succeeds once the file is tracked\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T10:05:49.977Z"
+    },
+    "createdAt": "2026-07-06T10:05:49.978Z",
+    "reviews": []
+  },
+  {
+    "id": "task-056bac99",
+    "title": "ci: add a windows-latest lane and fix what breaks",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 84,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/84",
+      "body": "**From the harness review (finding 10).** The suite is hermetic `node --test` with zero deps, but Windows is entirely unexercised: `command -v` in doctor's onPath, shell quoting in git/stash commands, and path edges are the likely breakage points. The demo and all gates are pure Node otherwise.\n\n**Sketch:** add `windows-latest` to the test matrix in `.github/workflows/test.yml`, triage failures, fix or conditionally skip with an issue link. Until then README should state Windows is best-effort."
+    },
+    "branchType": "feat",
+    "labels": [
+      "help wanted"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T10:05:49.982Z"
+    },
+    "createdAt": "2026-07-06T10:05:49.982Z",
+    "reviews": []
+  },
+  {
+    "id": "task-b9b5128a",
+    "title": "feat: configurable e2e spec pattern (not just *.test.yaml)",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 83,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/83",
+      "body": "**From the harness review (finding 10).** `isSpec()` hardcodes the `.test.yaml` suffix; teams with a different browser-spec convention silently get no e2e gate on their locked specs.\n\n**Sketch:** `protocol.e2e.specPattern` (glob or suffix list, default today's behavior); doctor's existing 'locks a spec but e2e is off' warning should honor it."
+    },
+    "branchType": "feat",
+    "labels": [
+      "good first issue"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T10:05:49.983Z"
+    },
+    "createdAt": "2026-07-06T10:05:49.983Z",
+    "reviews": []
+  },
+  {
+    "id": "task-4bcc8640",
+    "title": "feat: held-out set outside the repo root (manual-mode blindness)",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 82,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/82",
+      "body": "**From the harness review (finding 1, manual mode).** In worktree mode the gitignored `.chalk/held-out/` never reaches the agent's sandbox — but in MANUAL mode the agent works in the primary checkout and can simply read it. The contract forbids it; nothing enforces it.\n\n**Sketch:** `regression.dir` already exists — support an absolute/outside-the-repo path (e.g. `~/.chalk-held-out/<project>`) end-to-end (audit, doctor checks, guard authoring), and have `chalk doctor` recommend it when no worktree isolation is configured."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "good first issue"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T10:05:49.984Z"
+    },
+    "createdAt": "2026-07-06T10:05:49.984Z",
+    "reviews": []
+  },
+  {
+    "id": "task-2c8e0e36",
+    "title": "feat: context budget — cap buildContext size and prune injected lessons",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 81,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/81",
+      "body": "**From the harness review (finding 6).** `buildContext` injects spec + criteria + lessons + prior reviews + handoff with no size cap; `lessons.md` grows forever. Large/old projects will degrade the executor silently (or hit stdin limits).\n\n**Sketch:** a byte budget (config, generous default) with priority order (criteria > locked tests > handoff > recent lessons > older material elided with a note); `chalk archive` already compacts tasks/events — extend the idea to lessons."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T10:05:49.986Z"
+    },
+    "createdAt": "2026-07-06T10:05:49.986Z",
+    "reviews": []
+  },
+  {
+    "id": "task-86b9cfe4",
+    "title": "feat: opt-in all-locks integrity — done tasks' locked tests stay protected",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 80,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/80",
+      "body": "**From the harness review (finding 5).** `verify` sweeps locked-test integrity only for in-progress tasks, so lock protection expires at `done`: a later task can weaken an earlier task's locked test to keep its own verify green (the ImpossibleBench cheat, one task removed). Held-out (P7) is the backstop but is opt-in.\n\n**Sketch:** `protocol.integrity: \"all-locks\"` → verify hashes every done task's locked tests too; `chalk amend-spec` stays the sanctioned change path. Tradeoff to document: legitimate test evolution requires amend-spec on old tasks."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T10:05:49.986Z"
+    },
+    "createdAt": "2026-07-06T10:05:49.986Z",
+    "reviews": []
+  },
+  {
+    "id": "task-30ee8dd7",
+    "title": "feat: tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 79,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/79",
+      "body": "**From the harness review (finding 1).** Only locked tests and held-out files are hashed today. In manual mode nothing detects an agent hand-editing `.chalk/tasks.json` (mark-done-by-hand) or weakening `chalk.json` verify commands — enforcement is process discipline.\n\n**Sketch:** record spine-file hashes in `.chalk/local/` after every CLI write; on the next invocation, if the on-disk hash differs from the recorded one, print a loud ⚠ (and log an event). Not a lock — tamper-EVIDENCE. The threat model is a sloppy/pressured agent, not a malicious human."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "help wanted"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T10:05:49.987Z"
+    },
+    "createdAt": "2026-07-06T10:05:49.987Z",
+    "reviews": []
+  },
+  {
+    "id": "task-4d462e08",
+    "title": "feat: chalk stats — gate-efficacy report from the event log",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk stats reads tasks and events from the live spine AND .chalk/archive/, and reports review-gate efficacy: reviewed-task count, tasks blocked at least once before passing (catches), total block verdicts, and findings broken down by severity and by area"
+      },
+      {
+        "text": "It reports churn: executor attempts and handoffs (totals and the worst offenders), and counts verify-RED blocks from the event log"
+      },
+      {
+        "text": "It reports the gate-vs-bypass fraction over done tasks: the share that passed adversarial review vs done via review override (Overrode review gate decisions) or with no review, and the share landed through the pipeline (pipeline stage merged/cleaned) vs hand-landed"
+      },
+      {
+        "text": "chalk stats --json emits the same report as machine-readable JSON; --since <date> restricts to tasks done and events emitted at/after that date; the command is pure read (never writes the spine), zero new dependencies"
+      },
+      {
+        "text": "On a fresh spine with no tasks or events it prints a friendly empty-state message and exits 0 instead of throwing"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/stats.test.mjs",
+        "sha256": "dd6bc0a6bcfdc2ea3b1bc4ef13204c2d4ab62b52870c684ef92a81dfcefa72e9"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 78,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/78",
+      "body": "**From the harness review (finding 8: no self-measurement).** Chalk never reports what its gates caught, so it can't prove its own value — to users or to us.\n\n**Sketch:** read `.chalk/updates.jsonl` (+ archive) and report per task/wave: verify RED→GREEN cycles, review blocks + findings by area, break-it/mutation catches, INCONCLUSIVE probe warnings, churn (attempts/handoffs). Zero deps, pure read. `chalk stats [--since] [--json]`.\n\nThis repo's own oss-launch wave is a ready-made dataset: 5 of 9 gated tasks were BLOCKED by the adversarial reviewer before passing."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "help wanted"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-07-06T10:28:24.327Z"
+    },
+    "createdAt": "2026-07-06T10:05:49.988Z",
+    "reviews": [
+      {
+        "at": "2026-07-06T10:18:37.157Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 2 explicitly requires 'worst offenders', but the locked test (test/stats.test.mjs) never asserts churn.worst — deleting worstChurn from lib/stats.mjs (or hardcoding []) leaves the entire suite green. A criterion-named behavior shipped with zero test coverage is a vacuous pass."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "Criterion 2 reads 'executor attempts and handoffs (totals and the worst offenders)', but worst offenders are computed only for attempts; handoffs is a bare total (lib/stats.mjs:75). Handoff events carry taskId ('Handoff written: …', lib/handoff.mjs:86), so a per-task handoff breakdown is feasible and is simply missing."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "--since validation is a type check only (bin/chalk.mjs:898). An unparseable date (`--since garbage`) makes Date.parse return NaN, and `if (cut)` in computeStats (lib/stats.mjs:43) is falsy for NaN — the filter is silently skipped and the full-history report is printed labeled 'since garbage'. Same falsy hole for epoch dates (cut===0). No test covers an invalid --since."
+          },
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "verifyRedBlocks and overridden rely on brittle free-text matching against event wording produced elsewhere ('verify RED after executor'/'without a green verify' in lib/run.mjs:44-45; 'Decision: Overrode review gate for \"…\"' via lib/store.mjs:188 + bin/chalk.mjs:1354). Any future rewording silently zeroes these stats; no test couples the real emitters to the stats parser — the locked test hand-crafts the strings, so drift would go undetected."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Override attribution matches by task TITLE, not id (lib/stats.mjs:84-88): two done tasks sharing a title would both count as overridden, and a task overridden then later re-reviewed to pass is classified gated (overridden requires !gated), skewing the bypass fraction. Untested either way."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No positive-path assertions for the 'no review' bypass bucket (unreviewed is only asserted to be 0), nor for landing.handLanded, review.passes, or audit.red — several reported fields could regress without failing the suite."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The submitted diff contains ONLY .chalk spine files (boards/tasks/updates); lib/stats.mjs, the bin/chalk.mjs wiring, and the locked test test/stats.test.mjs exist in the working tree but are outside the presented diff. Confirm test/stats.test.mjs and lib/stats.mjs are actually tracked/committed on the PR #109 branch — an untracked pinned test is exactly the vacuous-green hole this repo just filed as issue #107 (task-8189ac26)."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-06T10:27:51.278Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "pipelineLanded (lib/stats.mjs:104) requires t.pr?.number IN ADDITION to pipeline.stage merged/cleaned, while criterion 3 says only 'pipeline stage merged/cleaned'. A task that reached the cleaned stage but lost its pr record would be miscounted as hand-landed. Both fixture tasks carry a pr, so the extra condition is untested either way."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Under --since, events missing an `at` field hit Date.parse(0) → Date.parse('0'), which V8 parses as 2000-01-01 rather than epoch/NaN, so undated events are silently included in windows after 2000. All real emitters set `at`, so this is a defensive-path quirk only."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The prior block's --since falsy hole is properly fixed (`cut !== null`, lib/stats.mjs:49) and garbage input is now rejected at both the CLI (bin/chalk.mjs:899) and computeStats (lib/stats.mjs:46) with a locked test — but the epoch boundary itself (--since 1970-01-01) and the `--json` empty-spine path (prints an all-zero report instead of the friendly message; criterion 5 arguably only covers the human report) are not pinned."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Refactoring run/handoff/done/audit emitters onto lib/markers.mjs preserves the exact legacy strings ('Handoff written:', 'Blocked: … (needs …)', 'Decision: Overrode review gate for \"…\"', 'Audit green/red'), and the two end-to-end tests (chalk run verify-RED+handoff, chalk done --force-review) now couple emitters to the parser as the amend-spec demanded — drift risk from the earlier review is addressed; residual risk is limited to third-party tooling that greps the old literals, which are unchanged."
+          }
+        ]
+      }
+    ],
+    "branch": "feat/78-feat-chalk-stats-gate-efficacy",
+    "startedAt": "2026-07-06T10:12:08.370Z",
+    "pr": {
+      "number": 109,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/109",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-06T10:28:24.326Z"
+  },
+  {
+    "id": "task-11ea6ea9",
+    "title": "feat: give reviewer-induced auto-blocks a distinct `--needs` category instead of `human-input`",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Add a dedicated `--needs` value (e.g. `review`) to the taxonomy in CLAUDE.md and the block command validation."
+      },
+      {
+        "text": "Emit reviewer-induced blocks in lib/pipeline.mjs with the new category instead of `human-input`."
+      },
+      {
+        "text": "`chalk status` / next surface the review block distinctly so it is not confused with a real human dependency."
+      },
+      {
+        "text": "Add a test asserting a reviewer block sets the review-specific `needs` while a genuine stage failure stays `human-input`."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 46,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/46",
+      "body": "In lib/pipeline.mjs a failed review (line 69) and a genuinely human-blocking stage failure (line 76) both call `block ... --needs human-input`. Only the free-text reason distinguishes them, so any downstream tooling/triage that routes by `block.needs` treats a reviewer-induced block identically to a credentials/decision/human-input block. A reviewer block is structurally different: it was produced by chalk's own adversarial reviewer, often after a retry, and is the agent's responsibility to address — not a pending human dependency.\n\n- [ ] Add a dedicated `--needs` value (e.g. `review`) to the taxonomy in CLAUDE.md and the block command validation.\n- [ ] Emit reviewer-induced blocks in lib/pipeline.mjs with the new category instead of `human-input`.\n- [ ] `chalk status` / next surface the review block distinctly so it is not confused with a real human dependency.\n- [ ] Add a test asserting a reviewer block sets the review-specific `needs` while a genuine stage failure stays `human-input`.\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-06T10:05:49.989Z"
+    },
+    "createdAt": "2026-07-06T10:05:49.989Z",
+    "reviews": []
   }
 ]
