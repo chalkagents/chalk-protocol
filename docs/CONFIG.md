@@ -100,10 +100,12 @@ template otherwise).
 
 ### `github`
 
-The issue→merge pipeline config: `{ command, base, repo, mergeMethod, labelType, ciPollIntervalMs,
-ciPollAttempts }`. `command` is your `gh` (stubbable in tests); `labelType` maps issue labels to
-branch types (`bug→fix`). Merge runs the broke-check: remote CI verdict when the PR has checks,
-else local verify (labeled when it falls back).
+The issue→merge pipeline config: `{ command, base, repo, deployBase, mergeMethod, labelType,
+ciPollIntervalMs, ciPollAttempts }`. `command` is your `gh` (stubbable in tests); `labelType` maps
+issue labels to branch types (`bug→fix`). Merge runs the broke-check: remote CI verdict when the
+PR has checks, else local verify (labeled when it falls back). `base` is the integration branch
+PRs target; `deployBase` is the protected deploy branch `chalk release --promote` promotes to
+(promotion PR merged with a MERGE commit, tag on its tip — set it ≠ `base` to enable).
 
 ### `worktree`
 
