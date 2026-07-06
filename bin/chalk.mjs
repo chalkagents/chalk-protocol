@@ -481,6 +481,45 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const version = bumpVersion(current, tasks, { version: typeof flags.version === 'string' ? flags.version : undefined, level });
     const notes = renderReleaseNotes(tasks, version, now().slice(0, 10));
 
+    let tagged = false;
+    const isRepo = gitTry(s.root, 'rev-parse --is-inside-work-tree') === 'true';
+    const withCommit = flags.commit === true;
+    if (withCommit && !isRepo) die('release: --commit needs a git repo — drop --commit or run inside one. Nothing was released.');
+    const wantTag = flags['no-tag'] !== true && isRepo;
+
+    // Recovery (#91): a prior --commit run can die AFTER the release commit but BEFORE the tag (hook,
+    // perms, a ref lock) — nothing is marked released, so a naive re-run would bump FROM the already-
+    // bumped version and stack a second release commit (version skip). Detect the ORPHAN: the newest
+    // release commit in recent history whose version has neither a tag NOR a `Released vX` decision.
+    // The decision is the completion marker — every finished release appends one, INCLUDING an
+    // intentional --no-tag release (whose commit is legitimately untagged and must NOT be "resumed").
+    // Resume = tag that commit (wherever it sits — later commits may have landed on top) and mark
+    // released only the tasks done BEFORE it was created; later arrivals belong to the next cycle.
+    // No rollback: a hard reset could eat unrelated staged work. Converges to ONE commit + ONE tag.
+    if (withCommit && isRepo) {
+      const orphan = gitTry(s.root, 'log -50 --format=%H%x09%s').split('\n')
+        .map((l) => { const [sha, subj] = l.split('\t'); const m = (subj || '').match(/^chore\(release\): v(\d+\.\d+\.\d+)$/); return m ? { sha, v: m[1] } : null; })
+        .find(Boolean);
+      const decisionsPath = join(s.root, '.chalk/decisions.md');
+      const decisions = existsSync(decisionsPath) ? readFileSync(decisionsPath, 'utf8') : '';
+      const completed = orphan && new RegExp(`Released v${orphan.v.replace(/\./g, '\\.')}\\b`).test(decisions);
+      if (orphan && !completed && gitTry(s.root, `rev-parse --verify --quiet refs/tags/v${orphan.v}`) === '') {
+        const v = orphan.v;
+        // A post-interruption dry-run must preview the RESUME, not a double-bumped next version.
+        if (flags['dry-run'] === true) return ok(`release ${C.b('v' + v)} ${C.dim(`(dry-run) — would RESUME the interrupted --commit release (tag the existing release commit); nothing written`)}`);
+        if (wantTag) {
+          try { runGit(s.root, `tag -a v${v} -m ${shq('release v' + v)} ${orphan.sha}`); tagged = true; }
+          catch (e) { die(`release: git tag v${v} failed again while resuming the interrupted release — ${String(e.message || e).split('\n')[0]}. Nothing was marked released.`); }
+        }
+        const cutoff = Date.parse(gitTry(s.root, `show -s --format=%cI ${orphan.sha}`)) || 0;
+        const set = tasks.filter((t) => (Date.parse(t.doneAt || '') || 0) <= cutoff);
+        for (const t of set) { t.released = v; s.upsertTask(t); }
+        s.appendDecision({ title: `Released v${v}`, why: `${set.length} change(s); resumed an interrupted --commit release${tagged ? `; tagged v${v}` : ''}` });
+        s.emitUpdate({ type: 'work-item-accepted', title: `Released v${v} (${set.length} change(s))` });
+        return ok(`released ${C.b('v' + v)} ${C.dim(`— resumed the interrupted --commit release ${tagged ? '(tagged the existing release commit)' : '(--no-tag: left untagged)'}${set.length < tasks.length ? `; ${tasks.length - set.length} newer done task(s) left for the next release` : ''}`)}`);
+      }
+    }
+
     // --dry-run: preview the version + notes and stop — no CHANGELOG, no bump, no tag, no marking.
     if (flags['dry-run'] === true) {
       console.log(notes.trimEnd());
@@ -493,11 +532,6 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // fatal BEFORE anything is written or marked. With --commit the order flips — the release artifacts
     // are committed and the tag lands on that commit, so the tagged tree carries the bumped version —
     // and the collision is probed up front instead (same invariant: fail before anything is written).
-    let tagged = false;
-    const isRepo = gitTry(s.root, 'rev-parse --is-inside-work-tree') === 'true';
-    const withCommit = flags.commit === true;
-    if (withCommit && !isRepo) die('release: --commit needs a git repo — drop --commit or run inside one. Nothing was released.');
-    const wantTag = flags['no-tag'] !== true && isRepo;
     if (wantTag && !withCommit) {
       try { runGit(s.root, `tag -a v${version} -m ${shq('release v' + version)}`); tagged = true; }
       catch (e) { die(`release: git tag v${version} failed — ${String(e.message || e).split('\n')[0]}.\n    Likely the tag already exists; bump past it (--version/--major/…) or re-run with --no-tag. Nothing was released.`); }
