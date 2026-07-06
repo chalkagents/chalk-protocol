@@ -426,7 +426,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (!cmd) die('no planner configured (protocol.planner.command).');
     let out = '';
     const t0 = Date.now();
-    try { out = execSync(withJsonOutput(withRunner(s.protocol().runner, cmd)), { cwd: workdir(s, t), input: buildContext(s, t), encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 10 * 60 * 1000 }); }
+    try { out = execSync(withJsonOutput(withRunner(s.protocol().runner, cmd)), { cwd: workdir(s, t), input: buildContext(s, t), encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 10 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 }); }
     catch (e) { out = `${e.stdout || ''}`; }
     const { text: planOut, usage } = unwrapAgentOutput(out); // #99: envelope off before the plan is stored
     s.logCost({ taskId: t.id, stage: 'plan', agent: 'planner', ms: Date.now() - t0, ...(usage || {}) });
@@ -682,7 +682,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (ex) {
       t.attempts = (t.attempts || 0) + 1; s.upsertTask(t);   // churn budget: each work run counts
       const t0 = Date.now();
-      const { usage } = runExecutorCaptured(ex, { cwd: workdir(s, t), input: buildContext(s, t) }); // #99: claude-shaped → usage captured
+      const { usage } = runExecutorCaptured(withRunner(s.protocol().runner, ex), { cwd: workdir(s, t), input: buildContext(s, t) }); // #99: claude-shaped → usage captured; runner prefix like every sibling stage
       s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0, ...(usage || {}) });
     }
     const v = runVerify(s, { cwd: workdir(s, t) });
