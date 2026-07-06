@@ -14,3 +14,5 @@
 - When one component parses event-log or marker strings that another component emits, define the literals once in a shared module imported by both sides so a reword cannot silently zero the parser.  _(retro, 2026-07-06)_
 - When gating on an optional timestamp or numeric option, compare against null/undefined explicitly instead of truthiness so valid falsy values like the epoch are not silently dropped.  _(retro, 2026-07-06)_
 - When stubbing a git remote in tests, assert post-conditions by reading the bare remote's refs rather than local state, so a missing or reverted push is detectable by the suite.  _(retro, 2026-07-06)_
+- Commit issue-intake spine metadata (new task specs, board rows) in its own chore commit before starting feature work — four reviews this sweep flagged unrelated .chalk/tasks.json noise bundled into feature diffs.  _(retro, 2026-07-06)_
+- When an acceptance criterion enumerates multiple output surfaces (e.g. next AND status AND backlog), add a locked assertion for every named surface up front — pinning only one drew a review block on the needs:review task and left the backlog rendering unguarded.  _(retro, 2026-07-06)_
