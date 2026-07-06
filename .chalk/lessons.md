@@ -11,3 +11,6 @@
 - Commit a sha256-pinned locked test file in the same change that creates it — an untracked locked test leaves CI running a vacuous green, and three consecutive reviews had to flag it manually.  _(retro, 2026-07-06)_
 - When wiring a cross-cutting helper into multiple call sites, give each call site its own revert-detecting e2e pin up front — individually-revertible wirings drew two review blocks on the cost-ledger task.  _(retro, 2026-07-06)_
 - When adding a new agent subprocess invocation, apply withRunner and the 64MiB maxBuffer exactly like the sibling stages so no call site silently diverges from the runner/capture conventions.  _(retro, 2026-07-06)_
+- When one component parses event-log or marker strings that another component emits, define the literals once in a shared module imported by both sides so a reword cannot silently zero the parser.  _(retro, 2026-07-06)_
+- When gating on an optional timestamp or numeric option, compare against null/undefined explicitly instead of truthiness so valid falsy values like the epoch are not silently dropped.  _(retro, 2026-07-06)_
+- When stubbing a git remote in tests, assert post-conditions by reading the bare remote's refs rather than local state, so a missing or reverted push is detectable by the suite.  _(retro, 2026-07-06)_
