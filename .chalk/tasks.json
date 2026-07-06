@@ -1309,7 +1309,7 @@
   {
     "id": "task-8189ac26",
     "title": "fix: spec-lock gate never checks locked tests are tracked in git — a pinned test can ship untracked and CI runs a vacuous green",
-    "state": "specd",
+    "state": "in-progress",
     "acceptanceCriteria": [
       {
         "text": "`chalk done` (and/or `chalk pr`) verifies every locked test path pinned in the task spec is tracked (`git ls-files`) in the task's worktree, and fails with an error naming the untracked path(s)"
@@ -1321,7 +1321,12 @@
         "text": "locked test: `chalk done` refuses when a pinned test file exists on disk but is untracked, and succeeds once the file is tracked"
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/spec-lock-tracking.test.mjs",
+        "sha256": "0c91a5d9083f853e04f6d3e740987461e99580d0d9e70e30c4e99ac5cd71607f"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -1334,11 +1339,14 @@
       "bug"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-06T10:05:49.977Z"
+      "stage": "committed",
+      "at": "2026-07-06T12:19:13.453Z"
     },
     "createdAt": "2026-07-06T10:05:49.978Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-06T12:08:49.593Z",
+    "branch": "fix/107-fix-spec-lock-gate-never",
+    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
   },
   {
     "id": "task-056bac99",
