@@ -792,22 +792,34 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     for (const r of results) {
       try { imgs.push(...extractScreenshots(wd, evDir, JSON.parse(readFileSync(join(wd, r.runDir, 'run.json'), 'utf8')))); } catch { /* no screenshots */ }
     }
+    let pushed = false;
     if (imgs.length) {
       gitAdd(wd, imgs);
       gitCommit(wd, ['test(evidence): attach run screenshots']);
-      try { runGit(wd, 'push'); } catch { /* offline / no upstream — body still composes from local SHA */ }
-      const sha = runGit(wd, 'rev-parse HEAD');
-      let body = '';
-      try { body = runGh(wd, gh0.command, `pr view ${t.pr.number} --json body -q .body`); } catch { /* keep empty */ }
-      try { runGh(wd, gh0.command, `pr edit ${t.pr.number} --body ${shq(body + evidenceMarkdown(currentRepo(s.root) || '', sha, imgs))}`); }
-      catch (e) { die(`gh pr edit failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+      // The blob-SHA URLs only resolve if the evidence commit reaches the remote — a swallowed push
+      // failure used to surface as 404 images in the PR body. Warn loud and skip the body edit instead.
+      try { runGit(wd, 'push'); pushed = true; }
+      catch (e) {
+        // execSync's message line 0 is just "Command failed: git push" — the CAUSE is git's stderr.
+        const lines = String(e.stderr || e.message || e).split('\n').map((l) => l.trim()).filter(Boolean);
+        const cause = lines.find((l) => !/^Command failed/.test(l)) || lines[0] || 'unknown cause';
+        console.log(C.y(`  ⚠ evidence push failed — ${cause}; screenshots stay committed on the branch, no blob URLs added to the PR (they would 404)`));
+      }
+      if (pushed) {
+        const sha = runGit(wd, 'rev-parse HEAD');
+        let body = '';
+        try { body = runGh(wd, gh0.command, `pr view ${t.pr.number} --json body -q .body`); } catch { /* keep empty */ }
+        try { runGh(wd, gh0.command, `pr edit ${t.pr.number} --body ${shq(body + evidenceMarkdown(currentRepo(s.root) || '', sha, imgs))}`); }
+        catch (e) { die(`gh pr edit failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+      }
       t.evidence = imgs;
     }
     const failed = results.filter((r) => r.status !== 'passed').length;
     t.pipeline = { ...(t.pipeline || {}), stage: 'tested', at: now() };
     s.upsertTask(t);
-    s.emitUpdate({ type: 'progress-update', title: `Evidence attached (${imgs.length} screenshot(s))`, taskId: t.id });
+    s.emitUpdate({ type: 'progress-update', title: imgs.length && !pushed ? `Evidence captured (${imgs.length} screenshot(s)) — push failed, not attached to the PR` : `Evidence attached (${imgs.length} screenshot(s))`, taskId: t.id });
     if (failed) console.log(C.y(`  ⚠ ${failed} spec(s) failed`));
+    if (imgs.length && !pushed) return ok(`evidence: ${C.b(String(imgs.length))} screenshot(s) captured — NOT attached to PR #${t.pr.number} (push failed)`);
     ok(`evidence: ${C.b(String(imgs.length))} screenshot(s) → PR #${t.pr.number}`);
   },
 
