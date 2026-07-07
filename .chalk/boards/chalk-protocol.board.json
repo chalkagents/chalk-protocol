@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783418383502,
+  "updatedAt": 1783418602885,
   "order": 0,
   "cards": [
     {
@@ -443,11 +443,15 @@
     {
       "id": "task-ae0148d8",
       "title": "fix: passing `chalk review` never clears a needs:review block — the printed guidance omits `chalk unblock`, stranding the task",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1783417824966,
-      "updatedAt": 1783417824966,
+      "updatedAt": 1783418602885,
       "order": 25,
-      "description": "- A passing `chalk review` on a task blocked with `needs:review` auto-unblocks it (restore `blockedFrom`, clear `t.block`), or the review-blocked guidance in next/status/backlog explicitly includes the `chalk unblock` step\n- Locked test drives the full round trip: run-loop review block → fix → `chalk review` pass → task is runnable again without manual state surgery\n- `chalk done` succeeds after that round trip (no residual blocked-state gate failure)"
+      "description": "- A passing `chalk review` on a task blocked with `needs:review` auto-unblocks it (restore `blockedFrom`, clear `t.block`), or the review-blocked guidance in next/status/backlog explicitly includes the `chalk unblock` step\n- Locked test drives the full round trip: run-loop review block → fix → `chalk review` pass → task is runnable again without manual state surgery\n- `chalk done` succeeds after that round trip (no residual blocked-state gate failure)\n- A passing chalk review (adversarial or manual) on a task blocked with needs:review auto-unblocks it: restores blockedFrom, clears t.block, and announces it — so runnableTasks stops skipping it.\n- A non-review block (needs: human-input/creds/decision/upstream) is a real dependency and is NEVER cleared by a passing review.\n- Locked test drives the full round trip: run-loop review block → fix → chalk review pass → task runnable again → chalk done succeeds, with no manual state surgery.",
+      "testArtifact": {
+        "specPath": "test/review-unblock.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/117"
+      }
     },
     {
       "id": "task-068a83c8",
