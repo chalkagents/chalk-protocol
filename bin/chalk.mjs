@@ -10,7 +10,7 @@ import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences, normGate } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
-import { gh as runGh, git as runGit, gitAdd, gitCommit, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
+import { gh as runGh, git as runGit, gitAdd, gitCommit, gitCommitPaths, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
 import { postReviewToPr } from '../lib/prreview.mjs';
 import { brokeCheck, ciStatus } from '../lib/brokecheck.mjs';
@@ -324,7 +324,22 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       s.emitUpdate({ type: 'work-item-started', title: `Imported issue #${iss.number}: ${iss.title}`, taskId: t.id });
       console.log(`  ${C.g('+')} #${iss.number} ${iss.title} ${C.dim(`[${t.state}] → ${branchType}/${iss.number}-…`)}`);
     }
-    if (created) syncBrowser(s);
+    if (created) {
+      syncBrowser(s);
+      // Commit intake's spine writes to the current (base) branch in a dedicated, SCOPED chore(spine)
+      // commit before any task branch is cut (#114). Otherwise the imported batch (tasks.json entries,
+      // board rows) floats in the working tree and bundles into whichever task branch commits next —
+      // the "unrelated queue metadata" four reviews kept flagging. `gitCommitPaths` commits ONLY these
+      // spine paths (`git commit -- <pathspec>`), so a user's OTHER pre-staged work is never swept in.
+      // Best-effort: a non-git tree or a commit failure must not fail intake — the tasks are persisted.
+      try {
+        if (gitTry(s.root, 'rev-parse --is-inside-work-tree') === 'true') {
+          const spineFiles = ['.chalk/tasks.json', '.chalk/updates.jsonl', '.chalk/boards', '.chalk/plans'].filter((p) => existsSync(join(s.root, p)));
+          if (gitCommitPaths(s.root, `chore(spine): import ${created} issue(s) into the backlog`, spineFiles))
+            console.log(C.dim(`  committed intake to the spine · chore(spine): import ${created} issue(s)`));
+        }
+      } catch { /* best-effort — the tasks are already written to the spine */ }
+    }
     ok(`pulled ${C.b(String(created))} new issue(s) ${C.dim(`(${issues.length - created} already tracked)`)}`);
   },
 
