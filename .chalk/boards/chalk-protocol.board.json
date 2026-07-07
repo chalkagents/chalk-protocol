@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783413912983,
+  "updatedAt": 1783414480988,
   "order": 0,
   "cards": [
     {
@@ -300,13 +300,18 @@
     {
       "id": "task-30ee8dd7",
       "title": "feat: tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1783332349987,
-      "updatedAt": 1783413912983,
+      "updatedAt": 1783414480988,
       "order": 18,
       "description": "- protocol.tamperEvident (default false) opts in. When false/unset, chalk behaves exactly as before — no hashing, no warnings, no new writes on any command.\n- When true, chalk records sha256 baselines of chalk.json + tasks.json in gitignored .chalk/local/ after every chalk write; a subsequent command whose on-disk hash differs from the baseline prints a loud warning naming the file and logs a tamper event.\n- It is evidence, not a lock: after warning it re-baselines so the notice fires exactly once; a first enabled run with no baseline establishes one without warning (fail-safe).\n- Locked test proves: default-off is inert, chalk's own writes never false-positive, an outside edit to either file is caught (warning + event), the warning fires once, and the no-baseline case is fail-safe.",
       "testArtifact": {
         "specPath": "test/spine-tamper.test.mjs",
+        "lastRun": {
+          "runId": "done-task-30ee8dd7",
+          "status": "passed",
+          "at": 1783414480988
+        },
         "prNumber": 120,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/120",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/79"
