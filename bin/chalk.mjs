@@ -390,24 +390,34 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   commit({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
-    if (stageDone(t, 'committed')) return ok(`commit ${C.dim('(already done)')}`);
     const wd = workdir(s, t);
     // Spine STATE stays out of the feature-branch diff (it lands via separate chore commits), but
     // evidence screenshots and e2e contract specs (.chalk/tests/) DO belong on the branch — the
     // latter so they are git-tracked for CI and the tracking gate (#126), not a vacuous green.
     const paths = changedPaths(wd).filter((p) => !p.startsWith('.chalk/') || p.startsWith('.chalk/evidence/') || p.startsWith('.chalk/tests/'));
-    if (!paths.length) die('nothing to commit — the executor made no file changes in the worktree.');
+    const already = stageDone(t, 'committed');
+    // A follow-up commit is the NORMAL case after a review BLOCK: the fix is made AFTER the first
+    // commit. The old guard no-op'd here, so those changes stayed uncommitted — the reviewer judged
+    // the working tree (`git diff HEAD`) and could PASS, but `chalk merge` squash-takes only COMMITTED
+    // changes, so a green review certified code that never landed (#134). Now: commit new changes even
+    // past the 'committed' stage; only no-op when there is genuinely nothing new (idempotent resume).
+    if (!paths.length) {
+      if (already) return ok(`commit ${C.dim('(already done — nothing new in the working tree)')}`);
+      die('nothing to commit — the executor made no file changes in the worktree.');
+    }
     const type = t.branchType || 'feat';
     // Strip a conventional prefix the issue title may already carry, so we don't double up
     // (e.g. issue "feat: add X" must not become "feat: feat: add X").
     const desc = (t.title || 'update').replace(/^\s*(feat|fix|chore|docs|refactor|test|perf|style|build|ci)(\([^)]*\))?:\s*/i, '').replace(/^./, (c) => c.toLowerCase()).slice(0, 60);
-    const subject = `${type}: ${desc}`;
+    // Follow-up commits don't repeat the conventional subject/Closes (the PR squash message carries
+    // those) — they're clearly labeled so the branch log shows the review-fix rounds.
+    const subject = already ? `${type}: ${desc} — follow-up (review fixes)` : `${type}: ${desc}`;
     gitAdd(wd, paths);
-    gitCommit(wd, [subject, t.issue?.number ? `Closes #${t.issue.number}` : '']);
-    t.pipeline = { ...(t.pipeline || {}), stage: 'committed', at: now() };
+    gitCommit(wd, already ? [subject] : [subject, t.issue?.number ? `Closes #${t.issue.number}` : '']);
+    if (!already) t.pipeline = { ...(t.pipeline || {}), stage: 'committed', at: now() };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-submitted', title: `Committed: ${subject}`, taskId: t.id });
-    ok(`committed ${C.dim(`${paths.length} file(s)`)} — ${C.b(subject)}`);
+    ok(`${already ? 'committed follow-up' : 'committed'} ${C.dim(`${paths.length} file(s)`)} — ${C.b(subject)}`);
   },
 
   // GitHub pipeline — push the branch and open a PR (conventional title + Summary/Changes/Test-plan).
