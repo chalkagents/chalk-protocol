@@ -1786,7 +1786,25 @@ try {
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') { printHelp(); process.exit(0); }
   const fn = cmds[cmd];
   if (!fn) die(`unknown command: ${cmd}  (try \`chalk help\`)`);
+  warnSpineTamper(cmd);
   fn(parsed);
 } catch (e) {
   die(e.message);
+}
+
+// Tamper-evidence (#79): before running any command in an existing spine, check whether chalk.json
+// or tasks.json was changed OUTSIDE chalk since our last write. If so, print a loud warning and log
+// an event, then re-baseline so it fires exactly once (this is evidence, not a lock). `init` has no
+// prior spine to check; failures here must never block a command.
+function warnSpineTamper(command) {
+  if (command === 'init') return;
+  try {
+    const s = Store.open();
+    if (!s.protocol()?.tamperEvident) return; // opt-in (#79) — default off, zero behavior change
+    const drift = s.spineTamper();
+    if (!drift.length) { if (!existsSync(s.p.spineHashes)) s.recordSpineHashes(); return; } // establish baseline on first enabled run
+    for (const d of drift) console.error(C.y(`  ⚠ ${d.file} was modified outside chalk (since ${d.recordedAt.slice(0, 16)}) — mark tasks done with \`chalk done\`, not by hand; edit config via \`chalk\`, not the file.`));
+    s.emitUpdate({ type: 'progress-update', title: `Spine tamper-evidence: ${drift.map((d) => d.file).join(', ')} changed outside chalk`, description: 'detected at command entry (#79)' });
+    s.recordSpineHashes(); // accept the new state as baseline so the warning does not repeat every run
+  } catch { /* not a spine / unreadable — never block the command */ }
 }
