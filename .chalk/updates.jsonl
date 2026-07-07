@@ -277,3 +277,6 @@
 {"id":"evt-232e2e69","at":"2026-07-07T09:40:18.046Z","type":"work-item-started","title":"Started: feat: held-out set outside the repo root (manual-mode blindness)","description":"","phase":"discovery","actorRole":"agent","taskId":"task-4bcc8640"}
 {"id":"evt-179960eb","at":"2026-07-07T09:40:18.103Z","type":"progress-update","title":"Branched: feat/82-feat-held-out-set-outside","description":"","phase":"discovery","actorRole":"agent","taskId":"task-4bcc8640"}
 {"id":"evt-459ec24e","at":"2026-07-07T09:41:51.141Z","type":"work-item-submitted","title":"Committed: feat: held-out set outside the repo root (manual-mode blindness)","description":"","phase":"discovery","actorRole":"agent","taskId":"task-4bcc8640"}
+{"id":"evt-f90e1452","at":"2026-07-07T09:41:59.359Z","type":"work-item-submitted","title":"PR #124 opened","description":"","phase":"discovery","actorRole":"agent","taskId":"task-4bcc8640"}
+{"id":"evt-2944400a","at":"2026-07-07T09:43:01.201Z","type":"progress-update","title":"Review (pass): feat: held-out set outside the repo root (manual-mode blindness)","description":"","phase":"discovery","actorRole":"agent","taskId":"task-4bcc8640"}
+{"id":"evt-b83fa86e","at":"2026-07-07T09:43:12.807Z","type":"work-item-accepted","title":"Merged + cleaned: PR #124","description":"","phase":"discovery","actorRole":"agent","taskId":"task-4bcc8640"}

@@ -1505,7 +1505,7 @@
   {
     "id": "task-4bcc8640",
     "title": "feat: held-out set outside the repo root (manual-mode blindness)",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "protocol.regression.dir accepts an absolute or ~-prefixed path OUTSIDE the repo (not just a repo-relative dir); a new heldOutBase resolver handles all three forms, empty/unset keeps the historical .chalk/held-out."
@@ -1542,14 +1542,38 @@
       "good first issue"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-07-07T09:41:51.129Z"
+      "stage": "cleaned",
+      "at": "2026-07-07T09:43:12.796Z"
     },
     "createdAt": "2026-07-06T10:05:49.984Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-07T09:42:59.691Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The reviewed diff itself only records PR/pipeline metadata (board.json, tasks.json, updates.jsonl); the actual feature code lives in the working tree from a prior commit. Inspected the tree: lib/regression.mjs (heldOutBase resolver handling relative/absolute/~ and empty-default; lockFile storing repo-relative inside vs absolute outside; brokenHeldOut/listDirFiles via lockAbs), bin/chalk.mjs guard add (resolves + locks outside files, audit uses brokenHeldOut), and lib/doctor.mjs (info recommendation gated on worktree.enabled===false && in-repo dir, quiet when absolute/~) all satisfy criteria 1-4."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Locked test test/held-out-outside-root.test.mjs exercises each criterion in both directions: resolver forms, inside-vs-outside lock storage + tamper round-trip, absolute-dir listing, end-to-end guard→audit (green intact / exit 2 tampered), and doctor recommendation present in-repo / absent when outside. Coverage matches the contract; no vacuous pass detected."
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-07T09:40:18.037Z",
     "branch": "feat/82-feat-held-out-set-outside",
-    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
+    "pr": {
+      "number": 124,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/124",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-07T09:43:12.796Z"
   },
   {
     "id": "task-2c8e0e36",
