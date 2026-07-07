@@ -2223,7 +2223,7 @@
   {
     "id": "task-ae0148d8",
     "title": "fix: passing `chalk review` never clears a needs:review block — the printed guidance omits `chalk unblock`, stranding the task",
-    "state": "specd",
+    "state": "in-progress",
     "acceptanceCriteria": [
       {
         "text": "A passing `chalk review` on a task blocked with `needs:review` auto-unblocks it (restore `blockedFrom`, clear `t.block`), or the review-blocked guidance in next/status/backlog explicitly includes the `chalk unblock` step"
@@ -2233,9 +2233,23 @@
       },
       {
         "text": "`chalk done` succeeds after that round trip (no residual blocked-state gate failure)"
+      },
+      {
+        "text": "A passing chalk review (adversarial or manual) on a task blocked with needs:review auto-unblocks it: restores blockedFrom, clears t.block, and announces it — so runnableTasks stops skipping it."
+      },
+      {
+        "text": "A non-review block (needs: human-input/creds/decision/upstream) is a real dependency and is NEVER cleared by a passing review."
+      },
+      {
+        "text": "Locked test drives the full round trip: run-loop review block → fix → chalk review pass → task runnable again → chalk done succeeds, with no manual state surgery."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/review-unblock.test.mjs",
+        "sha256": "001c35f5cbb50e07b44fb453de35e27400caac0a75e46a326314635c8650688c"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -2248,11 +2262,14 @@
       "bug"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-07T09:50:24.966Z"
+      "stage": "committed",
+      "at": "2026-07-07T10:04:42.276Z"
     },
     "createdAt": "2026-07-07T09:50:24.966Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-07T10:03:22.885Z",
+    "branch": "fix/117-fix-passing-chalk-review-never",
+    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
   },
   {
     "id": "task-068a83c8",
