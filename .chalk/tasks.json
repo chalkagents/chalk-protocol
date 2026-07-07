@@ -1505,9 +1505,30 @@
   {
     "id": "task-4bcc8640",
     "title": "feat: held-out set outside the repo root (manual-mode blindness)",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "protocol.regression.dir accepts an absolute or ~-prefixed path OUTSIDE the repo (not just a repo-relative dir); a new heldOutBase resolver handles all three forms, empty/unset keeps the historical .chalk/held-out."
+      },
+      {
+        "text": "Locking and integrity work across the repo boundary: an inside-repo held-out file is stored repo-relative (portable), an outside file is stored by absolute path, and brokenHeldOut/audit detect a tamper of either."
+      },
+      {
+        "text": "guard listing/locking and chalk audit run end-to-end against an outside dir: guard add locks an outside file, audit is GREEN while intact and RED when the outside file is tampered."
+      },
+      {
+        "text": "chalk doctor recommends relocating the held-out set outside the repo when worktree isolation is off and the set is in-repo (manual-mode blindness), and stays quiet once the dir is already outside."
+      },
+      {
+        "text": "Locked test proves the resolver (relative/absolute/~), inside-vs-outside lock storage + round-trip, listing an absolute dir, the end-to-end guard→audit flow, and the doctor recommendation in both directions."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/held-out-outside-root.test.mjs",
+        "sha256": "5c56373b60d42d2cfbf1865dc96228a19472f57000ca6556e2284de8f903636e"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -1521,11 +1542,14 @@
       "good first issue"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-06T10:05:49.984Z"
+      "stage": "committed",
+      "at": "2026-07-07T09:41:51.129Z"
     },
     "createdAt": "2026-07-06T10:05:49.984Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-07T09:40:18.037Z",
+    "branch": "feat/82-feat-held-out-set-outside",
+    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
   },
   {
     "id": "task-2c8e0e36",

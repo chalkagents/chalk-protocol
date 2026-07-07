@@ -274,3 +274,6 @@
 {"id":"evt-9b989052","at":"2026-07-07T09:35:20.075Z","type":"work-item-submitted","title":"PR #123 opened","description":"","phase":"discovery","actorRole":"agent","taskId":"task-2c8e0e36"}
 {"id":"evt-db423ae4","at":"2026-07-07T09:36:25.554Z","type":"progress-update","title":"Review (pass): feat: context budget — cap buildContext size and prune injected lessons","description":"","phase":"discovery","actorRole":"agent","taskId":"task-2c8e0e36"}
 {"id":"evt-8c7f84ef","at":"2026-07-07T09:36:45.316Z","type":"work-item-accepted","title":"Merged + cleaned: PR #123","description":"","phase":"discovery","actorRole":"agent","taskId":"task-2c8e0e36"}
+{"id":"evt-232e2e69","at":"2026-07-07T09:40:18.046Z","type":"work-item-started","title":"Started: feat: held-out set outside the repo root (manual-mode blindness)","description":"","phase":"discovery","actorRole":"agent","taskId":"task-4bcc8640"}
+{"id":"evt-179960eb","at":"2026-07-07T09:40:18.103Z","type":"progress-update","title":"Branched: feat/82-feat-held-out-set-outside","description":"","phase":"discovery","actorRole":"agent","taskId":"task-4bcc8640"}
+{"id":"evt-459ec24e","at":"2026-07-07T09:41:51.141Z","type":"work-item-submitted","title":"Committed: feat: held-out set outside the repo root (manual-mode blindness)","description":"","phase":"discovery","actorRole":"agent","taskId":"task-4bcc8640"}

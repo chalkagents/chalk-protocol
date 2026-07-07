@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783417005305,
+  "updatedAt": 1783417218037,
   "order": 0,
   "cards": [
     {
@@ -276,10 +276,15 @@
     {
       "id": "task-4bcc8640",
       "title": "feat: held-out set outside the repo root (manual-mode blindness)",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1783332349984,
-      "updatedAt": 1783332349984,
-      "order": 15
+      "updatedAt": 1783417218037,
+      "order": 15,
+      "description": "- protocol.regression.dir accepts an absolute or ~-prefixed path OUTSIDE the repo (not just a repo-relative dir); a new heldOutBase resolver handles all three forms, empty/unset keeps the historical .chalk/held-out.\n- Locking and integrity work across the repo boundary: an inside-repo held-out file is stored repo-relative (portable), an outside file is stored by absolute path, and brokenHeldOut/audit detect a tamper of either.\n- guard listing/locking and chalk audit run end-to-end against an outside dir: guard add locks an outside file, audit is GREEN while intact and RED when the outside file is tampered.\n- chalk doctor recommends relocating the held-out set outside the repo when worktree isolation is off and the set is in-repo (manual-mode blindness), and stays quiet once the dir is already outside.\n- Locked test proves the resolver (relative/absolute/~), inside-vs-outside lock storage + round-trip, listing an absolute dir, the end-to-end guard→audit flow, and the doctor recommendation in both directions.",
+      "testArtifact": {
+        "specPath": "test/held-out-outside-root.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/82"
+      }
     },
     {
       "id": "task-2c8e0e36",
