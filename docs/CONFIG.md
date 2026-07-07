@@ -133,8 +133,11 @@ the spine stays single-canonical in the main checkout. `setup` bootstraps a fres
 
 ### `e2e`
 
-`{ command, baseUrl, runsDir }` — browser-spec replay for locked `.test.yaml` specs during verify
-(P4). Empty → spec files are skipped (doctor warns if a task locks one).
+`{ command, baseUrl, runsDir, specPattern }` — browser-spec replay for locked specs during verify
+(P4). Empty `command` → spec files are skipped (doctor warns if a task locks one). `specPattern`
+selects which locked test paths count as browser specs — a suffix (`.spec.yaml`), a comma-separated
+list, or an array; a leading `*` is tolerated (`*.e2e.yaml`). Empty/unset → the historical
+`.test.yaml`, so existing projects are unchanged.
 
 ### `retro`
 

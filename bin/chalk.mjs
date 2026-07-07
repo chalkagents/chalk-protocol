@@ -17,7 +17,7 @@ import { brokeCheck, ciStatus } from '../lib/brokecheck.mjs';
 import { mergeBlockers } from '../lib/mergegate.mjs';
 import { extractQuestions, planApprovalRequired } from '../lib/planning.mjs';
 import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } from '../lib/release.mjs';
-import { runSpecs } from '../lib/e2e.mjs';
+import { runSpecs, isSpec } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline } from '../lib/pipeline.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
@@ -1003,7 +1003,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const gh0 = s.protocol().github || {};
     const wd = workdir(s, t);
     if (!t.pr?.number) die('no PR — run `chalk pr <id>` first.');
-    const specPaths = (t.tests || []).map((x) => x.path).filter((p) => p.endsWith('.test.yaml'));
+    const specPaths = (t.tests || []).map((x) => x.path).filter((p) => isSpec(p, s.protocol().e2e?.specPattern));
     const results = runSpecs(s, wd, specPaths);
     const evDir = `.chalk/evidence/${t.issue?.number || t.id.slice(0, 12)}`;
     const imgs = [];
