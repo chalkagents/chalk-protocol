@@ -74,6 +74,14 @@ Lever 1 (default `true`): a feature change must add or change a test file, else 
 a vacuously-green verify can't certify an untested feature. Docs/chore branches and `skip-test`
 labels are exempt.
 
+### `contextBudget`
+
+Byte budget for the `chalk context` blob piped to the executor (default `65536`). Only the elastic
+lessons block is trimmed to fit — the current task's criteria, locked tests, handoff, prior-review
+findings, and the contract are always kept. Under pressure the *oldest* lessons are elided first
+(recent ones are most relevant) and a note reports how many. Raise it, or run `chalk archive`, if a
+large project starts eliding lessons.
+
 ### `integrity`
 
 Locked-test integrity scope. `in-progress` (default): `verify` hashes only the current in-progress
