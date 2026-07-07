@@ -339,3 +339,13 @@
 
 - _when:_ 2026-07-06T12:33:03.807Z
 - _why:_ review BLOCK: pin chalk status's distinct review-block rendering (criterion 3 names both surfaces) and the reviewer-ERROR path (crash ≠ refutation — stays human-input per the design-intent finding)
+
+## Amended acceptance test for "feat: tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk"
+
+- _when:_ 2026-07-07T08:47:24.160Z
+- _why:_ re-lock after finalizing the test (opt-in refactor + accurate title) before first verify — file is green
+
+## Amended acceptance test for "feat: tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk"
+
+- _when:_ 2026-07-07T08:51:54.342Z
+- _why:_ review BLOCK: pin default-OFF inertness (criteria 1/4 — no hashing/warning/files, no event), the true no-baseline-file first-run establishment path, and chalk.json warn-once + re-arm on a fresh edit

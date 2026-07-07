@@ -83,6 +83,15 @@ test to keep its own verify green. `chalk amend-spec` stays the only sanctioned 
 locked test; the tradeoff is that legitimate evolution of an old task's test then requires an
 amend on that task.
 
+### `tamperEvident`
+
+Manual-mode hardening (default `false`). When `true`, chalk records the hashes of its authority
+files (`chalk.json`, `tasks.json`) in gitignored `.chalk/local/` after every write; the next
+invocation loudly flags — and logs an event for — any change made *outside* chalk (hand-marking a
+task done, weakening a verify command). It is tamper-*evidence*, not a lock: after warning it
+re-baselines, and a determined editor could rewrite the baseline too. Pairs with
+`integrity: all-locks` for teams running in manual mode without worktree isolation.
+
 ### `breakTest`
 
 Lever 3, the non-vacuity probe: a per-file command template (`node --test {test}`) used to run

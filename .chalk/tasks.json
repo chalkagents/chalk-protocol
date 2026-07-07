@@ -1561,9 +1561,27 @@
   {
     "id": "task-30ee8dd7",
     "title": "feat: tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "protocol.tamperEvident (default false) opts in. When false/unset, chalk behaves exactly as before — no hashing, no warnings, no new writes on any command."
+      },
+      {
+        "text": "When true, chalk records sha256 baselines of chalk.json + tasks.json in gitignored .chalk/local/ after every chalk write; a subsequent command whose on-disk hash differs from the baseline prints a loud warning naming the file and logs a tamper event."
+      },
+      {
+        "text": "It is evidence, not a lock: after warning it re-baselines so the notice fires exactly once; a first enabled run with no baseline establishes one without warning (fail-safe)."
+      },
+      {
+        "text": "Locked test proves: default-off is inert, chalk's own writes never false-positive, an outside edit to either file is caught (warning + event), the warning fires once, and the no-baseline case is fail-safe."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/spine-tamper.test.mjs",
+        "sha256": "32d7665e23d352c8bd20c255abd6bc95606c4870d83c1dc238465e0e31d44f5f"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -1577,11 +1595,46 @@
       "help wanted"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-06T10:05:49.987Z"
+      "stage": "pr-open",
+      "at": "2026-07-07T08:49:15.223Z"
     },
     "createdAt": "2026-07-06T10:05:49.987Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-07T08:50:41.571Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 4 explicitly requires the locked test to prove 'default-off is inert', but every test in spine-tamper.test.mjs runs through repo(), which calls enableTamper() to set protocol.tamperEvident=true before any assertion. There is NO test exercising the feature-OFF (default/unset) path. So the central claim of criterion 1 — that with the feature off chalk does no hashing, prints no warning, and performs no new writes (e.g. no .chalk/local/spine.hashes.json is created) — is entirely unasserted. If the opt-in guard in saveMeta/saveTasks/warnSpineTamper were removed or inverted, the suite would still pass. That is a vacuous pass for the default-off contract."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 3's 'a first enabled run with no baseline establishes one without warning' is not directly asserted. Test 4 ('fail-safe') tests a DIFFERENT case: a pre-existing spine.hashes.json with an empty hashes {} object, exercising the recorded===undefined 'continue' branch — not the existsSync(spineHashes)===false first-run branch in warnSpineTamper. The genuine no-baseline-file establishment-without-warning path is only exercised incidentally inside repo() setup and never has a no-warning assertion on that first run."
+          },
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "warnSpineTamper now runs on EVERY command (except init), unconditionally calling Store.open()/meta() to read protocol config even when the feature is off. No test asserts this added per-command Store.open()/file read is harmless outside a spine or on malformed chalk.json beyond the broad try/catch; a swallowed error here silently disables detection with no visible signal, and there is no test that the catch path doesn't mask real spine-read regressions."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The 'exactly once' guarantee depends on warnSpineTamper re-baselining after emitting, but re-baselining records whatever tampered state is currently on disk as the new trusted baseline — so a hand-edit is permanently normalized after a single warning with no persisted record of the original hash. Only one test (test 2) covers warn-once for tasks.json; there is no warn-once coverage for chalk.json, nor a test that two DIFFERENT sequential outside edits each warn once (only that the same state stops warning)."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-07T08:45:12.983Z",
+    "branch": "feat/79-tamper-evident-spine",
+    "pr": {
+      "number": 120,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/120",
+      "recorded": true
+    }
   },
   {
     "id": "task-4d462e08",
