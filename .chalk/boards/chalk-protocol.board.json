@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783422230310,
+  "updatedAt": 1783422773786,
   "order": 0,
   "cards": [
     {
@@ -506,6 +506,32 @@
       "createdAt": 1783417824971,
       "updatedAt": 1783417824971,
       "order": 28
+    },
+    {
+      "id": "task-90b8101a",
+      "title": "fix: chalk commit silently no-ops after the first commit, so review-fix changes never get committed",
+      "column": "todo",
+      "createdAt": 1783422773780,
+      "updatedAt": 1783422773780,
+      "order": 29
+    },
+    {
+      "id": "task-cc689423",
+      "title": "refactor: unify the intake-commit spine paths and the reviewer diff-exclude list into one shared constant",
+      "column": "todo",
+      "createdAt": 1783422773784,
+      "updatedAt": 1783422773784,
+      "order": 30,
+      "description": "- Define the spine-state path list once in a shared module imported by both bin/chalk.mjs (intake commit) and lib/review.mjs (diff excludes)\n- Ensure the intake commit covers every spine path the reviewer excludes (contract artifacts like `.chalk/tests/` and `.chalk/evidence/` remain visible/committed as today)\n- Add a test asserting the intake-commit path set and the reviewer-exclude set stay consistent, so a future divergence trips the suite"
+    },
+    {
+      "id": "task-ae4422c1",
+      "title": "fix: untrackedLockedTests compares pinned paths verbatim against git ls-files — a './'-prefixed, backslashed, or case-differing pin false-blocks done/pr",
+      "column": "todo",
+      "createdAt": 1783422773786,
+      "updatedAt": 1783422773786,
+      "order": 31,
+      "description": "- Normalize both the pinned path and each `ls-files` entry before comparison (strip a leading `./`, unify path separators) so equivalent forms match\n- Handle case-insensitive filesystems so a case-only difference does not false-block (or document the platform boundary)\n- Add a locked test: a tracked file pinned as `./<path>` (and a backslash/case variant) is NOT reported untracked and `chalk done` proceeds\n- Keep the genuinely-untracked case still blocking (no regression to the #107 vacuous-green guard)"
     }
   ]
 }

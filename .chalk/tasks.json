@@ -2550,5 +2550,98 @@
     },
     "createdAt": "2026-07-07T09:50:24.971Z",
     "reviews": []
+  },
+  {
+    "id": "task-90b8101a",
+    "title": "fix: chalk commit silently no-ops after the first commit, so review-fix changes never get committed",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 134,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/134",
+      "body": "**Discovered while landing #114/#125.** `chalk commit` guards on `stageDone(t, 'committed')` and returns `ok('commit (already done)')` if the task's pipeline stage is at/after `committed`. But the review→fix loop routinely makes MORE code changes AFTER the first commit (to address a review BLOCK). On the next `chalk commit`, it no-ops — the fix changes stay uncommitted in the working tree.\n\n**Real failure:** #114's review-round-2 fix (gitCommitPaths + intake commit + scoping test) was made after the first commit. `chalk commit` no-op'd; I committed only the spine manually; the code fix never reached the fix/114 branch and was squash-merged away. #114 shipped with only its round-1 half. The adversarial review PASSED because captureDiff shows uncommitted working-tree changes (`git diff HEAD`), so the reviewer saw the fix — but the MERGE only took committed changes. Required a manual split (#133 + rescoped #132) to recover.\n\n**Fix options:**\n- `chalk commit` should re-commit new working-tree changes when the branch has uncommitted code (amend or a follow-up commit), not silently no-op; OR\n- loudly WARN when `chalk commit` is a no-op but the working tree has uncommitted code changes ('N files changed since the last commit — git add + commit them, or they won't land').\n\nThe mismatch between what the reviewer sees (working tree) and what merge takes (committed) is the deeper hazard — a green review can certify code that never lands.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+    },
+    "branchType": "feat",
+    "labels": [],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T11:12:53.779Z"
+    },
+    "createdAt": "2026-07-07T11:12:53.780Z",
+    "reviews": []
+  },
+  {
+    "id": "task-cc689423",
+    "title": "refactor: unify the intake-commit spine paths and the reviewer diff-exclude list into one shared constant",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Define the spine-state path list once in a shared module imported by both bin/chalk.mjs (intake commit) and lib/review.mjs (diff excludes)"
+      },
+      {
+        "text": "Ensure the intake commit covers every spine path the reviewer excludes (contract artifacts like `.chalk/tests/` and `.chalk/evidence/` remain visible/committed as today)"
+      },
+      {
+        "text": "Add a test asserting the intake-commit path set and the reviewer-exclude set stay consistent, so a future divergence trips the suite"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 131,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/131",
+      "body": "`chalk issue pull` commits a hardcoded `spineFiles` list (`.chalk/tasks.json`, `.chalk/updates.jsonl`, `.chalk/boards`, `.chalk/plans`) in bin/chalk.mjs:337, while the reviewer excludes a *superset* of spine paths via `REVIEW_DIFF_EXCLUDES` in lib/review.mjs:66 (also `.chalk/chalk.json`, `.chalk/questions.json`, `.chalk/decisions.md`, `.chalk/lessons.md`, `.chalk/handoffs`, `.chalk/analysis`).\n\nBecause the intake list is a subset, any future intake path that dirties a spine file NOT in `spineFiles` (e.g. `chalk.json` or `questions.json`) is left uncommitted by intake yet excluded from the review diff — so it floats in the working tree and bundles into the next task branch, re-introducing exactly the scoped-diff leak #114 fixed. The two lists silently diverging is a latent maintenance hazard the #130 review flagged.\n\n- [ ] Define the spine-state path list once in a shared module imported by both bin/chalk.mjs (intake commit) and lib/review.mjs (diff excludes)\n- [ ] Ensure the intake commit covers every spine path the reviewer excludes (contract artifacts like `.chalk/tests/` and `.chalk/evidence/` remain visible/committed as today)\n- [ ] Add a test asserting the intake-commit path set and the reviewer-exclude set stay consistent, so a future divergence trips the suite\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T11:12:53.784Z"
+    },
+    "createdAt": "2026-07-07T11:12:53.784Z",
+    "reviews": []
+  },
+  {
+    "id": "task-ae4422c1",
+    "title": "fix: untrackedLockedTests compares pinned paths verbatim against git ls-files — a './'-prefixed, backslashed, or case-differing pin false-blocks done/pr",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Normalize both the pinned path and each `ls-files` entry before comparison (strip a leading `./`, unify path separators) so equivalent forms match"
+      },
+      {
+        "text": "Handle case-insensitive filesystems so a case-only difference does not false-block (or document the platform boundary)"
+      },
+      {
+        "text": "Add a locked test: a tracked file pinned as `./<path>` (and a backslash/case variant) is NOT reported untracked and `chalk done` proceeds"
+      },
+      {
+        "text": "Keep the genuinely-untracked case still blocking (no regression to the #107 vacuous-green guard)"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 129,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/129",
+      "body": "`untrackedLockedTests` (lib/testgate.mjs:65) does `pinned.filter(p => !tracked.has(p))` where `tracked` is the raw `git ls-files -z` output. Because it is exact string equality with no normalization, a locked test whose pinned path is written as `./contract.test.mjs`, uses backslashes on Windows, or differs only in case on a case-insensitive filesystem is reported as untracked even though git tracks it — a false block on `chalk done`/`chalk pr` that strands an otherwise-shippable task. The tracking gate should only ever fire on a genuinely untracked file.\n\n- [ ] Normalize both the pinned path and each `ls-files` entry before comparison (strip a leading `./`, unify path separators) so equivalent forms match\n- [ ] Handle case-insensitive filesystems so a case-only difference does not false-block (or document the platform boundary)\n- [ ] Add a locked test: a tracked file pinned as `./<path>` (and a backslash/case variant) is NOT reported untracked and `chalk done` proceeds\n- [ ] Keep the genuinely-untracked case still blocking (no regression to the #107 vacuous-green guard)\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T11:12:53.786Z"
+    },
+    "createdAt": "2026-07-07T11:12:53.786Z",
+    "reviews": []
   }
 ]
