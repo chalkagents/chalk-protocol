@@ -1530,7 +1530,7 @@
   {
     "id": "task-2c8e0e36",
     "title": "feat: context budget — cap buildContext size and prune injected lessons",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "protocol.contextBudget (bytes, generous default) caps the size of the chalk context blob; only the elastic lessons block is trimmed to fit — unset uses the default."
@@ -1563,14 +1563,38 @@
       "enhancement"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-07-07T09:35:11.322Z"
+      "stage": "cleaned",
+      "at": "2026-07-07T09:36:45.306Z"
     },
     "createdAt": "2026-07-06T10:05:49.986Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-07T09:36:24.041Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2 lists handoff and prior-review findings as essentials that must always survive budget pressure, but the locked tests only assert criteria/locked-test/contract survival — no test sets up a handoff or a prior blocking review and checks it persists under a tiny budget. Coverage is indirect; the code structurally builds these into the never-trimmed `post` array, so the guarantee holds, but the test does not pin it."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "fitLessonsBlock spends budget newest-first and elides oldest with a note pointing to protocol.contextBudget / `chalk archive`; buildContext computes essentials first and passes only the leftover (budget - essentialBytes) to the lessons block, so essentials are never sacrificed and unset budget falls back to DEFAULT_CONTEXT_BUDGET (65536). Verified against store.lessons() (oldest→newest, LESSON_CAP=15 ≥ 6) — behavior matches all four criteria. No blocking defect found."
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-07T09:33:41.946Z",
     "branch": "feat/81-feat-context-budget-cap-buildcontext",
-    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
+    "pr": {
+      "number": 123,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/123",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-07T09:36:45.305Z"
   },
   {
     "id": "task-86b9cfe4",
