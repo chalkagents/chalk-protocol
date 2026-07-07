@@ -1414,7 +1414,7 @@
   {
     "id": "task-b9b5128a",
     "title": "feat: configurable e2e spec pattern (not just *.test.yaml)",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "protocol.e2e.specPattern selects which locked test paths are browser specs: a suffix, a comma-separated list, or an array; a leading '*' is tolerated (glob-ish). Empty/unset preserves the historical '.test.yaml' so existing projects are unchanged."
@@ -1447,8 +1447,8 @@
       "good first issue"
     ],
     "pipeline": {
-      "stage": "pr-open",
-      "at": "2026-07-07T09:04:47.231Z"
+      "stage": "cleaned",
+      "at": "2026-07-07T09:11:31.905Z"
     },
     "createdAt": "2026-07-06T10:05:49.983Z",
     "reviews": [
@@ -1468,16 +1468,39 @@
             "note": "The locked suite exercises verify's gate (both directions) and the matcher normalization, but does not assert the pattern is honored in doctor's warning, the board's testArtifact lookup, or the PR pipeline. The bin/chalk.mjs:1006 hardcoded-suffix regression would pass the entire green suite, so the tests do not cover every spec-ness decision site named in criterion 2."
           }
         ]
+      },
+      {
+        "at": "2026-07-07T09:11:03.782Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2 enumerates the board's testArtifact evidence lookup as a spec-ness site. boards.mjs:58 correctly threads ctx.specPattern (from projectBoard's ctx), but no locked test directly asserts board behavior under a custom pattern — reverting only the boards.mjs line would not be caught by the suite. This is within criterion 4's stated test scope (which requires only matcher normalization + verify effect), and the underlying isSpec function is thoroughly tested, so it is a minor gap rather than a blocking one."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "specMatcher strips only a single leading '*' via replace(/^\\*/,''); a pattern like '**.e2e.yaml' would leave a literal '*' in the suffix and never match. Not required by the criteria (leading-'*' glob-ish is tolerated, not full glob), and the documented forms (suffix/comma-list/array/leading-*) all work correctly."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The prior review's blocking finding (bin/chalk.mjs:1006 evidence/PR pipeline hardcoded '.test.yaml') is now fixed to isSpec(p, specPattern) and covered by the added evidence-stage test; store.mjs default specPattern is set to '.test.yaml' preserving historical behavior. All five spec-ness sites and both verify directions are correctly honored — criteria 1–4 are met."
+          }
+        ]
       }
     ],
     "startedAt": "2026-07-07T09:01:43.028Z",
     "branch": "feat/83-feat-configurable-e2e-spec-pattern",
-    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol",
     "pr": {
       "number": 121,
       "url": "https://github.com/chalkagents/chalk-protocol/pull/121",
-      "recorded": true
-    }
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-07T09:11:31.904Z"
   },
   {
     "id": "task-4bcc8640",
