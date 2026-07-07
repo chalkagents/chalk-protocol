@@ -364,7 +364,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const t = mustTask(s, _[0]);
     if (stageDone(t, 'committed')) return ok(`commit ${C.dim('(already done)')}`);
     const wd = workdir(s, t);
-    const paths = changedPaths(wd).filter((p) => !p.startsWith('.chalk/') || p.startsWith('.chalk/evidence/'));
+    // Spine STATE stays out of the feature-branch diff (it lands via separate chore commits), but
+    // evidence screenshots and e2e contract specs (.chalk/tests/) DO belong on the branch — the
+    // latter so they are git-tracked for CI and the tracking gate (#126), not a vacuous green.
+    const paths = changedPaths(wd).filter((p) => !p.startsWith('.chalk/') || p.startsWith('.chalk/evidence/') || p.startsWith('.chalk/tests/'));
     if (!paths.length) die('nothing to commit — the executor made no file changes in the worktree.');
     const type = t.branchType || 'feat';
     // Strip a conventional prefix the issue title may already carry, so we don't double up
