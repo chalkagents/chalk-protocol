@@ -556,12 +556,19 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // released only the tasks done BEFORE it was created; later arrivals belong to the next cycle.
     // No rollback: a hard reset could eat unrelated staged work. Converges to ONE commit + ONE tag.
     if (withCommit && isRepo) {
-      const orphan = gitTry(s.root, 'log -50 --format=%H%x09%s').split('\n')
-        .map((l) => { const [sha, subj] = l.split('\t'); const m = (subj || '').match(/^chore\(release\): v(\d+\.\d+\.\d+)$/); return m ? { sha, v: m[1] } : null; })
-        .find(Boolean);
+      // Find the newest release commit at ANY depth via git's own --grep (walks history until it
+      // hits one), not a fixed `log -50` window a deeper orphan could hide beneath (#125).
+      const relLine = gitTry(s.root, `log -1 -E --grep=${shq('^chore\\(release\\): v[0-9]')} --format=%H%x09%s`);
+      const rm = relLine.split('\t');
+      const rmv = (rm[1] || '').match(/^chore\(release\): v(\d+\.\d+\.\d+)$/);
+      const orphan = rmv ? { sha: rm[0], v: rmv[1] } : null;
       const decisionsPath = join(s.root, '.chalk/decisions.md');
       const decisions = existsSync(decisionsPath) ? readFileSync(decisionsPath, 'utf8') : '';
-      const completed = orphan && new RegExp(`Released v${orphan.v.replace(/\./g, '\\.')}\\b`).test(decisions);
+      // The completion marker is the `## Released vX` decision HEADING appendDecision writes. Match it
+      // anchored to that heading line, NOT as a bare substring — otherwise prose in ANY decision body
+      // that merely mentions "Released vX" spoofs completion and suppresses a legitimate resume (a
+      // re-run then bumps from the already-bumped version and stacks a second release commit) (#125).
+      const completed = orphan && new RegExp(`^## Released v${orphan.v.replace(/\./g, '\\.')}$`, 'm').test(decisions);
       // Non-promote resume needs the tag ABSENT (tag present = tagging finished). Promote is keyed on
       // the decision alone: its failure windows legitimately leave a LOCAL tag behind (created, push
       // failed), and the resume below must still be reachable to finish the push + marking.
