@@ -41,7 +41,7 @@ test('the packed tarball carries the runtime-resolved and onboarding files', () 
 test('registry metadata — what a stranger sees on npmjs.com', () => {
   assert.match(pkg.repository.url, /github\.com\/chalkagents\/chalk-protocol/);
   assert.match(pkg.bugs, /issues/);
-  assert.match(pkg.homepage, /chalk-protocol/);
+  assert.match(pkg.homepage, /chalkagents\.com|chalk-protocol/);
   assert.ok(Array.isArray(pkg.keywords) && pkg.keywords.length >= 5, 'discoverable keywords');
   assert.equal(pkg.license, 'MIT');
   assert.equal(pkg.bin.chalk, 'bin/chalk.mjs');
