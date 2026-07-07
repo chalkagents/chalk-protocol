@@ -74,6 +74,32 @@ Lever 1 (default `true`): a feature change must add or change a test file, else 
 a vacuously-green verify can't certify an untested feature. Docs/chore branches and `skip-test`
 labels are exempt.
 
+### `contextBudget`
+
+Byte budget for the `chalk context` blob piped to the executor (default `65536`). Only the elastic
+lessons block is trimmed to fit — the current task's criteria, locked tests, handoff, prior-review
+findings, and the contract are always kept. Under pressure the *oldest* lessons are elided first
+(recent ones are most relevant) and a note reports how many. Raise it, or run `chalk archive`, if a
+large project starts eliding lessons.
+
+### `integrity`
+
+Locked-test integrity scope. `in-progress` (default): `verify` hashes only the current in-progress
+tasks' locked tests, so lock protection expires at `done`. `all-locks`: `verify` also hashes every
+*done* task's locked tests — closing the cheat where a later task weakens an earlier task's locked
+test to keep its own verify green. `chalk amend-spec` stays the only sanctioned way to change a
+locked test; the tradeoff is that legitimate evolution of an old task's test then requires an
+amend on that task.
+
+### `tamperEvident`
+
+Manual-mode hardening (default `false`). When `true`, chalk records the hashes of its authority
+files (`chalk.json`, `tasks.json`) in gitignored `.chalk/local/` after every write; the next
+invocation loudly flags — and logs an event for — any change made *outside* chalk (hand-marking a
+task done, weakening a verify command). It is tamper-*evidence*, not a lock: after warning it
+re-baselines, and a determined editor could rewrite the baseline too. Pairs with
+`integrity: all-locks` for teams running in manual mode without worktree isolation.
+
 ### `breakTest`
 
 Lever 3, the non-vacuity probe: a per-file command template (`node --test {test}`) used to run
@@ -100,10 +126,12 @@ template otherwise).
 
 ### `github`
 
-The issue→merge pipeline config: `{ command, base, repo, mergeMethod, labelType, ciPollIntervalMs,
-ciPollAttempts }`. `command` is your `gh` (stubbable in tests); `labelType` maps issue labels to
-branch types (`bug→fix`). Merge runs the broke-check: remote CI verdict when the PR has checks,
-else local verify (labeled when it falls back).
+The issue→merge pipeline config: `{ command, base, repo, deployBase, mergeMethod, labelType,
+ciPollIntervalMs, ciPollAttempts }`. `command` is your `gh` (stubbable in tests); `labelType` maps
+issue labels to branch types (`bug→fix`). Merge runs the broke-check: remote CI verdict when the
+PR has checks, else local verify (labeled when it falls back). `base` is the integration branch
+PRs target; `deployBase` is the protected deploy branch `chalk release --promote` promotes to
+(promotion PR merged with a MERGE commit, tag on its tip — set it ≠ `base` to enable).
 
 ### `worktree`
 
@@ -113,8 +141,11 @@ the spine stays single-canonical in the main checkout. `setup` bootstraps a fres
 
 ### `e2e`
 
-`{ command, baseUrl, runsDir }` — browser-spec replay for locked `.test.yaml` specs during verify
-(P4). Empty → spec files are skipped (doctor warns if a task locks one).
+`{ command, baseUrl, runsDir, specPattern }` — browser-spec replay for locked specs during verify
+(P4). Empty `command` → spec files are skipped (doctor warns if a task locks one). `specPattern`
+selects which locked test paths count as browser specs — a suffix (`.spec.yaml`), a comma-separated
+list, or an array; a leading `*` is tolerated (`*.e2e.yaml`). Empty/unset → the historical
+`.test.yaml`, so existing projects are unchanged.
 
 ### `retro`
 

@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783324063581,
+  "updatedAt": 1783427648306,
   "order": 0,
   "cards": [
     {
@@ -115,6 +115,443 @@
         "prNumber": 96,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/96",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/85"
+      }
+    },
+    {
+      "id": "task-2563a7a0",
+      "title": "feat: chalk release --promote — protected-main release flow (promotion PR + tag on main's tip)",
+      "column": "done",
+      "createdAt": 1783325537231,
+      "updatedAt": 1783327971401,
+      "order": 6,
+      "description": "- run the `--commit --no-tag` flow on the integration branch (github.base)\n- open the promotion PR to the deploy branch (new config, e.g. `github.deployBase` or `release.promoteTo`), wait for CI, merge with a MERGE commit regardless of github.mergeMethod\n- tag the deploy branch's tip vX.Y.Z and push the tag\n- collision/idempotency safety consistent with #93 and #91 (a failed step must not mark tasks released or strand a half-promoted release)",
+      "testArtifact": {
+        "specPath": "test/release-promote.test.mjs",
+        "lastRun": {
+          "runId": "done-task-2563a7a0",
+          "status": "passed",
+          "at": 1783327971401
+        },
+        "prNumber": 103,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/103",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/98"
+      }
+    },
+    {
+      "id": "task-2cae7c80",
+      "title": "chore: author the held-out regression set — audit warns 0 tests vs a floor of 4 (~10k LOC)",
+      "column": "in_progress",
+      "createdAt": 1783325537234,
+      "updatedAt": 1783328043352,
+      "order": 7,
+      "description": "- regression.command and regression.authorCommand are configured (node --test .chalk/held-out + a BYO claude author); .chalk/held-out stays gitignored\n- chalk guard gen authors at least 4 held-out test files derived from the spec (the size floor for ~10k LOC), locked into regression.tests\n- chalk audit runs GREEN with the understaffing warning gone\n- implementer blindness holds: the tests are written by the BYO guard author subprocess; this session never reads .chalk/held-out contents"
+    },
+    {
+      "id": "task-f1308f82",
+      "title": "fix: release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips",
+      "column": "done",
+      "createdAt": 1783325537234,
+      "updatedAt": 1783326615570,
+      "order": 8,
+      "description": "- On a post-commit tag failure, either roll the release commit back (`git reset --hard HEAD~1` is safe — the commit contains only the release artifacts) or make the re-run detect the orphaned release commit and tag it instead of re-bumping\n- Test the recovery path (tag fails once after the commit → next run converges on ONE release commit + tag)\n- While there: cover `--commit --no-tag` (commits the bump, skips the probe) with a test",
+      "testArtifact": {
+        "specPath": "test/release-recovery.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f1308f82",
+          "status": "passed",
+          "at": 1783326615570
+        },
+        "prNumber": 100,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/100",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/91"
+      }
+    },
+    {
+      "id": "task-124fde8a",
+      "title": "fix: chalk review advances pipeline.stage to 'reviewed' even when no PR exists — manual-order review pollutes the commit/pr stage guards",
+      "column": "done",
+      "createdAt": 1783329435836,
+      "updatedAt": 1783329982751,
+      "order": 9,
+      "description": "- `chalk review` should only advance the stage when the task is actually past pr-open (or track review separately from the pipeline progression)\n- `chalk pr`'s already-open path should not report success when `t.pr` is null/number-less",
+      "testArtifact": {
+        "specPath": "test/review-stage-order.test.mjs",
+        "lastRun": {
+          "runId": "done-task-124fde8a",
+          "status": "passed",
+          "at": 1783329982751
+        },
+        "prNumber": 104,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/104",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/102"
+      }
+    },
+    {
+      "id": "task-10382dc9",
+      "title": "chore: dogfood — make chalk's own loop (issue pull → autopilot → retro) the default way chalk contributes to chalk",
+      "column": "done",
+      "createdAt": 1783329435842,
+      "updatedAt": 1783339050142,
+      "order": 10,
+      "description": "- A documented sweep runbook in the repo (CONTRIBUTING.md or RUNNING-AUTONOMOUSLY.md): issue pull → spec → autopilot → retro, runnable on this repo as-is with the committed `.chalk/chalk.json` agent config.\n- `chalk issue pull` → pipeline → merge demonstrably works end-to-end on this repo: at least one real issue from the open backlog lands through it, and the PR/task cross-references the issue.\n- Retro runs at the end of a sweep and files friction it finds (already wired in autopilot — criterion is that a chalk-on-chalk sweep exercises it and the filed issues reference the dogfood run).\n- The dogfooding claim is auditable: some command or doc (e.g. `chalk stats`, once #78 lands) can show what fraction of merged PRs went through the gate vs bypassed it.",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-10382dc9",
+          "status": "passed",
+          "at": 1783339050142
+        },
+        "prNumber": 112,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/112",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/101"
+      }
+    },
+    {
+      "id": "task-a8aa7559",
+      "title": "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable",
+      "column": "done",
+      "createdAt": 1783329435843,
+      "updatedAt": 1783331615094,
+      "order": 11,
+      "description": "- Agent calls through a claude-shaped command record `tokens`, `costUsd`, and `turns` in `.chalk/local/cost.jsonl`; non-claude runners still record ms-only, and a malformed/missing envelope never fails the stage.\n- The executor invocation in `chalk run` captures usage without losing live terminal output.\n- Injecting `--output-format json` does not break the reviewer/retro/discovery/feedback JSON parsing (envelope is unwrapped before the existing parsers see it), and commands that already pin `--output-format` are left untouched.\n- `chalk cost` shows per-stage/per-task tokens, overhead share, and tokens-per-accepted-task, and still renders correctly against a ledger containing only legacy ms-only records.",
+      "testArtifact": {
+        "specPath": "test/cost-ledger.test.mjs",
+        "lastRun": {
+          "runId": "done-task-a8aa7559",
+          "status": "passed",
+          "at": 1783331615094
+        },
+        "prNumber": 105,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/105",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/99"
+      }
+    },
+    {
+      "id": "task-8189ac26",
+      "title": "fix: spec-lock gate never checks locked tests are tracked in git — a pinned test can ship untracked and CI runs a vacuous green",
+      "column": "done",
+      "createdAt": 1783332349978,
+      "updatedAt": 1783340466239,
+      "order": 12,
+      "description": "- `chalk done` (and/or `chalk pr`) verifies every locked test path pinned in the task spec is tracked (`git ls-files`) in the task's worktree, and fails with an error naming the untracked path(s)\n- the error message suggests the fix (`git add <path>` / re-run `chalk commit`)\n- locked test: `chalk done` refuses when a pinned test file exists on disk but is untracked, and succeeds once the file is tracked",
+      "testArtifact": {
+        "specPath": "test/spec-lock-tracking.test.mjs",
+        "lastRun": {
+          "runId": "done-task-8189ac26",
+          "status": "passed",
+          "at": 1783340466239
+        },
+        "prNumber": 115,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/115",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/107"
+      }
+    },
+    {
+      "id": "task-056bac99",
+      "title": "ci: add a windows-latest lane and fix what breaks",
+      "column": "todo",
+      "createdAt": 1783332349982,
+      "updatedAt": 1783332349982,
+      "order": 13
+    },
+    {
+      "id": "task-b9b5128a",
+      "title": "feat: configurable e2e spec pattern (not just *.test.yaml)",
+      "column": "done",
+      "createdAt": 1783332349983,
+      "updatedAt": 1783415491904,
+      "order": 14,
+      "description": "- protocol.e2e.specPattern selects which locked test paths are browser specs: a suffix, a comma-separated list, or an array; a leading '*' is tolerated (glob-ish). Empty/unset preserves the historical '.test.yaml' so existing projects are unchanged.\n- The pattern is honored everywhere isSpec decides spec-ness: verify's e2e gate, the e2e runner's filter, doctor's 'locks a spec but e2e is off' warning, and the board's testArtifact evidence lookup.\n- Under a custom pattern, a matching locked spec actually runs through verify's BYO e2e gate (producing run evidence); a non-matching path is treated as an ordinary file and never run as a spec.\n- Locked test proves the matcher normalization (default/suffix/list/array/leading-*) and the end-to-end verify effect in both directions (custom pattern runs it; default does not).",
+      "testArtifact": {
+        "specPath": "test/e2e-spec-pattern.test.mjs",
+        "lastRun": {
+          "runId": "done-task-b9b5128a",
+          "status": "passed",
+          "at": 1783415491904
+        },
+        "prNumber": 121,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/121",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/83"
+      }
+    },
+    {
+      "id": "task-4bcc8640",
+      "title": "feat: held-out set outside the repo root (manual-mode blindness)",
+      "column": "done",
+      "createdAt": 1783332349984,
+      "updatedAt": 1783417392796,
+      "order": 15,
+      "description": "- protocol.regression.dir accepts an absolute or ~-prefixed path OUTSIDE the repo (not just a repo-relative dir); a new heldOutBase resolver handles all three forms, empty/unset keeps the historical .chalk/held-out.\n- Locking and integrity work across the repo boundary: an inside-repo held-out file is stored repo-relative (portable), an outside file is stored by absolute path, and brokenHeldOut/audit detect a tamper of either.\n- guard listing/locking and chalk audit run end-to-end against an outside dir: guard add locks an outside file, audit is GREEN while intact and RED when the outside file is tampered.\n- chalk doctor recommends relocating the held-out set outside the repo when worktree isolation is off and the set is in-repo (manual-mode blindness), and stays quiet once the dir is already outside.\n- Locked test proves the resolver (relative/absolute/~), inside-vs-outside lock storage + round-trip, listing an absolute dir, the end-to-end guard→audit flow, and the doctor recommendation in both directions.",
+      "testArtifact": {
+        "specPath": "test/held-out-outside-root.test.mjs",
+        "lastRun": {
+          "runId": "done-task-4bcc8640",
+          "status": "passed",
+          "at": 1783417392796
+        },
+        "prNumber": 124,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/124",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/82"
+      }
+    },
+    {
+      "id": "task-2c8e0e36",
+      "title": "feat: context budget — cap buildContext size and prune injected lessons",
+      "column": "done",
+      "createdAt": 1783332349986,
+      "updatedAt": 1783417005305,
+      "order": 16,
+      "description": "- protocol.contextBudget (bytes, generous default) caps the size of the chalk context blob; only the elastic lessons block is trimmed to fit — unset uses the default.\n- The task's essentials are never sacrificed for budget: acceptance criteria, locked tests, handoff, prior-review findings, and the contract are always present regardless of budget.\n- Under budget pressure the OLDEST lessons are elided first (most-recent kept) and a note reports how many were dropped and how to raise the budget.\n- Locked test proves: a tiny budget elides older lessons (note + newest survive, essentials intact), a generous/default budget keeps all lessons, and an extreme budget drops all lessons while criteria + contract remain.",
+      "testArtifact": {
+        "specPath": "test/context-budget.test.mjs",
+        "lastRun": {
+          "runId": "done-task-2c8e0e36",
+          "status": "passed",
+          "at": 1783417005305
+        },
+        "prNumber": 123,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/123",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/81"
+      }
+    },
+    {
+      "id": "task-86b9cfe4",
+      "title": "feat: opt-in all-locks integrity — done tasks' locked tests stay protected",
+      "column": "done",
+      "createdAt": 1783332349986,
+      "updatedAt": 1783413284089,
+      "order": 17,
+      "description": "- protocol.integrity accepts 'in-progress' (default when unset — today's behavior) or 'all-locks'. Under 'all-locks', chalk verify checks locked-test hash integrity for DONE tasks in addition to in-progress ones; unset/'in-progress' leaves done tasks' locks unchecked exactly as before.\n- Under 'all-locks', tampering (or deleting) a locked test owned by a DONE task makes verify RED and the report names the owning task and the offending path and points to chalk amend-spec; a matching hash stays green.\n- chalk amend-spec remains the only sanctioned change path: re-locking a done task's test updates its pin so verify returns GREEN again — no direct tasks.json editing.\n- Locked test proves all four states: all-locks catches a tampered done-task lock (RED), default mode ignores the same tamper (GREEN), a clean all-locks tree is GREEN, and amend-spec restores GREEN after a legitimate change.",
+      "testArtifact": {
+        "specPath": "test/all-locks-integrity.test.mjs",
+        "lastRun": {
+          "runId": "done-task-86b9cfe4",
+          "status": "passed",
+          "at": 1783413284089
+        },
+        "prNumber": 119,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/119",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/80"
+      }
+    },
+    {
+      "id": "task-30ee8dd7",
+      "title": "feat: tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk",
+      "column": "done",
+      "createdAt": 1783332349987,
+      "updatedAt": 1783414480988,
+      "order": 18,
+      "description": "- protocol.tamperEvident (default false) opts in. When false/unset, chalk behaves exactly as before — no hashing, no warnings, no new writes on any command.\n- When true, chalk records sha256 baselines of chalk.json + tasks.json in gitignored .chalk/local/ after every chalk write; a subsequent command whose on-disk hash differs from the baseline prints a loud warning naming the file and logs a tamper event.\n- It is evidence, not a lock: after warning it re-baselines so the notice fires exactly once; a first enabled run with no baseline establishes one without warning (fail-safe).\n- Locked test proves: default-off is inert, chalk's own writes never false-positive, an outside edit to either file is caught (warning + event), the warning fires once, and the no-baseline case is fail-safe.",
+      "testArtifact": {
+        "specPath": "test/spine-tamper.test.mjs",
+        "lastRun": {
+          "runId": "done-task-30ee8dd7",
+          "status": "passed",
+          "at": 1783414480988
+        },
+        "prNumber": 120,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/120",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/79"
+      }
+    },
+    {
+      "id": "task-4d462e08",
+      "title": "feat: chalk stats — gate-efficacy report from the event log",
+      "column": "done",
+      "createdAt": 1783332349988,
+      "updatedAt": 1783333704326,
+      "order": 19,
+      "description": "- chalk stats reads tasks and events from the live spine AND .chalk/archive/, and reports review-gate efficacy: reviewed-task count, tasks blocked at least once before passing (catches), total block verdicts, and findings broken down by severity and by area\n- It reports churn: executor attempts and handoffs (totals and the worst offenders), and counts verify-RED blocks from the event log\n- It reports the gate-vs-bypass fraction over done tasks: the share that passed adversarial review vs done via review override (Overrode review gate decisions) or with no review, and the share landed through the pipeline (pipeline stage merged/cleaned) vs hand-landed\n- chalk stats --json emits the same report as machine-readable JSON; --since <date> restricts to tasks done and events emitted at/after that date; the command is pure read (never writes the spine), zero new dependencies\n- On a fresh spine with no tasks or events it prints a friendly empty-state message and exits 0 instead of throwing",
+      "testArtifact": {
+        "specPath": "test/stats.test.mjs",
+        "lastRun": {
+          "runId": "done-task-4d462e08",
+          "status": "passed",
+          "at": 1783333704326
+        },
+        "prNumber": 109,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/109",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/78"
+      }
+    },
+    {
+      "id": "task-11ea6ea9",
+      "title": "feat: give reviewer-induced auto-blocks a distinct `--needs` category instead of `human-input`",
+      "column": "done",
+      "createdAt": 1783332349989,
+      "updatedAt": 1783341331879,
+      "order": 20,
+      "description": "- Add a dedicated `--needs` value (e.g. `review`) to the taxonomy in CLAUDE.md and the block command validation.\n- Emit reviewer-induced blocks in lib/pipeline.mjs with the new category instead of `human-input`.\n- `chalk status` / next surface the review block distinctly so it is not confused with a real human dependency.\n- Add a test asserting a reviewer block sets the review-specific `needs` while a genuine stage failure stays `human-input`.",
+      "testArtifact": {
+        "specPath": "test/review-block-needs.test.mjs",
+        "lastRun": {
+          "runId": "done-task-11ea6ea9",
+          "status": "passed",
+          "at": 1783341331879
+        },
+        "prNumber": 116,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/116",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/46"
+      }
+    },
+    {
+      "id": "task-f781d728",
+      "title": "fix: untrackedLockedTests exempts every .chalk/ pinned path — an e2e spec locked under .chalk/tests/ escapes the tracking gate",
+      "column": "done",
+      "createdAt": 1783417824955,
+      "updatedAt": 1783418383502,
+      "order": 21,
+      "description": "- Narrow the exemption to spine-state files that genuinely land out-of-band, so pinned e2e specs under `.chalk/tests/` are still tracking-gated.\n- Locked test asserts the carve-out in BOTH directions: a spine-state pin is exempt, and a `.chalk/tests/*.test.yaml` pin is required to be tracked in git.\n- untrackedLockedTests narrows the .chalk/ exemption: e2e specs pinned under .chalk/tests/ ARE tracking-gated (must be git-tracked), while genuine out-of-band spine-state paths under .chalk/ stay exempt.\n- chalk commit stages pinned .chalk/tests/ specs (in addition to code and .chalk/evidence/), so the pipeline tracks e2e contract specs — closing the gap where the narrowed gate would otherwise block on a spec the commit stage never staged.\n- Locked test asserts the carve-out in BOTH directions: an untracked .chalk/tests/*.test.yaml pin blocks chalk done (and passes once tracked), and an untracked non-tests .chalk/ spine-state pin is exempt.",
+      "testArtifact": {
+        "specPath": "test/chalk-tests-tracking.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f781d728",
+          "status": "passed",
+          "at": 1783418383502
+        },
+        "prNumber": 127,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/127",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/126"
+      }
+    },
+    {
+      "id": "task-a6173700",
+      "title": "fix: release --commit/--promote orphan recovery keys on an un-namespaced \"Released vX\" substring over decisions.md",
+      "column": "done",
+      "createdAt": 1783417824960,
+      "updatedAt": 1783422230310,
+      "order": 22,
+      "description": "- Match the completion marker namespaced to the specific commit/version (a dedicated marker or structured decision field), not a bare substring over shared prose, so unrelated text can neither spoof nor suppress a resume.\n- Detect the orphan by version/tag rather than a fixed `log -50` depth, or document and test the bound so a deeper orphan can't silently double-bump.\n- Locked test: a manual decision note whose body contains \"Released vX.Y.Z\" does NOT block resuming a genuinely orphaned release commit.\n- The release completion marker is matched anchored to the '## Released vX' decision HEADING (multiline ^…$), not as a bare substring over decisions.md — so prose in any decision body mentioning 'Released vX' can neither spoof completion nor suppress a legitimate resume.\n- The orphaned release commit is detected via git's own --grep at ANY depth (not a fixed log -50 window), so a deeply-buried orphan can't silently revert to bump-from-bumped.\n- A genuine finished release (real ## Released heading + tag) still suppresses the resume — no false resume onto a completed release.\n- Locked test proves: a decision body mentioning 'Released vX' does not block resuming a genuine orphan, a real heading does, and an orphan buried beyond 50 commits is still found.",
+      "testArtifact": {
+        "specPath": "test/release-marker-scope.test.mjs",
+        "lastRun": {
+          "runId": "done-task-a6173700",
+          "status": "passed",
+          "at": 1783422230310
+        },
+        "prNumber": 132,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/132",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/125"
+      }
+    },
+    {
+      "id": "task-f64af30f",
+      "title": "fix: untrackedLockedTests blanket-exempts every `.chalk/` pin, so an untracked e2e acceptance spec ships a vacuous green",
+      "column": "todo",
+      "createdAt": 1783417824961,
+      "updatedAt": 1783417824961,
+      "order": 23,
+      "description": "- Narrow the exclusion so genuine spine-state files (tasks.json/chalk.json/board) are exempt but pinned e2e spec paths under `.chalk/tests/` are still tracking-checked\n- Add a locked test: a task pinning an untracked `.chalk/tests/*.test.yaml` spec is reported by `untrackedLockedTests` and blocks `chalk done`/`chalk pr`\n- Add a test that a real spine-state path (e.g. `.chalk/tasks.json`) remains exempt"
+    },
+    {
+      "id": "task-fb7b9744",
+      "title": "test: pin the `.chalk/` exemption in untrackedLockedTests — the tracking gate's carve-out is unasserted in either direction",
+      "column": "todo",
+      "createdAt": 1783417824964,
+      "updatedAt": 1783417824964,
+      "order": 24,
+      "description": "- A locked test asserts a `.chalk/`-pinned path is NOT reported untracked (the intentional exemption)\n- A locked test asserts a non-`.chalk/` untracked pin IS still reported alongside an exempted one (multi-path rendering)\n- The exemption's scope is documented in CONFIG.md or the gate's error text so spec authors know `.chalk/` pins bypass the tracking check"
+    },
+    {
+      "id": "task-ae0148d8",
+      "title": "fix: passing `chalk review` never clears a needs:review block — the printed guidance omits `chalk unblock`, stranding the task",
+      "column": "done",
+      "createdAt": 1783417824966,
+      "updatedAt": 1783418769041,
+      "order": 25,
+      "description": "- A passing `chalk review` on a task blocked with `needs:review` auto-unblocks it (restore `blockedFrom`, clear `t.block`), or the review-blocked guidance in next/status/backlog explicitly includes the `chalk unblock` step\n- Locked test drives the full round trip: run-loop review block → fix → `chalk review` pass → task is runnable again without manual state surgery\n- `chalk done` succeeds after that round trip (no residual blocked-state gate failure)\n- A passing chalk review (adversarial or manual) on a task blocked with needs:review auto-unblocks it: restores blockedFrom, clears t.block, and announces it — so runnableTasks stops skipping it.\n- A non-review block (needs: human-input/creds/decision/upstream) is a real dependency and is NEVER cleared by a passing review.\n- Locked test drives the full round trip: run-loop review block → fix → chalk review pass → task runnable again → chalk done succeeds, with no manual state surgery.",
+      "testArtifact": {
+        "specPath": "test/review-unblock.test.mjs",
+        "lastRun": {
+          "runId": "done-task-ae0148d8",
+          "status": "passed",
+          "at": 1783418769041
+        },
+        "prNumber": 128,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/128",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/117"
+      }
+    },
+    {
+      "id": "task-068a83c8",
+      "title": "fix: issue-intake spine writes leak into unrelated task branches — recurring scoped-diff review noise",
+      "column": "done",
+      "createdAt": 1783417824968,
+      "updatedAt": 1783420756127,
+      "order": 26,
+      "description": "- Issue import commits its spine changes (tasks.json entries, board rows) to the base branch in a dedicated chore(spine) commit before any task branch is cut, or the task commit stage excludes spine entries not belonging to the current task\n- A task branch's committed diff contains no tasks.json/board entries for other tasks imported during the sweep\n- Test: fixture runs intake → branch → commit and asserts the task commit touches only the current task's spine entry\n- The adversarial reviewer's captured diff excludes spine STATE (tasks.json, chalk.json, updates.jsonl, questions.json, decisions.md, lessons.md, boards/, plans/, handoffs/, analysis/) via git pathspec exclusions, so intake's imported-task and board churn never reaches the reviewer.\n- Contract artifacts stay visible to the reviewer: the code change and pinned .chalk/tests/ e2e specs (and .chalk/evidence/) are NOT excluded.\n- The exclusion applies to every captureDiff fallback (git diff HEAD, base...HEAD, origin/base...HEAD, git diff) and to the --stat file list, in both manual and pipeline order.\n- Locked test proves the reviewer's prompt carries the code + a .chalk/tests/ spec but not tasks.json/board rows/other imported task titles.",
+      "testArtifact": {
+        "specPath": "test/review-diff-scope.test.mjs",
+        "lastRun": {
+          "runId": "done-task-068a83c8",
+          "status": "passed",
+          "at": 1783420756127
+        },
+        "prNumber": 130,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/130",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/114"
+      }
+    },
+    {
+      "id": "task-f8647c91",
+      "title": "fix: chalk spec --test from a linked worktree records a '../<worktree>/…' lock path — dead after cleanup",
+      "column": "todo",
+      "createdAt": 1783417824970,
+      "updatedAt": 1783417824970,
+      "order": 27
+    },
+    {
+      "id": "task-96eabc01",
+      "title": "feat: parallel task execution — scope P6 integrity per worktree, lock spine writes, fan out the driver",
+      "column": "todo",
+      "createdAt": 1783417824971,
+      "updatedAt": 1783417824971,
+      "order": 28
+    },
+    {
+      "id": "task-90b8101a",
+      "title": "fix: chalk commit silently no-ops after the first commit, so review-fix changes never get committed",
+      "column": "done",
+      "createdAt": 1783422773780,
+      "updatedAt": 1783423446271,
+      "order": 29,
+      "description": "- chalk commit commits new working-tree code changes even past the 'committed' stage (labeled follow-up), so review-fix changes land in git.\n- It no-ops idempotently when there is nothing new; the first commit still errors when the executor produced no changes.\n- After a follow-up commit no uncommitted CODE lingers — reviewer's view equals what merge takes.\n- Locked test proves first commit, follow-up landing, idempotent re-run, and empty-first-commit failure.",
+      "testArtifact": {
+        "specPath": "test/commit-followup.test.mjs",
+        "lastRun": {
+          "runId": "done-task-90b8101a",
+          "status": "passed",
+          "at": 1783423446271
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/134"
+      }
+    },
+    {
+      "id": "task-cc689423",
+      "title": "refactor: unify the intake-commit spine paths and the reviewer diff-exclude list into one shared constant",
+      "column": "todo",
+      "createdAt": 1783422773784,
+      "updatedAt": 1783422773784,
+      "order": 30,
+      "description": "- Define the spine-state path list once in a shared module imported by both bin/chalk.mjs (intake commit) and lib/review.mjs (diff excludes)\n- Ensure the intake commit covers every spine path the reviewer excludes (contract artifacts like `.chalk/tests/` and `.chalk/evidence/` remain visible/committed as today)\n- Add a test asserting the intake-commit path set and the reviewer-exclude set stay consistent, so a future divergence trips the suite"
+    },
+    {
+      "id": "task-ae4422c1",
+      "title": "fix: untrackedLockedTests compares pinned paths verbatim against git ls-files — a './'-prefixed, backslashed, or case-differing pin false-blocks done/pr",
+      "column": "done",
+      "createdAt": 1783422773786,
+      "updatedAt": 1783427648306,
+      "order": 31,
+      "description": "- Normalize both the pinned path and each `ls-files` entry before comparison (strip a leading `./`, unify path separators) so equivalent forms match\n- Handle case-insensitive filesystems so a case-only difference does not false-block (or document the platform boundary)\n- Add a locked test: a tracked file pinned as `./<path>` (and a backslash/case variant) is NOT reported untracked and `chalk done` proceeds\n- Keep the genuinely-untracked case still blocking (no regression to the #107 vacuous-green guard)",
+      "testArtifact": {
+        "specPath": "test/tracking-path-normalize.test.mjs",
+        "lastRun": {
+          "runId": "done-task-ae4422c1",
+          "status": "passed",
+          "at": 1783427648306
+        },
+        "prNumber": 137,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/137",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/129"
       }
     }
   ]

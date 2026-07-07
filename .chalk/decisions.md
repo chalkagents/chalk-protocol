@@ -279,3 +279,88 @@
 
 - _when:_ 2026-07-06T07:48:22.696Z
 - _why:_ the manual loop had gated the WORK (verify+review) but skipped the LANDING gate; tasks were flipped back to in-progress and pointed at their PRs so the gate could rule — also surfaced that this repo's chalk.json predated protocol.github (now configured), which had silently disabled remote-CI broke-checks
+
+## Branch model: dev is the integration branch (all PRs target dev; protocol.github.base=dev), main is the deployable branch advanced only by dev→main promotion PRs at release time
+
+- _when:_ 2026-07-06T07:57:20.007Z
+- _why:_ keeps main always releasable (release.yml publishes on tags cut from main) while the pipeline's issue→merge loop iterates on dev; GitHub default branch flipped to dev so new PRs base there automatically
+
+## Server-side enforcement of the branch model: main protected (PR required, test check, enforce_admins, no force-push/delete), dev protected against force-push/delete only, merge methods = squash (dev PRs) + merge commit (promotions), rebase off
+
+- _when:_ 2026-07-06T08:06:00.633Z
+- _why:_ main's deployability is now enforced by GitHub, not convention; dev stays friction-free for the pipeline (required checks on dev would reject direct spine pushes since fresh commits carry no check results). Release flow under protection: release --commit --no-tag on dev, promotion PR merged with a merge commit, tag main's tip (filed #98 to teach chalk release --promote natively)
+
+## Amended acceptance test for "fix: release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips"
+
+- _when:_ 2026-07-06T08:23:16.093Z
+- _why:_ review blocked the HEAD-only/no-discriminator design: recovery now keys on the Released-vX decision as the completion marker, finds buried orphans, and defers post-interruption arrivals — the locked test grew the four cases pinning exactly those behaviors
+
+## Amended acceptance test for "fix: release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips"
+
+- _when:_ 2026-07-06T08:25:52.787Z
+- _why:_ pin the dry-run resume preview flagged by review (the line was silently revertible): a post-interruption --dry-run must say 'would RESUME' and write nothing
+
+## Amended acceptance test for "feat: chalk release --promote — protected-main release flow (promotion PR + tag on main's tip)"
+
+- _when:_ 2026-07-06T08:45:04.267Z
+- _why:_ review blocked three real recovery holes: resume was unreachable with a leftover local tag, a merged PR broke the re-run choreography (pr create dies with 'no commits between'), and the fresh path lost the up-front collision probe — the locked test grew a real-merge-commit stub, the post-merge tag-push-failure resume, the stale-tag collision, and the pending-CI abort
+
+## Amended acceptance test for "feat: chalk release --promote — protected-main release flow (promotion PR + tag on main's tip)"
+
+- _when:_ 2026-07-06T08:48:06.645Z
+- _why:_ pin the two review med findings: the pre-merge re-run must FIND the open PR (creates.length===1 — real gh rejects a duplicate pr create) and the promote resume must defer late-arriving tasks instead of absorbing them into the frozen notes
+
+## Amended acceptance test for "fix: chalk review advances pipeline.stage to 'reviewed' even when no PR exists — manual-order review pollutes the commit/pr stage guards"
+
+- _when:_ 2026-07-06T09:22:47.012Z
+- _why:_ pin the adversary-path stage guard flagged by review (line 1374 was revertible alone): a stub reviewer passing pre-PR must leave the stage untouched
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-07-06T09:39:26.764Z
+- _why:_ review blocked on individually-revertible stage wirings: retro and plan envelope e2e pins added (a reverted call site now fails the suite); also stdout-first on reviewer nonzero exit (stderr after the envelope hid the verdict) and a 64MiB capture buffer
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-07-06T09:46:05.272Z
+- _why:_ review blocked twice on revertible wirings: every stage (review/retro/plan/discovery/feedback/executor) is now pinned e2e through a fake claude on PATH that emits the envelope ONLY when the flag was injected; also pinned stdout-first on nonzero exit, the banner-tolerant envelope parse, and the >1MiB capture buffer
+
+## Amended acceptance test for "feat: chalk stats — gate-efficacy report from the event log"
+
+- _when:_ 2026-07-06T10:24:33.478Z
+- _why:_ review BLOCK findings: pin churn.worst (attempts+handoffs per task), reject garbage --since, cover the unreviewed bucket/handLanded/passes/audit.red, and couple the real emitters (chalk run verify-RED+handoff, chalk done --force-review) to the stats parser via lib/markers.mjs
+
+## chalk stats mines the spine+archive via shared event markers (lib/markers.mjs)
+
+- _when:_ 2026-07-06T10:28:57.769Z
+- _why:_ stats matches event-log strings the emitters write; before markers.mjs each side hardcoded its own copy and a reword would silently zero a stat. Emitters (run/handoff/done/audit) and the parser now share constants, coupled end-to-end by the locked test.
+
+## Amended acceptance test for "feat: give reviewer-induced auto-blocks a distinct `--needs` category instead of `human-input`"
+
+- _when:_ 2026-07-06T12:33:03.807Z
+- _why:_ review BLOCK: pin chalk status's distinct review-block rendering (criterion 3 names both surfaces) and the reviewer-ERROR path (crash ≠ refutation — stays human-input per the design-intent finding)
+
+## Amended acceptance test for "feat: tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk"
+
+- _when:_ 2026-07-07T08:47:24.160Z
+- _why:_ re-lock after finalizing the test (opt-in refactor + accurate title) before first verify — file is green
+
+## Amended acceptance test for "feat: tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk"
+
+- _when:_ 2026-07-07T08:51:54.342Z
+- _why:_ review BLOCK: pin default-OFF inertness (criteria 1/4 — no hashing/warning/files, no event), the true no-baseline-file first-run establishment path, and chalk.json warn-once + re-arm on a fresh edit
+
+## Amended acceptance test for "feat: configurable e2e spec pattern (not just *.test.yaml)"
+
+- _when:_ 2026-07-07T09:08:41.641Z
+- _why:_ review BLOCK: a fifth spec-ness site (evidence/PR pipeline stage, bin/chalk.mjs) hardcoded .test.yaml — now uses isSpec(pattern); added doctor-warning + evidence-stage coverage so all sites in criterion 2 are pinned
+
+## Amended acceptance test for "fix: issue-intake spine writes leak into unrelated task branches — recurring scoped-diff review noise"
+
+- _when:_ 2026-07-07T10:35:22.657Z
+- _why:_ review BLOCK: the intake commit used bare git commit (whole index) — a data hazard sweeping a user's pre-staged work; switched to gitCommitPaths (git commit -- <pathspec>) and added a scoping-guarantee test that pre-stages an unrelated file and asserts it's untouched
+
+## Overrode review gate for "fix: chalk commit silently no-ops after the first commit, so review-fix changes never get committed"
+
+- _when:_ 2026-07-07T11:24:06.269Z
+- _why:_ PR #135 already merged to dev and adversarially reviewed (PASS); the task's spine record was reverted by a dev rebase during the #114/#125 recovery — reconciling state to reflect reality

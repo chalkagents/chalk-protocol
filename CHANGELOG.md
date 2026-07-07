@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.1.1 — 2026-07-07
+
+### Features
+- release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips (#100)
+- chalk release --promote — protected-main release flow (promotion PR + tag on main's tip) (#103)
+- chalk review advances pipeline.stage to 'reviewed' even when no PR exists — manual-order review pollutes the commit/pr stage guards (#104)
+- token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable (#105)
+- chalk stats — gate-efficacy report from the event log (#109)
+- dogfood — make chalk's own loop (issue pull → autopilot → retro) the default way chalk contributes to chalk (#112)
+- give reviewer-induced auto-blocks a distinct `--needs` category instead of `human-input` (#116)
+- opt-in all-locks integrity — done tasks' locked tests stay protected (#119)
+- tamper-evident spine — warn when tasks.json/chalk.json changed outside chalk (#120)
+- configurable e2e spec pattern (not just *.test.yaml) (#121)
+- context budget — cap buildContext size and prune injected lessons (#123)
+- held-out set outside the repo root (manual-mode blindness) (#124)
+- chalk commit silently no-ops after the first commit, so review-fix changes never get committed
+
+### Fixes
+- chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step) (#93)
+- CONFIG.md drift gate only validates top-level protocol keys (#94)
+- evidence-push failures are swallowed (catch{}) — blob-SHA 404s surface as broken PR images (#95)
+- sameModelFamily can't see env-var models (CHALK_OPENCODE_MODEL) — cross-model warning inert for opencode (#96)
+- spec-lock gate never checks locked tests are tracked in git — a pinned test can ship untracked and CI runs a vacuous green (#115)
+- untrackedLockedTests exempts every .chalk/ pinned path — an e2e spec locked under .chalk/tests/ escapes the tracking gate (#127)
+- passing `chalk review` never clears a needs:review block — the printed guidance omits `chalk unblock`, stranding the task (#128)
+- issue-intake spine writes leak into unrelated task branches — recurring scoped-diff review noise (#130)
+- release --commit/--promote orphan recovery keys on an un-namespaced "Released vX" substring over decisions.md (#132)
+- untrackedLockedTests compares pinned paths verbatim against git ls-files — a './'-prefixed, backslashed, or case-differing pin false-blocks done/pr (#137)
+
+### Other
+- cut v0.1.0 via chalk release, seed v0.2 roadmap issues, enable GitHub Discussions
+
 ## v0.1.0 — 2026-07-02
 
 ### Features
