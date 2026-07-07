@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783417983374,
+  "updatedAt": 1783418383502,
   "order": 0,
   "cards": [
     {
@@ -396,13 +396,20 @@
     {
       "id": "task-f781d728",
       "title": "fix: untrackedLockedTests exempts every .chalk/ pinned path — an e2e spec locked under .chalk/tests/ escapes the tracking gate",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1783417824955,
-      "updatedAt": 1783417983374,
+      "updatedAt": 1783418383502,
       "order": 21,
       "description": "- Narrow the exemption to spine-state files that genuinely land out-of-band, so pinned e2e specs under `.chalk/tests/` are still tracking-gated.\n- Locked test asserts the carve-out in BOTH directions: a spine-state pin is exempt, and a `.chalk/tests/*.test.yaml` pin is required to be tracked in git.\n- untrackedLockedTests narrows the .chalk/ exemption: e2e specs pinned under .chalk/tests/ ARE tracking-gated (must be git-tracked), while genuine out-of-band spine-state paths under .chalk/ stay exempt.\n- chalk commit stages pinned .chalk/tests/ specs (in addition to code and .chalk/evidence/), so the pipeline tracks e2e contract specs — closing the gap where the narrowed gate would otherwise block on a spec the commit stage never staged.\n- Locked test asserts the carve-out in BOTH directions: an untracked .chalk/tests/*.test.yaml pin blocks chalk done (and passes once tracked), and an untracked non-tests .chalk/ spine-state pin is exempt.",
       "testArtifact": {
         "specPath": "test/chalk-tests-tracking.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f781d728",
+          "status": "passed",
+          "at": 1783418383502
+        },
+        "prNumber": 127,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/127",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/126"
       }
     },

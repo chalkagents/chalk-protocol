@@ -2049,7 +2049,7 @@
   {
     "id": "task-f781d728",
     "title": "fix: untrackedLockedTests exempts every .chalk/ pinned path — an e2e spec locked under .chalk/tests/ escapes the tracking gate",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Narrow the exemption to spine-state files that genuinely land out-of-band, so pinned e2e specs under `.chalk/tests/` are still tracking-gated."
@@ -2085,14 +2085,38 @@
       "bug"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-07-07T09:58:23.345Z"
+      "stage": "cleaned",
+      "at": "2026-07-07T09:59:43.502Z"
     },
     "createdAt": "2026-07-07T09:50:24.955Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-07T09:59:21.429Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Diff under review shows only pipeline bookkeeping (board/tasks.json/updates.jsonl), but the working tree contains the actual implementation: lib/testgate.mjs spineStateExempt='p.startsWith(\".chalk/\") && !p.startsWith(\".chalk/tests/\")' (crit 1,3) and untrackedLockedTests filters by it; bin/chalk.mjs commit stages .chalk/tests/ at line 370 (crit 4); done gate (line 1368) and pr gate (line 407) both invoke the narrowed gate."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Locked test covers the carve-out in both directions and would fail if the change were reverted: unit assertions on spineStateExempt (line 24-27), done blocks on untracked .chalk/tests/ spec then passes when tracked while the exempt .chalk/mystate.json is ignored (line 53-81), and chalk commit stages/commits the .chalk/tests/ spec while keeping tasks.json out (line 83-102). Coverage is non-vacuous."
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-07T09:53:03.374Z",
     "branch": "fix/126-fix-untrackedlockedtests-exempts-every-chalk",
-    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
+    "pr": {
+      "number": 127,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/127",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-07T09:59:43.502Z"
   },
   {
     "id": "task-a6173700",
