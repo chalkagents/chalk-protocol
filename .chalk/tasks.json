@@ -2303,7 +2303,7 @@
   {
     "id": "task-068a83c8",
     "title": "fix: issue-intake spine writes leak into unrelated task branches — recurring scoped-diff review noise",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Issue import commits its spine changes (tasks.json entries, board rows) to the base branch in a dedicated chore(spine) commit before any task branch is cut, or the task commit stage excludes spine entries not belonging to the current task"
@@ -2349,8 +2349,8 @@
       "bug"
     ],
     "pipeline": {
-      "stage": "pr-open",
-      "at": "2026-07-07T10:23:07.722Z"
+      "stage": "cleaned",
+      "at": "2026-07-07T10:39:16.128Z"
     },
     "createdAt": "2026-07-07T09:50:24.968Z",
     "reviews": [
@@ -2402,16 +2402,39 @@
             "note": "Criterion 1 requires the intake commit before any task branch is cut; this holds in worktree-disabled mode (the tests force `worktree.enabled=false`), but with worktrees enabled by default the interaction of committing to base at pull time vs. later branch creation is not exercised by any locked test, leaving the default-mode path unverified."
           }
         ]
+      },
+      {
+        "at": "2026-07-07T10:38:59.861Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 6 requires the pathspec exclusion to apply to every captureDiff fallback (git diff HEAD, base...HEAD, origin/base...HEAD, git diff) in both manual and pipeline order. review-diff-scope.test.mjs only exercises the manual 'git diff HEAD' path (uncommitted staged changes); the pipeline path (committed-on-branch base...HEAD / origin/base...HEAD) is not directly asserted. Coverage is not vacuous, however: exclusions are a single shared `diffPathspec` constant appended to all four fallbacks and the --stat, and the REVIEW_DIFF_EXCLUDES unit test plus the integration test both fail if the exclusion is reverted."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The intake commit's spineFiles list (.chalk/tasks.json, updates.jsonl, boards, plans) is a subset of the reviewer's exclude list (which also covers chalk.json, questions.json, decisions.md, lessons.md, handoffs, analysis). If a future intake path dirties one of those un-committed spine files, it would float in the working tree again. Currently benign — intake only writes tasks.json/updates.jsonl/boards, and the locked test asserts a clean tree — but the two lists diverging is a latent maintenance hazard."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "`chalk issue pull` now auto-creates a chore(spine) commit on the current (base) branch where it previously left changes uncommitted. Behavior is intended per criterion 1 and best-effort guarded (rev-parse check + try/catch, empty-commit skip, partial `git commit -- <pathspec>` leaving user's pre-staged work intact, all covered by intake-commit-scope tests incl. the non-git and pre-staged cases), but callers/pipelines that assumed intake left the spine uncommitted now see a new base-branch commit."
+          }
+        ]
       }
     ],
     "startedAt": "2026-07-07T10:21:03.258Z",
     "branch": "fix/114-fix-issue-intake-spine-writes",
-    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol",
     "pr": {
       "number": 130,
       "url": "https://github.com/chalkagents/chalk-protocol/pull/130",
-      "recorded": true
-    }
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-07T10:39:16.127Z"
   },
   {
     "id": "task-f8647c91",
