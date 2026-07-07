@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783417392796,
+  "updatedAt": 1783417983374,
   "order": 0,
   "cards": [
     {
@@ -392,6 +392,80 @@
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/116",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/46"
       }
+    },
+    {
+      "id": "task-f781d728",
+      "title": "fix: untrackedLockedTests exempts every .chalk/ pinned path — an e2e spec locked under .chalk/tests/ escapes the tracking gate",
+      "column": "in_progress",
+      "createdAt": 1783417824955,
+      "updatedAt": 1783417983374,
+      "order": 21,
+      "description": "- Narrow the exemption to spine-state files that genuinely land out-of-band, so pinned e2e specs under `.chalk/tests/` are still tracking-gated.\n- Locked test asserts the carve-out in BOTH directions: a spine-state pin is exempt, and a `.chalk/tests/*.test.yaml` pin is required to be tracked in git.\n- untrackedLockedTests narrows the .chalk/ exemption: e2e specs pinned under .chalk/tests/ ARE tracking-gated (must be git-tracked), while genuine out-of-band spine-state paths under .chalk/ stay exempt.\n- chalk commit stages pinned .chalk/tests/ specs (in addition to code and .chalk/evidence/), so the pipeline tracks e2e contract specs — closing the gap where the narrowed gate would otherwise block on a spec the commit stage never staged.\n- Locked test asserts the carve-out in BOTH directions: an untracked .chalk/tests/*.test.yaml pin blocks chalk done (and passes once tracked), and an untracked non-tests .chalk/ spine-state pin is exempt.",
+      "testArtifact": {
+        "specPath": "test/chalk-tests-tracking.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/126"
+      }
+    },
+    {
+      "id": "task-a6173700",
+      "title": "fix: release --commit/--promote orphan recovery keys on an un-namespaced \"Released vX\" substring over decisions.md",
+      "column": "todo",
+      "createdAt": 1783417824960,
+      "updatedAt": 1783417824960,
+      "order": 22,
+      "description": "- Match the completion marker namespaced to the specific commit/version (a dedicated marker or structured decision field), not a bare substring over shared prose, so unrelated text can neither spoof nor suppress a resume.\n- Detect the orphan by version/tag rather than a fixed `log -50` depth, or document and test the bound so a deeper orphan can't silently double-bump.\n- Locked test: a manual decision note whose body contains \"Released vX.Y.Z\" does NOT block resuming a genuinely orphaned release commit."
+    },
+    {
+      "id": "task-f64af30f",
+      "title": "fix: untrackedLockedTests blanket-exempts every `.chalk/` pin, so an untracked e2e acceptance spec ships a vacuous green",
+      "column": "todo",
+      "createdAt": 1783417824961,
+      "updatedAt": 1783417824961,
+      "order": 23,
+      "description": "- Narrow the exclusion so genuine spine-state files (tasks.json/chalk.json/board) are exempt but pinned e2e spec paths under `.chalk/tests/` are still tracking-checked\n- Add a locked test: a task pinning an untracked `.chalk/tests/*.test.yaml` spec is reported by `untrackedLockedTests` and blocks `chalk done`/`chalk pr`\n- Add a test that a real spine-state path (e.g. `.chalk/tasks.json`) remains exempt"
+    },
+    {
+      "id": "task-fb7b9744",
+      "title": "test: pin the `.chalk/` exemption in untrackedLockedTests — the tracking gate's carve-out is unasserted in either direction",
+      "column": "todo",
+      "createdAt": 1783417824964,
+      "updatedAt": 1783417824964,
+      "order": 24,
+      "description": "- A locked test asserts a `.chalk/`-pinned path is NOT reported untracked (the intentional exemption)\n- A locked test asserts a non-`.chalk/` untracked pin IS still reported alongside an exempted one (multi-path rendering)\n- The exemption's scope is documented in CONFIG.md or the gate's error text so spec authors know `.chalk/` pins bypass the tracking check"
+    },
+    {
+      "id": "task-ae0148d8",
+      "title": "fix: passing `chalk review` never clears a needs:review block — the printed guidance omits `chalk unblock`, stranding the task",
+      "column": "todo",
+      "createdAt": 1783417824966,
+      "updatedAt": 1783417824966,
+      "order": 25,
+      "description": "- A passing `chalk review` on a task blocked with `needs:review` auto-unblocks it (restore `blockedFrom`, clear `t.block`), or the review-blocked guidance in next/status/backlog explicitly includes the `chalk unblock` step\n- Locked test drives the full round trip: run-loop review block → fix → `chalk review` pass → task is runnable again without manual state surgery\n- `chalk done` succeeds after that round trip (no residual blocked-state gate failure)"
+    },
+    {
+      "id": "task-068a83c8",
+      "title": "fix: issue-intake spine writes leak into unrelated task branches — recurring scoped-diff review noise",
+      "column": "todo",
+      "createdAt": 1783417824968,
+      "updatedAt": 1783417824968,
+      "order": 26,
+      "description": "- Issue import commits its spine changes (tasks.json entries, board rows) to the base branch in a dedicated chore(spine) commit before any task branch is cut, or the task commit stage excludes spine entries not belonging to the current task\n- A task branch's committed diff contains no tasks.json/board entries for other tasks imported during the sweep\n- Test: fixture runs intake → branch → commit and asserts the task commit touches only the current task's spine entry"
+    },
+    {
+      "id": "task-f8647c91",
+      "title": "fix: chalk spec --test from a linked worktree records a '../<worktree>/…' lock path — dead after cleanup",
+      "column": "todo",
+      "createdAt": 1783417824970,
+      "updatedAt": 1783417824970,
+      "order": 27
+    },
+    {
+      "id": "task-96eabc01",
+      "title": "feat: parallel task execution — scope P6 integrity per worktree, lock spine writes, fan out the driver",
+      "column": "todo",
+      "createdAt": 1783417824971,
+      "updatedAt": 1783417824971,
+      "order": 28
     }
   ]
 }

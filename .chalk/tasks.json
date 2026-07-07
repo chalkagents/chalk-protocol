@@ -2045,5 +2045,267 @@
     },
     "startedAt": "2026-07-06T12:35:25.429Z",
     "doneAt": "2026-07-06T12:35:31.879Z"
+  },
+  {
+    "id": "task-f781d728",
+    "title": "fix: untrackedLockedTests exempts every .chalk/ pinned path — an e2e spec locked under .chalk/tests/ escapes the tracking gate",
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "Narrow the exemption to spine-state files that genuinely land out-of-band, so pinned e2e specs under `.chalk/tests/` are still tracking-gated."
+      },
+      {
+        "text": "Locked test asserts the carve-out in BOTH directions: a spine-state pin is exempt, and a `.chalk/tests/*.test.yaml` pin is required to be tracked in git."
+      },
+      {
+        "text": "untrackedLockedTests narrows the .chalk/ exemption: e2e specs pinned under .chalk/tests/ ARE tracking-gated (must be git-tracked), while genuine out-of-band spine-state paths under .chalk/ stay exempt."
+      },
+      {
+        "text": "chalk commit stages pinned .chalk/tests/ specs (in addition to code and .chalk/evidence/), so the pipeline tracks e2e contract specs — closing the gap where the narrowed gate would otherwise block on a spec the commit stage never staged."
+      },
+      {
+        "text": "Locked test asserts the carve-out in BOTH directions: an untracked .chalk/tests/*.test.yaml pin blocks chalk done (and passes once tracked), and an untracked non-tests .chalk/ spine-state pin is exempt."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/chalk-tests-tracking.test.mjs",
+        "sha256": "01e51c368327bfd5ac9639430f7304fcd7cbf554f7ebf333fd6e425365074083"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 126,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/126",
+      "body": "lib/testgate.mjs:54 filters out every pinned test path starting with `.chalk/` before the git-tracking check, justified by spine state landing out-of-band. But `chalk` also locks e2e specs at `.chalk/tests/<slug>.test.yaml` — those are real contract tests that SHOULD be tracked, and they now get NO tracking gate at all, re-opening exactly the vacuous-green hole #107 closed. Criterion 1 of the tracking task says EVERY locked test path must be verified, and no test pins this carve-out in either direction.\n\n- [ ] Narrow the exemption to spine-state files that genuinely land out-of-band, so pinned e2e specs under `.chalk/tests/` are still tracking-gated.\n- [ ] Locked test asserts the carve-out in BOTH directions: a spine-state pin is exempt, and a `.chalk/tests/*.test.yaml` pin is required to be tracked in git.\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "committed",
+      "at": "2026-07-07T09:58:23.345Z"
+    },
+    "createdAt": "2026-07-07T09:50:24.955Z",
+    "reviews": [],
+    "startedAt": "2026-07-07T09:53:03.374Z",
+    "branch": "fix/126-fix-untrackedlockedtests-exempts-every-chalk",
+    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
+  },
+  {
+    "id": "task-a6173700",
+    "title": "fix: release --commit/--promote orphan recovery keys on an un-namespaced \"Released vX\" substring over decisions.md",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Match the completion marker namespaced to the specific commit/version (a dedicated marker or structured decision field), not a bare substring over shared prose, so unrelated text can neither spoof nor suppress a resume."
+      },
+      {
+        "text": "Detect the orphan by version/tag rather than a fixed `log -50` depth, or document and test the bound so a deeper orphan can't silently double-bump."
+      },
+      {
+        "text": "Locked test: a manual decision note whose body contains \"Released vX.Y.Z\" does NOT block resuming a genuinely orphaned release commit."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 125,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/125",
+      "body": "The interrupted-release recovery (bin/chalk.mjs ~L528-537) detects an orphaned `chore(release): vX.Y.Z` commit and treats it as already-finished when `new RegExp('Released vX.Y.Z')` matches anywhere in `.chalk/decisions.md`. This completion marker lives OUTSIDE the release commit (which carries only CHANGELOG.md + package.json) and is matched as a bare, un-namespaced substring over the whole log. Two failure modes flagged repeatedly across the #91/#98/#100 release reviews: (1) any manual decision note containing the text \"Released vX.Y.Z\" suppresses a legitimate resume, so the re-run bumps FROM the already-bumped version and stacks a second release commit (version skip); (2) the orphan scan is a fixed `log -50` window, so an orphan buried deeper silently reverts to bump-from-bumped.\n\n- [ ] Match the completion marker namespaced to the specific commit/version (a dedicated marker or structured decision field), not a bare substring over shared prose, so unrelated text can neither spoof nor suppress a resume.\n- [ ] Detect the orphan by version/tag rather than a fixed `log -50` depth, or document and test the bound so a deeper orphan can't silently double-bump.\n- [ ] Locked test: a manual decision note whose body contains \"Released vX.Y.Z\" does NOT block resuming a genuinely orphaned release commit.\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T09:50:24.960Z"
+    },
+    "createdAt": "2026-07-07T09:50:24.960Z",
+    "reviews": []
+  },
+  {
+    "id": "task-f64af30f",
+    "title": "fix: untrackedLockedTests blanket-exempts every `.chalk/` pin, so an untracked e2e acceptance spec ships a vacuous green",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Narrow the exclusion so genuine spine-state files (tasks.json/chalk.json/board) are exempt but pinned e2e spec paths under `.chalk/tests/` are still tracking-checked"
+      },
+      {
+        "text": "Add a locked test: a task pinning an untracked `.chalk/tests/*.test.yaml` spec is reported by `untrackedLockedTests` and blocks `chalk done`/`chalk pr`"
+      },
+      {
+        "text": "Add a test that a real spine-state path (e.g. `.chalk/tasks.json`) remains exempt"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 122,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/122",
+      "body": "The #107 tracking gate (`lib/testgate.mjs:53`) filters out any pinned path starting with `.chalk/` (`!p.startsWith('.chalk/')`) on the rationale that spine state lands out-of-band. But e2e acceptance specs live under `.chalk/tests/*.test.yaml` (see `lib/e2e.mjs`) and ARE legitimate locked tests that must be committed. The blanket carve-out means a task that pins an e2e spec under `.chalk/` gets NO tracking gate at all — the exact vacuous-CI-green hole #107 closed for ordinary tests reopens for e2e specs, and no test asserts the carve-out in either direction.\n\n- [ ] Narrow the exclusion so genuine spine-state files (tasks.json/chalk.json/board) are exempt but pinned e2e spec paths under `.chalk/tests/` are still tracking-checked\n- [ ] Add a locked test: a task pinning an untracked `.chalk/tests/*.test.yaml` spec is reported by `untrackedLockedTests` and blocks `chalk done`/`chalk pr`\n- [ ] Add a test that a real spine-state path (e.g. `.chalk/tasks.json`) remains exempt\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T09:50:24.961Z"
+    },
+    "createdAt": "2026-07-07T09:50:24.961Z",
+    "reviews": []
+  },
+  {
+    "id": "task-fb7b9744",
+    "title": "test: pin the `.chalk/` exemption in untrackedLockedTests — the tracking gate's carve-out is unasserted in either direction",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "A locked test asserts a `.chalk/`-pinned path is NOT reported untracked (the intentional exemption)"
+      },
+      {
+        "text": "A locked test asserts a non-`.chalk/` untracked pin IS still reported alongside an exempted one (multi-path rendering)"
+      },
+      {
+        "text": "The exemption's scope is documented in CONFIG.md or the gate's error text so spec authors know `.chalk/` pins bypass the tracking check"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 118,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/118",
+      "body": "`untrackedLockedTests()` (lib/testgate.mjs:53-59) silently exempts any pinned path starting with `.chalk/` — justified in the comment (spine state lands out-of-band, matching what `chalk commit` sweeps), but no test asserts the carve-out's behavior in either direction. A task that pins an e2e spec under `.chalk/` gets no tracking gate at all, and the exemption prefix could be widened or broken without any suite failure. Flagged as a med correctness finding on the #107 review (criterion 1 says EVERY pinned path is verified).\n\n- [ ] A locked test asserts a `.chalk/`-pinned path is NOT reported untracked (the intentional exemption)\n- [ ] A locked test asserts a non-`.chalk/` untracked pin IS still reported alongside an exempted one (multi-path rendering)\n- [ ] The exemption's scope is documented in CONFIG.md or the gate's error text so spec authors know `.chalk/` pins bypass the tracking check\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T09:50:24.964Z"
+    },
+    "createdAt": "2026-07-07T09:50:24.964Z",
+    "reviews": []
+  },
+  {
+    "id": "task-ae0148d8",
+    "title": "fix: passing `chalk review` never clears a needs:review block — the printed guidance omits `chalk unblock`, stranding the task",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "A passing `chalk review` on a task blocked with `needs:review` auto-unblocks it (restore `blockedFrom`, clear `t.block`), or the review-blocked guidance in next/status/backlog explicitly includes the `chalk unblock` step"
+      },
+      {
+        "text": "Locked test drives the full round trip: run-loop review block → fix → `chalk review` pass → task is runnable again without manual state surgery"
+      },
+      {
+        "text": "`chalk done` succeeds after that round trip (no residual blocked-state gate failure)"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 117,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/117",
+      "body": "The run loop auto-blocks a refuted task with `needs:review` (lib/run.mjs:119), and `chalk next`/`chalk status` tell the agent to 'fix the findings, then `chalk review <id>`' (bin/chalk.mjs:180, 1075). But the `review` command (bin/chalk.mjs:1417-1471) never touches `t.state`/`t.block`, and nothing else unblocks on a pass — so a task whose re-review PASSES stays `state=blocked`, `runnableTasks` keeps skipping it, and an agent following the printed guidance exactly can end the sweep with a green-reviewed task still parked. Reviewer flagged the unverified unblock→re-review round trip on #116.\n\n- [ ] A passing `chalk review` on a task blocked with `needs:review` auto-unblocks it (restore `blockedFrom`, clear `t.block`), or the review-blocked guidance in next/status/backlog explicitly includes the `chalk unblock` step\n- [ ] Locked test drives the full round trip: run-loop review block → fix → `chalk review` pass → task is runnable again without manual state surgery\n- [ ] `chalk done` succeeds after that round trip (no residual blocked-state gate failure)\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T09:50:24.966Z"
+    },
+    "createdAt": "2026-07-07T09:50:24.966Z",
+    "reviews": []
+  },
+  {
+    "id": "task-068a83c8",
+    "title": "fix: issue-intake spine writes leak into unrelated task branches — recurring scoped-diff review noise",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Issue import commits its spine changes (tasks.json entries, board rows) to the base branch in a dedicated chore(spine) commit before any task branch is cut, or the task commit stage excludes spine entries not belonging to the current task"
+      },
+      {
+        "text": "A task branch's committed diff contains no tasks.json/board entries for other tasks imported during the sweep"
+      },
+      {
+        "text": "Test: fixture runs intake → branch → commit and asserts the task commit touches only the current task's spine entry"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 114,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/114",
+      "body": "Four reviews in this sweep (release --promote, release --commit recovery, review-stage fix, cost ledger) each flagged the same design-intent finding: the task's diff bundles unrelated queue metadata — imported issue task specs and board rows written during intake — violating chalk's own 'keep diffs small and scoped' hard rule and burning reviewer attention every run. Intake mutates .chalk/tasks.json/board while that state is later swept into whichever task branch commits next.\n\n- [ ] Issue import commits its spine changes (tasks.json entries, board rows) to the base branch in a dedicated chore(spine) commit before any task branch is cut, or the task commit stage excludes spine entries not belonging to the current task\n- [ ] A task branch's committed diff contains no tasks.json/board entries for other tasks imported during the sweep\n- [ ] Test: fixture runs intake → branch → commit and asserts the task commit touches only the current task's spine entry\n\n_filed by `chalk retro` (self-healing)_"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T09:50:24.968Z"
+    },
+    "createdAt": "2026-07-07T09:50:24.968Z",
+    "reviews": []
+  },
+  {
+    "id": "task-f8647c91",
+    "title": "fix: chalk spec --test from a linked worktree records a '../<worktree>/…' lock path — dead after cleanup",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 111,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/111",
+      "body": "## What happened\n\nDogfooding on `chalkagents/chalk-protocol-site` (issue #6 there): the reviewer blocked with \"the test is not registered as a locked test\", so — per the finding — I ran the sanctioned path from the task's **worktree** (so the file exists at the cwd):\n\n```\ncd ../chalk-protocol-site-feat-6-…   # the task worktree\nchalk spec task-13052f3 --test test/docs-pages.test.mjs\n  locked ../chalk-protocol-site-feat-6-feat-build-time-docs-rendering/test/docs-pages.test.mjs @ 15892a308f4b\n```\n\nThe lock recorded `path: \"../chalk-protocol-site-feat-6-…/test/docs-pages.test.mjs\"` — relative to the canonical spine root (the #52 single-canonical-spine resolution works), but pointing INTO the worktree. After `chalk merge` cleans the worktree up, the recorded path is dead: integrity/break-it checks against it will ENOENT even though `test/docs-pages.test.mjs` exists on main.\n\n## Where\n\n`bin/chalk.mjs` spec/amend-spec: `s.lockTest(resolve(process.cwd(), String(p)))` — the abs path is later relativized against `store.root` (main checkout), so a cwd inside a linked worktree produces a `../<worktree>/…` path.\n\n## Expected\n\nWhen cwd is a linked worktree of the canonical root, the lock path should be recorded relative to the **worktree root** (i.e. `test/docs-pages.test.mjs`), which is the tree-relative path valid in every checkout. `git rev-parse --show-toplevel` from cwd (or comparing against `workdir(store, task)`) gives the right base.\n\n## Workaround used\n\nNormalized the recorded path by hand (same sha) + `chalk decision` documenting it.\n\n## Related\n\nThe same dogfood run also reproduced #102's stage-marker friction in a new spot: after a manual review-fix round (manual commit+push, review PASS), the resumed `chalk pipeline` re-ran `work` (executor no-op, attempts++) and then FAILED at `commit` with \"nothing to commit — the executor made no file changes\", auto-blocking a task whose PR was already pushed, recorded, and LGTM'd. A clean tree + an existing recorded PR should advance the stage, not block. Happy to split this into its own issue if it shouldn't ride on #102.\n"
+    },
+    "branchType": "feat",
+    "labels": [],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T09:50:24.970Z"
+    },
+    "createdAt": "2026-07-07T09:50:24.970Z",
+    "reviews": []
+  },
+  {
+    "id": "task-96eabc01",
+    "title": "feat: parallel task execution — scope P6 integrity per worktree, lock spine writes, fan out the driver",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 110,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/110",
+      "body": "**From the 2026-07-06 dogfood sweeps.** Chalk's one-in-progress-task-at-a-time is a soft convention with one hard tooth, and it forces whole-repo sequential sweeps even when tasks are independent.\n\n## What actually enforces sequential today\n\n- `chalk start` does NOT refuse a second in-progress task; `chalk next` only warns (`protocol prefers ONE at a time`).\n- The hard tooth is **P6**: `verify()` (lib/verify.mjs:39) checks EVERY in-progress task's locked tests against a SINGLE cwd. Two tasks in-progress on different branches → each checkout is missing the other task's locked test (or has a stale sha) → `brokenLocks` fires → verify RED for both. Worktrees isolate the *edits* but not the *integrity check*.\n- The `chalk verify` CLI picks the FIRST in-progress task (`tasks().find(...)`, bin/chalk.mjs) to choose the worktree — wrong cwd for any second task.\n- The Store writes the spine with plain `writeFileSync` — two concurrent chalk processes in the same repo race on tasks.json/updates.jsonl (last writer wins, events can interleave mid-line).\n- `runDriver`/`runPipeline` are sequential for-loops over the queue.\n\n(Parallel across DIFFERENT repos already works fine — each spine is independent.)\n\n## Sketch\n\n1. **Scope P6 per task**: check each in-progress task's locked tests in *its own* worktree (task.worktree, falling back to root). A task without a worktree in multi-mode is the error case.\n2. **Spine write safety**: a lockfile (or O_APPEND-only event log + per-task json) so concurrent `chalk work`/`verify`/`done` don't clobber tasks.json.\n3. **Driver fan-out**: `chalk pipeline --parallel N` — spawn per-task stage chains (branch→work→…→merge) in their own worktrees; merges still serialize through the gate (they contend on the base branch anyway).\n4. Make the one-at-a-time preference explicit: `chalk start` refuses a second wip task unless `protocol.parallel.enabled` (or `--parallel`), instead of today's silent allow + downstream RED.\n\nUntil then the documented answer stays: one task in flight per repo, queue the rest (`chalk next` order).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+    },
+    "branchType": "feat",
+    "labels": [],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-07T09:50:24.971Z"
+    },
+    "createdAt": "2026-07-07T09:50:24.971Z",
+    "reviews": []
   }
 ]
