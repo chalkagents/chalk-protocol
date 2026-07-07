@@ -1487,9 +1487,27 @@
   {
     "id": "task-86b9cfe4",
     "title": "feat: opt-in all-locks integrity — done tasks' locked tests stay protected",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "protocol.integrity accepts 'in-progress' (default when unset — today's behavior) or 'all-locks'. Under 'all-locks', chalk verify checks locked-test hash integrity for DONE tasks in addition to in-progress ones; unset/'in-progress' leaves done tasks' locks unchecked exactly as before."
+      },
+      {
+        "text": "Under 'all-locks', tampering (or deleting) a locked test owned by a DONE task makes verify RED and the report names the owning task and the offending path and points to chalk amend-spec; a matching hash stays green."
+      },
+      {
+        "text": "chalk amend-spec remains the only sanctioned change path: re-locking a done task's test updates its pin so verify returns GREEN again — no direct tasks.json editing."
+      },
+      {
+        "text": "Locked test proves all four states: all-locks catches a tampered done-task lock (RED), default mode ignores the same tamper (GREEN), a clean all-locks tree is GREEN, and amend-spec restores GREEN after a legitimate change."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/all-locks-integrity.test.mjs",
+        "sha256": "dccf5cc96ffc7e5fefe15c427597786efa6f8a7feb126e30d72a2cb2239694ab"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -1502,11 +1520,14 @@
       "enhancement"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-06T10:05:49.986Z"
+      "stage": "committed",
+      "at": "2026-07-07T08:33:10.095Z"
     },
     "createdAt": "2026-07-06T10:05:49.986Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-07T08:28:32.860Z",
+    "branch": "feat/80-feat-opt-in-all-locks",
+    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
   },
   {
     "id": "task-30ee8dd7",

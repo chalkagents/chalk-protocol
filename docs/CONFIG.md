@@ -74,6 +74,15 @@ Lever 1 (default `true`): a feature change must add or change a test file, else 
 a vacuously-green verify can't certify an untested feature. Docs/chore branches and `skip-test`
 labels are exempt.
 
+### `integrity`
+
+Locked-test integrity scope. `in-progress` (default): `verify` hashes only the current in-progress
+tasks' locked tests, so lock protection expires at `done`. `all-locks`: `verify` also hashes every
+*done* task's locked tests — closing the cheat where a later task weakens an earlier task's locked
+test to keep its own verify green. `chalk amend-spec` stays the only sanctioned way to change a
+locked test; the tradeoff is that legitimate evolution of an old task's test then requires an
+amend on that task.
+
 ### `breakTest`
 
 Lever 3, the non-vacuity probe: a per-file command template (`node --test {test}`) used to run

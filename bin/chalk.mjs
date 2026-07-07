@@ -1335,7 +1335,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
     if (v.integrity.length) {
       console.log('\n' + C.r('  test-integrity VIOLATED (P6):'));
-      for (const i of v.integrity) for (const b of i.broken) console.log(`    ${C.r('✗')} ${b.path} changed under task ${i.taskId.slice(0, 12)} — use \`chalk amend-spec\``);
+      for (const i of v.integrity) for (const b of i.broken) console.log(`    ${C.r('✗')} ${b.path} changed under ${i.done ? C.y('DONE ') : ''}task ${i.taskId.slice(0, 12)}${i.done ? ` (${i.title.slice(0, 40)})` : ''} — use \`chalk amend-spec ${i.taskId.slice(0, 12)} --test ${b.path} --why "..."\``);
     }
     for (const r of v.e2e || []) console.log(`  ${r.status === 'passed' ? C.g('pass') : C.r('fail')}  ${C.dim('e2e')} ${r.path} ${C.dim(`→ ${r.runDir}`)}`);
     console.log('\n' + (v.green ? C.g('● GREEN — done gate is open') : C.r('● RED — done gate is closed')));
