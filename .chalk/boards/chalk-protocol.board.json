@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783423446271,
+  "updatedAt": 1783427648306,
   "order": 0,
   "cards": [
     {
@@ -537,11 +537,22 @@
     {
       "id": "task-ae4422c1",
       "title": "fix: untrackedLockedTests compares pinned paths verbatim against git ls-files — a './'-prefixed, backslashed, or case-differing pin false-blocks done/pr",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783422773786,
-      "updatedAt": 1783422773786,
+      "updatedAt": 1783427648306,
       "order": 31,
-      "description": "- Normalize both the pinned path and each `ls-files` entry before comparison (strip a leading `./`, unify path separators) so equivalent forms match\n- Handle case-insensitive filesystems so a case-only difference does not false-block (or document the platform boundary)\n- Add a locked test: a tracked file pinned as `./<path>` (and a backslash/case variant) is NOT reported untracked and `chalk done` proceeds\n- Keep the genuinely-untracked case still blocking (no regression to the #107 vacuous-green guard)"
+      "description": "- Normalize both the pinned path and each `ls-files` entry before comparison (strip a leading `./`, unify path separators) so equivalent forms match\n- Handle case-insensitive filesystems so a case-only difference does not false-block (or document the platform boundary)\n- Add a locked test: a tracked file pinned as `./<path>` (and a backslash/case variant) is NOT reported untracked and `chalk done` proceeds\n- Keep the genuinely-untracked case still blocking (no regression to the #107 vacuous-green guard)",
+      "testArtifact": {
+        "specPath": "test/tracking-path-normalize.test.mjs",
+        "lastRun": {
+          "runId": "done-task-ae4422c1",
+          "status": "passed",
+          "at": 1783427648306
+        },
+        "prNumber": 137,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/137",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/129"
+      }
     }
   ]
 }

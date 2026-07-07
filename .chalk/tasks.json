@@ -2630,7 +2630,7 @@
   {
     "id": "task-ae4422c1",
     "title": "fix: untrackedLockedTests compares pinned paths verbatim against git ls-files — a './'-prefixed, backslashed, or case-differing pin false-blocks done/pr",
-    "state": "specd",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Normalize both the pinned path and each `ls-files` entry before comparison (strip a leading `./`, unify path separators) so equivalent forms match"
@@ -2645,7 +2645,12 @@
         "text": "Keep the genuinely-untracked case still blocking (no regression to the #107 vacuous-green guard)"
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/tracking-path-normalize.test.mjs",
+        "sha256": "7bd0df328540adf1bd3bf0536919a24cbee5c9c6bf38c9e0d22c2e259c309ca5"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -2658,10 +2663,42 @@
       "bug"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-07T11:12:53.786Z"
+      "stage": "cleaned",
+      "at": "2026-07-07T12:34:08.307Z"
     },
     "createdAt": "2026-07-07T11:12:53.786Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-07T12:33:34.117Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 3 names a backslash variant; the end-to-end `chalk done` proceeds path is only asserted for `./`-prefix and case variants. Backslash is covered only via the normTrackPath unit assertion (normTrackPath('./a\\\\b.mjs')===normTrackPath('a/b.mjs')). Acceptable since untrackedLockedTests normalizes both sides through that same shared helper, but no full-loop backslash assertion exists (a POSIX git tree can't track a backslash-separated file, so this is inherently unit-level)."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Backslash→'/' unification is unconditional even on POSIX, where a literal backslash is a valid filename character; a pinned `a\\b` could then spuriously match a tracked `a/b`, weakening the #107 guard in that pathological case. Extremely unlikely in practice for pinned test paths, so non-blocking."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "case-insensitivity keys solely off `git config core.ignorecase`. If a user's repo has it unset/false on an ignorecase FS, a case-only pin would still false-block; the change documents this as the platform boundary (criterion 2 permits documentation), so acceptable. Revert-sensitivity confirmed: the `./`-pin and case tests both fail if the normalization is reverted, so the change is genuinely covered."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-07T12:31:07.915Z",
+    "branch": "fix/129-fix-untrackedlockedtests-compares-pinned-paths",
+    "pr": {
+      "number": 137,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/137",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-07T12:34:08.306Z"
   }
 ]
