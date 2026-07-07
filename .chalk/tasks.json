@@ -1414,9 +1414,27 @@
   {
     "id": "task-b9b5128a",
     "title": "feat: configurable e2e spec pattern (not just *.test.yaml)",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "protocol.e2e.specPattern selects which locked test paths are browser specs: a suffix, a comma-separated list, or an array; a leading '*' is tolerated (glob-ish). Empty/unset preserves the historical '.test.yaml' so existing projects are unchanged."
+      },
+      {
+        "text": "The pattern is honored everywhere isSpec decides spec-ness: verify's e2e gate, the e2e runner's filter, doctor's 'locks a spec but e2e is off' warning, and the board's testArtifact evidence lookup."
+      },
+      {
+        "text": "Under a custom pattern, a matching locked spec actually runs through verify's BYO e2e gate (producing run evidence); a non-matching path is treated as an ordinary file and never run as a spec."
+      },
+      {
+        "text": "Locked test proves the matcher normalization (default/suffix/list/array/leading-*) and the end-to-end verify effect in both directions (custom pattern runs it; default does not)."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/e2e-spec-pattern.test.mjs",
+        "sha256": "432e81b3879691de9e47dacc61ee695d80dc2084df3dc12b91329984d6e5378b"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -1429,11 +1447,14 @@
       "good first issue"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-06T10:05:49.983Z"
+      "stage": "committed",
+      "at": "2026-07-07T09:03:27.544Z"
     },
     "createdAt": "2026-07-06T10:05:49.983Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-07T09:01:43.028Z",
+    "branch": "feat/83-feat-configurable-e2e-spec-pattern",
+    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
   },
   {
     "id": "task-4bcc8640",
