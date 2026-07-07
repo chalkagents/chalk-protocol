@@ -349,3 +349,8 @@
 
 - _when:_ 2026-07-07T08:51:54.342Z
 - _why:_ review BLOCK: pin default-OFF inertness (criteria 1/4 — no hashing/warning/files, no event), the true no-baseline-file first-run establishment path, and chalk.json warn-once + re-arm on a fresh edit
+
+## Amended acceptance test for "feat: configurable e2e spec pattern (not just *.test.yaml)"
+
+- _when:_ 2026-07-07T09:08:41.641Z
+- _why:_ review BLOCK: a fifth spec-ness site (evidence/PR pipeline stage, bin/chalk.mjs) hardcoded .test.yaml — now uses isSpec(pattern); added doctor-warning + evidence-stage coverage so all sites in criterion 2 are pinned

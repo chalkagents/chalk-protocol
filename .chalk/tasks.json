@@ -1432,7 +1432,7 @@
     "tests": [
       {
         "path": "test/e2e-spec-pattern.test.mjs",
-        "sha256": "432e81b3879691de9e47dacc61ee695d80dc2084df3dc12b91329984d6e5378b"
+        "sha256": "20bc491ef906bb23e02fd09103791ae9961e2af2403bef2f4ad785d2dcf0f813"
       }
     ],
     "heldOut": [],
@@ -1447,14 +1447,37 @@
       "good first issue"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-07-07T09:03:27.544Z"
+      "stage": "pr-open",
+      "at": "2026-07-07T09:04:47.231Z"
     },
     "createdAt": "2026-07-06T10:05:49.983Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-07T09:06:09.795Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "Criterion 2 requires the pattern be honored EVERYWHERE isSpec decides spec-ness. The four enumerated sites (verify.mjs:42, e2e.mjs:54 runner filter, doctor.mjs:71, boards.mjs:58) correctly thread proto.e2e.specPattern. But bin/chalk.mjs:1006 — the GitHub PR pipeline stage that runs browser specs and attaches screenshots — still hardcodes `.path.endsWith('.test.yaml')` instead of isSpec(path, specPattern). Under a custom pattern (e.g. '.e2e.yaml'), the pipeline pre-filters out the matching spec before runSpecs ever sees it, so a team on a custom convention gets NO screenshot evidence on their PR while verify does run it — an inconsistency that contradicts the 'everywhere' contract."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The locked suite exercises verify's gate (both directions) and the matcher normalization, but does not assert the pattern is honored in doctor's warning, the board's testArtifact lookup, or the PR pipeline. The bin/chalk.mjs:1006 hardcoded-suffix regression would pass the entire green suite, so the tests do not cover every spec-ness decision site named in criterion 2."
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-07T09:01:43.028Z",
     "branch": "feat/83-feat-configurable-e2e-spec-pattern",
-    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
+    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol",
+    "pr": {
+      "number": 121,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/121",
+      "recorded": true
+    }
   },
   {
     "id": "task-4bcc8640",

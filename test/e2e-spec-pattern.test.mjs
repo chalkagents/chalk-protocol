@@ -8,7 +8,7 @@
 // Locked contract for the task tracking issue #83.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -17,6 +17,7 @@ import { isSpec, specMatcher } from '../lib/e2e.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
 const chalk = (cwd, ...args) => { const r = spawnSync('node', [CLI, ...args], { cwd, encoding: 'utf8' }); return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` }; };
+const scratch = () => mkdtempSync(join(tmpdir(), 'chalk-e2epat-'));
 const conf = (d, fn) => { const f = join(d, '.chalk/chalk.json'); const o = JSON.parse(readFileSync(f, 'utf8')); fn(o.protocol); writeFileSync(f, JSON.stringify(o, null, 2)); };
 const tasksOf = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'));
 
@@ -71,4 +72,58 @@ test('without the pattern, the SAME .e2e.yaml path is not a spec — the e2e gat
   assert.equal(v.code, 0, v.out);
   assert.doesNotMatch(v.out, /e2e.*checkout\.e2e\.yaml/, 'the .e2e.yaml file is not run as a spec under the default pattern');
   assert.ok(!existsSync(join(d, '.chalk/runs/spec-x')), 'no run evidence — the runner never fired for a non-matching path');
+});
+
+test('doctor — the "locks a spec but e2e is off" warning honors the pattern (both directions)', () => {
+  const mk = (specPattern) => {
+    const d = scratch();
+    chalk(d, 'init', '--name', 'p');
+    mkdirSync(join(d, '.chalk/tests'), { recursive: true });
+    writeFileSync(join(d, '.chalk/tests/checkout.e2e.yaml'), 'apiVersion: chalk/v1\nkind: Test\nid: spec-x\nname: X\nsteps: []\n');
+    conf(d, (o) => { o.e2e = { command: '', baseUrl: '', runsDir: '.chalk/runs', specPattern }; }); // command OFF
+    chalk(d, 'task', 'add', 'feature');
+    const tid = tasksOf(d)[0].id.slice(0, 12);
+    chalk(d, 'spec', tid, '--criterion', 'works', '--test', '.chalk/tests/checkout.e2e.yaml');
+    return d;
+  };
+  // Custom pattern → the .e2e.yaml IS a spec, so doctor warns the gate is skipped.
+  assert.match(chalk(mk('.e2e.yaml'), 'doctor').out, /locks a browser spec.*e2e\.command is empty/i, 'custom pattern: doctor warns');
+  // Default pattern → the .e2e.yaml is NOT a spec, so there is nothing to warn about.
+  assert.doesNotMatch(chalk(mk('.test.yaml'), 'doctor').out, /locks a browser spec/i, 'default pattern: no spurious warning');
+});
+
+// A working repo whose origin is a local bare repo, so `chalk evidence` can commit+push offline.
+function repoWithBare(specPattern) {
+  const bare = scratch();
+  execSync('git init --bare -b main', { cwd: bare, stdio: 'pipe' });
+  const d = scratch();
+  const g = (a) => execSync(`git ${a}`, { cwd: d, stdio: 'pipe' });
+  g('init -b main'); g('config user.email t@t.t'); g('config user.name t');
+  writeFileSync(join(d, 'README.md'), '# tmp\n'); g('add README.md'); g('commit -m init'); g(`remote add origin ${bare}`); g('push -u origin main');
+  chalk(d, 'init', '--name', 'p');
+  // A runner that emits a screenshot data URL in run.json (evidence extracts + commits it).
+  writeFileSync(join(d, 'runspec.mjs'), `import {writeFileSync} from 'node:fs'; const a=process.argv; const out=a[a.indexOf('--out')+1];
+    const png='data:image/png;base64,'+Buffer.from('SHOT').toString('base64');
+    writeFileSync(out+'/run.json', JSON.stringify({runId:'r',specId:'spec-x',status:'passed',startedAt:1,steps:[{stepId:'s1',beforeScreenshot:png}]}));`);
+  // Stub gh: return a PR body for `pr view`, accept `pr edit`.
+  writeFileSync(join(d, 'gh.mjs'), `const a=process.argv.slice(2); if(a.includes('view')) console.log('Body'); else if(a.includes('edit')){} else console.log('ok');`);
+  conf(d, (o) => { o.github = { ...o.github, command: `node ${join(d, 'gh.mjs')}` }; o.e2e = { command: `node ${join(d, 'runspec.mjs')}`, baseUrl: '', runsDir: '.chalk/runs', specPattern }; });
+  mkdirSync(join(d, '.chalk/tests'), { recursive: true });
+  writeFileSync(join(d, '.chalk/tests/flow.e2e.yaml'), 'apiVersion: chalk/v1\nkind: Test\nid: spec-x\nname: X\nsteps: []\n');
+  chalk(d, 'task', 'add', 'feature');
+  const tid = tasksOf(d)[0].id.slice(0, 12);
+  chalk(d, 'spec', tid, '--criterion', 'works', '--test', '.chalk/tests/flow.e2e.yaml');
+  chalk(d, 'start', tid);
+  return { d, tid };
+}
+
+test('evidence/PR stage — the pipeline runs a custom-pattern spec for screenshots (not just .test.yaml)', () => {
+  const { d, tid } = repoWithBare('.e2e.yaml');
+  // Give the task a PR record + issue number so `chalk evidence` proceeds and the evidence dir is
+  // keyed on the issue (evDir = .chalk/evidence/<issue||taskid>).
+  const t = tasksOf(d); t[0].branch = 'feat/x'; t[0].pr = { number: 9, url: 'u' }; t[0].issue = { number: 9 };
+  writeFileSync(join(d, '.chalk/tasks.json'), JSON.stringify(t));
+  const r = chalk(d, 'evidence', tid);
+  assert.equal(r.code, 0, `evidence stage runs the custom-pattern spec: ${r.out}`);
+  assert.ok(existsSync(join(d, '.chalk/evidence/9/before-s1.png')), 'a screenshot was extracted → the pipeline saw .e2e.yaml as a spec');
 });

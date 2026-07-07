@@ -263,6 +263,8 @@
       "description": "- protocol.e2e.specPattern selects which locked test paths are browser specs: a suffix, a comma-separated list, or an array; a leading '*' is tolerated (glob-ish). Empty/unset preserves the historical '.test.yaml' so existing projects are unchanged.\n- The pattern is honored everywhere isSpec decides spec-ness: verify's e2e gate, the e2e runner's filter, doctor's 'locks a spec but e2e is off' warning, and the board's testArtifact evidence lookup.\n- Under a custom pattern, a matching locked spec actually runs through verify's BYO e2e gate (producing run evidence); a non-matching path is treated as an ordinary file and never run as a spec.\n- Locked test proves the matcher normalization (default/suffix/list/array/leading-*) and the end-to-end verify effect in both directions (custom pattern runs it; default does not).",
       "testArtifact": {
         "specPath": "test/e2e-spec-pattern.test.mjs",
+        "prNumber": 121,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/121",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/83"
       }
     },
