@@ -1487,7 +1487,7 @@
   {
     "id": "task-86b9cfe4",
     "title": "feat: opt-in all-locks integrity — done tasks' locked tests stay protected",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "protocol.integrity accepts 'in-progress' (default when unset — today's behavior) or 'all-locks'. Under 'all-locks', chalk verify checks locked-test hash integrity for DONE tasks in addition to in-progress ones; unset/'in-progress' leaves done tasks' locks unchecked exactly as before."
@@ -1520,14 +1520,43 @@
       "enhancement"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-07-07T08:33:10.095Z"
+      "stage": "cleaned",
+      "at": "2026-07-07T08:34:44.090Z"
     },
     "createdAt": "2026-07-06T10:05:49.986Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-07T08:34:27.644Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "verify's all-locks branch (lib/verify.mjs:49-54) gates strictly on proto.integrity === 'all-locks', so unset/'in-progress' leaves done-task locks unchecked exactly as before; any other string value silently behaves as in-progress with no validation warning, but this is a benign default-fail-safe not a criterion violation."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Deletion of a locked test is covered: store.brokenLocks (store.mjs:170) sets current=null when the file is missing, so a deleted done-task lock also flags a break under all-locks, satisfying the 'or deleting' clause of criterion 2."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Locked suite test/all-locks-integrity.test.mjs exercises all four required states (clean GREEN, tampered RED with task+path+amend-spec message, default-mode ignore incl. unset, amend-spec restore) and would fail if the all-locks branch were reverted — the report message, exit code 2, and re-lock pin are all asserted, so the change is not a vacuous pass."
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-07T08:28:32.860Z",
     "branch": "feat/80-feat-opt-in-all-locks",
-    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
+    "pr": {
+      "number": 119,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/119",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-07T08:34:44.089Z"
   },
   {
     "id": "task-30ee8dd7",

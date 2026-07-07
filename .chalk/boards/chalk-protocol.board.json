@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783412912860,
+  "updatedAt": 1783413284089,
   "order": 0,
   "cards": [
     {
@@ -280,13 +280,20 @@
     {
       "id": "task-86b9cfe4",
       "title": "feat: opt-in all-locks integrity — done tasks' locked tests stay protected",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1783332349986,
-      "updatedAt": 1783412912860,
+      "updatedAt": 1783413284089,
       "order": 17,
       "description": "- protocol.integrity accepts 'in-progress' (default when unset — today's behavior) or 'all-locks'. Under 'all-locks', chalk verify checks locked-test hash integrity for DONE tasks in addition to in-progress ones; unset/'in-progress' leaves done tasks' locks unchecked exactly as before.\n- Under 'all-locks', tampering (or deleting) a locked test owned by a DONE task makes verify RED and the report names the owning task and the offending path and points to chalk amend-spec; a matching hash stays green.\n- chalk amend-spec remains the only sanctioned change path: re-locking a done task's test updates its pin so verify returns GREEN again — no direct tasks.json editing.\n- Locked test proves all four states: all-locks catches a tampered done-task lock (RED), default mode ignores the same tamper (GREEN), a clean all-locks tree is GREEN, and amend-spec restores GREEN after a legitimate change.",
       "testArtifact": {
         "specPath": "test/all-locks-integrity.test.mjs",
+        "lastRun": {
+          "runId": "done-task-86b9cfe4",
+          "status": "passed",
+          "at": 1783413284089
+        },
+        "prNumber": 119,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/119",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/80"
       }
     },

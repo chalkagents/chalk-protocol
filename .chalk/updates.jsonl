@@ -247,3 +247,6 @@
 {"id":"evt-73bfa1ee","at":"2026-07-07T08:28:32.869Z","type":"work-item-started","title":"Started: feat: opt-in all-locks integrity — done tasks' locked tests stay protected","description":"","phase":"discovery","actorRole":"agent","taskId":"task-86b9cfe4"}
 {"id":"evt-f48ab45e","at":"2026-07-07T08:28:32.934Z","type":"progress-update","title":"Branched: feat/80-feat-opt-in-all-locks","description":"","phase":"discovery","actorRole":"agent","taskId":"task-86b9cfe4"}
 {"id":"evt-18d41fa9","at":"2026-07-07T08:33:10.105Z","type":"work-item-submitted","title":"Committed: feat: opt-in all-locks integrity — done tasks' locked tests stay p","description":"","phase":"discovery","actorRole":"agent","taskId":"task-86b9cfe4"}
+{"id":"evt-d99009e0","at":"2026-07-07T08:33:18.290Z","type":"work-item-submitted","title":"PR #119 opened","description":"","phase":"discovery","actorRole":"agent","taskId":"task-86b9cfe4"}
+{"id":"evt-24b4bcbb","at":"2026-07-07T08:34:29.040Z","type":"progress-update","title":"Review (pass): feat: opt-in all-locks integrity — done tasks' locked tests stay protected","description":"","phase":"discovery","actorRole":"agent","taskId":"task-86b9cfe4"}
+{"id":"evt-f3f0efcc","at":"2026-07-07T08:34:44.103Z","type":"work-item-accepted","title":"Merged + cleaned: PR #119","description":"","phase":"discovery","actorRole":"agent","taskId":"task-86b9cfe4"}
