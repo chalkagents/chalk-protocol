@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.1 — 2026-07-07
+## v0.2.0 — 2026-07-07
 
 ### Features
 - release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips (#100)
