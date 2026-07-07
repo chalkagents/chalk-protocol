@@ -18,7 +18,7 @@
     "type": "git",
     "url": "git+https://github.com/chalkagents/chalk-protocol.git"
   },
-  "homepage": "https://github.com/chalkagents/chalk-protocol#readme",
+  "homepage": "https://protocol.chalkagents.com",
   "bugs": "https://github.com/chalkagents/chalk-protocol/issues",
   "publishConfig": {
     "access": "public",

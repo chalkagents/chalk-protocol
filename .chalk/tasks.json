@@ -148,7 +148,7 @@
     "tests": [
       {
         "path": "test/package.test.mjs",
-        "sha256": "e612e65441724f18d3f457079a3a0766148ffe583dc7254e4f9412ca05a43554"
+        "sha256": "83c30a2c2982dcd1be1b630632326e068060ba120629b731723bb54c56f0dc5b"
       },
       {
         "path": "test/release-commit.test.mjs",
