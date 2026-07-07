@@ -354,3 +354,8 @@
 
 - _when:_ 2026-07-07T09:08:41.641Z
 - _why:_ review BLOCK: a fifth spec-ness site (evidence/PR pipeline stage, bin/chalk.mjs) hardcoded .test.yaml — now uses isSpec(pattern); added doctor-warning + evidence-stage coverage so all sites in criterion 2 are pinned
+
+## Amended acceptance test for "fix: issue-intake spine writes leak into unrelated task branches — recurring scoped-diff review noise"
+
+- _when:_ 2026-07-07T10:35:22.657Z
+- _why:_ review BLOCK: the intake commit used bare git commit (whole index) — a data hazard sweeping a user's pre-staged work; switched to gitCommitPaths (git commit -- <pathspec>) and added a scoping-guarantee test that pre-stages an unrelated file and asserts it's untouched
