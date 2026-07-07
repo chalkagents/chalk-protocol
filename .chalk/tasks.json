@@ -2334,7 +2334,7 @@
       },
       {
         "path": "test/intake-commit-scope.test.mjs",
-        "sha256": "070726c6aed8d9132b1f518c0b73ac758fe6288f1977eac6cb2eca0888b7aa7b"
+        "sha256": "d0a6c6d0ff704162e4aeb4c324af9f9dccc934c5a50b313fe007cf667d57093f"
       }
     ],
     "heldOut": [],
@@ -2378,6 +2378,28 @@
             "severity": "med",
             "area": "design-intent",
             "note": "The stated goal (issue #114) is that spine writes leak into unrelated task branches, violating 'keep diffs small and scoped.' Hiding the leak from the adversarial reviewer solves the symptom (review noise) while leaving the underlying scoped-diff violation in the committed branches intact — arguably solving the wrong problem relative to criteria 1-3."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-07T10:31:32.200Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "regression",
+            "note": "The intake commit stages spine files with `gitAdd(spineFiles)` but then calls `gitCommit`, which runs a bare `git commit -m ...` (lib/git.mjs:77-79) with NO pathspec — it commits the ENTIRE staged index. If a user has ANY pre-staged changes when they run `chalk issue pull` (staged but not yet committed code), those changes are swept into the auto-generated `chore(spine)` commit on the base branch. This directly contradicts the code's own explicit safety claim (\"Scoped: only the spine files intake touched, never `git add -A`, so a user's other uncommitted work is untouched\"). The `diff --cached --name-only` guard only checks whether the index is non-empty, then commits all of it. This is a real workflow/data hazard: unrelated user work gets committed to base under a misleading message."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "intake-commit-scope.test.mjs only exercises a clean index before `issue pull` (test 1 asserts the commit touches only `.chalk/` files, but the repo has nothing else staged). No test stages an unrelated file before intake to prove the scoping guarantee the comment makes. The 'touches ONLY spine files, never code' assertion would still pass in the tested scenario even though the implementation would sweep pre-staged code in a real one — the test does not actually exercise the scoping claim's failure mode."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 1 requires the intake commit before any task branch is cut; this holds in worktree-disabled mode (the tests force `worktree.enabled=false`), but with worktrees enabled by default the interaction of committing to base at pull time vs. later branch creation is not exercised by any locked test, leaving the default-mode path unverified."
           }
         ]
       }
