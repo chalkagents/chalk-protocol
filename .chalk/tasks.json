@@ -1595,12 +1595,18 @@
       "help wanted"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-07-07T08:48:42.705Z"
+      "stage": "pr-open",
+      "at": "2026-07-07T08:49:15.223Z"
     },
     "createdAt": "2026-07-06T10:05:49.987Z",
     "reviews": [],
-    "startedAt": "2026-07-07T08:45:12.983Z"
+    "startedAt": "2026-07-07T08:45:12.983Z",
+    "branch": "feat/79-tamper-evident-spine",
+    "pr": {
+      "number": 120,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/120",
+      "recorded": true
+    }
   },
   {
     "id": "task-4d462e08",
