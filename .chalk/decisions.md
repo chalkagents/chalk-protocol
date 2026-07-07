@@ -359,3 +359,8 @@
 
 - _when:_ 2026-07-07T10:35:22.657Z
 - _why:_ review BLOCK: the intake commit used bare git commit (whole index) — a data hazard sweeping a user's pre-staged work; switched to gitCommitPaths (git commit -- <pathspec>) and added a scoping-guarantee test that pre-stages an unrelated file and asserts it's untouched
+
+## Overrode review gate for "fix: chalk commit silently no-ops after the first commit, so review-fix changes never get committed"
+
+- _when:_ 2026-07-07T11:24:06.269Z
+- _why:_ PR #135 already merged to dev and adversarially reviewed (PASS); the task's spine record was reverted by a dev rebase during the #114/#125 recovery — reconciling state to reflect reality

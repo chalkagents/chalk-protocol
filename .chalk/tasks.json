@@ -2554,9 +2554,27 @@
   {
     "id": "task-90b8101a",
     "title": "fix: chalk commit silently no-ops after the first commit, so review-fix changes never get committed",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk commit commits new working-tree code changes even past the 'committed' stage (labeled follow-up), so review-fix changes land in git."
+      },
+      {
+        "text": "It no-ops idempotently when there is nothing new; the first commit still errors when the executor produced no changes."
+      },
+      {
+        "text": "After a follow-up commit no uncommitted CODE lingers — reviewer's view equals what merge takes."
+      },
+      {
+        "text": "Locked test proves first commit, follow-up landing, idempotent re-run, and empty-first-commit failure."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/commit-followup.test.mjs",
+        "sha256": "af4a4ad8cd29a3d1749caa21e16ca33acd5bda503db221d7bbd24c11a5360b6c"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -2571,7 +2589,9 @@
       "at": "2026-07-07T11:12:53.779Z"
     },
     "createdAt": "2026-07-07T11:12:53.780Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-07T11:22:28.830Z",
+    "doneAt": "2026-07-07T11:24:06.271Z"
   },
   {
     "id": "task-cc689423",

@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783422773786,
+  "updatedAt": 1783423446271,
   "order": 0,
   "cards": [
     {
@@ -510,10 +510,20 @@
     {
       "id": "task-90b8101a",
       "title": "fix: chalk commit silently no-ops after the first commit, so review-fix changes never get committed",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783422773780,
-      "updatedAt": 1783422773780,
-      "order": 29
+      "updatedAt": 1783423446271,
+      "order": 29,
+      "description": "- chalk commit commits new working-tree code changes even past the 'committed' stage (labeled follow-up), so review-fix changes land in git.\n- It no-ops idempotently when there is nothing new; the first commit still errors when the executor produced no changes.\n- After a follow-up commit no uncommitted CODE lingers — reviewer's view equals what merge takes.\n- Locked test proves first commit, follow-up landing, idempotent re-run, and empty-first-commit failure.",
+      "testArtifact": {
+        "specPath": "test/commit-followup.test.mjs",
+        "lastRun": {
+          "runId": "done-task-90b8101a",
+          "status": "passed",
+          "at": 1783423446271
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/134"
+      }
     },
     {
       "id": "task-cc689423",
