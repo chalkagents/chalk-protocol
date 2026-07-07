@@ -2121,7 +2121,7 @@
   {
     "id": "task-a6173700",
     "title": "fix: release --commit/--promote orphan recovery keys on an un-namespaced \"Released vX\" substring over decisions.md",
-    "state": "specd",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Match the completion marker namespaced to the specific commit/version (a dedicated marker or structured decision field), not a bare substring over shared prose, so unrelated text can neither spoof nor suppress a resume."
@@ -2131,9 +2131,26 @@
       },
       {
         "text": "Locked test: a manual decision note whose body contains \"Released vX.Y.Z\" does NOT block resuming a genuinely orphaned release commit."
+      },
+      {
+        "text": "The release completion marker is matched anchored to the '## Released vX' decision HEADING (multiline ^…$), not as a bare substring over decisions.md — so prose in any decision body mentioning 'Released vX' can neither spoof completion nor suppress a legitimate resume."
+      },
+      {
+        "text": "The orphaned release commit is detected via git's own --grep at ANY depth (not a fixed log -50 window), so a deeply-buried orphan can't silently revert to bump-from-bumped."
+      },
+      {
+        "text": "A genuine finished release (real ## Released heading + tag) still suppresses the resume — no false resume onto a completed release."
+      },
+      {
+        "text": "Locked test proves: a decision body mentioning 'Released vX' does not block resuming a genuine orphan, a real heading does, and an orphan buried beyond 50 commits is still found."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/release-marker-scope.test.mjs",
+        "sha256": "3cb0a2de664b9010aa08f6e5cc5e3f56a7711b29d8289ce73571adf1c4eaaca3"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -2146,11 +2163,65 @@
       "bug"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-07T09:50:24.960Z"
+      "stage": "cleaned",
+      "at": "2026-07-07T11:03:50.310Z"
     },
     "createdAt": "2026-07-07T09:50:24.960Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-07T10:49:45.125Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "design-intent",
+            "note": "Scope creep: the task under review is solely the release orphan-recovery marker fix (#125), but the diff also ships an entirely unrelated feature — issue-intake auto-committing to the base branch via a new gitCommitPaths() in lib/git.mjs and a new behavior in `chalk issue pull` (#114), plus test/intake-commit-scope.test.mjs. This violates 'keep diffs small and scoped to the current task' and bundles unrelated behavior into a release-gated change, which the release-marker acceptance criteria do not cover and its locked test cannot validate."
+          },
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "The bundled #114 change alters `chalk issue pull` to run `git add`/`git commit` on the current (base) branch as a side effect of intake. This is a new, out-of-scope behavioral change to core CLI/git flow (committing on whatever branch the user is on, staging entire .chalk/boards & .chalk/plans dirs). Its only coverage is the author's own new (non-locked) test; it is unrelated to the release-marker criteria and introduces regression surface the release-marker task never contemplated."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The `^## Released vX.Y.Z$` heading match is exact-line-anchored; if appendDecision ever emits a trailing suffix (date, annotation) after the version on the heading line, `$` would fail to match and a genuinely completed release would be re-resumed. The locked test pins the current exact format but there is no tolerance for heading-format drift."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-07T11:03:13.182Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The completion marker is matched as `^## Released vX.Y.Z$` (exact-line anchor). If appendDecision ever appends a suffix to the heading (date, annotation), `$` would fail and a genuinely completed release would be falsely re-resumed. Currently store.mjs writes the heading as exactly `## <title>` so it holds, but there is zero tolerance for heading-format drift — already noted in the task's own review."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Criterion 1 asks for a 'dedicated marker or structured decision field'; the implementation still regex-matches over decisions.md text rather than a structured field. A manual `chalk decision \"Released v0.1.0\"` (exact title) would render `## Released v0.1.0` and still spoof completion. Criterion 4 explicitly sanctions the heading-anchored approach so this is acceptable, but it is a narrower vector than a truly namespaced marker."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Test 2 (real heading suppresses) is not fully isolating: after a normal `release --commit` the tag v0.1.0 exists, so the `!tagLocal` guard alone suppresses the resume even if the heading match were broken. The heading's unique role (suppressing a completed --no-tag release with no tag) is, however, covered by the existing release-recovery.test.mjs (--no-tag case), so the change is not vacuously passing overall."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-07T10:46:45.844Z",
+    "branch": "fix/125-fix-release-commit-promote-orphan",
+    "pr": {
+      "number": 132,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/132",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-07T11:03:50.310Z"
   },
   {
     "id": "task-f64af30f",

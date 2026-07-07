@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783420756127,
+  "updatedAt": 1783422230310,
   "order": 0,
   "cards": [
     {
@@ -416,11 +416,22 @@
     {
       "id": "task-a6173700",
       "title": "fix: release --commit/--promote orphan recovery keys on an un-namespaced \"Released vX\" substring over decisions.md",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783417824960,
-      "updatedAt": 1783417824960,
+      "updatedAt": 1783422230310,
       "order": 22,
-      "description": "- Match the completion marker namespaced to the specific commit/version (a dedicated marker or structured decision field), not a bare substring over shared prose, so unrelated text can neither spoof nor suppress a resume.\n- Detect the orphan by version/tag rather than a fixed `log -50` depth, or document and test the bound so a deeper orphan can't silently double-bump.\n- Locked test: a manual decision note whose body contains \"Released vX.Y.Z\" does NOT block resuming a genuinely orphaned release commit."
+      "description": "- Match the completion marker namespaced to the specific commit/version (a dedicated marker or structured decision field), not a bare substring over shared prose, so unrelated text can neither spoof nor suppress a resume.\n- Detect the orphan by version/tag rather than a fixed `log -50` depth, or document and test the bound so a deeper orphan can't silently double-bump.\n- Locked test: a manual decision note whose body contains \"Released vX.Y.Z\" does NOT block resuming a genuinely orphaned release commit.\n- The release completion marker is matched anchored to the '## Released vX' decision HEADING (multiline ^…$), not as a bare substring over decisions.md — so prose in any decision body mentioning 'Released vX' can neither spoof completion nor suppress a legitimate resume.\n- The orphaned release commit is detected via git's own --grep at ANY depth (not a fixed log -50 window), so a deeply-buried orphan can't silently revert to bump-from-bumped.\n- A genuine finished release (real ## Released heading + tag) still suppresses the resume — no false resume onto a completed release.\n- Locked test proves: a decision body mentioning 'Released vX' does not block resuming a genuine orphan, a real heading does, and an orphan buried beyond 50 commits is still found.",
+      "testArtifact": {
+        "specPath": "test/release-marker-scope.test.mjs",
+        "lastRun": {
+          "runId": "done-task-a6173700",
+          "status": "passed",
+          "at": 1783422230310
+        },
+        "prNumber": 132,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/132",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/125"
+      }
     },
     {
       "id": "task-f64af30f",
