@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783415491904,
+  "updatedAt": 1783416821946,
   "order": 0,
   "cards": [
     {
@@ -284,10 +284,15 @@
     {
       "id": "task-2c8e0e36",
       "title": "feat: context budget — cap buildContext size and prune injected lessons",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1783332349986,
-      "updatedAt": 1783332349986,
-      "order": 16
+      "updatedAt": 1783416821946,
+      "order": 16,
+      "description": "- protocol.contextBudget (bytes, generous default) caps the size of the chalk context blob; only the elastic lessons block is trimmed to fit — unset uses the default.\n- The task's essentials are never sacrificed for budget: acceptance criteria, locked tests, handoff, prior-review findings, and the contract are always present regardless of budget.\n- Under budget pressure the OLDEST lessons are elided first (most-recent kept) and a note reports how many were dropped and how to raise the budget.\n- Locked test proves: a tiny budget elides older lessons (note + newest survive, essentials intact), a generous/default budget keeps all lessons, and an extreme budget drops all lessons while criteria + contract remain.",
+      "testArtifact": {
+        "specPath": "test/context-budget.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/81"
+      }
     },
     {
       "id": "task-86b9cfe4",

@@ -1530,9 +1530,27 @@
   {
     "id": "task-2c8e0e36",
     "title": "feat: context budget — cap buildContext size and prune injected lessons",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "protocol.contextBudget (bytes, generous default) caps the size of the chalk context blob; only the elastic lessons block is trimmed to fit — unset uses the default."
+      },
+      {
+        "text": "The task's essentials are never sacrificed for budget: acceptance criteria, locked tests, handoff, prior-review findings, and the contract are always present regardless of budget."
+      },
+      {
+        "text": "Under budget pressure the OLDEST lessons are elided first (most-recent kept) and a note reports how many were dropped and how to raise the budget."
+      },
+      {
+        "text": "Locked test proves: a tiny budget elides older lessons (note + newest survive, essentials intact), a generous/default budget keeps all lessons, and an extreme budget drops all lessons while criteria + contract remain."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/context-budget.test.mjs",
+        "sha256": "55f1d1c7a52c4061b121488b6f4d538620801fda7e6dcec6e6d9629412d1e46c"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -1545,11 +1563,14 @@
       "enhancement"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-06T10:05:49.986Z"
+      "stage": "committed",
+      "at": "2026-07-07T09:35:11.322Z"
     },
     "createdAt": "2026-07-06T10:05:49.986Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-07T09:33:41.946Z",
+    "branch": "feat/81-feat-context-budget-cap-buildcontext",
+    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
   },
   {
     "id": "task-86b9cfe4",
