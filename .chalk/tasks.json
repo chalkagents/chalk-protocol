@@ -2223,7 +2223,7 @@
   {
     "id": "task-ae0148d8",
     "title": "fix: passing `chalk review` never clears a needs:review block — the printed guidance omits `chalk unblock`, stranding the task",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "A passing `chalk review` on a task blocked with `needs:review` auto-unblocks it (restore `blockedFrom`, clear `t.block`), or the review-blocked guidance in next/status/backlog explicitly includes the `chalk unblock` step"
@@ -2262,14 +2262,43 @@
       "bug"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-07-07T10:04:42.276Z"
+      "stage": "cleaned",
+      "at": "2026-07-07T10:06:09.041Z"
     },
     "createdAt": "2026-07-07T09:50:24.966Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-07T10:05:53.126Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The supplied diff contains only .chalk bookkeeping (PR metadata in board/tasks/updates); the actual behavior change lives in the working tree at bin/chalk.mjs (clearReviewBlockOnPass, lines 73-80, wired into both the adversarial path line 1479 and the manual --note path line 1455). Inspected the tree per instructions — the implementation is present and correct, not missing."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "All six criteria are satisfied: clearReviewBlockOnPass only fires when t.block?.needs==='review', restoring t.state from t.blockedFrom (set by `block` at line 1201) and deleting block/blockedFrom; it is invoked only on verdict==='pass'. A non-review block (needs:human-input/creds/etc.) is correctly left intact. Both paths announce '✓ needs:review block cleared — task is runnable again' (lines 1460/1487), matching the test's /runnable again|unblock|cleared/i assertion."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The locked test drives the full round trip (run-loop review block → fix → review pass → runnable → done), the manual --note path, and the negative case (human-input block NOT cleared). Reverting clearReviewBlockOnPass would leave state=blocked and fail assertions at lines 51-53/74-75 — not a vacuous pass. Coverage is adequate for every criterion including the non-review guard."
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-07T10:03:22.885Z",
     "branch": "fix/117-fix-passing-chalk-review-never",
-    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol"
+    "pr": {
+      "number": 128,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/128",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-07-07T10:06:09.041Z"
   },
   {
     "id": "task-068a83c8",
