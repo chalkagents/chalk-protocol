@@ -66,6 +66,19 @@ const PIPE_STAGES = ['selected', 'branched', 'planned', 'verified', 'committed',
 const stageRank = (st) => PIPE_STAGES.indexOf(st);
 const stageDone = (t, target) => stageRank(t.pipeline?.stage) >= stageRank(target);
 
+// A passing review clears a needs:review auto-block (#117). The run loop parks a refuted task with
+// needs:review, and next/status/backlog tell the agent to fix the findings then re-review — so a
+// re-review PASS must make the task runnable again (restore blockedFrom, clear the block), not leave
+// it parked in state=blocked where runnableTasks keeps skipping it. Mutates + returns whether it fired.
+function clearReviewBlockOnPass(t) {
+  if (t.state === 'blocked' && t.block?.needs === 'review') {
+    t.state = t.blockedFrom || 'in-progress';
+    delete t.block; delete t.blockedFrom;
+    return true;
+  }
+  return false;
+}
+
 
 const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
@@ -1439,10 +1452,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       // A manual-order review (verify green → review → commit/pr later) must not fast-forward the
       // stage past commit/pr — their guards would then no-op with nothing committed and no PR (#102).
       if (verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
+      const unblocked = verdict === 'pass' && clearReviewBlockOnPass(t);
       const mp = postReviewToPr(s, t, { verdict, findings: [] });
       if (mp.lgtm) t.pr = { ...(t.pr || {}), lgtm: true };
       s.upsertTask(t);
       s.emitUpdate({ type: 'progress-update', title: `Review (manual): ${t.title}`, description: String(note), taskId: t.id });
+      if (unblocked) console.log(C.g('  ✓ needs:review block cleared — task is runnable again'));
       return ok('manual review recorded ' + C.dim('(checklist: test-adequacy · design-intent · regressions)') + (mp.posted ? C.dim(' · posted to PR') : ''));
     }
 
@@ -1461,6 +1476,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // Same pipeline-order rule as the manual path above (#102): the verdict is recorded either way —
     // the done/merge gates read t.reviews — but the stage only advances when the PR already exists.
     if (r.verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
+    const unblocked = r.verdict === 'pass' && clearReviewBlockOnPass(t);
     // Surface the verdict ON the PR (findings on block, LGTM on pass) so it's visible where a human
     // reviews — and record the LGTM signal the merge gate requires.
     const posted = postReviewToPr(s, t, { verdict: r.verdict, findings: r.findings });
@@ -1468,6 +1484,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     s.upsertTask(t);
     s.emitUpdate({ type: 'progress-update', title: `Review (${r.verdict}): ${t.title}`, taskId: t.id });
     console.log((r.verdict === 'pass' ? C.g('● review PASS') : C.r('● review BLOCK')) + ` ${C.dim(t.title)}` + (posted.posted ? C.dim(' · posted to PR') : ''));
+    if (unblocked) console.log(C.g('  ✓ needs:review block cleared — task is runnable again'));
     for (const f of r.findings) console.log(`   ${sev(f.severity)} ${C.dim(`[${f.area}]`)} ${f.note}`);
     if (r.verdict !== 'pass') console.log(C.dim('   fix the blocking findings and re-run `chalk review`.'));
     process.exit(r.verdict === 'pass' ? 0 : 3);
