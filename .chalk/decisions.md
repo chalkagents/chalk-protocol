@@ -394,3 +394,8 @@
 
 - _when:_ 2026-07-08T16:41:03.892Z
 - _why:_ Review round 1 fixes: cover the default production path (stopBefore truncation via dry-run + a stub-CLI test of defaultRunChain/defaultRunMerge command construction and phase ordering) — #110 slice 3
+
+## Amended acceptance test for "fix: merge ff-pull failure strands a stale base — chalk branch cuts from the fresh remote base (#150)"
+
+- _when:_ 2026-07-08T17:45:05.643Z
+- _why:_ Review fix: cover the 'remote exists but base unresolvable → warn' path and gate the warning on git remote (not a parseable origin URL) — #150
