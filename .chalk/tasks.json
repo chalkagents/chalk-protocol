@@ -2596,9 +2596,24 @@
   {
     "id": "task-96eabc01",
     "title": "feat: parallel task execution — scope P6 integrity per worktree, lock spine writes, fan out the driver",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "verify() checks each in-progress task's locked tests against THAT task's own worktree (task.worktree, falling back to store.root) instead of one shared cwd — so a second in-progress task on its own branch no longer trips a false P6 integrity break in the first task's checkout"
+      },
+      {
+        "text": "Single in-progress task behavior is unchanged: when the task's worktree equals the verify cwd (the common case), the integrity result is byte-identical to today"
+      },
+      {
+        "text": "The opt-in all-locks DONE-task integrity check still runs against the verify cwd (the current worktree), preserving the #80 anti-cheat that catches the current task weakening an already-done task's locked test"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verify-per-worktree-integrity.test.mjs",
+        "sha256": "db2c8fdfce998747a911731a131971d47cd405cc2fc3a558b0787e17bb15411c"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -2613,7 +2628,32 @@
       "at": "2026-07-07T09:50:24.971Z"
     },
     "createdAt": "2026-07-07T09:50:24.971Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-08T15:51:05.145Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "workdir() falls back to store.root, so an in-progress task with NO worktree field verified under an explicit non-root cwd would now hash at store.root instead of cwd — a behavior change vs. today. But this only diverges outside criterion 2's stated condition (worktree==cwd) and the pipeline always sets task.worktree when running in a worktree, so it's benign; not a violation of the contract."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2 (single in-progress task, worktree==cwd → byte-identical) is not asserted by a dedicated test; it is only implied by the workdir fallback. However tests 1-3 each map to and discriminate criteria 1, genuine-break, and 3, and test 1 would fail if the change were reverted, so the core behavior change is covered."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Change is minimal, scoped, and directly implements per-worktree P6 scoping while keeping the #80 done-task all-locks anti-cheat at cwd (line 57). Matches the stated goal."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T15:46:58.289Z",
+    "doneAt": "2026-07-08T15:52:48.763Z"
   },
   {
     "id": "task-90b8101a",
@@ -2784,5 +2824,44 @@
       "lgtm": true
     },
     "doneAt": "2026-07-07T12:34:08.306Z"
+  },
+  {
+    "id": "task-2ece6525",
+    "title": "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [
+      "task-96eabc01"
+    ],
+    "createdAt": "2026-07-08T15:46:44.348Z",
+    "reviews": []
+  },
+  {
+    "id": "task-a111bb0a",
+    "title": "feat: chalk start refuses a second in-progress task unless protocol.parallel.enabled — make the one-at-a-time convention a hard gate (#110 slice 4)",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [
+      "task-96eabc01"
+    ],
+    "createdAt": "2026-07-08T15:46:44.409Z",
+    "reviews": []
+  },
+  {
+    "id": "task-cac4cb76",
+    "title": "feat: chalk pipeline --parallel N — fan out per-task stage chains in worktrees, serialize merges at the gate (#110 slice 3)",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [
+      "task-2ece6525"
+    ],
+    "createdAt": "2026-07-08T15:46:44.493Z",
+    "reviews": []
   }
 ]

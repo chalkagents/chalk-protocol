@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783523083431,
+  "updatedAt": 1783525968763,
   "order": 0,
   "cards": [
     {
@@ -512,10 +512,20 @@
     {
       "id": "task-96eabc01",
       "title": "feat: parallel task execution — scope P6 integrity per worktree, lock spine writes, fan out the driver",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783417824971,
-      "updatedAt": 1783417824971,
-      "order": 28
+      "updatedAt": 1783525968763,
+      "order": 28,
+      "description": "- verify() checks each in-progress task's locked tests against THAT task's own worktree (task.worktree, falling back to store.root) instead of one shared cwd — so a second in-progress task on its own branch no longer trips a false P6 integrity break in the first task's checkout\n- Single in-progress task behavior is unchanged: when the task's worktree equals the verify cwd (the common case), the integrity result is byte-identical to today\n- The opt-in all-locks DONE-task integrity check still runs against the verify cwd (the current worktree), preserving the #80 anti-cheat that catches the current task weakening an already-done task's locked test",
+      "testArtifact": {
+        "specPath": "test/verify-per-worktree-integrity.test.mjs",
+        "lastRun": {
+          "runId": "done-task-96eabc01",
+          "status": "passed",
+          "at": 1783525968763
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/110"
+      }
     },
     {
       "id": "task-90b8101a",
@@ -571,6 +581,30 @@
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/137",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/129"
       }
+    },
+    {
+      "id": "task-2ece6525",
+      "title": "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)",
+      "column": "todo",
+      "createdAt": 1783525604348,
+      "updatedAt": 1783525604348,
+      "order": 32
+    },
+    {
+      "id": "task-a111bb0a",
+      "title": "feat: chalk start refuses a second in-progress task unless protocol.parallel.enabled — make the one-at-a-time convention a hard gate (#110 slice 4)",
+      "column": "todo",
+      "createdAt": 1783525604409,
+      "updatedAt": 1783525604409,
+      "order": 33
+    },
+    {
+      "id": "task-cac4cb76",
+      "title": "feat: chalk pipeline --parallel N — fan out per-task stage chains in worktrees, serialize merges at the gate (#110 slice 3)",
+      "column": "todo",
+      "createdAt": 1783525604493,
+      "updatedAt": 1783525604493,
+      "order": 34
     }
   ]
 }
