@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783525968763,
+  "updatedAt": 1783526360864,
   "order": 0,
   "cards": [
     {
@@ -593,10 +593,19 @@
     {
       "id": "task-a111bb0a",
       "title": "feat: chalk start refuses a second in-progress task unless protocol.parallel.enabled — make the one-at-a-time convention a hard gate (#110 slice 4)",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783525604409,
-      "updatedAt": 1783525604409,
-      "order": 33
+      "updatedAt": 1783526360864,
+      "order": 33,
+      "description": "- chalk start <id> refuses with a non-zero exit when another task is already in-progress and parallel mode is off; the task is NOT moved to in-progress, and the error names the blocking task and how to opt in\n- With protocol.parallel.enabled=true (or the --parallel flag) chalk start allows a second concurrent in-progress task\n- The gate does not fire when there is no other in-progress task (starting the first task) nor when re-running start on the already-in-progress task itself",
+      "testArtifact": {
+        "specPath": "test/start-single-wip-gate.test.mjs",
+        "lastRun": {
+          "runId": "done-task-a111bb0a",
+          "status": "passed",
+          "at": 1783526360864
+        }
+      }
     },
     {
       "id": "task-cac4cb76",
