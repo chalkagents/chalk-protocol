@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783521700625,
+  "updatedAt": 1783523083431,
   "order": 0,
   "cards": [
     {
@@ -494,10 +494,20 @@
     {
       "id": "task-f8647c91",
       "title": "fix: chalk spec --test from a linked worktree records a '../<worktree>/…' lock path — dead after cleanup",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783417824970,
-      "updatedAt": 1783417824970,
-      "order": 27
+      "updatedAt": 1783523083431,
+      "order": 27,
+      "description": "- chalk spec --test <path> and chalk amend-spec --test <path> invoked from a linked git worktree record the lock 'path' relative to the worktree's copy of the project root (tree-relative, e.g. test/x.mjs) — never a '../<worktree>/…' path that points into the worktree and dies after chalk merge cleans it up\n- The recorded tree-relative path resolves under the canonical spine root as well (survives worktree cleanup): store.brokenLocks against the canonical root finds the file when it exists there and reports no false integrity break\n- From the canonical root (not inside a linked worktree) the recorded lock path is unchanged — still relative to the spine root — so no existing lock is rewritten; a monorepo subdir offset is preserved",
+      "testArtifact": {
+        "specPath": "test/spec-worktree-lockpath.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f8647c91",
+          "status": "passed",
+          "at": 1783523083431
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/111"
+      }
     },
     {
       "id": "task-96eabc01",

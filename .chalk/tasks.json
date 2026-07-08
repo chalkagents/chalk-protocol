@@ -2534,9 +2534,24 @@
   {
     "id": "task-f8647c91",
     "title": "fix: chalk spec --test from a linked worktree records a '../<worktree>/…' lock path — dead after cleanup",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk spec --test <path> and chalk amend-spec --test <path> invoked from a linked git worktree record the lock 'path' relative to the worktree's copy of the project root (tree-relative, e.g. test/x.mjs) — never a '../<worktree>/…' path that points into the worktree and dies after chalk merge cleans it up"
+      },
+      {
+        "text": "The recorded tree-relative path resolves under the canonical spine root as well (survives worktree cleanup): store.brokenLocks against the canonical root finds the file when it exists there and reports no false integrity break"
+      },
+      {
+        "text": "From the canonical root (not inside a linked worktree) the recorded lock path is unchanged — still relative to the spine root — so no existing lock is rewritten; a monorepo subdir offset is preserved"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/spec-worktree-lockpath.test.mjs",
+        "sha256": "36859ea7096df4247b7cbf2e08a13883ff322c97c0691c8248fb722991f5d983"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -2551,7 +2566,32 @@
       "at": "2026-07-07T09:50:24.970Z"
     },
     "createdAt": "2026-07-07T09:50:24.970Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-08T15:01:47.122Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 3's monorepo-subdir clause is only exercised for the trivial case where the project root equals the git top-level (test 2 uses no subdir). The new offset computation (`offset = relative(wt.mainRoot, this.root)` then `resolve(wt.toplevel, offset)`) only does non-trivial work when a chalk project lives in a monorepo subdir INSIDE a linked worktree, and no test covers that path. The logic reads correct (offset direction main→worktree yields tree-relative), but it ships unverified."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "lockBase relies on `this.root` already being the canonical MAIN-checkout project root (via findRoot's worktree→main redirect). In a monorepo worktree without a committed .chalk, findRoot may fail to redirect and this.root would be the worktree's own root, making `offset` degenerate; the redirect+lockBase interaction is not jointly tested. Non-blocking as the tested non-monorepo flow works end-to-end."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The core changed behavior (worktree cwd → tree-relative lock path, no '../<worktree>/…') is asserted by test 1 with assertions that fail on revert (path=='test/foo.test.mjs', !startsWith('..'), !includes(worktree basename)) plus brokenLocks==[] under the canonical root, so criteria 1 and 2 are non-vacuously covered."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T14:57:32.738Z",
+    "doneAt": "2026-07-08T15:04:43.431Z"
   },
   {
     "id": "task-96eabc01",

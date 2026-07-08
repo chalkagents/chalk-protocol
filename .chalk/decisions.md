@@ -369,3 +369,8 @@
 
 - _when:_ 2026-07-08T14:41:50.209Z
 - _why:_ The intake-commit list was a 4-path subset of the reviewer's 10-path exclude set, so review-hidden-but-intake-uncommitted paths (chalk.json/questions.json/decisions.md/lessons.md/handoffs/analysis) floated into the next task branch — the #114 scoped-diff leak. Intake now commits the FULL set; a manually-edited uncommitted chalk.json at pull time is swept into the chore(spine) commit, which is correct since chalk owns spine state.
+
+## Record locked-test paths relative to the worktree's project root, not the main checkout (#111)
+
+- _when:_ 2026-07-08T15:04:58.793Z
+- _why:_ chalk spec/amend-spec --test run from a task worktree recorded a ../<worktree>/… path that dies after chalk merge cleans the worktree up. lockTest now maps main->worktree by the in-repo offset (linkedWorktree, pure fs) and records tree-relative — valid in every checkout; non-worktree behavior unchanged.
