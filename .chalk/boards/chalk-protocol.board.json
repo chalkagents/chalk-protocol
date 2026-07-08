@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783529187489,
+  "updatedAt": 1783530410126,
   "order": 0,
   "cards": [
     {
@@ -630,6 +630,23 @@
           "runId": "done-task-cac4cb76",
           "status": "passed",
           "at": 1783529187489
+        }
+      }
+    },
+    {
+      "id": "task-3c3ede10",
+      "title": "fix: vacuous verify trap — empty protocol.verify auto-passes P4; tighten chalk doctor to a blocker (#152)",
+      "column": "done",
+      "createdAt": 1783529632019,
+      "updatedAt": 1783530410126,
+      "order": 35,
+      "description": "- chalk doctor reports a blocking 'fail' when protocol.verify has NO configured gate AND there is a runnable task — even if that task HAS a locked test (an empty verify never runs it, so P4 passes vacuously). Softened to 'warn' when an adversarial reviewer gate is configured (the backstop)\n- The empty-verify blocker makes chalk doctor exit non-zero and autopilot (which gates on doctor 'fail' findings) refuse — so an unattended run cannot silently complete tasks against a vacuous verify\n- A project WITH a configured protocol.verify gate produces no such finding (no false positive); the check is independent of the existing per-task testless check",
+      "testArtifact": {
+        "specPath": "test/doctor-vacuous-verify.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3c3ede10",
+          "status": "passed",
+          "at": 1783530410126
         }
       }
     }
