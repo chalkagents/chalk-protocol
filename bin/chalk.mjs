@@ -1518,6 +1518,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
     console.log(C.dim('  running adversarial reviewer…'));
     let r = runReview(s, t);
+    // No diff to review → abort loudly (#151). Not a transient flake, so no retry: a PASS over an empty
+    // change set is a vacuous certification. Records NO review and exits non-zero so the gate can't be
+    // cleared on nothing — the pipeline then auto-blocks the task rather than merging it.
+    if (r.status === 'no-diff') die('review ABORTED — no diff captured: the change set is EMPTY, so the reviewer would grade nothing.\n  Check protocol.github.base and that the branch has committed changes (or that you are in the task worktree).');
     if (r.status === 'error' && !flags['no-retry']) {
       // A transient reviewer failure — a dropped/truncated response or a momentary bad parse — is not a
       // verdict, so retry once so a flake doesn't sink the review; only a SECOND consecutive error is fatal.
