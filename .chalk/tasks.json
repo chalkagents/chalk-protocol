@@ -2841,15 +2841,50 @@
   {
     "id": "task-a111bb0a",
     "title": "feat: chalk start refuses a second in-progress task unless protocol.parallel.enabled — make the one-at-a-time convention a hard gate (#110 slice 4)",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk start <id> refuses with a non-zero exit when another task is already in-progress and parallel mode is off; the task is NOT moved to in-progress, and the error names the blocking task and how to opt in"
+      },
+      {
+        "text": "With protocol.parallel.enabled=true (or the --parallel flag) chalk start allows a second concurrent in-progress task"
+      },
+      {
+        "text": "The gate does not fire when there is no other in-progress task (starting the first task) nor when re-running start on the already-in-progress task itself"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/start-single-wip-gate.test.mjs",
+        "sha256": "bf4bff866e039b6a779007b92545d099b299b762b94fa33654aecd76cd0763b1"
+      }
+    ],
     "heldOut": [],
     "after": [
       "task-96eabc01"
     ],
     "createdAt": "2026-07-08T15:46:44.409Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-08T15:57:50.761Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Tests cover all three criteria (refuse+no-move+names blocker+parallel word, config opt-in, --parallel flag, first-task and same-task no-fire). Reverting the change fails the suite, so coverage is non-vacuous. Not asserted: the specific '--parallel' text/opt-in phrasing beyond the /parallel/i match, and the multi-blocker count wording — minor gaps only."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Adds a hard gate to the common 'start' path; any pre-existing workflow/test that legitimately started a second task without parallel mode would now break. Scope is intentional per criteria and diff is minimal, so acceptable."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T15:54:15.906Z",
+    "doneAt": "2026-07-08T15:59:20.864Z"
   },
   {
     "id": "task-cac4cb76",
