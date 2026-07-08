@@ -3084,5 +3084,51 @@
     ],
     "startedAt": "2026-07-08T16:33:45.878Z",
     "doneAt": "2026-07-08T16:46:27.489Z"
+  },
+  {
+    "id": "task-3c3ede10",
+    "title": "fix: vacuous verify trap — empty protocol.verify auto-passes P4; tighten chalk doctor to a blocker (#152)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk doctor reports a blocking 'fail' when protocol.verify has NO configured gate AND there is a runnable task — even if that task HAS a locked test (an empty verify never runs it, so P4 passes vacuously). Softened to 'warn' when an adversarial reviewer gate is configured (the backstop)"
+      },
+      {
+        "text": "The empty-verify blocker makes chalk doctor exit non-zero and autopilot (which gates on doctor 'fail' findings) refuse — so an unattended run cannot silently complete tasks against a vacuous verify"
+      },
+      {
+        "text": "A project WITH a configured protocol.verify gate produces no such finding (no false positive); the check is independent of the existing per-task testless check"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/doctor-vacuous-verify.test.mjs",
+        "sha256": "5be7f9a0e3ad1d7b0c09cea0df629d14f2ca73a86512ad2b9b5adf0bbc7ad98c"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-08T16:53:52.019Z",
+    "reviews": [
+      {
+        "at": "2026-07-08T17:05:20.373Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "The new 'gates' blocker fires for ANY project with a runnable task and an empty protocol.verify (default `chalk init` without a preset). This is the intended behavior per #152, and the one affected editable test (pipeline.test.mjs) was updated to add a verify command, but the change now makes doctor exit non-zero for any bare-init repo with a runnable task — worth confirming no other suites depend on the old permissive doctor. verify is the gate for that."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "verifyConfigured uses normGate(v).cmd across Object.values(proto.verify); an entry with an empty command string ({test:''}) is correctly treated as vacuous, and a configured {test:'...'} correctly suppresses the finding. Locked tests cover fail (no reviewer), warn (reviewer backstop), no-false-positive (configured verify), independence from the testless check, and real-CLI non-zero exit — all three criteria are asserted and autopilot gates on level:'fail'. Adequate."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T16:53:52.181Z",
+    "doneAt": "2026-07-08T17:06:50.126Z"
   }
 ]
