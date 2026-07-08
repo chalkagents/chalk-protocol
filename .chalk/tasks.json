@@ -3249,5 +3249,56 @@
     ],
     "startedAt": "2026-07-08T17:39:32.931Z",
     "doneAt": "2026-07-08T17:49:20.842Z"
+  },
+  {
+    "id": "task-b118524b",
+    "title": "feat: spine/protocol migration — stamp writer version, detect skew on open, gated chalk migrate (#159)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Opening a spine stamped with a NEWER chalk-protocol version than the running binary is REFUSED (non-zero exit, a clear upgrade message) rather than silently misread — enforced in Store.open via spineSkew"
+      },
+      {
+        "text": "chalk migrate carries an old-schema spine (pre-writerVersion, version 1.0) forward to the current schema, is IDEMPOTENT on re-run (no-op when already current), backs the spine up before mutating, and --dry-run mutates NOTHING"
+      },
+      {
+        "text": "A same-version (compatible) spine opens with NO migration prompt and NO mutation of chalk.json; chalk doctor surfaces skew (fail for newer, warn for needs-migrate)"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/spine-migration.test.mjs",
+        "sha256": "c73eb47f8d2853fe7d563b5a9c5bf7b22ffb7a019b249c523b77514bd731f6b0"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-08T18:19:44.731Z",
+    "reviews": [
+      {
+        "at": "2026-07-08T18:24:59.479Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "doctor.mjs adds a `fail`-for-newer branch, but it is effectively unreachable via the CLI: Store.open throws on a newer spine before runDoctor executes. The locked test even acknowledges this ('the refusal IS the surfaced skew'). Reverting just that doctor line would leave all tests green — it is untested defensive code. Criterion 3's literal 'chalk doctor surfaces skew (fail for newer)' is satisfied only by the open-time refusal, not by doctor itself."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "saveMeta now stamps writerVersion (and continues to bump updatedAt) on EVERY spine write, and initSpine bumps version 1.0→1.1. Any existing test or consumer doing an exact-snapshot deepEqual of chalk.json could break; the visible suite does not appear to, but the held-out set cannot be inspected. Low risk given the field is additive."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Store.open is now invoked twice per command (warnSpineTamper swallows the newer-skew throw, then the command handler re-throws it). Behavior is correct — the refusal still surfaces with exit 1 and the writer version — but the swallow in warnSpineTamper means the skew guard relies on the command handler also calling Store.open; a command that skips Store.open would bypass the refusal. All tested commands (status/doctor/migrate) do call it."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T18:19:44.873Z",
+    "doneAt": "2026-07-08T18:26:58.374Z"
   }
 ]

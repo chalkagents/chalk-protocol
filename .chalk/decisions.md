@@ -399,3 +399,8 @@
 
 - _when:_ 2026-07-08T17:45:05.643Z
 - _why:_ Review fix: cover the 'remote exists but base unresolvable → warn' path and gate the warning on git remote (not a parseable origin URL) — #150
+
+## Migrated spine 1.0 → 1.1
+
+- _when:_ 2026-07-08T18:27:17.321Z
+- _why:_ chalk migrate: stamp the writer version (chalk-protocol package) on the spine (backup: /Users/devid/Documents/projects/personal/chalk-protocol/.chalk/backups/2026-07-08T18-27-17-319Z)

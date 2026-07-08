@@ -15,3 +15,5 @@ node_modules/
 # + atomic-write temp files (`<file>.<pid>.tmp`, matched by *.tmp).
 .chalk/.lock*
 .chalk/*.tmp
+# Local migration backups — recovery artifacts, not versioned spine state (#159).
+.chalk/backups/
