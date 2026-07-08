@@ -18,7 +18,7 @@ todos:
 
 # test: pin the `.chalk/` exemption in untrackedLockedTests — the tracking gate's carve-out is unasserted in either direction
 
-> state: **specd** · phase: discovery
+> state: **blocked** · phase: discovery
 
 ## Objective
 

@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783427648306,
+  "updatedAt": 1783521700625,
   "order": 0,
   "cards": [
     {
@@ -436,7 +436,7 @@
     {
       "id": "task-f64af30f",
       "title": "fix: untrackedLockedTests blanket-exempts every `.chalk/` pin, so an untracked e2e acceptance spec ships a vacuous green",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1783417824961,
       "updatedAt": 1783417824961,
       "order": 23,
@@ -445,7 +445,7 @@
     {
       "id": "task-fb7b9744",
       "title": "test: pin the `.chalk/` exemption in untrackedLockedTests — the tracking gate's carve-out is unasserted in either direction",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1783417824964,
       "updatedAt": 1783417824964,
       "order": 24,
@@ -528,11 +528,19 @@
     {
       "id": "task-cc689423",
       "title": "refactor: unify the intake-commit spine paths and the reviewer diff-exclude list into one shared constant",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783422773784,
-      "updatedAt": 1783422773784,
+      "updatedAt": 1783521700625,
       "order": 30,
-      "description": "- Define the spine-state path list once in a shared module imported by both bin/chalk.mjs (intake commit) and lib/review.mjs (diff excludes)\n- Ensure the intake commit covers every spine path the reviewer excludes (contract artifacts like `.chalk/tests/` and `.chalk/evidence/` remain visible/committed as today)\n- Add a test asserting the intake-commit path set and the reviewer-exclude set stay consistent, so a future divergence trips the suite"
+      "description": "- Define the spine-state path list once in a shared module imported by both bin/chalk.mjs (intake commit) and lib/review.mjs (diff excludes)\n- Ensure the intake commit covers every spine path the reviewer excludes (contract artifacts like `.chalk/tests/` and `.chalk/evidence/` remain visible/committed as today)\n- Add a test asserting the intake-commit path set and the reviewer-exclude set stay consistent, so a future divergence trips the suite",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-cc689423",
+          "status": "passed",
+          "at": 1783521700625
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/131"
+      }
     },
     {
       "id": "task-ae4422c1",

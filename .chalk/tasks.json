@@ -2226,7 +2226,7 @@
   {
     "id": "task-f64af30f",
     "title": "fix: untrackedLockedTests blanket-exempts every `.chalk/` pin, so an untracked e2e acceptance spec ships a vacuous green",
-    "state": "specd",
+    "state": "blocked",
     "acceptanceCriteria": [
       {
         "text": "Narrow the exclusion so genuine spine-state files (tasks.json/chalk.json/board) are exempt but pinned e2e spec paths under `.chalk/tests/` are still tracking-checked"
@@ -2255,12 +2255,24 @@
       "at": "2026-07-07T09:50:24.961Z"
     },
     "createdAt": "2026-07-07T09:50:24.961Z",
-    "reviews": []
+    "reviews": [],
+    "blockedFrom": "specd",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #126/#127 (MERGED). GH issue #122 is CLOSED. The spineStateExempt narrowing + both-direction locked tests (test/chalk-tests-tracking.test.mjs) already landed; all 3 criteria are satisfied by shipped code. Parked for human confirmation to drop from backlog — no code work remains.",
+      "at": "2026-07-08T14:35:10.976Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-f64af30-1.md",
+      "at": "2026-07-08T14:35:11.011Z",
+      "reason": "decision",
+      "seq": 1
+    }
   },
   {
     "id": "task-fb7b9744",
     "title": "test: pin the `.chalk/` exemption in untrackedLockedTests — the tracking gate's carve-out is unasserted in either direction",
-    "state": "specd",
+    "state": "blocked",
     "acceptanceCriteria": [
       {
         "text": "A locked test asserts a `.chalk/`-pinned path is NOT reported untracked (the intentional exemption)"
@@ -2289,7 +2301,19 @@
       "at": "2026-07-07T09:50:24.964Z"
     },
     "createdAt": "2026-07-07T09:50:24.964Z",
-    "reviews": []
+    "reviews": [],
+    "blockedFrom": "specd",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #126/#127 (MERGED). GH issue #118 is CLOSED. The .chalk/ exemption is asserted in both directions in test/chalk-tests-tracking.test.mjs (exempt spine-state pin + gated .chalk/tests/ spec rendered together). Parked for human confirmation to drop — no code work remains.",
+      "at": "2026-07-08T14:35:11.054Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-fb7b974-1.md",
+      "at": "2026-07-08T14:35:11.076Z",
+      "reason": "decision",
+      "seq": 1
+    }
   },
   {
     "id": "task-ae0148d8",
@@ -2596,7 +2620,7 @@
   {
     "id": "task-cc689423",
     "title": "refactor: unify the intake-commit spine paths and the reviewer diff-exclude list into one shared constant",
-    "state": "specd",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Define the spine-state path list once in a shared module imported by both bin/chalk.mjs (intake commit) and lib/review.mjs (diff excludes)"
@@ -2625,7 +2649,27 @@
       "at": "2026-07-07T11:12:53.784Z"
     },
     "createdAt": "2026-07-07T11:12:53.784Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-08T14:39:52.819Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Intake now commits additional spine paths not previously committed (chalk.json, questions.json, decisions.md, lessons.md, handoffs, analysis). If a user has manually-edited uncommitted `.chalk/chalk.json` at `chalk issue pull` time, those config edits would now be swept into the chore(spine) commit via `git commit -- <paths>`. This is consistent with the stated 'chalk owns spine state' intent, but is a behavior change not directly exercised by a runtime test (only tasks.json/boards/updates are actually written during pull in the fixtures)."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The consistency test (test/spine-paths-consistency.test.mjs) pins REVIEW_DIFF_EXCLUDES == SPINE_STATE_PATHS wrapped, which is somewhat tautological given review.mjs literally maps the constant — its real value is the source-scan guard forbidding a re-hardcoded `.chalk/` list on the spineFiles line. No test functionally asserts that intake commits e.g. questions.json/chalk.json specifically; coverage rests on the structural constant-sharing plus the pre-existing 'working tree clean after intake' check. Adequate but indirect for criterion 2."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T14:35:17.614Z",
+    "doneAt": "2026-07-08T14:41:40.625Z"
   },
   {
     "id": "task-ae4422c1",
