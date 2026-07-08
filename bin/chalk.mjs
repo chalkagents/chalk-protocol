@@ -364,7 +364,19 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (wt.enabled !== false) {
       const repo = (currentRepo(s.root) || basename(s.root)).split('/').pop();
       const dir = resolve(s.root, wt.dir || '..', `${repo}-${t.branch.replace(/\//g, '-')}`);
-      try { worktreeAdd(s.root, { dir, branch: t.branch, base: gh0.base || 'main' }); }
+      // Cut the worktree from the FRESH remote base, not the local one (#150). A prior merge's
+      // `pull --ff-only` may have failed (local base had commits), leaving it behind the remote — a
+      // worktree cut from that stale base branches off old code. Remote is source of truth: best-effort
+      // fetch, then start from `origin/<base>` when it resolves; otherwise fall back to the local base
+      // (and say so when a remote exists, so it's never SILENTLY stale). Only affects a NEW branch.
+      const base = gh0.base || 'main';
+      let startPoint = base;
+      gitTry(s.root, `fetch origin ${base}`);
+      if (gitTry(s.root, `rev-parse --verify --quiet origin/${base}`)) startPoint = `origin/${base}`;
+      // Warn whenever we fall back AND a remote exists (any name) — gate on `git remote`, not a
+      // parseable origin URL, so a non-'origin'/unparseable remote still gets the not-silently-stale flag.
+      else if (gitTry(s.root, 'remote').split('\n').some(Boolean)) console.log(C.y(`  ⚠ couldn't resolve origin/${base} — cutting from local ${base} (may be stale; fetch it manually).`));
+      try { worktreeAdd(s.root, { dir, branch: t.branch, base: startPoint }); }
       catch (e) { die(`worktree add failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
       // No spine is copied into the worktree: it is a pure code sandbox. Any `chalk` command run from
       // here (the executor's, or a manual one) resolves to the MAIN checkout's single canonical spine
