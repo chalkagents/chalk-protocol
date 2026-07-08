@@ -18,7 +18,7 @@ todos:
 
 # fix: untrackedLockedTests blanket-exempts every `.chalk/` pin, so an untracked e2e acceptance spec ships a vacuous green
 
-> state: **specd** · phase: discovery
+> state: **blocked** · phase: discovery
 
 ## Objective
 

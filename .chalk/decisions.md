@@ -364,3 +364,8 @@
 
 - _when:_ 2026-07-07T11:24:06.269Z
 - _why:_ PR #135 already merged to dev and adversarially reviewed (PASS); the task's spine record was reverted by a dev rebase during the #114/#125 recovery — reconciling state to reflect reality
+
+## Unify spine-state paths in one SPINE_STATE_PATHS constant (store.mjs); intake commit + reviewer excludes both derive from it (#131)
+
+- _when:_ 2026-07-08T14:41:50.209Z
+- _why:_ The intake-commit list was a 4-path subset of the reviewer's 10-path exclude set, so review-hidden-but-intake-uncommitted paths (chalk.json/questions.json/decisions.md/lessons.md/handoffs/analysis) floated into the next task branch — the #114 scoped-diff leak. Intake now commits the FULL set; a manually-edited uncommitted chalk.json at pull time is swept into the chore(spine) commit, which is correct since chalk owns spine state.
