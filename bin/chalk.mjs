@@ -2,7 +2,8 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_VERSION, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
+import { runMigrate } from '../lib/migrate.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -159,6 +160,20 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   // Print the protocol version on its own line.
   version() {
     console.log(PROTOCOL);
+  },
+
+  // Carry an older spine forward to the current schema (#159). Gated + reversible: backs the spine up
+  // before mutating, records a decision, and is a no-op when already current. `--dry-run` shows the plan.
+  migrate({ flags }) {
+    const s = Store.open();
+    const dryRun = flags['dry-run'] === true;
+    const r = runMigrate(s, { dryRun });
+    if (r.upToDate) return ok(`spine already current ${C.dim(`(schema ${r.from} · chalk ${CHALK_VERSION})`)} — nothing to migrate.`);
+    console.log(C.b('chalk migrate') + C.dim(` · schema ${r.from} → ${r.to}`));
+    for (const st of r.steps) console.log(`  ${C.dim(`${st.from}→${st.to}`)}  ${st.describe}`);
+    if (dryRun) return console.log(C.y('  (dry run — nothing written)'));
+    syncBrowser(s);
+    ok(`migrated spine ${C.b(`${r.from} → ${r.to}`)}${r.backup ? C.dim(` · backup ${r.backup}`) : ''}`);
   },
 
   // The single command an agent calls to learn its next action (which gate is blocking).
@@ -1830,6 +1845,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
   chalk stats [--since D] [--json]     ${C.dim('gate-efficacy report: review catches, churn, gate-vs-bypass (pure read)')}
   chalk archive [--dry-run]            ${C.dim('compact the spine: move done+released tasks (+their events) to .chalk/archive/')}
+  chalk migrate [--dry-run]            ${C.dim('carry an older spine forward to the current schema (backs up first, idempotent)')}
   chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
   chalk autopilot [--max N] [--min-severity med]   ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
   chalk loop [--max-rounds N] [--max N] [--min-severity med]   ${C.dim('bounded STANDING loop: pull→sweep→converge, self-terminating')}
