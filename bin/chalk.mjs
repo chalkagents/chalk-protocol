@@ -2,7 +2,7 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -334,7 +334,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       // Best-effort: a non-git tree or a commit failure must not fail intake — the tasks are persisted.
       try {
         if (gitTry(s.root, 'rev-parse --is-inside-work-tree') === 'true') {
-          const spineFiles = ['.chalk/tasks.json', '.chalk/updates.jsonl', '.chalk/boards', '.chalk/plans'].filter((p) => existsSync(join(s.root, p)));
+          // Commit EVERY spine-state path the reviewer excludes (#131), not just a subset — a path
+          // that intake left uncommitted but review hid would float into the next task branch.
+          const spineFiles = SPINE_STATE_PATHS.filter((p) => existsSync(join(s.root, p)));
           if (gitCommitPaths(s.root, `chore(spine): import ${created} issue(s) into the backlog`, spineFiles))
             console.log(C.dim(`  committed intake to the spine · chore(spine): import ${created} issue(s)`));
         }
