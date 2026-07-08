@@ -1209,12 +1209,24 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   },
 
   // GATE P1 — refuse to start without machine-checkable acceptance criteria.
-  start({ _ }) {
+  start({ _, flags }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
     const hasCriteria = (t.acceptanceCriteria || []).length || (t.tests || []).length;
     if (!hasCriteria) die(`GATE P1: task has no acceptance criteria. Add them first:\n    chalk spec ${t.id.slice(0, 12)} --criterion "..."  (or --test <path>)`);
     if (t.state === 'done') die('task already done.');
+    // One-at-a-time is now a hard gate (#110 slice 4), not a soft `chalk next` warning. Silently
+    // allowing a second in-progress task (yesterday's behavior) then RED-ing verify's shared-cwd P6
+    // check was the trap — the parallel machinery (per-worktree P6, spine-write safety, driver
+    // fan-out) opts in via protocol.parallel.enabled or `--parallel`. Re-starting the SAME task is fine.
+    const parallel = flags?.parallel || s.protocol().parallel?.enabled;
+    if (!parallel && t.state !== 'in-progress') {
+      const others = s.tasks().filter((x) => x.state === 'in-progress' && x.id !== t.id);
+      if (others.length) {
+        const o = others[0];
+        die(`${others.length} task(s) already in-progress (e.g. ${o.id.slice(0, 12)} — ${o.title.slice(0, 48)}).\n    Chalk works ONE task at a time. Finish it (chalk done), block it (chalk block), or enable\n    concurrent work with protocol.parallel.enabled=true in .chalk/chalk.json (or pass --parallel).`);
+      }
+    }
     t.state = 'in-progress'; t.startedAt = now();
     s.upsertTask(t);
     syncBrowser(s);
