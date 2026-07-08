@@ -3130,5 +3130,51 @@
     ],
     "startedAt": "2026-07-08T16:53:52.181Z",
     "doneAt": "2026-07-08T17:06:50.126Z"
+  },
+  {
+    "id": "task-daa45169",
+    "title": "fix: review diff-capture silently passes on no diff — abort loudly instead of a vacuous verdict (#151)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "When captureDiff yields an empty diff (all git-diff strategies produce nothing), runReview returns a distinct 'no-diff' status WITHOUT invoking the reviewer — so no pass/block verdict is fabricated over an empty change set"
+      },
+      {
+        "text": "chalk review aborts LOUDLY on the no-diff status: non-zero exit, a clear 'no diff captured' message, and NO passing review recorded on the task; it is not treated as a retryable transient error"
+      },
+      {
+        "text": "A review WITH a real (non-empty) diff is unaffected — the normal pass/block flow and recorded verdict are unchanged"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/review-no-diff.test.mjs",
+        "sha256": "40afb275d097b7e884200592240b366f359775d92d077f4507d97b3abaa65407"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-08T17:09:32.745Z",
+    "reviews": [
+      {
+        "at": "2026-07-08T17:24:39.304Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The EMPTY_TREE (git diff <empty-tree> HEAD) fallback means no-diff is only reachable when HEAD is unborn/no commits; any repo with committed content will render the whole tree as additions rather than aborting. This is intentional and is in fact locked by test 2 (a committed change with no base delta MUST be reviewed, not aborted), so it aligns with the contract — but it does narrow the abort to the unborn-HEAD case, so a misconfigured base on a populated branch reviews the whole repo instead of aborting. Acceptable given the locked spec, noting the boundary."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 1's no-diff abort is exercised only via the unborn-HEAD path (nothing committed). There is no locked test for an empty base-delta on a branch that already has committed content, but test 2 deliberately locks that case as 'review, not abort', so the coverage is consistent with intended behavior rather than a gap."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T17:09:32.885Z",
+    "doneAt": "2026-07-08T17:26:27.182Z"
   }
 ]

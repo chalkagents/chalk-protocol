@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783530410126,
+  "updatedAt": 1783531587182,
   "order": 0,
   "cards": [
     {
@@ -647,6 +647,23 @@
           "runId": "done-task-3c3ede10",
           "status": "passed",
           "at": 1783530410126
+        }
+      }
+    },
+    {
+      "id": "task-daa45169",
+      "title": "fix: review diff-capture silently passes on no diff — abort loudly instead of a vacuous verdict (#151)",
+      "column": "done",
+      "createdAt": 1783530572745,
+      "updatedAt": 1783531587182,
+      "order": 36,
+      "description": "- When captureDiff yields an empty diff (all git-diff strategies produce nothing), runReview returns a distinct 'no-diff' status WITHOUT invoking the reviewer — so no pass/block verdict is fabricated over an empty change set\n- chalk review aborts LOUDLY on the no-diff status: non-zero exit, a clear 'no diff captured' message, and NO passing review recorded on the task; it is not treated as a retryable transient error\n- A review WITH a real (non-empty) diff is unaffected — the normal pass/block flow and recorded verdict are unchanged",
+      "testArtifact": {
+        "specPath": "test/review-no-diff.test.mjs",
+        "lastRun": {
+          "runId": "done-task-daa45169",
+          "status": "passed",
+          "at": 1783531587182
         }
       }
     }
