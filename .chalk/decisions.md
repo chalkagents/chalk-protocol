@@ -374,3 +374,8 @@
 
 - _when:_ 2026-07-08T15:04:58.793Z
 - _why:_ chalk spec/amend-spec --test run from a task worktree recorded a ../<worktree>/… path that dies after chalk merge cleans the worktree up. lockTest now maps main->worktree by the in-repo offset (linkedWorktree, pure fs) and records tree-relative — valid in every checkout; non-worktree behavior unchanged.
+
+## Decompose #110 (parallel task execution) into 4 slices; scope task-96eabc0 to slice 1 (per-worktree P6)
+
+- _when:_ 2026-07-08T15:46:44.302Z
+- _why:_ The issue bundles 4 workstreams (per-worktree P6 integrity, atomic spine writes, start-gate, driver fan-out) — too broad for one gate. Slice 1 (verify() checks each in-progress task's locks in ITS OWN worktree) is the keystone hard-tooth and is self-contained + locally verifiable. The done-task all-locks loop stays at cwd to preserve the #80 anti-cheat. Slices 2-4 queued as follow-ons with dep edges.
