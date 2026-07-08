@@ -19,7 +19,7 @@ import { extractQuestions, planApprovalRequired } from '../lib/planning.mjs';
 import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } from '../lib/release.mjs';
 import { runSpecs, isSpec } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
-import { runPipeline } from '../lib/pipeline.mjs';
+import { runPipeline, runPipelineParallel } from '../lib/pipeline.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
@@ -1034,9 +1034,18 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
   // GitHub pipeline — the unattended driver: walk every issue-backed task issue→merge, blocking
   // on any gate failure and continuing to the next. The safety is the gates, not a human.
-  pipeline({ flags }) {
+  async pipeline({ flags }) {
     const s = Store.open();
-    const r = runPipeline(s, process.argv[1], { max: Number(flags.max || 20), dryRun: flags['dry-run'] === true, log: (m) => console.log(C.dim(m)) });
+    // Parallel fan-out (#110 slice 3): `--parallel N` runs N task chains at once, serializing merges.
+    if (flags.parallel) {
+      const parallel = flags.parallel === true ? 4 : Number(flags.parallel) || 4;
+      const r = await runPipelineParallel(s, process.argv[1], { max: Number(flags.max || 20), parallel, log: (m) => console.log(C.dim(m)) });
+      syncBrowser(s);
+      console.log('\n' + C.b('chalk pipeline · parallel summary'));
+      console.log(`  ${C.g(`✓ ${r.merged.length} merged`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim(`(≤${r.parallel} concurrent · merges serialized · gates are the safety)`)}`);
+      process.exit(r.blocked.length ? 2 : 0);
+    }
+    const r = runPipeline(s, process.argv[1], { max: Number(flags.max || 20), dryRun: flags['dry-run'] === true, only: flags.only || null, stopBefore: flags['stop-before'] || null, log: (m) => console.log(C.dim(m)) });
     if (r.dryRun) { console.log(C.dim(`  (${r.planned.length} task(s) planned — dry run, no changes)`)); return; }
     syncBrowser(s);
     console.log('\n' + C.b('chalk pipeline · summary'));
@@ -1853,7 +1862,9 @@ try {
   const fn = cmds[cmd];
   if (!fn) die(`unknown command: ${cmd}  (try \`chalk help\`)`);
   warnSpineTamper(cmd);
-  fn(parsed);
+  // Await so an async handler (e.g. the parallel pipeline) surfaces its rejection through this catch
+  // rather than as an unhandled promise; sync handlers await-through unchanged.
+  await Promise.resolve(fn(parsed));
 } catch (e) {
   die(e.message);
 }
