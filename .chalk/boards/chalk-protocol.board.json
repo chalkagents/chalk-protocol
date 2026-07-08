@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783526360864,
+  "updatedAt": 1783527873090,
   "order": 0,
   "cards": [
     {
@@ -585,10 +585,19 @@
     {
       "id": "task-2ece6525",
       "title": "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783525604348,
-      "updatedAt": 1783525604348,
-      "order": 32
+      "updatedAt": 1783527873090,
+      "order": 32,
+      "description": "- Concurrent chalk processes mutating tasks.json via upsertTask do not lose updates: the read-modify-write runs under a cross-process advisory lock and RE-READS inside it, so N concurrent adds of distinct tasks all survive (no last-writer-wins clobber)\n- Spine JSON writes are atomic (temp file + rename): a concurrent reader always sees a complete valid file, and no .tmp residue is left after a successful write\n- The lock self-heals and stays out of the repo: a crashed holder's stale lock (older than the threshold) is stolen so a dead process cannot wedge the spine; the .lock and atomic-write temp files are gitignored",
+      "testArtifact": {
+        "specPath": "test/spine-concurrent-writes.test.mjs",
+        "lastRun": {
+          "runId": "done-task-2ece6525",
+          "status": "passed",
+          "at": 1783527873090
+        }
+      }
     },
     {
       "id": "task-a111bb0a",

@@ -379,3 +379,13 @@
 
 - _when:_ 2026-07-08T15:46:44.302Z
 - _why:_ The issue bundles 4 workstreams (per-worktree P6 integrity, atomic spine writes, start-gate, driver fan-out) — too broad for one gate. Slice 1 (verify() checks each in-progress task's locks in ITS OWN worktree) is the keystone hard-tooth and is self-contained + locally verifiable. The done-task all-locks loop stays at cwd to preserve the #80 anti-cheat. Slices 2-4 queued as follow-ons with dep edges.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-07-08T16:14:04.920Z
+- _why:_ Add coverage the review required: stale-lock self-heal, archive routing through the lock, and gitignore of .lock/temp files (#110 slice 2 review fixes)
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-07-08T16:18:19.790Z
+- _why:_ Add a revert-detectable atomicity test (concurrent reader during unlocked writes) to pin criterion 2 — review round 2 required it (#110 slice 2)

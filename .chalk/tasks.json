@@ -2828,15 +2828,124 @@
   {
     "id": "task-2ece6525",
     "title": "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Concurrent chalk processes mutating tasks.json via upsertTask do not lose updates: the read-modify-write runs under a cross-process advisory lock and RE-READS inside it, so N concurrent adds of distinct tasks all survive (no last-writer-wins clobber)"
+      },
+      {
+        "text": "Spine JSON writes are atomic (temp file + rename): a concurrent reader always sees a complete valid file, and no .tmp residue is left after a successful write"
+      },
+      {
+        "text": "The lock self-heals and stays out of the repo: a crashed holder's stale lock (older than the threshold) is stolen so a dead process cannot wedge the spine; the .lock and atomic-write temp files are gitignored"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/spine-concurrent-writes.test.mjs",
+        "sha256": "88e9b20edcee6f9f1bacaf2195d110c3b43ecebfa94762a79f068a07a279fa3b"
+      }
+    ],
     "heldOut": [],
     "after": [
       "task-96eabc01"
     ],
     "createdAt": "2026-07-08T15:46:44.348Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-08T16:10:07.877Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 3 (lock self-heals: a stale lock older than LOCK_STALE_MS is stolen) has NO test in the locked suite. The entire stale-steal branch in withLock (statSync mtime > LOCK_STALE_MS → unlinkSync → continue) could be deleted and both locked tests would still pass. A crashed-holder scenario is never simulated. Feature shipped with no covering assertion — vacuous pass per the hard rule."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 3 also requires the .lock and atomic-write temp files be gitignored. No test asserts .gitignore ignores .chalk/.lock or the tasks.json.<pid>.tmp temp pattern. The gitignore change is untested behavior."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "Stale-lock steal has a TOCTOU race: process A stats an old mtime and decides stale, but between stat and unlinkSync another process B may have already stolen and recreated a FRESH lock; A then unlinks B's live lock, allowing a third process to acquire concurrently — two holders, the exact clobber the lock is meant to prevent. Only fires near the 30s threshold and is untested, but it defeats the self-heal guarantee under contention."
+          },
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "The lock only guards upsertTask. lib/archive.mjs:82 does a read-modify-write via store.saveTasks(store.tasks().filter(...)) OUTSIDE the lock. A concurrent `chalk archive` and `upsertTask` still race with last-writer-wins on tasks.json — the criterion's spine-safety goal is not fully met for all mutators, and no test covers archive concurrency."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Test 2 ('no .tmp residue / valid JSON') does not actually exercise the torn-read window: because upsertTask serializes writes under the lock, temp collisions can't occur regardless, and the test never reads tasks.json mid-write. It is a weak proxy for the atomicity claim in criterion 2 (concurrent reader always sees a complete file)."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "gitignore adds redundant `.chalk/*.tmp.*` but the actual temp name is `tasks.json.<pid>.tmp` (ends in .tmp); the extra pattern is dead. Harmless, but signals the ignore rules weren't verified against the real temp filename."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-08T16:16:48.707Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 2 (atomic temp+rename writes) is not actually pinned by any locked test. Reverting writeJSON to a plain writeFileSync would leave the entire suite green: test 'atomic writes leave no .tmp residue' asserts stray===[] and valid JSON, but with a plain writeFileSync NO temp file is ever created, so the residue check passes trivially, and after all serialized writes complete the file is valid JSON either way. Because the lock (test 1) serializes writes, a torn-read window never occurs regardless of atomicity, so no assertion distinguishes atomic-write from non-atomic-write. The core behavior of criterion 2 ships without a failing-on-revert test."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 2 claims 'a concurrent reader always sees a complete valid file', but no test ever spawns a reader that reads tasks.json DURING a write. The atomicity guarantee is asserted only by proxy (post-hoc validity + no residue), neither of which exercises the truncate-then-write window a plain write would expose."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "withLock is best-effort: after LOCK_WAIT_MS (15s) it proceeds UNLOCKED (fd===null) and then its finally block does not unlink the lock. Under sustained real contention a process could write outside the lock and still clobber a concurrent upsert — the exact last-writer-wins failure criterion 1 aims to eliminate. Unlikely in the 16-process test (each holds the lock for ms), so untested, but it means criterion 1's guarantee is conditional, not absolute."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "writeJSON is now atomic for ALL callers (chalk.json, questions.json, spine.hashes.json, initSpine), broadening the change beyond the stated tasks.json scope. Benign/likely-improving, but it is behavior change to unrelated write paths with no dedicated coverage."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-08T16:20:59.906Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 3 (lock artifacts stay out of the repo): the stale-steal path renames the lock to `.chalk/.lock.stale.<pid>.<ts>` then unlinks it. That intermediate name matches neither the gitignore entry `.chalk/.lock` (exact) nor `.chalk/*.tmp` (needs .tmp suffix). In the normal path it is unlinked immediately, but a crash between renameSync and unlinkSync would leave an un-gitignored artifact in the repo. Narrow window, not covered by any test."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "withLock is best-effort: after LOCK_WAIT_MS (15s) it proceeds UNLOCKED, which under pathological contention could reintroduce the last-writer-wins clobber criterion 1 forbids. This is a deliberate anti-deadlock backstop and is not reachable by the fast operations the tests exercise, so no test covers the unlocked fallback path."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "writeJSON is now temp+rename for ALL spine writes (saveMeta, saveQuestions, initSpine, archive files), not just tasks.json. rename(2) requires same-filesystem sibling temp (satisfied here). No behavioral regression observed; sleepSync degrades to a busy-spin only if SharedArrayBuffer is unavailable (documented, functionally harmless)."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Tests genuinely exercise the change and are non-vacuous (reverting the lock/atomic-write would fail the concurrent-adds and torn-read tests; reverting the archive routing would leave the stale lock, failing the archive test). All three criteria have direct assertions. Adequate."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T16:08:54.347Z",
+    "doneAt": "2026-07-08T16:24:33.090Z"
   },
   {
     "id": "task-a111bb0a",
