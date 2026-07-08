@@ -389,3 +389,8 @@
 
 - _when:_ 2026-07-08T16:18:19.790Z
 - _why:_ Add a revert-detectable atomicity test (concurrent reader during unlocked writes) to pin criterion 2 — review round 2 required it (#110 slice 2)
+
+## Amended acceptance test for "feat: chalk pipeline --parallel N — fan out per-task stage chains in worktrees, serialize merges at the gate (#110 slice 3)"
+
+- _when:_ 2026-07-08T16:41:03.892Z
+- _why:_ Review round 1 fixes: cover the default production path (stopBefore truncation via dry-run + a stub-CLI test of defaultRunChain/defaultRunMerge command construction and phase ordering) — #110 slice 3

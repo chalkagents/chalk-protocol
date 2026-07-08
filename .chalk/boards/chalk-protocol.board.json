@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783527873090,
+  "updatedAt": 1783529187489,
   "order": 0,
   "cards": [
     {
@@ -619,10 +619,19 @@
     {
       "id": "task-cac4cb76",
       "title": "feat: chalk pipeline --parallel N — fan out per-task stage chains in worktrees, serialize merges at the gate (#110 slice 3)",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783525604493,
-      "updatedAt": 1783525604493,
-      "order": 34
+      "updatedAt": 1783529187489,
+      "order": 34,
+      "description": "- chalk pipeline --parallel N runs up to N per-task chains (branch..evidence) concurrently, each in its own worktree, and never exceeds N in flight; every queued issue-backed task is chained (none dropped by the pool)\n- Merges are SERIALIZED — never concurrent — because they squash onto the shared base branch and contend; a chain that reaches the merge point cleanly is merged, and the git/gh stage runners are injectable so these invariants are testable without a live repo\n- A chain that blocks (non-zero) is NOT merged and is reported blocked; a merge that fails blocks that task; the sequential chalk pipeline (no --parallel) path is unchanged",
+      "testArtifact": {
+        "specPath": "test/pipeline-parallel.test.mjs",
+        "lastRun": {
+          "runId": "done-task-cac4cb76",
+          "status": "passed",
+          "at": 1783529187489
+        }
+      }
     }
   ]
 }
