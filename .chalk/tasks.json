@@ -2998,14 +2998,91 @@
   {
     "id": "task-cac4cb76",
     "title": "feat: chalk pipeline --parallel N — fan out per-task stage chains in worktrees, serialize merges at the gate (#110 slice 3)",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk pipeline --parallel N runs up to N per-task chains (branch..evidence) concurrently, each in its own worktree, and never exceeds N in flight; every queued issue-backed task is chained (none dropped by the pool)"
+      },
+      {
+        "text": "Merges are SERIALIZED — never concurrent — because they squash onto the shared base branch and contend; a chain that reaches the merge point cleanly is merged, and the git/gh stage runners are injectable so these invariants are testable without a live repo"
+      },
+      {
+        "text": "A chain that blocks (non-zero) is NOT merged and is reported blocked; a merge that fails blocks that task; the sequential chalk pipeline (no --parallel) path is unchanged"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/pipeline-parallel.test.mjs",
+        "sha256": "89c5d72739d0094dbd15f12923ea0afe12f24a459d5265eb36dcf104dbc2edb7"
+      }
+    ],
     "heldOut": [],
     "after": [
       "task-2ece6525"
     ],
     "createdAt": "2026-07-08T15:46:44.493Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-08T16:37:09.980Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Every locked test injects both runChain and runMerge, so the entire DEFAULT production path is untested: defaultRunChain (spawn `pipeline --only <id> --stop-before merge`), defaultRunMerge (`chalk merge`), and the new `stopBefore` truncation in runPipeline. The invariant that chains actually stop before merge and that merges are serialized via a separate `chalk merge` step hinges on stopBefore — yet reverting the stopBefore logic (or having merge run inside the chain) would leave the suite fully green. The real mechanism satisfying criterion 2 has no coverage."
+          },
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "runPipeline's `--only` filter was widened from exact `t.id === only` to `t.id === only || t.id.startsWith(only)`. defaultRunChain passes the FULL id, but with prefix ids like `task-1`/`task-12`, `'task-12'.startsWith('task-1')` is true — so a single chain subprocess would run a sibling task's full chain too. That both double-runs a task and executes work outside the pool, violating criterion 1's 'never exceeds N in flight' and 'each in its own chain/worktree'. Untested."
+          },
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "The same `--only` startsWith broadening changes existing sequential `chalk pipeline --only <id>` behavior (previously exact match) with no test guarding it; any prefix-colliding task ids now get swept into a run that was expected to touch a single task."
+          },
+          {
+            "severity": "med",
+            "area": "design-intent",
+            "note": "Criterion 1 requires each chain run 'in its own worktree,' but defaultRunChain spawns every chain with `cwd: store.root` — a shared checkout — with no worktree creation in this diff. The comment asserts safety 'because of earlier slices,' but nothing here demonstrates per-task worktree isolation; concurrent chains in the same cwd could clobber each other's working tree. This is neither implemented in-diff nor tested."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The CLI wiring in bin/chalk.mjs (--parallel default of 4, `=== true ? 4 : Number()||4` parsing, exit-code 2 on blocked, summary output, and the new top-level `await Promise.resolve(fn())`) is entirely unexercised by tests."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-08T16:44:16.161Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The CLI glue in bin/chalk.mjs (the `--parallel N` flag parsing incl. `--parallel` bare→4 and `Number(flags.parallel)||4` defaulting, the parallel summary line, syncBrowser call, and `process.exit(2)` on blocked) is new behavior with no locked test — the suite exercises runPipelineParallel/runPipeline directly. Core invariants are covered, but the flag-to-function wiring and exit-code contract are unverified."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "bin/chalk.mjs now wraps every command dispatch in `await Promise.resolve(fn(parsed))`, converting the whole CLI entrypoint to top-level await. Reviewed as safe (sync throws still propagate inside the try; sync returns unaffected), but it is a broad change touching all commands, not just the pipeline, and no test asserts sync-command error handling is unchanged."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The parallel queue filter (issue && !done && !blocked) ignores inter-task dependency ordering, so `--parallel` can fan out and merge a dependent task before its prerequisite. This mirrors the existing sequential runPipeline behavior (not a regression introduced here) and the slice-3 criteria don't require dep-ordering, but #110's stated dep-honoring semantics are not preserved by the parallel driver."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Per-worktree isolation of concurrent chains and cross-process tasks.json safety are asserted only by comments and depend on prior slices (branch-stage worktreeAdd + spine lock); the locked tests inject runners and thus never exercise real concurrent worktree/spine contention. Verified branch/commit/work stages do target workdir(store,t), so the design holds, but the concurrency-safety of the default production path is untested."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T16:33:45.878Z",
+    "doneAt": "2026-07-08T16:46:27.489Z"
   }
 ]
