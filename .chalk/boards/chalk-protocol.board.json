@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783532960842,
+  "updatedAt": 1783535218374,
   "order": 0,
   "cards": [
     {
@@ -681,6 +681,23 @@
           "runId": "done-task-3846b6a0",
           "status": "passed",
           "at": 1783532960842
+        }
+      }
+    },
+    {
+      "id": "task-b118524b",
+      "title": "feat: spine/protocol migration — stamp writer version, detect skew on open, gated chalk migrate (#159)",
+      "column": "done",
+      "createdAt": 1783534784731,
+      "updatedAt": 1783535218374,
+      "order": 38,
+      "description": "- Opening a spine stamped with a NEWER chalk-protocol version than the running binary is REFUSED (non-zero exit, a clear upgrade message) rather than silently misread — enforced in Store.open via spineSkew\n- chalk migrate carries an old-schema spine (pre-writerVersion, version 1.0) forward to the current schema, is IDEMPOTENT on re-run (no-op when already current), backs the spine up before mutating, and --dry-run mutates NOTHING\n- A same-version (compatible) spine opens with NO migration prompt and NO mutation of chalk.json; chalk doctor surfaces skew (fail for newer, warn for needs-migrate)",
+      "testArtifact": {
+        "specPath": "test/spine-migration.test.mjs",
+        "lastRun": {
+          "runId": "done-task-b118524b",
+          "status": "passed",
+          "at": 1783535218374
         }
       }
     }
