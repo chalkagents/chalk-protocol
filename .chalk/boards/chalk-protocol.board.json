@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783531587182,
+  "updatedAt": 1783532960842,
   "order": 0,
   "cards": [
     {
@@ -664,6 +664,23 @@
           "runId": "done-task-daa45169",
           "status": "passed",
           "at": 1783531587182
+        }
+      }
+    },
+    {
+      "id": "task-3846b6a0",
+      "title": "fix: merge ff-pull failure strands a stale base — chalk branch cuts from the fresh remote base (#150)",
+      "column": "done",
+      "createdAt": 1783532372785,
+      "updatedAt": 1783532960842,
+      "order": 37,
+      "description": "- chalk branch cuts the new worktree from the FRESH remote base (origin/<base>, after a best-effort fetch), so a stale local base (behind the remote — e.g. after a failed merge pull --ff-only) does not strand the next task on old code: the worktree contains the remote's latest commits\n- When origin/<base> cannot be resolved (no remote / offline), branch falls back to the local base and warns if a remote exists — never SILENTLY stale; the merge itself still completes (remote is source of truth), unchanged\n- The normal case (local base already current) is unaffected — the worktree is cut from the base tip as before",
+      "testArtifact": {
+        "specPath": "test/branch-fresh-base.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3846b6a0",
+          "status": "passed",
+          "at": 1783532960842
         }
       }
     }

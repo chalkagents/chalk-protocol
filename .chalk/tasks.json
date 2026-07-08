@@ -3176,5 +3176,78 @@
     ],
     "startedAt": "2026-07-08T17:09:32.885Z",
     "doneAt": "2026-07-08T17:26:27.182Z"
+  },
+  {
+    "id": "task-3846b6a0",
+    "title": "fix: merge ff-pull failure strands a stale base — chalk branch cuts from the fresh remote base (#150)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk branch cuts the new worktree from the FRESH remote base (origin/<base>, after a best-effort fetch), so a stale local base (behind the remote — e.g. after a failed merge pull --ff-only) does not strand the next task on old code: the worktree contains the remote's latest commits"
+      },
+      {
+        "text": "When origin/<base> cannot be resolved (no remote / offline), branch falls back to the local base and warns if a remote exists — never SILENTLY stale; the merge itself still completes (remote is source of truth), unchanged"
+      },
+      {
+        "text": "The normal case (local base already current) is unaffected — the worktree is cut from the base tip as before"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/branch-fresh-base.test.mjs",
+        "sha256": "0d3cb9af3e2169af59592ea56a8501988d887ecebebfea2cfc09c80b4f911eff"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-08T17:39:32.785Z",
+    "reviews": [
+      {
+        "at": "2026-07-08T17:43:47.231Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 2's second clause — 'when origin/<base> cannot be resolved but a remote EXISTS, fall back to local base AND warn (never silently stale)' — is entirely untested. Test 2 covers only the NO-remote case (currentRepo null, no warning). The 'remote exists but unresolvable/offline' branch (the console.warn on line 376) has no assertion; reverting that line/branch leaves both locked tests green. That is a vacuous pass for the warning contract."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The warning is gated on currentRepo(s.root), which only detects a parseable origin remote URL. A remote under a non-'origin' name, or an origin URL that fails the owner/repo regex, yields currentRepo()===null → no warning → SILENTLY stale, contradicting criterion 2's 'warns if a remote exists'. A `git remote` presence check would match the criterion more faithfully."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`fetch origin ${base}` is best-effort (swallowed by gitTry) but no test forces the fetch-fails-yet-origin-ref-exists path; if a prior stale origin/<base> ref exists and fetch fails, branch would cut from a stale remote-tracking ref while reporting success — a plausible edge not exercised."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-08T17:47:21.013Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "branch now always cuts from origin/<base> when it resolves. If the local base were ever AHEAD of the remote (unpushed local commits on main), the new worktree would silently drop them. Chalk's workflow never commits to main locally (all work goes through PR worktrees), so this is out of scope of the criteria, but it is an unguarded edge the tests don't cover."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`git fetch origin ${base}` and `rev-parse origin/${base}` interpolate the configured base unquoted (worktreeAdd itself quotes via q()). Harmless for the canonical 'main' base and consistent with the spec's origin/<base> wording, but a base value with shell-special chars would be mishandled."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Test 3 (no remote) would still pass if the change were reverted (fileA is present with or without the patch). The load-bearing coverage comes from Test 1 (fileB recovery fails on revert) and Test 2 (warning fails on revert), which do pin the added behavior — so the suite is not vacuous, but the no-remote path is only weakly asserted (no explicit assertion that NO warning/fetch-crash occurs)."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-08T17:39:32.931Z",
+    "doneAt": "2026-07-08T17:49:20.842Z"
   }
 ]
