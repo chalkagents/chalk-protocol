@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783572125101,
+  "updatedAt": 1783572550724,
   "order": 0,
   "cards": [
     {
@@ -715,6 +715,23 @@
           "runId": "done-task-76c4c9e7",
           "status": "passed",
           "at": 1783572125101
+        }
+      }
+    },
+    {
+      "id": "task-d1c37a28",
+      "title": "feat: chalk feedback --submit — upstream feedback via prefilled GitHub issue URL (#157)",
+      "column": "done",
+      "createdAt": 1783572373840,
+      "updatedAt": 1783572550724,
+      "order": 40,
+      "description": "- buildUpstreamFeedbackUrl is a pure function that percent-encodes the message into a GitHub new-issue URL for the configured upstream repo, including the chalk version in the body and a user-feedback label\n- chalk feedback --submit \"<msg>\" prints that URL, works with NO .chalk spine (runs before Store.open), and never creates .chalk/feedback or calls the analysis agent; CHALK_UPSTREAM_REPO overrides the repo\n- The existing chalk feedback signal-analysis path is unchanged; an empty --submit message is a clear usage error",
+      "testArtifact": {
+        "specPath": "test/feedback-submit.test.mjs",
+        "lastRun": {
+          "runId": "done-task-d1c37a28",
+          "status": "passed",
+          "at": 1783572550724
         }
       }
     }

@@ -3351,5 +3351,51 @@
     ],
     "startedAt": "2026-07-09T04:36:31.433Z",
     "doneAt": "2026-07-09T04:42:05.101Z"
+  },
+  {
+    "id": "task-d1c37a28",
+    "title": "feat: chalk feedback --submit — upstream feedback via prefilled GitHub issue URL (#157)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "buildUpstreamFeedbackUrl is a pure function that percent-encodes the message into a GitHub new-issue URL for the configured upstream repo, including the chalk version in the body and a user-feedback label"
+      },
+      {
+        "text": "chalk feedback --submit \"<msg>\" prints that URL, works with NO .chalk spine (runs before Store.open), and never creates .chalk/feedback or calls the analysis agent; CHALK_UPSTREAM_REPO overrides the repo"
+      },
+      {
+        "text": "The existing chalk feedback signal-analysis path is unchanged; an empty --submit message is a clear usage error"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/feedback-submit.test.mjs",
+        "sha256": "e76576b280e04d4fcb24e1a7e1d2ac7ea32dbccae85cde74a9f3a42c48208313"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-09T04:46:13.840Z",
+    "reviews": [
+      {
+        "at": "2026-07-09T04:47:03.300Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 3's 'existing signal-analysis path unchanged' is not directly asserted in feedback-submit.test.mjs, but the new behavior is fully guarded by an early return on `flags.submit !== undefined` so the legacy path is structurally untouched; low regression risk."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Empty-message path relies on `_.slice(1).join(' ')` where `_` includes the 'feedback' command token; verified the arg parser (line 58) returns the full positional array and the dispatch passes it through, so slice(1) correctly drops the command name and yields '' → clean die(). Behaves as tested."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-09T04:46:13.984Z",
+    "doneAt": "2026-07-09T04:49:10.724Z"
   }
 ]
