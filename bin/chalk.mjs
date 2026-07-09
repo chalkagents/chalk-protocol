@@ -4,6 +4,7 @@
 import { resolve, join } from 'node:path';
 import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_VERSION, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
 import { runMigrate } from '../lib/migrate.mjs';
+import { checkForUpdate } from '../lib/update.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -160,6 +161,15 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   // Print the protocol version on its own line.
   version() {
     console.log(PROTOCOL);
+  },
+
+  // Update to the latest published chalk-protocol (global npm install). --dry-run just prints the command.
+  upgrade({ flags }) {
+    const cmd = 'npm i -g chalk-protocol@latest';
+    if (flags['dry-run'] === true) { console.log(C.b('chalk upgrade') + C.dim(' · would run:') + '\n  ' + cmd); return; }
+    console.log(C.dim(`  running: ${cmd}`));
+    try { execSync(cmd, { stdio: 'inherit' }); ok('upgraded to the latest chalk-protocol'); }
+    catch (e) { die(`upgrade failed: ${String(e.message).split('\n').slice(-1)[0]}\n  run it yourself: ${cmd}`); }
   },
 
   // Carry an older spine forward to the current schema (#159). Gated + reversible: backs the spine up
@@ -1845,6 +1855,8 @@ ${C.b('setup')}
   chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--verify-test "cmd"] [--bare] [--runner fvm] [--executor claude|opencode|none]
                                        ${C.dim('auto-detects the stack preset (verify/regression/break-it); --executor claude ships the agent files')}
   chalk agents [--claude]              ${C.dim('(re)install the agent contract; --claude adds the Claude Code agent definitions')}
+  chalk --version | -v                 ${C.dim('print the installed package version (+ protocol tag)')}
+  chalk upgrade [--dry-run]            ${C.dim('update to the latest published chalk-protocol (global npm)')}
   chalk status
   chalk next                           ${C.dim('the agent entrypoint: what to do next')}
   chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
@@ -1912,10 +1924,24 @@ ${C.b('chalk browser bridge')}
 const [, , cmd, ...rest] = process.argv;
 const parsed = parse(rest);
 try {
+  // `--version`/`-v` report the PACKAGE version (+ protocol tag); `chalk version` keeps the bare
+  // protocol tag for scripts that parse it (#158).
+  if (cmd === '--version' || cmd === '-v') { console.log(`chalk-protocol ${CHALK_VERSION} · protocol ${PROTOCOL}`); process.exit(0); }
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') { printHelp(); process.exit(0); }
   const fn = cmds[cmd];
   if (!fn) die(`unknown command: ${cmd}  (try \`chalk help\`)`);
   warnSpineTamper(cmd);
+  // Opt-out update nudge (#158) — INTERACTIVE only. The isTTY gate short-circuits before any config
+  // read or network, so it is completely inert under test/CI/pipe/--json. Best-effort: wrapped so it
+  // can never slow, break, or change the exit code of the actual command below.
+  if (process.stdout.isTTY && parsed.flags.json !== true) {
+    let updateCheckConfig;
+    try { const r = findRoot(); if (r) updateCheckConfig = new Store(r).protocol()?.updateCheck; } catch { /* no spine — env/default still apply */ }
+    try {
+      const notice = await checkForUpdate({ current: CHALK_VERSION, isTTY: true, json: false, env: process.env, updateCheckConfig, now: Date.now() });
+      if (notice) console.error(C.dim('  ' + notice));
+    } catch { /* an update check must never affect the command */ }
+  }
   // Await so an async handler (e.g. the parallel pipeline) surfaces its rejection through this catch
   // rather than as an unhandled promise; sync handlers await-through unchanged.
   await Promise.resolve(fn(parsed));
