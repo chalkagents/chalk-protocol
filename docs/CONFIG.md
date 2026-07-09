@@ -132,6 +132,12 @@ issue labels to branch types (`bug→fix`). Merge runs the broke-check: remote C
 PR has checks, else local verify (labeled when it falls back). `base` is the integration branch
 PRs target; `deployBase` is the protected deploy branch `chalk release --promote` promotes to
 (promotion PR merged with a MERGE commit, tag on its tip — set it ≠ `base` to enable).
+`ciPollIntervalMs` / `ciPollAttempts` tune how the broke-check waits on remote CI (during `merge` and
+`release --promote`): while the PR's checks are still pending it polls every `ciPollIntervalMs`
+(default `5000`) up to `ciPollAttempts` times (default `24` ≈ 2 min) — raise them for slow CI. Set
+`ciPollAttempts: 0` to not wait at all: CI is evaluated once, so a still-pending check then **blocks**
+the merge rather than being waited on. (This does not fall back to local verify — that happens only
+when the PR has no checks at all, independent of these knobs.)
 
 ### `worktree`
 
