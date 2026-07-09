@@ -31,7 +31,7 @@ import { withJsonOutput, unwrapAgentOutput, runExecutorCaptured } from '../lib/c
 import { runMutation } from '../lib/mutation.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
-import { collectSignals, runFeedback, feedbackDir } from '../lib/feedback.mjs';
+import { collectSignals, runFeedback, feedbackDir, buildUpstreamFeedbackUrl, UPSTREAM_REPO } from '../lib/feedback.mjs';
 import { runDiscovery } from '../lib/discovery.mjs';
 import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
@@ -1366,7 +1366,20 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   // Feedback loop — close the product cycle. Collect external signals (.chalk/feedback/ + --input),
   // run the analysis agent, and file improvement issues into the backlog (dedup + severity floor +
   // dry-run, same convergence discipline as `chalk retro`), then archive the processed signals.
-  feedback({ flags }) {
+  feedback({ _, flags }) {
+    // Downstream → upstream channel (#157): print a prefilled GitHub new-issue URL for chalk's OWN
+    // repo. Deliberately runs BEFORE Store.open — a user reporting a bug shouldn't need a `.chalk/`
+    // spine — and never touches the local feedback signal path.
+    if (flags.submit !== undefined) {
+      const message = typeof flags.submit === 'string' ? flags.submit : _.join(' ');
+      if (!message.trim()) die('usage: chalk feedback --submit "<your feedback for the chalk maintainers>"');
+      const repo = process.env.CHALK_UPSTREAM_REPO || UPSTREAM_REPO;
+      const url = buildUpstreamFeedbackUrl({ message, version: CHALK_VERSION, repo });
+      console.log(C.b('chalk feedback') + C.dim(` · send to ${repo}`));
+      console.log('  ' + C.dim('open this to file it (no login needed to draft, GitHub account to submit):'));
+      console.log('  ' + url);
+      return;
+    }
     const s = Store.open();
     const gh0 = s.protocol().github || {};
     const dry = flags['dry-run'] === true;
@@ -1872,6 +1885,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk release [--version x|--major|--minor|--patch] [--commit] [--promote] [--no-tag] [--dry-run]  ${C.dim('ship merged work: CHANGELOG + version + tag (--commit: commit the bump, tag that commit; --promote: PR github.base→github.deployBase, tag the deploy tip)')}
   chalk discover "<brief>" [--file <path>] [--dry-run]  ${C.dim('intake: brief → scoped tasks with criteria')}
   chalk feedback [--input "..."] [--dry-run] [--min-severity low|med|high]  ${C.dim('signals → improvement issues')}
+  chalk feedback --submit "<msg>"      ${C.dim('send feedback UPSTREAM to the chalk maintainers (prefilled GitHub issue URL, no spine needed)')}
   chalk portal [--out <dir>] [--slug <slug>] [--dry-run]  ${C.dim('publish spine → client portal data')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
