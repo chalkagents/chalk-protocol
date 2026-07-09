@@ -36,7 +36,7 @@ import { runDiscovery } from '../lib/discovery.mjs';
 import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
 import { runArchive } from '../lib/archive.mjs';
-import { computeStats } from '../lib/stats.mjs';
+import { computeStats, publicStats, renderPublicMarkdown, renderBadge } from '../lib/stats.mjs';
 import { REVIEW_OVERRIDE_TITLE, AUDIT_TITLE } from '../lib/markers.mjs';
 import { portalModel } from '../lib/portal.mjs';
 import { basename, dirname, relative } from 'node:path';
@@ -987,6 +987,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const since = typeof flags.since === 'string' ? flags.since : undefined;
     if (flags.since && (!since || Number.isNaN(Date.parse(since)))) die(`--since needs a date, e.g. --since 2026-01-01${since ? ` (got "${since}")` : ''}`);
     const st = computeStats(s, { since });
+    // Shareable, PII-free artifact (#156): --badge → shields.io JSON, --public --json → the summary
+    // object, --public/--md → a README-embeddable markdown block. Sourced from the same computeStats.
+    if (flags.public || flags.badge || flags.md) {
+      const pub = publicStats(st);
+      if (flags.badge) return console.log(renderBadge(pub));
+      if (flags.json === true) return console.log(JSON.stringify(pub, null, 2));
+      return console.log(renderPublicMarkdown(pub));
+    }
     if (flags.json === true) { console.log(JSON.stringify(st, null, 2)); return; }
     if (!st.tasks.total) { console.log(C.dim(`  no gate activity yet${since ? ' in this window' : ''} — nothing in the spine to report. Run the loop first (chalk next).`)); return; }
     const pct = (n, d) => (d ? `${n}/${d} (${Math.round((100 * n) / d)}%)` : '0/0');
@@ -1843,7 +1851,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk doctor [--json]                ${C.dim('preflight readiness check for autonomous runs (read-only); --json for bug reports')}
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
-  chalk stats [--since D] [--json]     ${C.dim('gate-efficacy report: review catches, churn, gate-vs-bypass (pure read)')}
+  chalk stats [--since D] [--json] [--public|--badge]   ${C.dim('gate-efficacy report; --public: PII-free shareable markdown, --badge: shields.io JSON')}
   chalk archive [--dry-run]            ${C.dim('compact the spine: move done+released tasks (+their events) to .chalk/archive/')}
   chalk migrate [--dry-run]            ${C.dim('carry an older spine forward to the current schema (backs up first, idempotent)')}
   chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}

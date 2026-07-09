@@ -107,6 +107,18 @@ Beyond the dev cycle, the loop closes end-to-end: `chalk discover` (brief → sc
 (lessons + self-filed improvements), `chalk portal` (client-facing status), `chalk archive`
 (compact a long-lived spine without losing history).
 
+## Does the gate actually catch anything?
+
+Chalk measures itself. `chalk stats` reports what its gates caught over your whole history
+(live spine + archive) — review catches, churn made visible, gated-vs-bypassed landings.
+`chalk stats --public` renders a **PII-free, shareable** version (no task titles, paths, or
+ids) you can paste into a README — the quantified answer to "agents grade their own homework":
+
+```bash
+chalk stats --public     # a markdown block: "the adversarial gate caught N changes the model's self-check had passed"
+chalk stats --badge      # shields.io endpoint JSON for a README badge
+```
+
 ## How is this different?
 
 | | Spec/scaffold tools (Spec-Kit, Kiro) | `AGENTS.md` alone | CI | **Chalk** |
