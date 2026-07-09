@@ -3300,5 +3300,56 @@
     ],
     "startedAt": "2026-07-08T18:19:44.873Z",
     "doneAt": "2026-07-08T18:26:58.374Z"
+  },
+  {
+    "id": "task-76c4c9e7",
+    "title": "feat: chalk stats --public — PII-free shareable gate-efficacy artifact (markdown + shields badge) (#156)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk stats --public emits a PII-FREE markdown summary carrying the efficacy headline (gate catches, tasks reviewed, block/pass verdicts, self-report↔gate disagreement rate, verify-RED blocks, gated-landing fraction, held-out audit) and NO task titles, file paths, or task ids (the churn 'worst' list is excluded)"
+      },
+      {
+        "text": "chalk stats --badge emits shields.io endpoint JSON (schemaVersion, label, message = the gate-catch count, color); chalk stats --public --json emits the PII-free summary object"
+      },
+      {
+        "text": "The public summary is derived purely from computeStats (deterministic for a fixed spine fixture, no new tracking) and README documents it as the social-proof block"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/stats-public.test.mjs",
+        "sha256": "0996d4dd458a9d553d29ac39e786194750ef6cc7178d18364f7827bc60a89173"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-09T04:36:31.284Z",
+    "reviews": [
+      {
+        "at": "2026-07-09T04:40:27.833Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "disagreementRate is defined as caught/reviewed (blocked-then-passed), which understates true self-report↔gate disagreement: a task blocked but not yet re-passed is a disagreement yet is excluded. Matches the locked test's 50% expectation, so acceptable, but the label 'disagreement' is a slight approximation."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The 'held-out audit', 'verify-RED blocks', and 'gated-landing fraction' rows of the markdown headline (criterion 1) are rendered but not directly asserted by any test; they would still render if their values were wrong. Core headline fields (catches, reviewed, verdicts, disagreement) and PII-absence are well covered."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "An undocumented --md flag path was added alongside --public/--badge; harmless but not part of the stated contract and untested."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-09T04:36:31.433Z",
+    "doneAt": "2026-07-09T04:42:05.101Z"
   }
 ]
