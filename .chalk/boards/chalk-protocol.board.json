@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783535218374,
+  "updatedAt": 1783572125101,
   "order": 0,
   "cards": [
     {
@@ -698,6 +698,23 @@
           "runId": "done-task-b118524b",
           "status": "passed",
           "at": 1783535218374
+        }
+      }
+    },
+    {
+      "id": "task-76c4c9e7",
+      "title": "feat: chalk stats --public — PII-free shareable gate-efficacy artifact (markdown + shields badge) (#156)",
+      "column": "done",
+      "createdAt": 1783571791284,
+      "updatedAt": 1783572125101,
+      "order": 39,
+      "description": "- chalk stats --public emits a PII-FREE markdown summary carrying the efficacy headline (gate catches, tasks reviewed, block/pass verdicts, self-report↔gate disagreement rate, verify-RED blocks, gated-landing fraction, held-out audit) and NO task titles, file paths, or task ids (the churn 'worst' list is excluded)\n- chalk stats --badge emits shields.io endpoint JSON (schemaVersion, label, message = the gate-catch count, color); chalk stats --public --json emits the PII-free summary object\n- The public summary is derived purely from computeStats (deterministic for a fixed spine fixture, no new tracking) and README documents it as the social-proof block",
+      "testArtifact": {
+        "specPath": "test/stats-public.test.mjs",
+        "lastRun": {
+          "runId": "done-task-76c4c9e7",
+          "status": "passed",
+          "at": 1783572125101
         }
       }
     }
