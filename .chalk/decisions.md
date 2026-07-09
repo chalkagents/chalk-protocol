@@ -409,3 +409,8 @@
 
 - _when:_ 2026-07-09T07:39:55.823Z
 - _why:_ Review round 1: cover chalk upgrade --dry-run (criterion 3, was untested) and the interactive notice-producing path (#158)
+
+## Amended acceptance test for "docs: document the promote CI-poll knobs (ciPollIntervalMs/ciPollAttempts) in CONFIG + a runtime hint (#153)"
+
+- _when:_ 2026-07-09T07:52:05.358Z
+- _why:_ Review fix: corrected the inaccurate ciPollAttempts:0 description (it BLOCKS a pending check, not local-verify fallback) + added a brokeCheck behavioral test tying the doc to code (#153)

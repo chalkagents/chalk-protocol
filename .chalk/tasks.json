@@ -3470,5 +3470,65 @@
     ],
     "startedAt": "2026-07-09T07:37:59.744Z",
     "doneAt": "2026-07-09T07:44:36.136Z"
+  },
+  {
+    "id": "task-60394447",
+    "title": "docs: document the promote CI-poll knobs (ciPollIntervalMs/ciPollAttempts) in CONFIG + a runtime hint (#153)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "docs/CONFIG.md's github section DESCRIBES ciPollIntervalMs and ciPollAttempts — what they control (remote-CI polling cadence during merge/promote) and the ciPollAttempts:0 never-wait escape — not merely lists them; the docs/CONFIG.md ↔ initSpine drift gate stays green"
+      },
+      {
+        "text": "The release --promote CI-poll timeout (still-pending) message points the user at github.ciPollAttempts / ciPollIntervalMs"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/config-cipoll-docs.test.mjs",
+        "sha256": "2fb228fe41516a9cc70846aa742b43d5ee9c941d6a464715df1a2a2a9c337ee0"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-09T07:47:23.047Z",
+    "reviews": [
+      {
+        "at": "2026-07-09T07:50:28.184Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "docs/CONFIG.md's new text claims `ciPollAttempts: 0` means \"never wait (fall straight through to local verify)\". This misdescribes the actual behavior. In lib/brokecheck.mjs, when the PR HAS pending checks, maxAttempts=0 skips the poll loop and returns ci==='pending' → {ok:false, 'remote CI still running — merge when checks complete'}, i.e. a hard block, NOT a fall-through to local verify. Local verify only runs when ci==='none' (no checks at all), which is independent of ciPollAttempts. Worse, in the promote path (bin/chalk.mjs:730) 0 with pending CI dies with 'still pending after 0 check(s)' — never local verify. A user setting 0 to bypass slow CI would instead get an immediate block, the opposite of what the docs promise. This defeats criterion 1's requirement to accurately DESCRIBE the never-wait escape."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The locked test only asserts the literal presence of /ciPollAttempts: ?0|never wait/ in the github section; it never validates that the described 0-behavior matches the code. The inaccurate '(fall straight through to local verify)' parenthetical therefore passes unchecked — the test would stay green even with a wrong description."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-09T07:53:55.413Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 1: docs/CONFIG.md github section now describes ciPollIntervalMs/ciPollAttempts (polling cadence, defaults 5000/24≈2min, applies to merge and release --promote) and the ciPollAttempts:0 never-wait escape. The 0-behavior claim ('blocks a still-pending check, does NOT fall back to local verify') is accurate against brokeCheck (loop skipped with maxAttempts=0 → ci stays 'pending' → returns ok:false source:'ci' without calling verifyFn). Fallback-to-local only for 'none'. Verified correct."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2: the release --promote still-pending die() message now names github.ciPollAttempts / ciPollIntervalMs, and locked test 4 asserts /still pending[\\s\\S]{0,120}ciPollAttempts/ against bin/chalk.mjs — reverting the message change would fail this test. The doc drift gate, description, and 0-escape accuracy are each pinned by their own locked assertions. Change is non-vacuously covered."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-09T07:47:23.213Z",
+    "doneAt": "2026-07-09T07:55:29.253Z"
   }
 ]

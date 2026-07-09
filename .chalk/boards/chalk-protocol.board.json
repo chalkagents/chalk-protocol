@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783583076136,
+  "updatedAt": 1783583729253,
   "order": 0,
   "cards": [
     {
@@ -749,6 +749,23 @@
           "runId": "done-task-31a6ed3b",
           "status": "passed",
           "at": 1783583076136
+        }
+      }
+    },
+    {
+      "id": "task-60394447",
+      "title": "docs: document the promote CI-poll knobs (ciPollIntervalMs/ciPollAttempts) in CONFIG + a runtime hint (#153)",
+      "column": "done",
+      "createdAt": 1783583243047,
+      "updatedAt": 1783583729253,
+      "order": 42,
+      "description": "- docs/CONFIG.md's github section DESCRIBES ciPollIntervalMs and ciPollAttempts — what they control (remote-CI polling cadence during merge/promote) and the ciPollAttempts:0 never-wait escape — not merely lists them; the docs/CONFIG.md ↔ initSpine drift gate stays green\n- The release --promote CI-poll timeout (still-pending) message points the user at github.ciPollAttempts / ciPollIntervalMs",
+      "testArtifact": {
+        "specPath": "test/config-cipoll-docs.test.mjs",
+        "lastRun": {
+          "runId": "done-task-60394447",
+          "status": "passed",
+          "at": 1783583729253
         }
       }
     }
