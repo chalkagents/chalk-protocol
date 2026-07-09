@@ -3397,5 +3397,78 @@
     ],
     "startedAt": "2026-07-09T04:46:13.984Z",
     "doneAt": "2026-07-09T04:49:10.724Z"
+  },
+  {
+    "id": "task-31a6ed3b",
+    "title": "feat: package-update handling — fix --version, opt-out update notifier, chalk upgrade (#158)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk --version and -v print the installed PACKAGE version (semver) and exit 0; chalk version still prints only the protocol tag (chalk/0) for scripts that parse it"
+      },
+      {
+        "text": "The update notifier is skip-FIRST and inert in every non-interactive/opted-out context (non-TTY, --json, CI, CHALK_NO_UPDATE_CHECK, protocol.updateCheck:false), prefers a fresh once-per-day cache over the network, and a registry failure never throws or changes a command's exit code / --json output"
+      },
+      {
+        "text": "chalk upgrade [--dry-run] prints (or runs) the correct global-npm update command"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/update-notifier.test.mjs",
+        "sha256": "ee40228380e16f37cd9e86994c5079f9d81d9d69a05d0ae1858122a3cdabf06e"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-09T07:37:59.568Z",
+    "reviews": [
+      {
+        "at": "2026-07-09T07:38:56.462Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 3 (`chalk upgrade [--dry-run]`) is entirely untested. The locked suite (test/update-notifier.test.mjs) covers only --version/-v and the update notifier; nothing spawns `chalk upgrade` or `chalk upgrade --dry-run` to assert it prints/runs `npm i -g chalk-protocol@latest`. The whole `upgrade` command could be deleted and the suite would still pass — a vacuous pass for an entire acceptance criterion. Per the hard rule, this alone requires block. A trivial `run('upgrade','--dry-run')` assertion on the printed command is missing."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The notifier's INTERACTIVE path (isTTY true, no opt-out) is never exercised end-to-end through bin/chalk.mjs. Every spawned test runs non-TTY, so the actual wiring in bin (the `process.stdout.isTTY && parsed.flags.json !== true` guard, config read via Store, console.error emission) is never asserted to emit a notice; only the pure lib functions are unit-tested. A regression that broke the bin-level invocation would go undetected."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`chalk upgrade` runs `npm i -g chalk-protocol@latest` unconditionally with no confirmation and inherits stdio; combined with being untested, a broken/incorrect command string would ship silently. Also the notifier reads protocol().updateCheck but the env-vs-config precedence (e.g., CHALK_NO_UPDATE_CHECK vs updateCheck:true) is only validated in isolation, not as composed in bin."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-09T07:42:31.552Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The interactive bin display path (process.stdout.isTTY branch that actually console.error's the notice) is never exercised end-to-end — TTY can't easily be faked in spawnSync tests. The risky guarantees (inertness under non-TTY/--json, no exit-code/JSON pollution) ARE covered via bin, and checkForUpdate's notice production is unit-tested, so this is thin untested glue rather than an uncovered feature. Reverting the bin diff would fail the --version/upgrade/inertness tests, so the suite is not vacuous."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "chalk upgrade non-dry-run (execSync 'npm i -g chalk-protocol@latest') is unavoidably untested; acceptable since criterion 3 is satisfied via the dry-run path and the command string is asserted."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Interactive notifier awaits checkForUpdate (up to a 1.5s network timeout) before running the actual command, adding latency to every interactive invocation; bounded and TTY-only, so within stated design but worth noting."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-09T07:37:59.744Z",
+    "doneAt": "2026-07-09T07:44:36.136Z"
   }
 ]

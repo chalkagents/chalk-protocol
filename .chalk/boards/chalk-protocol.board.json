@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783572550724,
+  "updatedAt": 1783583076136,
   "order": 0,
   "cards": [
     {
@@ -732,6 +732,23 @@
           "runId": "done-task-d1c37a28",
           "status": "passed",
           "at": 1783572550724
+        }
+      }
+    },
+    {
+      "id": "task-31a6ed3b",
+      "title": "feat: package-update handling — fix --version, opt-out update notifier, chalk upgrade (#158)",
+      "column": "done",
+      "createdAt": 1783582679568,
+      "updatedAt": 1783583076136,
+      "order": 41,
+      "description": "- chalk --version and -v print the installed PACKAGE version (semver) and exit 0; chalk version still prints only the protocol tag (chalk/0) for scripts that parse it\n- The update notifier is skip-FIRST and inert in every non-interactive/opted-out context (non-TTY, --json, CI, CHALK_NO_UPDATE_CHECK, protocol.updateCheck:false), prefers a fresh once-per-day cache over the network, and a registry failure never throws or changes a command's exit code / --json output\n- chalk upgrade [--dry-run] prints (or runs) the correct global-npm update command",
+      "testArtifact": {
+        "specPath": "test/update-notifier.test.mjs",
+        "lastRun": {
+          "runId": "done-task-31a6ed3b",
+          "status": "passed",
+          "at": 1783583076136
         }
       }
     }
