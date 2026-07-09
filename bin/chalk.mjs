@@ -728,7 +728,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         const everyMs = gh0.ciPollIntervalMs ?? 5000, maxAttempts = gh0.ciPollAttempts ?? 24;
         let st = ciStatus(s, { pr: { number: prNum } });
         for (let i = 0; st === 'pending' && i < maxAttempts; i++) { sleepMs(everyMs); st = ciStatus(s, { pr: { number: prNum } }); }
-        if (st === 'fail' || st === 'pending') die(`release --promote: CI on promotion PR #${prNum} is ${st === 'fail' ? 'RED' : 'still pending'} — resolve it and re-run. Nothing was marked released.`);
+        if (st === 'fail' || st === 'pending') die(`release --promote: CI on promotion PR #${prNum} is ${st === 'fail' ? 'RED' : `still pending after ${maxAttempts} check(s) — raise github.ciPollAttempts / ciPollIntervalMs for slower CI`} — resolve it and re-run. Nothing was marked released.`);
         try { runGh(s.root, gh0.command, `pr merge ${prNum} --merge`); }
         catch (e) {
           let merged = false; // mirror `chalk merge`: the merge may have SUCCEEDED even if gh exited non-zero
