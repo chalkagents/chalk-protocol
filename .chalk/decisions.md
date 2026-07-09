@@ -404,3 +404,8 @@
 
 - _when:_ 2026-07-08T18:27:17.321Z
 - _why:_ chalk migrate: stamp the writer version (chalk-protocol package) on the spine (backup: /Users/devid/Documents/projects/personal/chalk-protocol/.chalk/backups/2026-07-08T18-27-17-319Z)
+
+## Amended acceptance test for "feat: package-update handling — fix --version, opt-out update notifier, chalk upgrade (#158)"
+
+- _when:_ 2026-07-09T07:39:55.823Z
+- _why:_ Review round 1: cover chalk upgrade --dry-run (criterion 3, was untested) and the interactive notice-producing path (#158)
