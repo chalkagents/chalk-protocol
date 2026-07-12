@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783583729253,
+  "updatedAt": 1783865592463,
   "order": 0,
   "cards": [
     {
@@ -766,6 +766,22 @@
           "runId": "done-task-60394447",
           "status": "passed",
           "at": 1783583729253
+        }
+      }
+    },
+    {
+      "id": "task-4ee92393",
+      "title": "docs: embed the cheat-caught demo GIF in the \"Does the gate actually catch anything?\" README section",
+      "column": "done",
+      "createdAt": 1783865247353,
+      "updatedAt": 1783865592463,
+      "order": 43,
+      "description": "- README.md embeds docs/assets/cheat-caught.gif inside the \"Does the gate actually catch anything?\" section using a relative ./docs/assets/ path\n- The embed has descriptive alt text and a one-line caption naming what it shows (an agent gaming its locked test; the gate refusing)",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-4ee92393",
+          "status": "passed",
+          "at": 1783865592463
         }
       }
     }

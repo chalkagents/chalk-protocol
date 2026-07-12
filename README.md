@@ -109,6 +109,10 @@ Beyond the dev cycle, the loop closes end-to-end: `chalk discover` (brief → sc
 
 ## Does the gate actually catch anything?
 
+![An AI agent games its own locked test — it breaks the code, then guts the acceptance test until `node --test` passes — and `chalk done` still refuses. The gate decides, not the agent.](./docs/assets/cheat-caught.gif)
+
+*Caught in 30 seconds, no LLM: an agent breaks its code, then guts its own locked acceptance test until the test runner reports green — and the gate refuses to mark it done anyway.*
+
 Chalk measures itself. `chalk stats` reports what its gates caught over your whole history
 (live spine + archive) — review catches, churn made visible, gated-vs-bypassed landings.
 `chalk stats --public` renders a **PII-free, shareable** version (no task titles, paths, or
