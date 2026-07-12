@@ -3530,5 +3530,43 @@
     ],
     "startedAt": "2026-07-09T07:47:23.213Z",
     "doneAt": "2026-07-09T07:55:29.253Z"
+  },
+  {
+    "id": "task-4ee92393",
+    "title": "docs: embed the cheat-caught demo GIF in the \"Does the gate actually catch anything?\" README section",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "README.md embeds docs/assets/cheat-caught.gif inside the \"Does the gate actually catch anything?\" section using a relative ./docs/assets/ path"
+      },
+      {
+        "text": "The embed has descriptive alt text and a one-line caption naming what it shows (an agent gaming its locked test; the gate refusing)"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-07-12T14:07:27.353Z",
+    "reviews": [
+      {
+        "at": "2026-07-12T14:11:42.370Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The diff under review is enormous (30+ files: migrate, pipeline --parallel, stats --public, feedback --submit, etc.) for a docs-only task. This violates the 'keep diffs small and scoped' rule. However, the two acceptance criteria concern only the README embed, and those unrelated changes appear to be pre-existing branch commits carrying their own tests — they don't undermine the docs criteria."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Both criteria are verifiably met: README.md line 112 embeds ./docs/assets/cheat-caught.gif via a relative ./docs/assets/ path; the alt text describes an agent gaming its locked test and chalk done refusing; line 114 is a one-line italic caption naming what it shows. The referenced GIF file exists on disk (docs/assets/cheat-caught.gif). A docs-content criterion is not automatable, so absence of a test is not a vacuous-pass violation here."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-12T14:07:49.777Z",
+    "doneAt": "2026-07-12T14:13:12.463Z"
   }
 ]

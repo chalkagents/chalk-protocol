@@ -414,3 +414,8 @@
 
 - _when:_ 2026-07-09T07:52:05.358Z
 - _why:_ Review fix: corrected the inaccurate ciPollAttempts:0 description (it BLOCKS a pending check, not local-verify fallback) + added a brokeCheck behavioral test tying the doc to code (#153)
+
+## Embedded cheat-caught.gif in the README gate-efficacy section
+
+- _when:_ 2026-07-12T14:13:22.749Z
+- _why:_ Shows the gate refusing a gamed locked test right where readers ask 'does it catch anything?'
