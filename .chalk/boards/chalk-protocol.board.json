@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783583729253,
+  "updatedAt": 1783919575145,
   "order": 0,
   "cards": [
     {
@@ -766,6 +766,74 @@
           "runId": "done-task-60394447",
           "status": "passed",
           "at": 1783583729253
+        }
+      }
+    },
+    {
+      "id": "task-f2c154c5",
+      "title": "feat: post-run feedback nudge — after a productive `chalk run`, point the user at `chalk feedback --submit` (opt-out via CHALK_NO_NUDGE) (#155)",
+      "column": "done",
+      "createdAt": 1783868984802,
+      "updatedAt": 1783869247448,
+      "order": 43,
+      "description": "- feedbackNudge() returns a string pointing at 'chalk feedback --submit' after a productive run (merged>0 or blocked>0), and null on a no-op sweep (0/0) or when CHALK_NO_NUDGE is set\n- chalk run wires feedbackNudge into its end-of-run summary (imported + called with the loop's merged/blocked totals)",
+      "testArtifact": {
+        "specPath": "test/feedback-nudge.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f2c154c5",
+          "status": "passed",
+          "at": 1783869247448
+        }
+      }
+    },
+    {
+      "id": "task-81a90f03",
+      "title": "fix: decouple the issue-pull count from the loop parser — one shared literal so a CLI reword can't silently zero the standing loop's steady-state detection",
+      "column": "done",
+      "createdAt": 1783910735461,
+      "updatedAt": 1783910968435,
+      "order": 44,
+      "description": "- The 'pulled N new issue(s)' phrasing and its parser live in one shared module (lib/pull-count.mjs); bin/chalk.mjs emits via pulledIssuesLine and lib/loop.mjs reads via parsePulledIssues — no divergent inline literal\n- parsePulledIssues round-trips pulledIssuesLine, reads the count through bold-ANSI wrapping + the '(N already tracked)' suffix, and returns 0 when the line is absent",
+      "testArtifact": {
+        "specPath": "test/pull-count.test.mjs",
+        "lastRun": {
+          "runId": "done-task-81a90f03",
+          "status": "passed",
+          "at": 1783910968435
+        }
+      }
+    },
+    {
+      "id": "task-f68a76ae",
+      "title": "fix: reviewer diffs against the LOCAL base first — a stale/divergent local dev balloons the review diff to the whole branch history; prefer origin/<base>",
+      "column": "done",
+      "createdAt": 1783915753672,
+      "updatedAt": 1783915964365,
+      "order": 45,
+      "description": "- captureDiff's strategy order prefers origin/<base>...HEAD over <base>...HEAD, so a stale/divergent local base branch can't balloon the review diff to the whole base-vs-trunk history\n- The strategy list is exposed as a pure function (diffStrategies) and preserves working-tree-first + the branchless last-commit/empty-tree fallbacks after the base-relative diffs",
+      "testArtifact": {
+        "specPath": "test/review-diff-base.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f68a76ae",
+          "status": "passed",
+          "at": 1783915964365
+        }
+      }
+    },
+    {
+      "id": "task-6ee416c2",
+      "title": "ci: add concurrency groups — cancel superseded test runs; serialize releases without cancelling an in-flight publish",
+      "column": "done",
+      "createdAt": 1783919156200,
+      "updatedAt": 1783919575145,
+      "order": 46,
+      "description": "- test.yml declares a top-level concurrency group with cancel-in-progress: true so a newer push supersedes an in-flight test run\n- release.yml declares a top-level concurrency group with cancel-in-progress: false — a publish is never cancelled mid-flight",
+      "testArtifact": {
+        "specPath": "test/ci-concurrency.test.mjs",
+        "lastRun": {
+          "runId": "done-task-6ee416c2",
+          "status": "passed",
+          "at": 1783919575145
         }
       }
     }
