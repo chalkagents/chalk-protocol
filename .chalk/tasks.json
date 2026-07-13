@@ -3702,5 +3702,708 @@
     ],
     "startedAt": "2026-07-13T05:05:56.361Z",
     "doneAt": "2026-07-13T05:12:55.145Z"
+  },
+  {
+    "id": "task-cb9bccc9",
+    "title": "chore: enable GitHub Discussions + add issue/feedback templates and a post-run feedback nudge",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 155,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/155",
+      "body": "## Why\nWe have distribution but no low-friction feedback channel. The warmest audience — people who just finished a chalk loop — is never invited to say anything.\n\n## What\n- **Enable GitHub Discussions** on chalkagents/chalk-protocol (Q&A + Ideas + Show-and-tell categories).\n- **Issue templates** (`.github/ISSUE_TEMPLATE/`): a \"share your setup + biggest friction\" form and a bug form that auto-collects `chalk --version` + `chalk doctor` summary.\n- **Post-run nudge**: after a successful `chalk done` / end of a `chalk run`, print a single dim line inviting a ⭐ or feedback with the `chalk feedback --submit` command (see the in-CLI feedback feature) — shown at most once per day, suppressible via config/env.\n\n## Acceptance\n- Discussions enabled; templates present and render on GitHub.\n- The nudge is rate-limited (≤1/day), suppressible (`CHALK_NO_NUDGE=1`), and never interleaves with machine-readable `--json` output.\n- A locked test asserts the nudge is suppressed under `--json` and when disabled."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.580Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.585Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "human-input",
+      "reason": "Duplicate of #155 — post-run nudge shipped by task-f2c154c; issue/feedback templates (.github/ISSUE_TEMPLATE/{bug_report,feature_request,friction_report}.yml) already present. Only remaining piece is enabling GitHub Discussions, a repo-admin action outside this session.",
+      "at": "2026-07-13T12:45:42.624Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-cb9bccc-1.md",
+      "at": "2026-07-13T12:45:42.651Z",
+      "reason": "human-input",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-c9513f37",
+    "title": "docs: document the promote CI-poll knobs (ciPollIntervalMs / ciPollAttempts) in help and CONFIG",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 153,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/153",
+      "body": "## Gap\n`chalk release --promote` polls the promotion PR’s CI in a loop up to `ciPollAttempts` times (default ~24) every `ciPollIntervalMs` (default ~5s) — up to ~2 hours — but neither the CLI help (`bin/chalk.mjs:~1809`) nor `docs/CONFIG.md` mentions the knobs or the wait. A developer running promote is surprised by the long wait and has no documented way to tune it.\n\n## Suggested direction\n- Add `ciPollIntervalMs` / `ciPollAttempts` to `docs/CONFIG.md` with defaults and effect.\n- Mention the CI-poll behavior in the `release --promote` help text.\n- Consider logging the effective timeout when polling begins (“waiting up to N min for CI…”).\n\n## Acceptance\n- CONFIG.md documents both knobs; help text references CI polling. (Doc-only; no gate test required, but a help-text assertion is welcome.)\n\nGrounded in: `bin/chalk.mjs:688-692`."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.592Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.592Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #153 — shipped by task-6039444 (merged, commit 766be82). CI-poll knobs documented in CONFIG + runtime hint. No code work remains; parked pending issue close.",
+      "at": "2026-07-13T12:45:42.542Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-c9513f3-1.md",
+      "at": "2026-07-13T12:45:42.579Z",
+      "reason": "decision",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-9f631779",
+    "title": "docs(skills): add a chalk-autopilot-setup skill for readying an unattended run",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": ".claude/skills/chalk-autopilot-setup/SKILL.md exists with YAML frontmatter whose description triggers on 'set up autopilot'/'ready for unattended'/'chalk doctor fails'/'resume after churn'"
+      },
+      {
+        "text": "Provides a chalk doctor FAIL/WARN -> fix table: set executor.command, configure a reviewer (avoid same-model as executor — self-preference bias), lock tests on runnable tasks, set worktree.setup"
+      },
+      {
+        "text": "Documents held-out isolation (P7, #82): gitignored in-repo dir hidden by a worktree, OR a manual-mode path OUTSIDE the repo root; and the vacuous-verify guard (empty protocol.verify prints GREEN checking nothing)"
+      },
+      {
+        "text": "Documents churn/handoff resume: exceeding handoff.maxAttempts (default 3) writes .chalk/handoffs/<id>-N.md; resume in a FRESH session with chalk context <id>"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 149,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/149",
+      "body": "## Why\nBefore `chalk run`/`chalk pipeline`, `chalk doctor` must pass, but doctor is read-only — the fixes (executor, reviewer, test-locks, held-out isolation) are all manual, and churn/handoff resume is undocumented.\n\n## What it should encode\n- Run `chalk doctor`; map each FAIL/WARN to its fix: set `executor.command`, configure a reviewer (avoid same-model as executor — self-preference bias, `lib/config.mjs`), lock tests on runnable tasks, set `worktree.setup`.\n- **Held-out isolation** (P7): worktree+gitignored in-repo, OR manual-mode outside the repo root (#82) — `heldOutBase()` resolution.\n- **Vacuous-verify guard**: an empty `protocol.verify` prints GREEN checking nothing — ensure real checks before queuing tasks.\n- **Churn/handoff resume**: when a task exceeds `handoff.maxAttempts` (default 3) a handoff is written to `.chalk/handoffs/<id>-N.md`; resume in a FRESH session with `chalk context <id>`.\n\n## Acceptance\n- `.claude/skills/chalk-autopilot-setup/SKILL.md` with frontmatter + trigger (\"set up autopilot\", \"ready for unattended\", \"chalk doctor fails\", \"resume after churn\").\n- Doctor-failure → fix table + isolation guidance + handoff-resume steps.\n\nGrounded in: `lib/doctor.mjs`, `lib/regression.mjs`, `lib/handoff.mjs`, `lib/run.mjs:71-78`. Related: #82."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.595Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.595Z",
+    "reviews": [
+      {
+        "at": "2026-07-13T13:43:29.899Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Skill lists the lock command as `chalk spec <id> --test <path>`; the canonical/help form is `chalk spec <id> --criterion \"...\" --test <path>`. The abbreviated form is valid but slightly under-specified vs the CLI help text."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No locked acceptance test exists for the skill (criteria are content requirements). Acceptable here because the change is pure documentation with no executable behavior to assert; all four criteria are verifiable by inspection and are present and factually consistent with doctor.mjs/handoff.mjs/regression.mjs."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-13T13:41:58.292Z",
+    "doneAt": "2026-07-13T13:45:06.610Z"
+  },
+  {
+    "id": "task-3807fafa",
+    "title": "docs(skills): add a chalk-dogfood skill for contributing to chalk via chalk",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": ".claude/skills/chalk-dogfood/SKILL.md exists with YAML frontmatter whose description triggers on 'contribute to chalk'/'dogfood'/'run the loop on chalk itself'"
+      },
+      {
+        "text": "States issue-backed tasks go through the GitHub pipeline (chalk branch -> work -> commit -> pr -> review -> merge); hand-committing to main skips the PR record and leaves stages stale"
+      },
+      {
+        "text": "Encodes the ordering gotchas: commit issue-intake spine metadata in its OWN chore(spine) commit BEFORE feature work, commit review-fix changes MANUALLY (chalk commit no-ops #134) verifying git status clean + git show --stat HEAD before chalk merge, commit sha256-pinned locked tests in the same change, and reconcile with chore(spine) after out-of-band merges"
+      },
+      {
+        "text": "Links chalk-commit (#141) and chalk-ship (#142)"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 148,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/148",
+      "body": "## Why\nThe self-hosting loop is the intended contribution path but its ordering rules are scattered across `CONTRIBUTING.md` + 5 lessons, and getting them wrong creates review noise or lost work.\n\n## What it should encode\n- **Issue-backed tasks go through the GitHub pipeline** (`chalk branch → work → commit → pr → review → merge`) — hand-committing to main skips the PR record.\n- **Commit issue-intake spine metadata** (new task specs, board rows) in its OWN `chore(spine):` commit BEFORE feature work — otherwise `.chalk/tasks.json` noise pollutes the scoped diff and review flags it.\n- **Commit review-fix changes MANUALLY** — `chalk commit` no-ops after the first commit (#134); verify `git status` clean + `git show --stat HEAD` before `chalk merge`.\n- Commit a sha256-pinned locked test in the same change that creates it.\n- Reconcile the spine with `chore(spine):` commits after out-of-band merges.\n\n## Acceptance\n- `.claude/skills/chalk-dogfood/SKILL.md` with frontmatter + trigger (\"contribute to chalk\", \"dogfood\", \"run the loop on chalk itself\").\n- Encodes the ordering rules with the commit-manually and spine-first gotchas; links chalk-commit (#141) + chalk-ship (#142).\n\nGrounded in: `CONTRIBUTING.md`, `.chalk/lessons.md`. Related: #134, #141, #142."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.598Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.598Z",
+    "reviews": [
+      {
+        "at": "2026-07-13T13:39:34.522Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 1: frontmatter description includes all three triggers ('contribute to chalk', 'dogfood', 'run the loop on chalk itself') — satisfied."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 2: pipeline 'chalk branch → work → commit → pr → review → merge' stated verbatim, plus the hand-committing-skips-PR-record/stale-stages warning — satisfied."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 3: all four ordering gotchas present — spine-first chore(spine) before feature work; lock-in-same-change (sha256-pinned); manual review-fix commit with #134 no-op note and git status/git show --stat HEAD verification before merge; reconcile via chore(spine) after out-of-band merges — satisfied."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 4: links chalk-commit (#141) and chalk-ship (#142) in See-also — satisfied."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No locked tests specified (none exist); this is a documentation/skill file with no executable behavior. All acceptance criteria are statically verifiable by inspection and were confirmed against the file contents, so absence of an automated test is not a coverage gap here."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-13T13:38:27.737Z",
+    "doneAt": "2026-07-13T13:41:18.557Z"
+  },
+  {
+    "id": "task-d450bc60",
+    "title": "docs(skills): add a chalk-release skill for the release + protected-deploy flow",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": ".claude/skills/chalk-release/SKILL.md exists with YAML frontmatter whose description triggers on 'cut a release'/'promote release'/'release stuck'"
+      },
+      {
+        "text": "Documents chalk release --commit (release commit + tag, orphan-resume via git log --grep at any depth, #125) vs --promote (base->deployBase promotion PR, CI poll, merge, tag deploy tip, #98; requires base != deployBase)"
+      },
+      {
+        "text": "Documents the --version semantics + version-collision probing, and the CI-poll knobs ciPollIntervalMs / ciPollAttempts (default ~5s x 24)"
+      },
+      {
+        "text": "Documents how to safely re-run after an interruption at each step (idempotent resume)"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 147,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/147",
+      "body": "## Why\n`chalk release` is the single most complex command (~200 lines, references #91/#93/#98/#125) with orphan-recovery, tag-collision, and a multi-step promote choreography. The flow lives only in code comments.\n\n## What it should encode\n- **`--commit`**: cut a release commit + tag; orphan detection resumes an interrupted run (release commit made but tag missing) via `git log --grep` at ANY depth (#125).\n- **`--promote`** (protected deploy): run on the integration/base branch → release commit → open promotion PR to the deploy branch → poll CI → squash/MERGE → tag on deploy tip → push tag (#98). Requires base ≠ deployBase configured.\n- **`--version`** semantics + version-collision probing.\n- **CI-poll knobs**: `ciPollIntervalMs` / `ciPollAttempts` (default ~5s × 24) — how to control the wait.\n- How to safely re-run after an interruption at each step.\n\n## Acceptance\n- `.claude/skills/chalk-release/SKILL.md` with frontmatter + trigger (\"cut a release\", \"promote release\", \"release stuck\").\n- Covers commit vs promote, the recovery/resume paths, and the CI-poll knobs.\n\nGrounded in: `bin/chalk.mjs:529-724`. Related: #91, #93, #98, #125."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.601Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.601Z",
+    "reviews": [
+      {
+        "at": "2026-07-13T13:31:59.352Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "SKILL.md step 4 says 'Squash/merge the promotion PR into the deploy branch,' but bin/chalk.mjs (line 732) does `pr merge --merge` — an explicit MERGE commit REGARDLESS of github.mergeMethod (default 'squash'), as the PR body itself states ('Merged with a MERGE commit'). This is deliberate (the merge commit carries the release commit so the tag lands on the right tip). Documenting it as 'squash/merge' misrepresents the command's core behavior and would mislead a user who has mergeMethod=squash configured."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "Criterion 3: the doc states ciPollAttempts default 24 → '~2 min at 5s'. Code confirms 5000ms x 24 = ~120s, but the doc omits the documented ciPollAttempts:0 'never wait' escape (present in the #153 CONFIG docs and code comment at brokecheck.mjs), so the version/knob semantics are documented incompletely."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "No test asserts any of the four criteria for this file. There are zero locked tests; nothing verifies SKILL.md exists, that the frontmatter description triggers on the required phrases, or that the documented --commit/--promote/knob/resume claims match code. The change ships wholly uncovered — reverting the file would fail no test."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Criterion 2 asks to document orphan-resume specifically as '#125' and promote as '#98'; the doc labels orphan-resume '#125' but the code's orphan-detection comments cite #91/#125 interchangeably, and the merge-commit-regardless-of-mergeMethod invariant (a key promote design point) is not documented at all."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-13T13:36:07.497Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Docs-only task with no locked tests. Nothing automatically asserts SKILL.md exists, that its YAML frontmatter is valid/parseable, or that the description contains the trigger phrases — but this is a documentation skill file with no executable behavior, so the no-test-for-behavior hard rule does not apply. Content was verified by hand against the implementation instead."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Verified all 4 criteria against bin/chalk.mjs and lib/release.mjs and they are accurate: git log -1 -E --grep at any depth for orphan-resume (#125, line 610); --commit commits+tags with up-front collision probe (661-663); --promote requires deploy!=base (592), opens base->deployBase PR, polls CI, merges with explicit `pr merge --merge` regardless of github.mergeMethod (732), tags deploy tip; ciPollIntervalMs default 5000 / ciPollAttempts default 24 (728), and 0 => fails immediately if pending (730-731); idempotent resume paths (merge-base ancestor check, find-or-create PR, fetch+tag) all match the documented resume guidance. No inaccuracies found."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-13T13:30:17.220Z",
+    "doneAt": "2026-07-13T13:37:50.634Z"
+  },
+  {
+    "id": "task-44fb4b34",
+    "title": "docs(skills): add a chalk-add-command skill for scaffolding a new CLI command",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": ".claude/skills/chalk-add-command/SKILL.md exists with YAML frontmatter whose description triggers on 'add a CLI command'/'new chalk command'"
+      },
+      {
+        "text": "Step-by-step with the 4 wiring points: lib/<name>.mjs logic module, a method on the cmds object in bin/chalk.mjs, a help line in the help text/arg parser, and a LOCKED acceptance test in test/protocol.test.mjs or test/pipeline.test.mjs"
+      },
+      {
+        "text": "States the test-is-contract rule (that suite IS the contract; make node --test green) and that the spine (lib/store.mjs) is the only state writer; reuse lib/* utilities"
+      },
+      {
+        "text": "References the chalk-codebase skill for the module map"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 146,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/146",
+      "body": "## Why\nAdding a CLI command has a consistent but entirely implicit pattern — a contributor must reverse-engineer it from existing commands. No doc maps the steps.\n\n## What it should encode\n- Create `lib/<name>.mjs` exporting the logic (follow existing modules like `lib/retro.mjs`, `lib/discovery.mjs`).\n- Add a method to the `cmds` object in `bin/chalk.mjs` + a help line in the help text/arg parser.\n- **Add or update its LOCKED acceptance test** in `test/protocol.test.mjs` (gate tests) or `test/pipeline.test.mjs` (pipeline tests) — that suite IS the contract — and make `node --test` green.\n- Keep the spine as the only state writer (`lib/store.mjs`); reuse `lib/*` utilities over new code.\n\n## Acceptance\n- `.claude/skills/chalk-add-command/SKILL.md` with frontmatter + trigger (\"add a CLI command\", \"new chalk command\").\n- Step-by-step with the 4 wiring points and the test-is-contract rule; references chalk-codebase.\n\nGrounded in: `bin/chalk.mjs` cmds object, `lib/store.mjs`, `test/protocol.test.mjs`."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.603Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.603Z",
+    "reviews": [
+      {
+        "at": "2026-07-13T13:28:19.927Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The doc references a `chalk-locked-tests` skill (#144) in steps 4/rules/see-also, but only chalk-codebase, chalk-conventions, and chalk-add-command exist under .claude/skills/ — this is a dangling reference. Not part of the acceptance criteria (which only require referencing chalk-codebase, present and accurate), so non-blocking."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Frontmatter description says 'new chalk subcommand' rather than the criterion's exact 'new chalk command' phrasing; semantically equivalent and 'add a CLI command' appears verbatim, so trigger coverage is satisfied."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No locked tests (task declares none) and none exist. This is a documentation-only change with no executable behavior to assert; all four criteria are content-presence claims verifiable by reading the file, and each is satisfied. The referenced lib modules (retro, discovery, store, git, config, verify) and the cmds object in bin/chalk.mjs all exist, so the doc is factually accurate."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-13T13:27:15.623Z",
+    "doneAt": "2026-07-13T13:29:56.555Z"
+  },
+  {
+    "id": "task-d14e3648",
+    "title": "docs(skills): add a chalk-debug-gate skill for diagnosing RED verify / review BLOCK / audit RED",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": ".claude/skills/chalk-debug-gate/SKILL.md exists with YAML frontmatter whose description triggers on 'verify red'/'review blocked'/'audit failed'/'cant mark done'"
+      },
+      {
+        "text": "Provides a symptom -> gate -> remediation decision tree covering RED verify (toolchain vs test-integrity VIOLATED vs e2e), review BLOCK, audit RED (P7), and done-gate refusals (P4/P6/P5)"
+      },
+      {
+        "text": "States review BLOCK is agent-owned (needs:review, not a human dep): fix findings, git commit MANUALLY (chalk commit no-ops #134), re-run chalk review, chalk unblock clears it (#117)"
+      },
+      {
+        "text": "States audit RED tells you ONLY that a criterion regressed, never the held-out assertion: fix against the spec, never inspect .chalk/held-out/"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 145,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/145",
+      "body": "## Why\nWhen a gate fails the reason varies and the surfaced output is terse (verify tail truncates to ~12 lines; audit is blind by design). No guide maps failure→diagnosis→fix.\n\n## What it should encode\n- **RED verify**: distinguish toolchain failure vs test-integrity VIOLATED vs e2e failure (`bin/chalk.mjs:1406-1408`). Re-run `chalk verify` for detail; read full toolchain output, not the tail.\n- **Review BLOCK**: this is **agent-owned** work (`needs: review`), NOT a human dependency — fix the findings, `git commit` the fix MANUALLY (chalk commit no-ops, #134), then `chalk review <id>`; `chalk unblock` clears the needs:review block (#117).\n- **Audit RED (P7)**: you are told ONLY that a criterion regressed, never the held-out assertion — fix against the spec, never inspect `.chalk/held-out/`.\n- **Done-gate refusals**: P4+P6+P5 map (`bin/chalk.mjs:1406-1417`) — which gate blocked and why.\n\n## Acceptance\n- `.claude/skills/chalk-debug-gate/SKILL.md` with frontmatter + trigger (\"verify red\", \"review blocked\", \"audit failed\", \"cant mark done\").\n- A decision-tree: symptom → which gate → remediation, with commands.\n\nGrounded in: `lib/verify.mjs`, `lib/review.mjs`, `lib/regression.mjs`, `bin/chalk.mjs:1406-1417`. Related: #117, #134."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.606Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.606Z",
+    "reviews": [
+      {
+        "at": "2026-07-13T13:25:26.100Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No automated test asserts the SKILL.md content (frontmatter triggers, decision-tree coverage). Acceptable here because the task is pure documentation with no executable behavior and no locked acceptance tests are specified; all four criteria are verifiable by inspection and are met by the file."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 2 asks the done-gate section to cover P4/P6/P5 refusals; section 4 maps refusals by message and defers to sections 1/2 (labeled P4/P6 and P5) rather than enumerating the codes inline, but the mapping is complete and correct."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-13T13:24:06.008Z",
+    "doneAt": "2026-07-13T13:26:48.448Z"
+  },
+  {
+    "id": "task-86cb4f90",
+    "title": "docs(skills): add a chalk-locked-tests skill for the pin/amend test workflow",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": ".claude/skills/chalk-locked-tests/SKILL.md exists with YAML frontmatter whose description triggers on 'lock a test'/'amend spec'/'test integrity'"
+      },
+      {
+        "text": "Documents the create->pin->commit sequence: author a fail-first test, chalk spec --test <path> to sha256-lock, and commit the lock in the SAME change (untracked lock ships a vacuous green)"
+      },
+      {
+        "text": "Documents chalk amend-spec <id> --test <path> --why as the ONLY sanctioned way to change a locked test, that it STALES any prior passing review (fresh review required before done), and to amend only AFTER the suite is green"
+      },
+      {
+        "text": "States locked files are read-only: never edit/weaken/delete/rename directly; put a real asserting test for CLI-wiring/e2e criteria IN the locked file"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 144,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/144",
+      "body": "## Why\nThe locked-test lifecycle is the sharpest, most-cited friction area in the repo — `.chalk/lessons.md` has 7+ warnings about it and nothing encodes the procedure end-to-end.\n\n## What it should encode\n- **Author-fail-first**: write a test that FAILS without the change, passes with it.\n- **Pin it**: `chalk spec --test <path>` sha256-locks the file.\n- **Commit the lock in the SAME change that creates it** — an untracked locked test ships a vacuous green (tracking gate #107/#113).\n- **Put a real asserting test for CLI-wiring / e2e criteria in the LOCKED file**, not only an editable suite.\n- **`chalk amend-spec <id> --test <path> --why \"...\"`** is the ONLY sanctioned way to change a locked test. It **stales any prior passing review** (`bin/chalk.mjs:1451-1457`) — a fresh review is then required before `done`.\n- **Amend only AFTER the suite is green** — re-locking a red file forces a second amendment (per lessons).\n- Never edit/weaken/delete/rename a locked file directly.\n\n## Acceptance\n- `.claude/skills/chalk-locked-tests/SKILL.md` with frontmatter + trigger (\"lock a test\", \"amend spec\", \"test integrity\").\n- Covers the create→pin→commit→amend sequence with exact commands and the review-staling consequence.\n\nGrounded in: `bin/chalk.mjs:1438-1462`, `lib/verify.mjs:49-53`, `.chalk/lessons.md`. Related: #107, #113."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.609Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.609Z",
+    "reviews": [
+      {
+        "at": "2026-07-13T13:22:12.814Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Docs-only skill file. All four criteria verified against content: (1) frontmatter description triggers on 'lock a test'/'amend a spec'/'test integrity'; (2) create→pin→commit with fail-first + chalk spec --test + same-change commit + untracked-vacuous-green warning; (3) amend-spec as only sanctioned door, stales prior review requiring fresh review before done, amend only after green; (4) read-only rule (no edit/weaken/delete/rename) + put real assertion in the locked file for CLI-wiring/e2e. Documented commands verified accurate against bin/chalk.mjs — 'spec' (L1246) and 'amend-spec' (L1520) exist, and amend-spec pushes a 'stale' review verdict (L1537), confirming the review-staling claim."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No tests accompany the change, but this is a pure documentation/markdown skill file with no executable behavior; the acceptance criteria are content-presence requirements, all of which are met. No locked tests were specified for this task."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-13T13:20:51.564Z",
+    "doneAt": "2026-07-13T13:23:39.315Z"
+  },
+  {
+    "id": "task-7502f310",
+    "title": "docs(skills): add a chalk-branch-cleanup skill for pruning stale branches",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": ".claude/skills/chalk-branch-cleanup/SKILL.md exists with YAML frontmatter (name, description) whose description triggers on 'clean up branches'"
+      },
+      {
+        "text": "Prominently documents that git branch --merged is UNRELIABLE here (squash merges are not ancestors) and PR state must be verified via gh pr list --head <branch> --state all --json state (delete only when MERGED)"
+      },
+      {
+        "text": "Includes exact commands: git fetch --prune, git push origin --delete, git branch -vv gone-detection + -D, resync main to origin/main"
+      },
+      {
+        "text": "Includes the safety step: never delete an OPEN/no-PR branch without checking git log origin/main..<branch> for unmerged commits first"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 143,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/143",
+      "body": "## Why\nBranch cleanup was just done ad-hoc this session. The key subtlety — **squash-merged branches do NOT show as merged by ancestry**, so `git branch --merged` misses them and you must verify PR state via `gh` — is easy to get wrong (and risky: deleting an unmerged branch loses work). A `chalk-branch-cleanup` skill makes it repeatable and safe.\n\n## What it should encode\n- `git fetch --prune` first — clears local tracking refs for branches already deleted on the remote.\n- **Do NOT trust `git branch --merged origin/main`** for this repo: it squash-merges, so merged feature branches are not ancestors of main. Instead verify each branch's PR: `gh pr list --head <branch> --state all --json state` → only delete when `MERGED`.\n- Delete remote merged branches: `git push origin --delete <branches...>`.\n- Delete stale local branches whose upstream is `gone` (`git branch -vv`), force-delete (`-D`) since squash merges are not ancestors — but only after confirming the PR is `MERGED`.\n- Resync `main` to `origin/main` when it has drifted behind.\n- **Safety rule**: never delete a branch with an OPEN or no PR without checking `git log origin/main..<branch>` for unmerged commits first.\n\n## Acceptance\n- `.claude/skills/chalk-branch-cleanup/SKILL.md` exists with frontmatter and a trigger description covering \"clean up branches\".\n- Content includes the exact commands and the squash-merge/gh-verification caveat prominently.\n- Includes the \"check unmerged commits before deleting a non-MERGED branch\" safety step."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.611Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.611Z",
+    "reviews": [
+      {
+        "at": "2026-07-13T13:18:55.568Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 2 specifies '--json state' but the skill uses '--json number,state'. This is a superset that still includes the required state field and correctly instructs 'delete ONLY when state == MERGED', so the intent (verify PR state via gh, delete only when MERGED) is fully satisfied."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No locked tests exist and none were added, but the task is a pure documentation skill (SKILL.md content) with no runtime/executable behavior; all four criteria are structural/content requirements verifiable by direct inspection, which confirms they are met: frontmatter+trigger, git-branch--merged-unreliable warning, gh pr list verification, all four exact commands (fetch --prune, push origin --delete, branch -vv gone-detection + -D, resync main to origin/main), and the git log origin/main..<branch> safety check for OPEN/no-PR branches."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-13T13:18:03.239Z",
+    "doneAt": "2026-07-13T13:20:26.191Z"
+  },
+  {
+    "id": "task-c81bb14c",
+    "title": "docs(skills): add a chalk-ship skill for pushing and landing PRs safely",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": ".claude/skills/chalk-ship/SKILL.md exists with YAML frontmatter (name: chalk-ship, description) whose description triggers on 'push'/'open PR'/'land'"
+      },
+      {
+        "text": "Documents the single-PR path (normal squash-merge when nothing stacks)"
+      },
+      {
+        "text": "Documents the stacked-PR --delete-branch trap and the bottom-up A<-B<-C landing procedure with exact gh commands (merge without --delete-branch, gh pr edit --base, retarget children, delete branches last)"
+      },
+      {
+        "text": "Includes the pre-merge committed-fix check (ties to #134) and cross-references chalk-commit"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 142,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/142",
+      "body": "## Why\nLanding PRs in this repo has a sharp, expensive trap that has already bitten us (stacked PRs auto-closed by `--delete-branch`). The safe procedure lives only in a memory note. A `chalk-ship` skill would make push/PR-landing uniform and trap-free.\n\n## What it should encode\n- **Branch naming**: `<type>/<issue>-<slug>`.\n- **The stacked-PR `--delete-branch` trap**: never `gh pr merge --delete-branch` a PR whose head is the BASE of another open PR — it auto-CLOSES the child, and a closed PR whose base branch is gone cannot be reopened or rebased. You must recreate it.\n- **Landing a stack A←B←C bottom-up**:\n  1. Merge A **without** `--delete-branch` (use `--merge`, not `--squash`, to preserve shared ancestry so children stay mergeable).\n  2. `gh pr edit B --base main`, confirm `mergeable: MERGEABLE`, merge B (no delete). Repeat for C.\n  3. Delete all merged branches **at the end**, once nothing targets them.\n  - GitHub does NOT reliably auto-retarget children — retarget each child explicitly before merging it.\n- **Single-PR path**: normal squash-merge is fine when nothing stacks on it.\n- **Pre-merge check**: confirm the fix is actually committed (ties into the chalk-commit no-op hazard, #134) before merge.\n\n## Acceptance\n- `.claude/skills/chalk-ship/SKILL.md` exists with frontmatter and a trigger description covering \"push\"/\"open PR\"/\"land\".\n- Content covers the single-PR path AND the stacked-PR procedure with the exact `gh` commands.\n- Cross-references `chalk-commit`.\n\nRelated: #134"
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-13T12:44:37.614Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.614Z",
+    "reviews": [
+      {
+        "at": "2026-07-13T13:16:06.862Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 3 says GitHub 'does not reliably auto-retarget children'; in practice GitHub does auto-retarget child PRs when a base merges, but the doc's explicit-retarget guidance is safe and conservative, so no criterion is violated."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No locked tests exist and none are required — this is a pure Markdown SKILL.md doc with no executable behavior. All four criteria are content-presence requirements, each directly verifiable in the file: valid YAML frontmatter with name/description triggering on push/open PR/land (L1-4), single-PR squash path (L33-42), stacked-PR --delete-branch trap + bottom-up A<-B<-C procedure with exact gh commands (L44-74), and pre-merge committed-fix check tied to #134 cross-referencing chalk-commit (L17-31, L78)."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-13T13:15:02.355Z",
+    "doneAt": "2026-07-13T13:17:32.246Z"
+  },
+  {
+    "id": "task-1a995ac3",
+    "title": "docs(skills): add a chalk-commit skill for uniform commit discipline",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": ".claude/skills/chalk-commit/SKILL.md exists with YAML frontmatter (name: chalk-commit, description) whose description triggers on 'commit'/'save changes'"
+      },
+      {
+        "text": "Documents conventional-commit format (types, imperative, <=70 chars, no period), the chore(spine): reconcile pattern, and the Closes #n body convention"
+      },
+      {
+        "text": "Documents the chalk commit no-op hazard (#134) with an explicit manual-commit-after-review checklist (git add/commit, verify git status clean + git show --stat HEAD before chalk merge)"
+      },
+      {
+        "text": "States the Co-Authored-By policy: omitted on pipeline-agent commits, applied on human/main-loop commits; includes a concrete example commit and cross-references chalk-conventions"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 141,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/141",
+      "body": "## Why\nCommit conventions and the real commit hazards in this repo live only in scattered memory notes, not in a discoverable skill. New sessions rediscover them (or repeat mistakes). A `chalk-commit` skill would give the main-loop agent one uniform commit discipline.\n\n## What it should encode\n- **Conventional commits**: `<type>(<scope>): <description>` — imperative, lowercase, ≤70 chars, no period. Types: feat, fix, refactor, chore, docs, style, perf, test, build, ci.\n- **The `chore(spine):` reconcile pattern** — how spine/state reconciliation commits are titled (see `git log` for `chore(spine): …` examples).\n- **The `chalk commit` no-op hazard (#134)**: `chalk commit` guards on `stageDone(t, 'committed')` and returns \"already done\" after the first commit. Any review→fix changes made after the first commit are NOT re-committed and get squash-merged away. **Rule: after addressing a review BLOCK, `git add <files> && git commit` MANUALLY, and verify `git status` is clean + `git show --stat HEAD` includes your files BEFORE `chalk merge`.**\n- **Co-Authored-By policy**: the `chalk-conventions` skill says pipeline commits must NEVER add a `Co-Authored-By` trailer. Document when the trailer applies (human/main-loop commits) vs when it must be omitted (pipeline agent commits) so the two do not conflict.\n- **Link the issue**: `Closes #<n>` in the body.\n\n## Acceptance\n- `.claude/skills/chalk-commit/SKILL.md` exists with frontmatter (name, description) and a trigger description covering \"commit\"/\"save changes\".\n- Content covers all bullets above with a concrete example commit and the manual-commit-after-review checklist.\n- Cross-references `chalk-conventions` (which currently only covers pipeline-side commits).\n\nRelated: #134"
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "branched",
+      "at": "2026-07-13T13:02:50.351Z"
+    },
+    "createdAt": "2026-07-13T12:44:37.616Z",
+    "reviews": [
+      {
+        "at": "2026-07-13T12:51:46.074Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "design-intent",
+            "note": "The task under review is 'add a chalk-commit skill' (.claude/skills/chalk-commit/SKILL.md), but that deliverable does NOT appear in the change under review at all — it is absent from the git diff --stat (35 files, none being the SKILL.md). Reverting this change would leave the SKILL.md untouched, so this change does not actually implement the stated task. The diff instead ships an unrelated grab-bag (migrate command, pipeline --parallel, stats --public/--badge, feedback --submit, CI concurrency, worktree fresh-base, single-WIP gate). This is a scope/attribution mismatch: the change solves different problems than the one under review."
+          },
+          {
+            "severity": "high",
+            "area": "regression",
+            "note": "~1793 insertions across bin/chalk.mjs (+131), lib/store.mjs (+174), lib/pipeline.mjs (+80), lib/review.mjs, lib/verify.mjs, and the CI workflows are wholly outside the docs(skills) task scope. A docs-only task carrying broad behavioral changes to the CLI spine, review gate, and release/test workflows is a large regression surface that this task's (empty) acceptance contract cannot vouch for."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "No test asserts the SKILL.md content (criteria 1–4). While the file's content, inspected in the working tree, does cover the frontmatter trigger, conventional-commit rules, the #134 no-op hazard checklist, and the Co-Authored-By policy, none of it is exercised by any test, and none of the many tests added in this diff correspond to the chalk-commit skill deliverable — so the passing suite is vacuous with respect to this task."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Criterion 2 names 'the chore(spine): reconcile pattern'; the SKILL.md heads the section 'reconcile pattern' but every concrete example uses 'chore(spine): sync …', never a 'reconcile' subject — a minor terminology drift between the criterion and the documented convention."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-13T13:07:27.493Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "design-intent",
+            "note": "The task is a docs-only skill addition (docs(skills): add chalk-commit SKILL.md), but the diff bundles 1884 insertions across 36 files of unrelated feature work — chalk migrate/upgrade commands, pipeline --parallel fan-out, stats --public/--badge, CI concurrency groups, worktree fresh-base fetch, single-WIP start gate, SPINE_STATE_PATHS refactor. None of this relates to the commit-discipline skill. This flagrantly violates the repo's scoped-diff hard rule and hides substantial behavior change under a docs label; the change does not fit its stated goal."
+          },
+          {
+            "severity": "high",
+            "area": "regression",
+            "note": "The bundled code changes (store.mjs +174, bin/chalk.mjs +131, pipeline.mjs +80, review.mjs, verify.mjs, doctor.mjs, feedback.mjs, migrate.mjs, update.mjs) alter core gate/pipeline/spine behavior with no relation to the reviewed task. Any of these could regress existing behavior, and reviewing them under a 'add a SKILL.md' contract means their acceptance criteria are unspecified — they cannot be verified against this task's criteria."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The acceptance criteria concern SKILL.md content, which has zero tests (no locked tests). Meanwhile the many bundled feature tests (pipeline-parallel, spine-migration, stats-public, etc.) assert unrelated behavior, not this task. The change's stated deliverable is asserted by nothing; correctness of the skill text rests solely on manual reading."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "SKILL.md itself does satisfy criteria 1-4 (frontmatter triggers on commit/save changes; conventional format incl. types/imperative/<=70/no-period/chore(spine)/Closes #n; #134 no-op hazard checklist with git add/commit, status-clean, git show --stat HEAD before chalk merge; Co-Authored-By pipeline-omit/human-apply policy with concrete example and chalk-conventions cross-ref). The doc is fine in isolation — but it ships inside an unscoped, unrelated change dump."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-13T13:08:47.611Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No automated test asserts the doc's content, but this is a pure documentation SKILL.md with no executable behavior and no locked tests by spec design; each criterion is verifiable by inspection and content coverage is not automatable here."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "All four criteria met: valid YAML frontmatter (name: chalk-commit, description triggering on 'commit'/'save changes'); conventional-commit format with types/imperative/≤70/no-period, chore(spine): reconcile pattern, and Closes #n convention; #134 no-op hazard with the manual-commit-after-review checklist (git add/commit, git status clean, git show --stat HEAD before chalk merge); and the Co-Authored-By policy (omit on pipeline, apply on human/main-loop) with a concrete example. Cross-reference target chalk-conventions/SKILL.md exists."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "'See also' references chalk-ship (#142) and chalk-dogfood (#148), which are not present in .claude/skills yet — dangling forward-references, but not required by any acceptance criterion and harmless."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-13T12:48:26.471Z",
+    "branch": "docs/141-docs-skills-add-a-chalk",
+    "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol",
+    "doneAt": "2026-07-13T13:12:02.858Z"
   }
 ]
