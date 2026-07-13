@@ -414,3 +414,23 @@
 
 - _when:_ 2026-07-09T07:52:05.358Z
 - _why:_ Review fix: corrected the inaccurate ciPollAttempts:0 description (it BLOCKS a pending check, not local-verify fallback) + added a brokeCheck behavioral test tying the doc to code (#153)
+
+## Post-run feedback nudge points users at chalk feedback --submit
+
+- _when:_ 2026-07-12T15:14:07.505Z
+- _why:_ Closes the product loop at the moment of experience; opt-out via CHALK_NO_NUDGE keeps it from nagging
+
+## issue-pull count phrasing + parser unified in lib/pull-count.mjs
+
+- _when:_ 2026-07-13T02:49:28.500Z
+- _why:_ Emitter/parser held duplicate literals; a CLI reword would silently zero the standing loop's steady-state count
+
+## Reviewer prefers origin/<base> over local base in captureDiff
+
+- _when:_ 2026-07-13T04:12:44.429Z
+- _why:_ Stale/divergent local base branch ballooned the review diff to the whole branch history, causing false scope-bloat findings
+
+## CI concurrency: test cancels superseded runs, release serializes without cancelling
+
+- _when:_ 2026-07-13T05:12:55.215Z
+- _why:_ Redundant test runs pile up on PR+push; concurrent release tags could double-publish — but a publish must never be cancelled mid-flight
