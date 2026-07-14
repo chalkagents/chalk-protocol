@@ -149,6 +149,16 @@ integrations: **[Claude Code](./docs/integrations/claude-code.md)** ·
 } }
 ```
 
+## Telemetry (opt-in, off by default)
+
+Chalk collects **nothing** unless you opt in. If you say yes to the one-time prompt at `chalk init`
+(or set `protocol.telemetry.enabled: true`), it reports three anonymous activation **milestones** —
+`init`, first green `verify`, first `done` — once each, with the chalk version and a random install
+id. The **entire** payload is `event, version, installId, ts` — no code, paths, prompts, diffs, or
+repo identity. It's fire-and-forget (never slows or fails a command). Run **`chalk telemetry --show`**
+to see exactly what would be sent; hard-disable anytime with `CHALK_TELEMETRY=0` (it's also off on CI).
+Details in [docs/CONFIG.md](./docs/CONFIG.md#telemetry).
+
 ## Status & feedback
 
 Beta (protocol `chalk/0`), zero dependencies (Node ≥ 18), **dogfooded on itself** — every command

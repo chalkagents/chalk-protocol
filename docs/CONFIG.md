@@ -173,3 +173,17 @@ tasks out — the front door that turns an idea into a criteria-bearing backlog.
 `{ dir }` (default `.project`) — `chalk portal` publishes client-facing scope/milestones/updates
 derived from the spine (client-safe event types only). Archived released tasks still appear:
 `chalk archive` compaction never erases shipped history.
+
+### `telemetry`
+
+`{ enabled, endpoint }` (default `{ enabled: false, endpoint: '' }`) — **opt-in**, anonymous activation
+telemetry. **OFF by default.** When you opt in (prompted once at `chalk init`, or set
+`enabled: true`), chalk reports only three funnel **milestones** — `init`, the first GREEN `verify`,
+and the first `done` — each **once per install**, together with the chalk version and a random
+anonymous install id. The complete payload whitelist is `event, version, installId, ts` and **nothing
+else** — no code, paths, prompts, diffs, or repo identity ever leaves the machine. Emission is
+fire-and-forget and non-blocking: a network failure never changes a command's exit code. Hard kill
+switches: `CHALK_TELEMETRY=0` (env) and CI (`process.env.CI`) both disable it regardless of config.
+Inspect exactly what would be sent with `chalk telemetry --show`. `endpoint` overrides the collector
+(empty → the default). The anonymous id + sent-milestone flags live in gitignored
+`.chalk/local/telemetry.json`.
