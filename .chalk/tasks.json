@@ -4405,5 +4405,310 @@
     "branch": "docs/141-docs-skills-add-a-chalk",
     "worktree": "/Users/devid/Documents/projects/personal/chalk-protocol",
     "doneAt": "2026-07-13T13:12:02.858Z"
+  },
+  {
+    "id": "task-93125c3f",
+    "title": "feat: spine/protocol migration — version-stamp the spine, detect skew on open, add gated chalk migrate",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 159,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/159",
+      "body": "## Why\nchalk is a STATEFUL CLI: a project’s `.chalk/` spine is written by whatever package version the user had. When they `npm i -g chalk-protocol@latest`, a newer binary may read a spine written by an older one (or vice-versa). Today the spine stamps `chalk.json.version: \"1.0\"` (schema) and `protocol.version: \"chalk/0\"` (`lib/store.mjs:439,443`) but:\n- **No package-version stamp** — nothing records which chalk-protocol version last wrote the spine.\n- **No skew detection** — `Store.open()` reads a spine of any age with no compatibility check.\n- **No migration path** — if the tasks.json schema or `PROTOCOL` ever changes (`chalk/0 → chalk/1`), an existing project silently misreads or breaks; there’s no sanctioned upgrade.\n\nThis is the real data-safety risk when updating a stateful tool. Sibling to the package-update work (#158), which covers the binary; this covers the DATA.\n\n## What\n1. **Stamp the writer version**: record the chalk-protocol package version (and keep `chalk.json.version` schema + `protocol.version`) on `initSpine` and on every spine write, so a spine self-describes what wrote it.\n2. **Detect skew on `Store.open()`**: compare the spine’s stamped versions against the running binary.\n   - Newer spine + older binary → refuse with a clear message (\"this project was written by chalk 0.4.0; you’re on 0.2.0 — upgrade\").\n   - Older spine needing a schema/protocol bump → prompt to run `chalk migrate` (don’t silently mutate).\n   - Compatible → proceed untouched (no nag for same-major).\n3. **`chalk migrate` (gated)**: apply ordered, per-version migration steps to bring a spine to the current schema/protocol; `--dry-run` shows the plan; writes a backup (e.g. `.chalk/backups/`) before mutating; records a decision. Idempotent; a no-op when already current.\n4. **`chalk doctor` surfaces skew** as a WARN/FAIL with the remediation.\n\n## Acceptance\n- Locked test: opening a spine stamped with a NEWER binary version refuses (non-zero, clear message) rather than misreading.\n- Locked test: `chalk migrate` on an old-schema fixture upgrades it to current, is idempotent on re-run, and `--dry-run` mutates nothing.\n- Locked test: a same-version (compatible) spine opens with no migration prompt and no mutation.\n\n## Related\n#158 (package update — the binary half). Cross-ref `lib/store.mjs` initSpine/Store.open, `PROTOCOL` in `lib/store.mjs`."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-14T08:06:42.053Z"
+    },
+    "createdAt": "2026-07-14T08:06:42.056Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #159 — shipped by task-b118524 (spine/protocol migration, merged to dev). No code work remains; parked pending issue close on dev->main.",
+      "at": "2026-07-14T08:07:11.486Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-93125c3-1.md",
+      "at": "2026-07-14T08:07:11.516Z",
+      "reason": "decision",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-b8b31103",
+    "title": "feat: proper package-update handling — fix --version, add an opt-out update notifier + chalk upgrade",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 158,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/158",
+      "body": "## Why\nchalk-protocol is a globally-installed npm CLI (`npm i -g chalk-protocol`) but has no update story, and the version basics are broken:\n- **`chalk --version` / `-v` errors** with `unknown command: --version` (`bin/chalk.mjs` arg dispatch). The `version` command prints `chalk/0` — the PROTOCOL tag (`lib/store.mjs` `PROTOCOL`), NOT the package version (`0.2.0`). A user cannot easily tell what they are running.\n- **No update check** — nothing surfaces that a newer version exists; users silently run stale copies and hit already-fixed bugs.\n\n## What\n1. **Fix version reporting**: `chalk --version` / `-v` print the package version (read chalk's own `package.json`, resolved module-relative — see `chalkVersion()` pattern used elsewhere). Keep `chalk version` for the protocol tag, or print both (`chalk-protocol 0.2.0 · protocol chalk/0`).\n2. **Opt-out update notifier**: on run, best-effort check the npm registry for a newer `latest` and print a one-line, dim, non-blocking notice (\"update available: 0.2.0 → 0.3.0 · run `npm i -g chalk-protocol@latest`\").\n   - **Zero-dependency**: a tiny homegrown check (registry JSON), not `update-notifier`.\n   - **Throttled + cached** (e.g. once/day in a state file); **never blocks or fails a command**; suppressed under `--json`, on CI, when offline, and via `CHALK_NO_UPDATE_CHECK=1` / config. Same network-etiquette + opt-out posture as the telemetry issue (#154).\n3. **`chalk upgrade` (convenience)**: prints/runs the correct update command for the install method (global npm), with `--dry-run` to just show it.\n\n## Acceptance\n- Locked test: `--version`/`-v` emit the package version (semver), exit 0; `chalk version` still emits the protocol tag.\n- Locked test: the update check is skipped under `--json` / when disabled / when the cache is fresh, and a registry failure never changes exit code or `--json` output.\n\n## Related / NOT in scope here\nSpine + protocol **migration** (upgrading an existing `.chalk/` when `PROTOCOL` bumps `chalk/0 → chalk/1`, or the tasks.json schema changes across package versions) is a distinct concern — the real data-safety risk when a user updates a stateful tool. Filing separately (a `chalk migrate` / doctor-guided upgrade). Cross-ref #154 (network/opt-out posture)."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-14T08:06:42.062Z"
+    },
+    "createdAt": "2026-07-14T08:06:42.062Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #158 — shipped by task-31a6ed3 (package-update handling, merged to dev). No code work remains; parked pending issue close on dev->main.",
+      "at": "2026-07-14T08:07:11.414Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-b8b3110-1.md",
+      "at": "2026-07-14T08:07:11.443Z",
+      "reason": "decision",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-b2776be2",
+    "title": "feat: chalk feedback --submit — let downstream users send feedback upstream via a prefilled GitHub issue URL",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 157,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/157",
+      "body": "## Why\n`chalk feedback` today collects signals in the CURRENT project spine and files to the CURRENT repo — a maintainer-facing loop. A downstream user who `npm i`-d chalk on their own project has no path to reach the chalk-protocol maintainers. We have distribution but no inbound channel.\n\n## What\n`chalk feedback --submit \"<message>\"`:\n- Builds a prefilled GitHub new-issue URL for the tool's OWN repo (chalkagents/chalk-protocol), with the message in the body + `chalk --version` + a `user-feedback` label.\n- Prints the URL (clickable); no GitHub auth/token required — the standard OSS \"report a bug\" pattern, works for anyone.\n- Upstream repo is a constant, overridable via `CHALK_UPSTREAM_REPO` for forks.\n- URL generation is a pure function (`buildUpstreamFeedbackUrl`) → unit-testable, no network.\n- Leaves the existing `chalk feedback` signal-analysis path unchanged.\n\n## Acceptance\n- Locked test: `buildUpstreamFeedbackUrl` percent-encodes title/body, targets the configured repo, and includes the version + label; `--submit` prints a URL and does not touch `.chalk/feedback/` or call the analysis agent.\n\nPart of the feedback/traction workstream (see #154-156)."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-14T08:06:42.065Z"
+    },
+    "createdAt": "2026-07-14T08:06:42.065Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #157 — shipped by task-d1c37a2 (chalk feedback --submit, merged to dev). No code work remains; parked pending issue close on dev->main.",
+      "at": "2026-07-14T08:07:11.341Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-b2776be-1.md",
+      "at": "2026-07-14T08:07:11.370Z",
+      "reason": "decision",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-91805b0d",
+    "title": "feat: chalk stats --public — a shareable gate-efficacy artifact (bad changes the gate caught)",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 156,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/156",
+      "body": "## Why\n`chalk stats` already computes gate efficacy (review catches, churn, gate-vs-bypass). Turned into a shareable number — \"the adversarial gate caught N changes that the model's own self-check had passed\" — it becomes the single best traction artifact we have: a quantified anti-\"agents grade their own homework\" claim, provable from our own dogfooding history.\n\n## What\n- A `chalk stats --public` (or `--badge` / `--md`) mode that emits a clean, embeddable summary: gate catches, self-report-vs-gate disagreement rate, churn saved — with no project-identifying data.\n- Markdown snippet + optional shields.io-style JSON for a README badge.\n- Sourced from the existing ledger/stats path (`chalk stats`), no new tracking.\n\n## Acceptance\n- Locked test: `--public` output contains the efficacy headline fields and excludes task titles / paths / any PII.\n- Deterministic given a fixed spine fixture; documented in README as the social-proof block.\n\nRelated: `chalk stats` (#78 gate-efficacy)."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-14T08:06:42.068Z"
+    },
+    "createdAt": "2026-07-14T08:06:42.068Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #156 — shipped by task-76c4c9e (chalk stats --public, merged to dev). No code work remains; parked pending issue close on dev->main.",
+      "at": "2026-07-14T08:07:11.266Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-91805b0-1.md",
+      "at": "2026-07-14T08:07:11.297Z",
+      "reason": "decision",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-e675a65c",
+    "title": "feat: opt-in anonymous activation telemetry (init → first green verify → done funnel)",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Telemetry is OFF by default: with no opt-in config and no env, no network call, no install-id write, and no payload is emitted on init/verify/done"
+      },
+      {
+        "text": "When enabled, the emitted payload contains ONLY whitelisted fields (event name, chalk version, random anonymous install id, timestamp) — never code, paths, prompts, diffs, or repo identity"
+      },
+      {
+        "text": "Emission is fire-and-forget and non-blocking: a network/DNS failure (or unreachable endpoint) never changes a command's exit code or throws"
+      },
+      {
+        "text": "chalk telemetry --show prints the resolved enabled state and EXACTLY the payload that would be sent; CHALK_TELEMETRY=0 and a config flag hard-disable, and CI (process.env.CI) disables by default"
+      },
+      {
+        "text": "Opt-in is prompted once at chalk init (default N); README + docs/CONFIG.md document the telemetry config, the env kill-switch, and the whitelisted fields"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/telemetry.test.mjs",
+        "sha256": "3a905bdbd2e206abd6325f481640221cf33a46154dfb63ae88f19b0fc50bbd77"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 154,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/154",
+      "body": "## Why\n`chalk-protocol` has ~200 npm downloads/week but we are blind on real usage — registry mirrors inflate download counts and we cannot tell how many installs ever ran `chalk init`, let alone reached a green verify. Without an activation signal, all traction work is pouring water into a bucket with no gauge.\n\n## What\nOpt-in, anonymous, minimal telemetry that reports funnel milestones only:\n- `init`, first `verify` GREEN, first `done`, and CLI version.\n- **No code, paths, prompts, diffs, or repo identity.** Random anonymous install id.\n- **Opt-IN**: prompt once at `chalk init` (\"help improve chalk? anonymous usage stats [y/N]\"); default off; `CHALK_TELEMETRY=0` and a config flag hard-disable; documented in README + docs/CONFIG.md.\n- Fire-and-forget, non-blocking, never fails a command; strip on CI by default.\n\n## Why opt-in matters\nThe agentic-dev-tool audience is telemetry-allergic. A surprise phone-home costs more trust than the data is worth. Make consent loud and the payload inspectable (`chalk telemetry --show`).\n\n## Acceptance\n- Locked test: telemetry is OFF unless explicitly enabled; when enabled, payload contains ONLY the whitelisted fields; a network failure never affects exit code.\n- Docs updated; `chalk telemetry --show` prints exactly what would be sent.\n\nContext: 196 downloads last week, zero activation visibility."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-14T08:06:42.070Z"
+    },
+    "createdAt": "2026-07-14T08:06:42.070Z",
+    "reviews": [
+      {
+        "at": "2026-07-14T08:22:16.030Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "The integration wiring added to bin/chalk.mjs — firing the 'verify' milestone on first green verify, the 'done' milestone on chalk done, and the interactive opt-in at chalk init (flip config + emit 'init') — has NO test. The locked suite only unit-tests lib/telemetry.mjs functions and spawns `chalk init --bare` + `chalk telemetry --show`. If every `emitMilestone` call site in bin/chalk.mjs were deleted, the entire suite would still pass. That is a vacuous pass for the core funnel behavior (criteria 1/5)."
+          },
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "Criterion 5 (opt-in prompted once at init, default N; opting in enables config and fires the init milestone) is unverified for the affirmative path. promptTelemetryOptIn + the config write + init emit are never exercised by a test; only the non-TTY decline path is implicitly hit. Consent-flipping behavior shipping with zero assertion is exactly the gap adversarial review must catch."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "In `verify`, `void emitMilestone(...)` is immediately followed by `process.exit(v.green?0:2)`. emitMilestone synchronously writes state marking the 'verify' milestone as sent BEFORE the `await send`, then process.exit terminates the process before the fetch completes — so the first-green-verify event is recorded as sent but the POST is aborted and never delivered, and because it's marked sent it will never be retried. The verify funnel step is structurally undeliverable, defeating the stated design intent."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "Criterion 3 non-blocking: `chalk done` does NOT call process.exit, so the un-awaited emitMilestone leaves a pending fetch/1500ms-timeout on the event loop, delaying process exit by up to ~1.5s when enabled and endpoint is unreachable. No test asserts done stays prompt/non-blocking under a hanging endpoint."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`telemetry --show` claims to print 'EXACTLY the payload that would be sent' (criterion 4) but samplePayload hardcodes event:'init' regardless of which milestones remain unsent, so the displayed event can differ from the next actually-sent event."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-14T08:32:53.232Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 5's core behavior — the one-time interactive opt-in prompt at `chalk init` (default N, 'y'/'yes' to accept, EOF/empty declines) — has NO test. All locked tests use the --telemetry/--no-telemetry flags or the non-TTY silent-decline path; removing promptTelemetryOptIn entirely would leave the suite fully green. The prompt text, affirmative-consent path, and default-N semantics are unverified (vacuous pass for the prompt feature)."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The ENABLED-state view of `chalk telemetry --show` (optedIn=yes, killSwitch display, endpoint, sample payload with a real installId) is never exercised via CLI or telemetryStatus; only the OFF path is asserted. Criterion 4 requires --show to print the resolved enabled state exactly, but the enabled rendering path is untested."
+          },
+          {
+            "severity": "med",
+            "area": "design-intent",
+            "note": "Criterion 3 says emission is 'non-blocking', yet emitMilestone is awaited inline in init/verify/done and can stall the command up to the 700ms sender timeout when opted in. Exit code is preserved (tested), but 'non-blocking' is only satisfied in the loose sense; a truly fire-and-forget design would not block the command's completion on the POST."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The `--no-telemetry` flag branch and the CHALK_TELEMETRY='off' kill-switch value are handled in code but never asserted by any test (only '0' and 'false' are covered for the env switch)."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-14T08:40:21.331Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "design-intent",
+            "note": "Fire-and-forget emit rides the event loop via `void emitMilestone` + `process.exitCode=0` (replacing `process.exit(0)` in verify). For an opted-in user hitting a slow/unreachable collector, process exit is delayed up to the 700ms AbortController timeout on every init/verify/done. Exit code and throwing are unaffected (criterion 3's literal requirement is met and e2e-tested), but 'non-blocking' is slightly overstated — exit is stalled until the pending fetch resolves/aborts."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The interactive opt-in prompt wiring (askTelemetryOptIn → readStdinLine via readSync on a real TTY) is never exercised end-to-end; init opt-in is only tested via --telemetry/--no-telemetry flags. promptTelemetryOptIn's logic is unit-tested with injected I/O, so the consent semantics are covered, but the actual init-time TTY prompt path (criterion 5, 'prompted once at chalk init, default N') has no test asserting the prompt appears and enabled flips on 'y'."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 5's documentation requirement (README + docs/CONFIG.md documenting the config, env kill-switch, and whitelisted fields) has no assertion; content is present in the diff but nothing guards against future doc drift. Acceptable for docs but worth noting."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "verify now returns via process.exitCode=0 instead of process.exit(0), relying on the event loop draining. If any other command path leaves an open handle/unref'd timer, verify could hang rather than force-exit as before. Default-OFF telemetry adds no fetch so the common path is clean and e2e tests exit 0, but the guarantee is now weaker than an explicit process.exit."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-14T08:43:58.810Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "telemetry --show prints installId placeholder '(assigned on first enabled emit)' when enabled but no id minted yet, so the 'sample payload' is not byte-exact to what would actually be sent (real UUID). This is a deliberate/justified tradeoff to honor the OFF/no-write invariant (locked test asserts --show writes no state), and all other payload fields match — acceptable, not a contract violation."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The fire-and-forget guarantee is exercised only against connection-REFUSED (instant reject); a hung-but-connected endpoint (relying on the 700ms AbortController) is not directly tested. Mechanism is present and init lacks the 900ms safety timer verify has, but the abort bounds it, so exit codes stay unchanged."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The real interactive-TTY wiring (readStdinLine/askTelemetryOptIn via readSync(fd 0)) is not integration-tested; only the pure promptTelemetryOptIn consent semantics are covered. Hard to PTY-test and the decision logic is fully unit-tested, so coverage of the actual behavior is adequate."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "verify() switched from process.exit(0) to process.exitCode=0 + unref'd 900ms force-exit timer. When telemetry is OFF (default/CI) emitMilestone returns synchronously with no pending handle, so the unref'd timer does not delay exit and the exit codes (0 green / 2 non-green) are preserved; e2e OFF + unreachable tests confirm 0. Low residual risk if runVerify ever leaves a ref'd handle."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-14T08:08:55.657Z",
+    "doneAt": "2026-07-14T08:45:38.648Z"
   }
 ]
