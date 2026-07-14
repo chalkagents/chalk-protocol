@@ -5,6 +5,7 @@ import { resolve, join } from 'node:path';
 import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_VERSION, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
 import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
+import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
@@ -41,7 +42,7 @@ import { computeStats, publicStats, renderPublicMarkdown, renderBadge } from '..
 import { REVIEW_OVERRIDE_TITLE, AUDIT_TITLE } from '../lib/markers.mjs';
 import { portalModel } from '../lib/portal.mjs';
 import { basename, dirname, relative } from 'node:path';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, readSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -85,6 +86,17 @@ function clearReviewBlockOnPass(t) {
 const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
 const ok = (msg) => console.log(C.g('✓ ') + msg);
+
+// Blocking read of one line from stdin (fd 0) for interactive prompts. Returns '' on EOF/error, so a
+// caller treats "no input" as a decline. The TTY/CI/opt-out guards live in promptTelemetryOptIn (lib).
+function readStdinLine() {
+  try { const buf = Buffer.alloc(64); const n = readSync(0, buf, 0, 64, null); return buf.toString('utf8', 0, n); } catch { return ''; }
+}
+// Ask the one-time telemetry opt-in question, wired to the real terminal (#154).
+const askTelemetryOptIn = () => promptTelemetryOptIn({
+  isTTY: !!(process.stdin.isTTY && process.stdout.isTTY), env: process.env,
+  read: readStdinLine, write: (s) => process.stdout.write(C.dim(s)),
+});
 // Refresh both Chalk Browser views after a state change. Best-effort — a projection error must
 // never break a gate or a CLI command, so failures are swallowed (run `chalk sync` to see them).
 const syncBrowser = (s) => { try { projectPlans(s); projectBoard(s); } catch { /* non-fatal */ } };
@@ -97,7 +109,7 @@ const cmds = {
     catch (e) { die(String(e.message || e)); }
   },
 
-  init({ flags }) {
+  async init({ flags }) {
     const root = process.cwd();
     // Preset resolution: explicit --preset X wins; bare --preset OR no flag at all auto-detects from
     // marker files (the path of least resistance must be the safe one); --bare opts out explicitly.
@@ -119,6 +131,21 @@ const cmds = {
       writeFileSync(join(root, '.chalk', 'chalk.json'), JSON.stringify(meta, null, 2));
     }
     ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})${preset ? C.dim(` · preset ${preset}${auto ? ' (auto-detected — override with --preset <stack> or --bare)' : ''}`) : ''}`);
+    // Opt-in anonymous telemetry (#154). Consent resolution: an explicit --telemetry / --no-telemetry
+    // flag wins (scriptable, non-interactive); otherwise ask ONCE here, and only in an interactive TTY
+    // (the prompt is inert when piped/CI/scripted). Default OFF. Opting in flips the config flag and
+    // fires the `init` funnel milestone (awaited, guarded — never breaks init).
+    const optIn = flags.telemetry === true ? true
+      : flags['no-telemetry'] === true ? false
+      : askTelemetryOptIn();
+    if (optIn) {
+      meta.protocol.telemetry = { ...(meta.protocol.telemetry || {}), enabled: true };
+      writeFileSync(join(root, '.chalk', 'chalk.json'), JSON.stringify(meta, null, 2));
+      console.log(C.dim('  telemetry ON — anonymous only; inspect with `chalk telemetry --show`, turn off with CHALK_TELEMETRY=0 or protocol.telemetry.enabled=false'));
+      // Fire-and-forget: don't await — the milestone POST rides the event loop and completes as the
+      // process drains, so init's output is never gated on the network. Guarded; never breaks init.
+      void emitMilestone({ event: 'init', config: meta.protocol.telemetry, env: process.env, stateFile: new Store(root).p.telemetry, version: CHALK_VERSION, now: now() });
+    }
     if (executor === 'opencode') console.log(C.dim('  opencode executor configured · set CHALK_OPENCODE_MODEL (e.g. anthropic/claude-opus-4-8); see docs/integrations/opencode.md'));
     if (executor === 'claude') {
       for (const r of installClaudeAgents(root)) console.log(C.dim(`  ${r.action} .claude/agents/${r.name}`));
@@ -161,6 +188,21 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   // Print the protocol version on its own line.
   version() {
     console.log(PROTOCOL);
+  },
+
+  // Opt-in anonymous telemetry (#154): inspect exactly what would be sent, and the resolved state.
+  // `--show` (or bare) prints the whitelist + a sample payload so consent is inspectable.
+  telemetry({ flags = {} } = {}) {
+    const s = Store.open();
+    const st = telemetryStatus({ config: s.protocol().telemetry, env: process.env, stateFile: s.p.telemetry, version: CHALK_VERSION, now: now() });
+    console.log(C.b('chalk telemetry') + C.dim(` · ${st.enabled ? C.g('ENABLED') : 'OFF'}`));
+    console.log(`  opted in:    ${st.optedIn ? C.g('yes') : C.dim('no (default)')}`);
+    if (st.killSwitch) console.log(`  disabled by: ${C.y(st.killSwitch)}`);
+    console.log(`  fields sent: ${st.fields.join(', ')}   ${C.dim('(nothing else — no code, paths, prompts, diffs, or repo identity)')}`);
+    console.log(`  milestones:  ${st.events.join(' → ')}${st.nextEvent ? C.dim(`   (next: ${st.nextEvent})`) : C.dim('   (funnel complete)')}`);
+    console.log(`  endpoint:    ${st.endpoint}`);
+    console.log('  would send:  ' + JSON.stringify(st.samplePayload));
+    console.log(C.dim('  opt in at `chalk init`, or set protocol.telemetry.enabled; hard-disable with CHALK_TELEMETRY=0.'));
   },
 
   // Update to the latest published chalk-protocol (global npm install). --dry-run just prints the command.
@@ -1451,7 +1493,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     ok(`portal: wrote ${C.b(String(Object.keys(files).length))} file(s) to ${out}/ ${C.dim(`(${m.scope.length} scope, ${m.milestones.length} ms, ${m.updates.length} updates)`)}`);
   },
 
-  verify() {
+  async verify() {
     const s = Store.open();
     const wip = s.tasks().find((t) => t.state === 'in-progress');
     const v = runVerify(s, { cwd: workdir(s, wip) });
@@ -1473,11 +1515,19 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (v.green && v.toolchain.every((r) => r.status === 'skipped') && !(v.e2e || []).length) {
       console.log(C.y('  ⚠ VACUOUS — no verify commands configured; this green checked NOTHING. Set protocol.verify.test in .chalk/chalk.json (or `chalk init --preset <stack>` on a fresh project).'));
     }
-    process.exit(v.green ? 0 : 2);
+    if (!v.green) process.exit(2);
+    // Funnel milestone: first GREEN verify (#154). Fire-and-forget — NOT awaited; the guarded POST rides
+    // the event loop and delivers as the process drains, so verify's output/exit are never gated on the
+    // network. `exitCode` (not `process.exit`) lets an in-flight send finish; the unref'd safety timer
+    // force-exits if anything (a slow collector, a stray handle) keeps the loop alive — so verify can
+    // never hang. Default-OFF telemetry adds no pending work and exits immediately.
+    void emitMilestone({ event: 'verify', config: s.protocol().telemetry, env: process.env, stateFile: s.p.telemetry, version: CHALK_VERSION, now: now() });
+    process.exitCode = 0;
+    setTimeout(() => process.exit(0), 900).unref();
   },
 
   // GATE P4 + P6 (+ P5) — done is impossible unless verify is green, locks intact, review passed.
-  done({ _, flags }) {
+  async done({ _, flags }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
     if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
@@ -1514,6 +1564,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Done: ${t.title}`, taskId: t.id });
     ok(`done ${C.b(t.title)} — verify green ✓`);
+    // Funnel milestone: first `done` (#154). Fire-and-forget AFTER the user-facing output — not awaited,
+    // guarded; the POST drains with the event loop and never gates or breaks the command. Inert unless opted in.
+    void emitMilestone({ event: 'done', config: s.protocol().telemetry, env: process.env, stateFile: s.p.telemetry, version: CHALK_VERSION, now: now() });
   },
 
   // P6 — the ONLY sanctioned path to change a locked acceptance test.
@@ -1857,6 +1910,7 @@ ${C.b('setup')}
   chalk agents [--claude]              ${C.dim('(re)install the agent contract; --claude adds the Claude Code agent definitions')}
   chalk --version | -v                 ${C.dim('print the installed package version (+ protocol tag)')}
   chalk upgrade [--dry-run]            ${C.dim('update to the latest published chalk-protocol (global npm)')}
+  chalk telemetry [--show]             ${C.dim('opt-in anonymous usage telemetry — show exactly what would be sent (off by default)')}
   chalk status
   chalk next                           ${C.dim('the agent entrypoint: what to do next')}
   chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
