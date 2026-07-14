@@ -434,3 +434,13 @@
 
 - _when:_ 2026-07-13T05:12:55.215Z
 - _why:_ Redundant test runs pile up on PR+push; concurrent release tags could double-publish — but a publish must never be cancelled mid-flight
+
+## Amended acceptance test for "feat: opt-in anonymous activation telemetry (init → first green verify → done funnel)"
+
+- _when:_ 2026-07-14T08:29:33.061Z
+- _why:_ Add end-to-end CLI call-site tests (init/verify/done deliver to a local collector; OFF delivers nothing; unreachable endpoint never changes exit code) to close the review's test-adequacy gap; redesigned to mark-sent only on successful delivery
+
+## Amended acceptance test for "feat: opt-in anonymous activation telemetry (init → first green verify → done funnel)"
+
+- _when:_ 2026-07-14T08:38:32.022Z
+- _why:_ Add prompt-consent unit tests (affirmative-only, default N, inert non-interactively), ENABLED --show coverage, and --no-telemetry/off cases; emission is now truly fire-and-forget (non-awaited, exitCode)

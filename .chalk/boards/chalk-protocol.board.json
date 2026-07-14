@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783950306610,
+  "updatedAt": 1784018738648,
   "order": 0,
   "cards": [
     {
@@ -1004,6 +1004,56 @@
           "at": 1783948322858
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/141"
+      }
+    },
+    {
+      "id": "task-93125c3f",
+      "title": "feat: spine/protocol migration — version-stamp the spine, detect skew on open, add gated chalk migrate",
+      "column": "in_progress",
+      "createdAt": 1784016402056,
+      "updatedAt": 1784016402056,
+      "order": 58
+    },
+    {
+      "id": "task-b8b31103",
+      "title": "feat: proper package-update handling — fix --version, add an opt-out update notifier + chalk upgrade",
+      "column": "in_progress",
+      "createdAt": 1784016402062,
+      "updatedAt": 1784016402062,
+      "order": 59
+    },
+    {
+      "id": "task-b2776be2",
+      "title": "feat: chalk feedback --submit — let downstream users send feedback upstream via a prefilled GitHub issue URL",
+      "column": "in_progress",
+      "createdAt": 1784016402065,
+      "updatedAt": 1784016402065,
+      "order": 60
+    },
+    {
+      "id": "task-91805b0d",
+      "title": "feat: chalk stats --public — a shareable gate-efficacy artifact (bad changes the gate caught)",
+      "column": "in_progress",
+      "createdAt": 1784016402068,
+      "updatedAt": 1784016402068,
+      "order": 61
+    },
+    {
+      "id": "task-e675a65c",
+      "title": "feat: opt-in anonymous activation telemetry (init → first green verify → done funnel)",
+      "column": "done",
+      "createdAt": 1784016402070,
+      "updatedAt": 1784018738648,
+      "order": 62,
+      "description": "- Telemetry is OFF by default: with no opt-in config and no env, no network call, no install-id write, and no payload is emitted on init/verify/done\n- When enabled, the emitted payload contains ONLY whitelisted fields (event name, chalk version, random anonymous install id, timestamp) — never code, paths, prompts, diffs, or repo identity\n- Emission is fire-and-forget and non-blocking: a network/DNS failure (or unreachable endpoint) never changes a command's exit code or throws\n- chalk telemetry --show prints the resolved enabled state and EXACTLY the payload that would be sent; CHALK_TELEMETRY=0 and a config flag hard-disable, and CI (process.env.CI) disables by default\n- Opt-in is prompted once at chalk init (default N); README + docs/CONFIG.md document the telemetry config, the env kill-switch, and the whitelisted fields",
+      "testArtifact": {
+        "specPath": "test/telemetry.test.mjs",
+        "lastRun": {
+          "runId": "done-task-e675a65c",
+          "status": "passed",
+          "at": 1784018738648
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/154"
       }
     }
   ]
