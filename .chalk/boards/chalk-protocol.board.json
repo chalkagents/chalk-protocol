@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784292107004,
+  "updatedAt": 1784292319719,
   "order": 0,
   "cards": [
     {
@@ -1297,10 +1297,15 @@
     {
       "id": "task-225f6a98",
       "title": "feat(director-kit): D1 · chalk harness — the kit made visible",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1784290931123,
-      "updatedAt": 1784290931123,
-      "order": 79
+      "updatedAt": 1784292319719,
+      "order": 79,
+      "description": "- chalk harness shows the four parts of the kit — Agents, Skills, Checks, Flows — in one read-only view\n- It reflects actual config: wired agents show their command / unwired show '(not wired)'; configured verify + wired review show as on; project skills (#215) are surfaced\n- A bare project still renders coherently (none/off states, no crash) — reinforcing the parts are composable, not mandatory\n- chalk harness is READ-ONLY — it mutates no spine state",
+      "testArtifact": {
+        "specPath": "test/director-harness.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/216"
+      }
     },
     {
       "id": "task-0547837d",

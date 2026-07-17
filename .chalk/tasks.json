@@ -6496,9 +6496,27 @@
   {
     "id": "task-225f6a98",
     "title": "feat(director-kit): D1 · chalk harness — the kit made visible",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk harness shows the four parts of the kit — Agents, Skills, Checks, Flows — in one read-only view"
+      },
+      {
+        "text": "It reflects actual config: wired agents show their command / unwired show '(not wired)'; configured verify + wired review show as on; project skills (#215) are surfaced"
+      },
+      {
+        "text": "A bare project still renders coherently (none/off states, no crash) — reinforcing the parts are composable, not mandatory"
+      },
+      {
+        "text": "chalk harness is READ-ONLY — it mutates no spine state"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-harness.test.mjs",
+        "sha256": "0d928cd23a74ed412b66eb2924f794d4ec15a146f4fc95e5ea64d99c4735d44b"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -6516,7 +6534,8 @@
       "at": "2026-07-17T12:22:11.123Z"
     },
     "createdAt": "2026-07-17T12:22:11.123Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T12:45:19.719Z"
   },
   {
     "id": "task-0547837d",
