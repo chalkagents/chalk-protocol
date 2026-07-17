@@ -33,7 +33,7 @@ import { withJsonOutput, unwrapAgentOutput, runExecutorCaptured } from '../lib/c
 import { runMutation } from '../lib/mutation.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
-import { collectSignals, runFeedback, feedbackDir, buildUpstreamFeedbackUrl, UPSTREAM_REPO } from '../lib/feedback.mjs';
+import { collectSignals, runFeedback, feedbackDir, buildUpstreamFeedbackUrl, UPSTREAM_REPO, feedbackNudge } from '../lib/feedback.mjs';
 import { runDiscovery } from '../lib/discovery.mjs';
 import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
@@ -944,6 +944,8 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     syncBrowser(s);
     const conv = r.rounds.slice(-1)[0]?.converged;
     console.log(`  ${C.g(`✓ ${r.totalMerged} merged`)}${r.totalBlocked ? '  ' + C.y(`⊘ ${r.totalBlocked} blocked`) : ''}  ${C.dim(`over ${r.rounds.length} round(s)${conv ? ' · converged' : ''}`)}`);
+    const nudge = feedbackNudge({ merged: r.totalMerged, blocked: r.totalBlocked });
+    if (nudge) console.log(C.dim('  💬 ' + nudge));
     s.emitUpdate({ type: 'progress-update', title: `Loop: ${r.totalMerged} merged, ${r.totalBlocked} blocked over ${r.rounds.length} round(s)` });
     process.exit(0);
   },
