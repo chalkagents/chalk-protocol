@@ -4782,7 +4782,7 @@
     "tests": [
       {
         "path": "test/director-align.test.mjs",
-        "sha256": "ba95720c3eb49cdefd1c1bfcb97891c246c45f99d8fa93f749c0a2f057526c92"
+        "sha256": "968f4e51f2447e46cc4b74419140405586fb10e4431ebdfb06b33c84085fa9a5"
       }
     ],
     "heldOut": [],
@@ -4802,7 +4802,36 @@
       "at": "2026-07-17T07:57:38.513Z"
     },
     "createdAt": "2026-07-17T07:57:38.513Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-17T08:10:33.526Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`chalk align` only refuses when BOTH acceptanceCriteria and tests are empty; a task with locked tests but no acceptanceCriteria aligns while surfacing only test paths, which is a defensible reading of 'criteria as spec' but slightly loosens criterion 4's literal 'no criteria yet' refusal. Not a functional gap."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No test asserts the ordering that the align gate is checked BEFORE the state flip in `chalk work` (i.e. a refusal leaves no side effect / task not moved to in-progress). Behavior is correct in the code but this 'no side effect on refusal' property is unverified."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Gate sits after the stageDone('verified') early-return, so an already-verified task never requires alignment; acceptable but untested for the director-on case."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T08:11:11.994Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      }
+    ],
     "startedAt": "2026-07-17T08:07:59.379Z"
   },
   {

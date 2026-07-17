@@ -444,3 +444,8 @@
 
 - _when:_ 2026-07-14T08:38:32.022Z
 - _why:_ Add prompt-consent unit tests (affirmative-only, default N, inert non-interactively), ENABLED --show coverage, and --no-telemetry/off cases; emission is now truly fire-and-forget (non-awaited, exitCode)
+
+## Amended acceptance test for "feat(director): alignment checkpoint before build — human accepts the criteria/outcome, not just the plan"
+
+- _when:_ 2026-07-17T08:11:11.997Z
+- _why:_ Harden the gate contract per review finding: pin that a refused (unaligned) chalk work leaves no side effect — task state unchanged, criteria not marked accepted. Non-blocking low, but 'a refusal must not mutate state' is a core property of a gate.
