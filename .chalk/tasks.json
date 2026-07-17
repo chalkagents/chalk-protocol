@@ -5251,7 +5251,7 @@
     "tests": [
       {
         "path": "test/director-record.test.mjs",
-        "sha256": "56e2eb68d8d4ddead0af8da6c67bcf7e3c74a25349f0fb4d66da98f581decfd6"
+        "sha256": "bf925c1ae387f1770bc1cba47c7834ff2343b840a44924da4635a4a8e286e409"
       }
     ],
     "heldOut": [],
@@ -5271,7 +5271,62 @@
       "at": "2026-07-17T09:32:56.691Z"
     },
     "createdAt": "2026-07-17T09:32:56.691Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-17T09:41:06.654Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2's 'survives a re-review' test never invokes the real runReview path — it hand-rewrites tasks.json to simulate regeneration. The durability holds trivially because director.jsonl is a separate file, but no test proves runReview actually leaves the record intact end-to-end. Adequate given the separate-file design, but the assertion is weaker than the criterion's wording implies."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "No de-duplication: because the per-review accepted/redirected flag is regenerated away on re-review, re-accepting the same decision after a re-review appends a second director.jsonl entry (the die('already resolved') guard only sees the volatile flag). The compounding record can accrue duplicate calls for one underlying decision. Likely acceptable for an append-only log, but unbounded and untested."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The 'why' field is semantically overloaded: for an accepted call it stores the decision's original rationale (d.rationale), for a redirected call it stores the human's course-correction. A downstream consumer (#202 context feed) reading 'why' gets two different meanings depending on verdict; no field distinguishes 'author's reason' from 'director's instruction'."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Store the durable director record as append-only JSONL at .chalk/director.jsonl, git-tracked as spine state",
+            "rationale": "Append-only survives re-review regeneration and is the substrate for the #202 compounding-context moat; spine-state classification keeps it out of feature review diffs",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Reuse the existing emitUpdate type 'decision-logged' for director accept/redirect events",
+            "rationale": "Avoids introducing a new event type; but conflates director calls with the prose decision log for any consumer filtering on that type",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Default the 'by' provenance field to 'human' when --by is absent",
+            "rationale": "Accept/redirect are director actions, so 'human' is the sensible default; but an agent-driven `chalk run` accept would be mislabeled as human",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Map accepted decision's 'why' to the decision's original rationale and redirected's 'why' to the course-correction",
+            "rationale": "Reuses one field for both verdicts to keep the schema flat",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T09:42:47.436Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      }
+    ],
     "startedAt": "2026-07-17T09:39:01.759Z"
   },
   {

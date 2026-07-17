@@ -454,3 +454,8 @@
 
 - _when:_ 2026-07-17T09:08:16.337Z
 - _why:_ Address review BLOCK (test-adequacy): add a chalk review test asserting criterion 2 — the digest is ranked highest-risk-first and risk-badged (reverting the render fails it). Also: realistic 13-char fixture id + full-id inbox ref (no prefix truncation), redirect logs with a taskId link.
+
+## Amended acceptance test for "feat(director-loop): B1 · a durable, structured director-decision record"
+
+- _when:_ 2026-07-17T09:42:47.439Z
+- _why:_ Review-driven schema fix: split the overloaded 'why' into 'rationale' (agent's reason, always) and 'instruction' (director's course-correction, redirect only). The single field meant two things by verdict, and #202's compounding feed builds on this record — a hard-to-undo schema, so fix it at the foundation.
