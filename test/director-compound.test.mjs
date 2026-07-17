@@ -36,6 +36,16 @@ test('buildContext injects the Director\'s calls block — accepted shows ration
   assert.match(out, /redirected: "a global singleton" → use dependency injection/, 'redirected call carries the DIRECTOR instruction');
 });
 
+test('the compounding block is PRIOR taste — the current task\'s OWN decision is not echoed here', () => {
+  const d = repo([
+    { at: 'x', verdict: 'accepted', choice: 'other task choice', rationale: 'good', taskId: 'task-other', by: 'human' },   // a PRIOR task
+    { at: 'y', verdict: 'redirected', choice: 'this task choice', instruction: 'do X', taskId: 'task-9f3a2b1c', by: 'human' }, // the CURRENT task
+  ]);
+  const out = chalk(d, 'context', 'task-9f3a2b1c').out;
+  assert.match(out, /other task choice/, "a PRIOR task's call compounds into this task");
+  assert.doesNotMatch(out, /this task choice/, "the current task's own call is NOT re-listed here (it rides the essential Director corrections block instead)");
+});
+
 test('no director calls → no block (no regression to existing context)', () => {
   const out = chalk(repo([]), 'context', 'task-9f3a2b1c').out;
   assert.doesNotMatch(out, /Director's calls so far/i);
