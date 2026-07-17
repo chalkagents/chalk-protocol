@@ -504,3 +504,8 @@
 
 - _when:_ 2026-07-17T12:29:30.229Z
 - _why:_ Review low: pin the skills-vs-lessons budget priority (skills rank ahead, lessons still kept) — the deliberate 'author-curated over auto-collected' ordering was untested; reversing it would have passed.
+
+## Amended acceptance test for "feat(director-kit): D1 · chalk harness — the kit made visible"
+
+- _when:_ 2026-07-17T12:48:52.913Z
+- _why:_ Review low: assert the secondary harness rows (retro agent, held-out + require-test checks) so a regression on those config keys is caught, not just the core rows.
