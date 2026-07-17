@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784285432496,
+  "updatedAt": 1784285990218,
   "order": 0,
   "cards": [
     {
@@ -1231,6 +1231,30 @@
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/198"
       }
+    },
+    {
+      "id": "task-5d2e2fbc",
+      "title": "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox",
+      "column": "todo",
+      "createdAt": 1784285990208,
+      "updatedAt": 1784285990208,
+      "order": 75
+    },
+    {
+      "id": "task-622ec407",
+      "title": "feat(director-mid-flight): C2 · executor contract — raise a fork instead of guessing",
+      "column": "todo",
+      "createdAt": 1784285990215,
+      "updatedAt": 1784285990215,
+      "order": 76
+    },
+    {
+      "id": "task-d3cfdb8f",
+      "title": "feat(director-mid-flight): C1 · chalk raise — the mid-flight raise primitive",
+      "column": "todo",
+      "createdAt": 1784285990218,
+      "updatedAt": 1784285990218,
+      "order": 77
     }
   ]
 }

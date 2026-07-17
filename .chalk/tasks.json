@@ -5985,5 +5985,80 @@
     ],
     "startedAt": "2026-07-17T09:57:58.721Z",
     "doneAt": "2026-07-17T10:01:53.848Z"
+  },
+  {
+    "id": "task-5d2e2fbc",
+    "title": "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 211,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/211",
+      "body": "Part of the **director-mid-flight** milestone — EPIC C. Wire raises into the closed loop.\n\n## Problem\nA raised fork (#209) must actually PAUSE the work and reach the director — then the answer must travel back so the agent proceeds with it. This reuses the director-loop machinery (inbox #193, context injection #199, compounding #201/#202).\n\n## Acceptance sketch (to be locked at spec time)\n- After a `chalk work` run, a task with OPEN raises blocks (needs `decision`) instead of proceeding (exit 2 → pipeline/driver auto-block), so a guessed choice never ships.\n- `chalk pending` surfaces open raised forks (with their options/why) alongside review-derived calls, each with a ref.\n- Answering a raise (e.g. `chalk pending answer <ref> \"<decision>\"`, or reuse accept/redirect) records the answer, **injects it into the task's context** (reuse the #199 directive/corrections channel) and **unblocks** the task so the next `chalk work` proceeds with the director's call — and it **compounds** into future context (#202).\n- Locked test: work-with-open-raise blocks; pending shows it; answering unblocks + lands in context.\n\n## Touchpoints\n`bin/chalk.mjs` (`work` gate, `pending` surface + answer), `lib/run.mjs` (driver block), `lib/store.mjs` (context feed).\n\n## Dependencies\nDepends on **#209** and **#210**. Closes EPIC C — mid-flight raising wired into the loop.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T10:59:50.206Z"
+    },
+    "createdAt": "2026-07-17T10:59:50.208Z",
+    "reviews": []
+  },
+  {
+    "id": "task-622ec407",
+    "title": "feat(director-mid-flight): C2 · executor contract — raise a fork instead of guessing",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 210,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/210",
+      "body": "Part of the **director-mid-flight** milestone — EPIC C. The executor contract.\n\n## Problem\n`chalk raise` (#209) exists, but the agent won't use it unless its contract tells it to — and tells it WHEN (a genuine fork needing the director's taste, not every micro-choice).\n\n## Acceptance sketch (to be locked at spec time)\n- `buildContext` includes a raise instruction: when you hit a fork that needs the director's judgment (architecture, a real tradeoff, an ambiguous requirement), run `chalk raise \"<fork>\"` instead of silently picking — it pauses for the director. Emphasise: raise the FEW that need taste, not everything (no raise-flooding).\n- The shipped + dogfood `chalk-executor` agent definitions describe the raise convention (kept in sync — the agents-sync drift gate stays green).\n- Locked test (context carries the instruction; both agent defs describe it).\n\n## Touchpoints\n`lib/store.mjs` (buildContext), `share/agents/chalk-executor.md` + `.claude/agents/chalk-executor.md`.\n\n## Dependencies\nDepends on **#209**. Feeds #211.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T10:59:50.215Z"
+    },
+    "createdAt": "2026-07-17T10:59:50.215Z",
+    "reviews": []
+  },
+  {
+    "id": "task-d3cfdb8f",
+    "title": "feat(director-mid-flight): C1 · chalk raise — the mid-flight raise primitive",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 209,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/209",
+      "body": "Part of the **director-mid-flight** milestone — EPIC C (the agent works \"out loud\"). The raise primitive.\n\n## Problem\nAll decision surfacing today is POST-HOC: the reviewer digests a *finished* diff (#192). The aimed pivot has the agent stop at a fork *during* work and raise it *before* guessing. The executor is BYO, so this is a convention it opts into — starting with a command it can call.\n\n## Acceptance sketch (to be locked at spec time)\n- `chalk raise \"<the fork>\" [--options \"a|b|c\"] [--why \"...\"] [--task <id>]` appends a raised fork to the task's `t.raised[]`: `{ id, fork, options?, why?, at, by:'agent', status:'open' }`.\n- Defaults to the current in-progress task; refuses cleanly if none and no `--task`.\n- A read accessor (e.g. `openRaises(task)` / `raisedTasks(tasks)`) returns unanswered raises; surfaced to the human.\n- `.chalk` spine state stays consistent (the raise rides `t.raised`, so it's already inside tasks.json / SPINE_STATE_PATHS).\n- Locked test.\n\n## Touchpoints\n`bin/chalk.mjs` (new `raise` command + help), `lib/store.mjs` (accessor).\n\n## Dependencies\nNone. Enables #210 (the contract) and #211 (route into the inbox/loop).\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T10:59:50.218Z"
+    },
+    "createdAt": "2026-07-17T10:59:50.218Z",
+    "reviews": []
   }
 ]
