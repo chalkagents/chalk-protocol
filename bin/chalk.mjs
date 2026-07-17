@@ -2024,6 +2024,31 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     ok(`raised ${C.dim(r.id.slice(0, 10))} ${C.dim('— the director will decide (chalk pending)')}`);
   },
 
+  // Project skills (#215): first-class reusable how-to authored as .chalk/skills/<name>.md and injected
+  // into every agent's context — the affirmative playbook (distinct from lessons, which are mistakes not
+  // to repeat). `chalk skill add "<name>" [--file <path> | "<text>"]`; no sub → list. Just text, not code.
+  skill({ _, flags }) {
+    const s = Store.open();
+    if (_[0] === 'add') {
+      const name = _[1] || flags.name;
+      if (!name) die('usage: chalk skill add "<name>" [--file <path> | "<text>"]');
+      const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (!slug) die('a skill name needs at least one letter or number.');
+      let text = flags.file ? '' : (_.slice(2).join(' ') || flags.text || '');
+      if (flags.file) { try { text = readFileSync(resolve(flags.file), 'utf8'); } catch { die(`cannot read --file ${flags.file}`); } }
+      if (!text.trim()) die('a skill needs content — pass "<text>" or --file <path>.');
+      const dir = join(s.root, '.chalk', 'skills'); mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, `${slug}.md`), text.trim() + '\n');
+      s.emitUpdate({ type: 'progress-update', title: `Skill added: ${slug}` });
+      ok(`skill ${C.b(slug)} added ${C.dim("— applied in every agent's context")}`);
+    } else {
+      const skills = s.skills();
+      if (!skills.length) return ok(C.dim('no project skills yet — add one: chalk skill add "<name>" --file <path>'));
+      console.log(C.b('Project skills') + C.dim(" (applied in every agent's context):"));
+      for (const sk of skills) console.log(`  ${C.g('◆')} ${sk.name} ${C.dim(`(${sk.text.trim().split('\n').length} line(s))`)}`);
+    }
+  },
+
   log({ flags }) {
     const s = Store.open();
     const n = Number(flags.n || 15);
@@ -2151,6 +2176,7 @@ ${C.b('spine')}
   chalk lesson "<what to remember>"     ${C.dim('add to the lessons memory injected into every agent')}
   chalk lesson add "<what to remember>" ${C.dim('explicit add (records verbatim, even single-word text like "list")')}
   chalk lesson list [--all]             ${C.dim('print the lessons injected into agents (--all = full history)')}
+  chalk skill add "<name>" [--file <path> | "<text>"] | (list)   ${C.dim('first-class project how-to (.chalk/skills/) injected into every agent')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
   chalk pending [accept <task>#<n> | redirect <task>#<n> "<why>" | answer <raiseId> "<decision>"]   ${C.dim("director inbox: review judgment calls (accept/redirect) + mid-flight raised forks (answer)")}
   chalk raise "<fork>" [--options "a|b|c"] [--why "..."] [--task <id>]   ${C.dim("the agent raises a mid-flight fork for the director instead of guessing; no arg lists open raises")}
