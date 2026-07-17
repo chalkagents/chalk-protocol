@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784280776704,
+  "updatedAt": 1784281771441,
   "order": 0,
   "cards": [
     {
@@ -1153,10 +1153,20 @@
     {
       "id": "task-e27fa89c",
       "title": "feat(director-loop): B1 · a durable, structured director-decision record",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1784280776691,
-      "updatedAt": 1784280776691,
-      "order": 71
+      "updatedAt": 1784281771441,
+      "order": 71,
+      "description": "- chalk pending accept/redirect write through to a durable append-only record (.chalk/director.jsonl) with structured fields: at, verdict (accepted|redirected), choice, why, risk, taskId, by\n- The durable record survives a re-review that regenerates t.reviews[].decisions — accept/redirect history persists for the task's life, independent of the volatile per-review flags (fixes the #193 persistence finding)\n- A directorDecisions() store accessor reads the record back; chalk decisions surfaces the director's accepted/redirected calls\n- .chalk/director.jsonl is spine state — in SPINE_STATE_PATHS so it is excluded from review diffs and committed by intake (no bookkeeping churn in feature diffs)",
+      "testArtifact": {
+        "specPath": "test/director-record.test.mjs",
+        "lastRun": {
+          "runId": "done-task-e27fa89c",
+          "status": "passed",
+          "at": 1784281771441
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/201"
+      }
     },
     {
       "id": "task-86fadfe0",

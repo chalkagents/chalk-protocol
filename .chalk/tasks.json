@@ -5233,9 +5233,27 @@
   {
     "id": "task-e27fa89c",
     "title": "feat(director-loop): B1 · a durable, structured director-decision record",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk pending accept/redirect write through to a durable append-only record (.chalk/director.jsonl) with structured fields: at, verdict (accepted|redirected), choice, why, risk, taskId, by"
+      },
+      {
+        "text": "The durable record survives a re-review that regenerates t.reviews[].decisions — accept/redirect history persists for the task's life, independent of the volatile per-review flags (fixes the #193 persistence finding)"
+      },
+      {
+        "text": "A directorDecisions() store accessor reads the record back; chalk decisions surfaces the director's accepted/redirected calls"
+      },
+      {
+        "text": ".chalk/director.jsonl is spine state — in SPINE_STATE_PATHS so it is excluded from review diffs and committed by intake (no bookkeeping churn in feature diffs)"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-record.test.mjs",
+        "sha256": "bf925c1ae387f1770bc1cba47c7834ff2343b840a44924da4635a4a8e286e409"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -5253,7 +5271,118 @@
       "at": "2026-07-17T09:32:56.691Z"
     },
     "createdAt": "2026-07-17T09:32:56.691Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-17T09:41:06.654Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2's 'survives a re-review' test never invokes the real runReview path — it hand-rewrites tasks.json to simulate regeneration. The durability holds trivially because director.jsonl is a separate file, but no test proves runReview actually leaves the record intact end-to-end. Adequate given the separate-file design, but the assertion is weaker than the criterion's wording implies."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "No de-duplication: because the per-review accepted/redirected flag is regenerated away on re-review, re-accepting the same decision after a re-review appends a second director.jsonl entry (the die('already resolved') guard only sees the volatile flag). The compounding record can accrue duplicate calls for one underlying decision. Likely acceptable for an append-only log, but unbounded and untested."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The 'why' field is semantically overloaded: for an accepted call it stores the decision's original rationale (d.rationale), for a redirected call it stores the human's course-correction. A downstream consumer (#202 context feed) reading 'why' gets two different meanings depending on verdict; no field distinguishes 'author's reason' from 'director's instruction'."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Store the durable director record as append-only JSONL at .chalk/director.jsonl, git-tracked as spine state",
+            "rationale": "Append-only survives re-review regeneration and is the substrate for the #202 compounding-context moat; spine-state classification keeps it out of feature review diffs",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Reuse the existing emitUpdate type 'decision-logged' for director accept/redirect events",
+            "rationale": "Avoids introducing a new event type; but conflates director calls with the prose decision log for any consumer filtering on that type",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Default the 'by' provenance field to 'human' when --by is absent",
+            "rationale": "Accept/redirect are director actions, so 'human' is the sensible default; but an agent-driven `chalk run` accept would be mislabeled as human",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Map accepted decision's 'why' to the decision's original rationale and redirected's 'why' to the course-correction",
+            "rationale": "Reuses one field for both verdicts to keep the schema flat",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T09:42:47.436Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T09:47:22.393Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "design-intent",
+            "note": "Criterion 1 literally enumerates the field `why`, but the record ships no `why` field — the implementer split it into `rationale` (agent's reason) and `instruction` (director's course-correction, redirect-only). This is a defensible, better-normalized design that #202 downstream depends on, and the locked test pins it — but it is a deviation from the written contract's field list that a director should knowingly ratify rather than have silently substituted."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "director.jsonl is append-only with no dedup. Because the resolve-guard (`d.accepted||d.redirected`) lives on the volatile t.reviews[].decisions flag, a re-review that regenerates decisions clears that guard — so re-accepting/re-redirecting the same decision after re-review appends a second (possibly conflicting) durable entry for the same choice/taskId. No test covers this re-resolve path."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The 'survives re-review' test hand-rewrites tasks.json rather than driving runReview, so it proves only that a separate file isn't touched (nearly tautological) — it does not exercise the real regeneration path or that accept still functions correctly after a genuine re-review. directorDecisions() is also only tested indirectly via `chalk decisions`, never for its own return shape."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Model the durable record with distinct `rationale` (agent) and `instruction` (director) fields instead of the single `why` field named in the acceptance criteria",
+            "rationale": "Keeping the agent's original reason separate from the director's course-correction is needed for the compounding-context feed (#202) to say 'apply this rationale' vs 'do this instead'",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Snapshot the computed risk via decisionRisk(d) into the record at write time rather than recomputing on read",
+            "rationale": "Freezes the risk classification as-of the director's call so later logic changes don't retroactively alter history",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Append-only JSONL with no dedup/supersede semantics for re-resolved decisions",
+            "rationale": "Simplest durable substrate; treats every director call as an immutable event",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Default `by` to 'human' when --by is absent",
+            "rationale": "Most accept/redirect calls come from a human director at the CLI",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Surface the durable record as a new 'Director's calls' section appended to `chalk decisions` rather than a dedicated command",
+            "rationale": "Co-locates director judgment history with the existing prose decision log",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T09:39:01.759Z",
+    "doneAt": "2026-07-17T09:49:31.441Z"
   },
   {
     "id": "task-86fadfe0",

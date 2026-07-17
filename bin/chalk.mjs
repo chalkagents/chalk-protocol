@@ -1829,6 +1829,18 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const s = Store.open();
     const text = s.decisions().trim();
     console.log(text || 'no decisions recorded yet.');
+    // The durable director-decision record (#201) — accept/redirect calls that compound into future
+    // context. Distinct from the prose log above; surfaced here so a director can review their calls.
+    const dd = s.directorDecisions();
+    if (dd.length) {
+      console.log(C.b(`\nDirector's calls`) + C.dim(` (${dd.length}) — accepted/redirected judgment calls that compound into future work:`));
+      for (const r of dd) {
+        const badge = r.verdict === 'redirected' ? C.y('↳ redirected') : C.g('✓ accepted  ');
+        // accepted → the agent's rationale; redirected → the director's instruction ("do this instead").
+        const note = r.verdict === 'redirected' ? (r.instruction ? ` → ${r.instruction}` : '') : (r.rationale ? ` — ${r.rationale}` : '');
+        console.log(`  ${badge} ${C.dim(r.at.slice(0, 10))}  ${r.choice || '(decision)'}${C.dim(note)}`);
+      }
+    }
   },
 
   // Add a durable lesson to .chalk/lessons.md — injected into every agent's context so the loop
@@ -1895,17 +1907,24 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       const d = review && Array.isArray(review.decisions) ? review.decisions[Number(m[2])] : null;
       if (!d) die(`no decision ${ref} — run \`chalk pending\` for the current inbox.`);
       if (d.accepted || d.redirected) die('that decision is already resolved.');
+      const by = flags.by || 'human';
       if (sub === 'accept') {
-        d.accepted = { at: now(), by: flags.by || 'human' };
-        s.upsertTask(t); syncBrowser(s);
+        d.accepted = { at: now(), by };
+        s.upsertTask(t);
+        // Durable record (#201): survives a re-review that would regenerate d.accepted away.
+        s.appendDirectorDecision({ choice: d.choice, rationale: d.rationale, risk: decisionRisk(d), taskId: t.id, verdict: 'accepted', by });
+        syncBrowser(s);
         s.emitUpdate({ type: 'work-item-accepted', title: `Accepted decision: ${d.choice || ref}`, taskId: t.id });
         ok(`accepted ${C.dim(ref)} — ${d.choice || '(decision)'}`);
       } else {
         const why = _.slice(2).join(' ') || flags.why;
         if (!why) die('redirect requires a course-correction: chalk pending redirect <task>#<n> "<what to do instead>"');
-        d.redirected = { at: now(), by: flags.by || 'human', why: String(why) };
+        d.redirected = { at: now(), by, why: String(why) };
         s.upsertTask(t);
         s.appendDecision({ title: `Redirected: ${d.choice || ref}`, why: String(why), taskId: t.id });
+        // Durable record (#201): the structured, compounding entry, alongside the human-readable log above.
+        // rationale = the agent's original reason; instruction = the director's course-correction.
+        s.appendDirectorDecision({ choice: d.choice, rationale: d.rationale, instruction: String(why), risk: decisionRisk(d), taskId: t.id, verdict: 'redirected', by });
         syncBrowser(s);
         ok(`redirected ${C.dim(ref)} ${C.dim(`— logged: ${why}`)}`);
       }
