@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784287764006,
+  "updatedAt": 1784288597108,
   "order": 0,
   "cards": [
     {
@@ -1235,13 +1235,18 @@
     {
       "id": "task-5d2e2fbc",
       "title": "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1784285990208,
-      "updatedAt": 1784287764006,
+      "updatedAt": 1784288597108,
       "order": 75,
       "description": "- After a chalk work run, a task with OPEN raises does not proceed: chalk work exits 2 and the driver blocks it needs:decision — a guessed choice never ships past a raised fork\n- chalk pending surfaces open raised forks (fork + options + why) across tasks, each with an answer ref\n- chalk pending answer <raiseId> \"<decision>\" marks the raise answered, feeds the answer back as a directive (#199 channel so the next work rebuilds to it), compounds it to the durable director record (#201/#202), and unblocks a task parked on the raise\n- Once the raise is answered, chalk work proceeds (no open raises left) — the mid-flight loop is closed",
       "testArtifact": {
         "specPath": "test/director-raise-route.test.mjs",
+        "lastRun": {
+          "runId": "done-task-5d2e2fbc",
+          "status": "passed",
+          "at": 1784288597108
+        },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/211"
       }
     },

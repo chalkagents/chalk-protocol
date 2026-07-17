@@ -5989,7 +5989,7 @@
   {
     "id": "task-5d2e2fbc",
     "title": "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "After a chalk work run, a task with OPEN raises does not proceed: chalk work exits 2 and the driver blocks it needs:decision — a guessed choice never ships past a raised fork"
@@ -6156,9 +6156,75 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T11:41:47.650Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The open-raise gate is enforced only in `chalk work` (bin) and `runDriver` (run.mjs), not in `chalk done`. A raise generally can't reach done because work exits 2 before verify, but there's no direct guard on done — if a task were otherwise green/reviewed it could in principle be marked done with an open raise. Not covered by criteria or tests."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`answer` resolves the raise id via prefix match (`x.id.startsWith(rid)`) and takes the FIRST match across all tasks. Ambiguous short prefixes could answer the wrong fork silently; no disambiguation or collision guard. Tests only use full ids."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "The `chalk pending` empty-state message text changed ('no med/high-risk judgment calls awaiting you.' → 'no raised forks or judgment calls awaiting you.'). Confirmed no existing test asserts the old string, so safe, but it is a user-facing copy change bundled in."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 3's '#199 feed-back' is asserted only by presence of the directive object on the task, not by verifying buildContext actually renders it into the next work prompt. Verified manually (store.mjs line 655 consumes dir.choice/dir.instead, matching the pushed shape) so the feed-back is real, but the locked test doesn't exercise that render path; the `--options`/why rendering in pending also lacks a 'why' case."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Block a raised task as needs:'decision' rather than the default 'human-input'",
+            "rationale": "`chalk pending answer` only unblocks tasks whose block.needs==='decision', so this coupling is what lets answering resume the parked task; distinguishes an intentional director fork from an executor-can't-make-green stall",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "`chalk work` exits code 2 on an open raise (mirrors the driver auto-block-needs-decision convention)",
+            "rationale": "Signals the pipeline/driver to auto-block rather than treating it as a hard failure or silent proceed",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "An answered raise is dual-written: a transient task directive (resolved:false, feeds next work) AND a durable director.jsonl record with a new verdict:'answered'",
+            "rationale": "Directive drives the immediate rebuild (#199); the durable record makes it compound as taste (#201/#202) and stop recurring",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "New 'answered' verdict rendered as its own line in directorLines ('answered: fork → decision'), distinct from accepted/redirected",
+            "rationale": "Keeps a mid-flight fork semantically separate from a post-hoc accept so future context reads truthfully",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Surface raised forks ABOVE the review judgment-call inbox in `chalk pending` output",
+            "rationale": "A raise is an explicit blocking ask, so it's prioritized over accept/redirect triage",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Task is only unblocked when NO open raises remain (guarded), leaving it parked if other forks are still open",
+            "rationale": "Prevents resuming work while an unanswered fork would still force another guess",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
       }
     ],
-    "startedAt": "2026-07-17T11:29:24.006Z"
+    "startedAt": "2026-07-17T11:29:24.006Z",
+    "doneAt": "2026-07-17T11:43:17.108Z"
   },
   {
     "id": "task-622ec407",
