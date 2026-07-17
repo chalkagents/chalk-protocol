@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784282278721,
+  "updatedAt": 1784282513848,
   "order": 0,
   "cards": [
     {
@@ -1187,13 +1187,18 @@
     {
       "id": "task-3a49d957",
       "title": "feat(director-loop): A1 · redirect re-opens the task as an actionable directive",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1784280776704,
-      "updatedAt": 1784282278721,
+      "updatedAt": 1784282513848,
       "order": 74,
       "description": "- chalk pending redirect records a durable directive on the task (t.directives[] = { choice, instead, at, by, resolved:false }) — the correction becomes actionable work, not just a log line\n- Redirecting a DONE task re-opens it to in-progress (reopenedAt stamped) so it can be reworked to the director's call\n- Redirecting a non-done (already active) task keeps its state and only attaches the directive (no spurious re-open)\n- accept does NOT create a directive or re-open the task — only redirect re-directs",
       "testArtifact": {
         "specPath": "test/director-reopen.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3a49d957",
+          "status": "passed",
+          "at": 1784282513848
+        },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/198"
       }
     }
