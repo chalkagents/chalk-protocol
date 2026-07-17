@@ -65,5 +65,25 @@ c pending redirect "$ID#0" "key on charge_id+amount — a re-charge must not ded
 echo
 echo "   \$ chalk pending   (the redirected call is gone; the medium one remains for you)"
 c pending || true
+pause
 
-banner "That's the harness:  align → digest → pending.  You can't direct what you can't verify."
+banner "5 · The correction travels BACK into the work  (#198–200 · the loop closes)"
+echo "   The redirect isn't just logged — it lands in the agent's context to REBUILD to:"
+echo "   \$ chalk context $ID   (excerpt)"
+c context "$ID" 2>&1 | grep -iE "Director corrections|Instead of" | sed 's/^/     /'
+echo
+echo "   The agent rebuilds to your call; completing the task RESOLVES the directive — loop closed:"
+echo "   \$ chalk done $ID"
+c done "$ID" 2>&1 | grep -iE "done|resolved" | sed 's/^/     /' || true
+pause
+
+banner "6 · Judgment COMPOUNDS — a NEW task already knows your taste  (#201–202 · the moat)"
+c task add "Add payout endpoint" >/dev/null 2>&1
+NEW=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$D/.chalk/tasks.json')).find(function(t){return /payout/.test(t.title)}).id.slice(0,12))")
+c spec "$NEW" --criterion "payouts settle within 24h" >/dev/null 2>&1
+echo "   \$ chalk context $NEW   (excerpt — your earlier call, applied automatically)"
+c context "$NEW" 2>&1 | grep -iE "Director's calls so far|redirected:" | sed 's/^/     /'
+echo
+echo "   The fork you decided once never comes back to be guessed again."
+
+banner "The loop:  align → digest → pending → rebuild → compound.  You can't direct what you can't verify."
