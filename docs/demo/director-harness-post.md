@@ -24,7 +24,7 @@ Every AI coding tool gates two moments: the plan, and the PR.
 
 Nobody owns the middle — the choices an agent resolves silently *while* building. That's where misalignment is born.
 
-So we built three moves for it.
+So we built the moves for it.
 
 **4/  ① Accept what "done" means — before the build**
 ```
@@ -37,7 +37,17 @@ $ chalk align
 ```
 The agent can't one-shot past your intent.
 
-**5/  ② The reviewer hands you a decision digest**
+**5/  ② Mid-work, the agent raises the fork — it doesn't guess**
+```
+agent: $ chalk raise "encrypt refunds at rest?" --options "yes|no"
+$ chalk work
+✗ 1 fork raised for the director. Not proceeding on a guess.
+$ chalk pending answer raise-d475 "yes — tenant KMS key"
+✓ answered — guides the next chalk work
+```
+The build *pauses* on the judgment call. Working out loud, literally.
+
+**6/  ③ The reviewer hands you a decision digest**
 Not just pass/block — the judgment calls it made, each with blast-radius × reversibility:
 ```
 ◇ Decision digest
@@ -46,7 +56,7 @@ Not just pass/block — the judgment calls it made, each with blast-radius × re
   ■ low   named the file refund.js
 ```
 
-**6/  ③ The director inbox — steer the empty middle**
+**7/  ④ The director inbox — steer the empty middle**
 ```
 $ chalk pending
   ■ high  refund key = charge_id only …
@@ -54,30 +64,31 @@ $ chalk pending redirect …#0 "key on charge_id+amount — a re-charge must not
 ```
 The risky, hard-to-undo calls rise to the top. You redirect them instead of discovering them in prod.
 
-**7/  ④ The redirect actually re-directs**
+**8/  ⑤ The redirect actually re-directs**
 ```
 $ chalk pending redirect …#0 "key on charge_id+amount"
 ✓ redirected — task re-opened for rework
 ```
 The correction lands in the agent's context ("REBUILD to these"), it rebuilds to your call, and completing the task resolves it. Not a logged note you chase later — a loop that closes.
 
-**8/  ⑤ And your judgment compounds**
+**9/  ⑥ And your judgment compounds**
 The next task's context already carries it:
 ```
 ## Director's calls so far (apply this taste)
+- answered: "encrypt refunds at rest?" → yes — tenant KMS key
 - redirected: "refund key = charge_id only" → key on charge_id+amount
 ```
 The fork you decided once never comes back to be guessed again.
 
-**9/**
-align → digest → pending → rebuild → compound.
-
-The gates didn't go away. They became the accept button. The agent still moves fast — it just stops deciding things that were yours to decide, and it remembers what you decided.
-
 **10/**
+align → raise → digest → pending → rebuild → compound.
+
+The gates didn't go away. They became the accept button — one part of the kit (`chalk harness`: agents · skills · checks · flows). The agent still moves fast — it just stops deciding things that were yours to decide, and it remembers what you decided.
+
+**11/**
 You can't direct what you can't verify.
 
-It's open source, runs offline in 90s:
+It's open source, runs offline in ~2 min:
 `bash docs/demo/director-harness-demo.sh`
 
 (built with Chalk, reviewed by Chalk — the reviewer blocked our own PR for a missing test. good.)
@@ -92,24 +103,25 @@ The honest trigger: we ran our own tool autonomously on a real task. The agent l
 
 Every AI coding tool gates the **plan** and the **PR**. Nobody owns the **middle** — the choices an agent resolves silently while it works. That's where "technically passed the tests, wrong product" comes from.
 
-So we reframed the whole thing from a *referee that catches cheats* into a **director's harness** — where your judgment is first-class and the agent surfaces the calls that need it. Three moves:
+So we reframed the whole thing from a *referee that catches cheats* into a **director's harness** — where your judgment is first-class and the agent surfaces the calls that need it. Four moves:
 
 1. **Align before build.** The agent can't start writing code until a human accepts the acceptance criteria as the definition of *done*.
-2. **A decision digest.** The reviewer no longer just says pass/block — it hands you the judgment calls the agent made, each scored by blast-radius and reversibility, to accept or redirect.
-3. **A director inbox.** `chalk pending` ranks those calls by risk across every task — the load-bearing, hard-to-undo ones at the top — so you steer the middle instead of discovering it later.
+2. **Raise, don't guess.** Mid-work, when the agent hits a fork the criteria don't answer, it *raises* it — and the build pauses on the open question instead of shipping a guess. The agent works out loud.
+3. **A decision digest.** The reviewer no longer just says pass/block — it hands you the judgment calls the agent made, each scored by blast-radius and reversibility, to accept or redirect.
+4. **A director inbox.** `chalk pending` ranks raised forks and risky calls across every task — the load-bearing, hard-to-undo ones at the top — so you steer the middle instead of discovering it later.
 
 And it closes the loop. When you redirect a call, the correction travels back into the work — the task re-opens, the agent rebuilds to your instruction, and the directive resolves on completion. Then it **compounds**: your decision, with its reasoning, folds into the next task's context, so the same fork never comes back to be guessed again. Judgment stops being disposable and starts accruing.
 
-The gates didn't disappear. They became the accept button. The agent still moves fast; it just stops deciding things that were yours to decide — and it remembers what you decided.
+The gates didn't disappear. They became the accept button — one optional part of a composable kit (`chalk harness` shows what you've assembled: agents, skills, checks, flows; `chalk skill add` teaches the project your playbook). The agent still moves fast; it just stops deciding things that were yours to decide — and it remembers what you decided.
 
 **You can't direct what you can't verify.**
 
-Open source, runs offline in about 90 seconds. Built with the tool itself — and the tool's own adversarial reviewer blocked our PR for shipping a behavior with no test. Which is exactly the point.
+Open source, runs offline in about two minutes. Built with the tool itself — and the tool's own adversarial reviewer blocked our PRs for real bugs and missing tests along the way. Which is exactly the point.
 
 ---
 
 ### Recording notes
-- Run `bash docs/demo/director-harness-demo.sh` in a chalk-protocol checkout; it pauses on Enter between the six beats — good for a screen recording.
-- Terminal: dark theme, ~100 cols, large font. The six `▐` banners are your scene cuts.
-- Beat 2 (the refusal), beat 4 (the ranked inbox + redirect), and beat 6 (a *new* task already carrying your past call — the moat) are the money shots — hold on those.
-- The arc to narrate: **align → digest → pending → rebuild → compound.** Beats 5–6 are the payoff the first cut of this demo didn't have — the loop actually closing and the judgment compounding.
+- Run `bash docs/demo/director-harness-demo.sh` in a chalk-protocol checkout; it pauses on Enter between the eight beats — good for a screen recording.
+- Terminal: dark theme, ~100 cols, large font. The eight `▐` banners are your scene cuts.
+- Money shots: beat 2 (the align refusal), beat 3 (the agent *raising* mid-work and the build pausing), beat 5 (the ranked inbox + redirect), and beat 7 (a *new* task already carrying your past calls — the moat). Hold on those.
+- The arc to narrate: **align → raise → digest → pending → rebuild → compound**, closing on beat 8 (`chalk harness` — the kit you composed).

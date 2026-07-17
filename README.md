@@ -1,17 +1,20 @@
 # Chalk Protocol
 
-A **layer-2 harness for coding agents**: a durable `.chalk/` project spine + a CLI that drives
+A **director's harness for coding agents**: a durable `.chalk/` project spine + a CLI that drives
 any agent (Claude Code, Codex, Gemini CLI, opencode) through a **read → work → verify → write**
-loop and holds it to software-development fundamentals via *enforceable gates*.
+loop — where **your intent, taste, and judgment are first-class** and the agent surfaces the
+decisions that need you instead of one-shotting past them.
 
-Chalk **does not write code** — your agent does. Chalk owns the state and the gates: the steps
-[the evidence](./RESEARCH.md) says autonomous agents skip on their own. Frontier models can't
-reliably self-certify "done"; given access to the tests that judge them they cheat ~half the
-time; and "tests-as-spec" degrades as tasks grow. So Chalk makes "done" rest on an **external
-check, never the agent's word.**
+Chalk **does not write code** — your agent does. Chalk owns the state, the gates, and the
+decisions: the steps [the evidence](./RESEARCH.md) says autonomous agents skip on their own.
+Frontier models can't reliably self-certify "done"; given access to the tests that judge them
+they cheat ~half the time; and mid-task they silently resolve the judgment calls that were yours
+to make. So Chalk makes "done" rest on an **external check, never the agent's word** — and makes
+the agent's judgment calls **yours to accept or redirect**.
 
 > **BYO agent.** The agent is a pluggable executor (`claude -p`, `opencode run`, any stdin/stdout
-> command); Chalk is the referee. **The agent never self-declares success — the gate decides.**
+> command); you direct — Chalk carries your judgment into the work. **The agent never
+> self-declares success — the gate decides.** *You can't direct what you can't verify.*
 
 **Website:** [protocol.chalkagents.com](https://protocol.chalkagents.com) — the protocol in one page.
 
@@ -87,6 +90,24 @@ Each gate *refuses to advance* unless a fundamental is met (full model: [PROTOCO
 
 And the traps are labeled: an empty verify prints `⚠ VACUOUS`, an unrunnable break-it/mutation
 probe prints `INCONCLUSIVE` instead of silently passing, and a truncated review diff says so.
+
+## Direct, don't babysit (the empty middle)
+
+Every AI coding tool gates the *plan* and the *PR*. Nobody owns the **middle** — the judgment
+calls an agent silently resolves *while* building. That's where "technically passed the tests,
+wrong product" comes from. Chalk owns it:
+
+| Mechanism | What it does |
+|-----------|--------------|
+| `chalk align <id>` | you accept the criteria as *the definition of done* **before** the agent builds (opt-in: `protocol.director.required`) |
+| `chalk raise "<fork>"` | mid-work, the agent **raises** a fork that needs your taste instead of guessing — the task pauses until you answer |
+| decision digest | the reviewer surfaces the judgment calls the agent made — each with blast-radius × reversibility — even on a PASS |
+| `chalk pending` | your inbox: raised forks + med/high-risk calls, ranked. `accept`, `redirect "<do this instead>"`, or `answer` each |
+| the loop closes | a redirect **re-opens the task** and the agent rebuilds to your call; your decisions **compound** into every future task's context |
+
+`chalk harness` shows the kit assembled around your goal — agents · skills · checks · flows —
+and `chalk skill add` teaches the project your playbook. Full framing: [docs/harness.md](./docs/harness.md).
+A 90-second offline walkthrough: `bash docs/demo/director-harness-demo.sh`.
 
 ## Autonomous mode
 
@@ -176,6 +197,7 @@ have templates too. Contributions go through the same gates as our own work: see
 ## Going deeper
 
 - **[QUICKSTART.md](./QUICKSTART.md)** — zero → first gated task, manual and Claude Code modes.
+- **[docs/harness.md](./docs/harness.md)** — the director's harness: the kit (agents · skills · checks · flows) and why the gates are one part, not the product.
 - **[PROTOCOL.md](./PROTOCOL.md)** — the seven primitives (P1–P7) and the full gate model.
 - **[RUNNING-AUTONOMOUSLY.md](./RUNNING-AUTONOMOUSLY.md)** — the unattended pipeline, end to end.
 - **[docs/CONFIG.md](./docs/CONFIG.md)** — every `protocol.*` key: default, consumer, example.
