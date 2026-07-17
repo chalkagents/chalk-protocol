@@ -6539,7 +6539,7 @@
     "tests": [
       {
         "path": "test/director-skills.test.mjs",
-        "sha256": "0e6e8f4cef70c57bc22ee103c807fd8f9ea9a97471ac76fa643cd4404d89b8e6"
+        "sha256": "9afd7844fd213bd82cb2ef3731e6851220122be67bbdb78dc3988b18b8519863"
       }
     ],
     "heldOut": [],
@@ -6559,7 +6559,62 @@
       "at": "2026-07-17T12:22:11.126Z"
     },
     "createdAt": "2026-07-17T12:22:11.126Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-17T12:28:54.460Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 4's 'committed by intake, excluded from review diffs' behavior is only asserted via SPINE_STATE_PATHS membership, not via actual intake-commit or review-diff exclusion behavior. It relies on that array being the sole mechanism (as with lessons.md), which holds, but the end-to-end behavior is untested."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Adding a skill whose name slugs to an existing file silently overwrites it (writeFileSync, no collision check/confirmation). Two different display names can collide to the same slug and clobber prior content with no warning. Not covered by any test."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Skills are budgeted at HIGHER priority than lessons (skills computed before lessons, taking budget first), so under moderate pressure auto-lessons drop before authored skills. The elastic test only exercises the extreme (budget=1) case where both drop, so the relative-priority intent is asserted nowhere; if the intended ordering were reversed the suite would still pass."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Rank project skills above auto-lessons in the context budget (skills fit first, lessons get the remainder)",
+            "rationale": "Author-curated affirmative playbook is treated as higher-signal than machine-accumulated lessons",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Skills are plain injected markdown, never executable ('just text, not code') — no run/exec surface",
+            "rationale": "Guardrail against framework-creep while still promoting skills to first-class",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Slug scheme lowercases and collapses non-alphanumerics to hyphens, and same-slug add overwrites silently",
+            "rationale": "Simple, predictable filenames; treat re-add as edit",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Skill heading text '## Project skills (apply these — how this project does things)' and per-skill '### <name>' sections",
+            "rationale": "Distinguish the affirmative playbook from the lessons block in agent context",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T12:29:30.225Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      }
+    ],
     "startedAt": "2026-07-17T12:26:34.741Z"
   }
 ]

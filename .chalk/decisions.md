@@ -499,3 +499,8 @@
 
 - _when:_ 2026-07-17T11:38:58.201Z
 - _why:_ Review low: pin the directorLines 'answered' render — an answered raise compounds into a new task's context as its own 'answered: fork → decision' line, not silently as 'accepted' (reverting the branch now fails).
+
+## Amended acceptance test for "feat(director-kit): D2 · skills as a first-class part (.chalk/skills → context)"
+
+- _when:_ 2026-07-17T12:29:30.229Z
+- _why:_ Review low: pin the skills-vs-lessons budget priority (skills rank ahead, lessons still kept) — the deliberate 'author-curated over auto-collected' ordering was untested; reversing it would have passed.
