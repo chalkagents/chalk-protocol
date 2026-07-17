@@ -61,6 +61,17 @@ test('skills are elastic — present at a normal budget, dropped under a tiny on
   assert.match(tiny, /UNIQUE_CRIT_XYZ/, 'essentials (criteria) survive');
 });
 
+test('skills rank ABOVE auto-lessons — both present, skills first, lessons kept (priority, not exclusion)', () => {
+  const d = project();
+  chalk(d, 'skill', 'add', 'a-skill', 'the affirmative playbook line');
+  chalk(d, 'lesson', 'add', 'an auto-collected lesson to keep');
+  const out = chalk(d, 'context', 'task-9f3a2b1c').out;
+  assert.match(out, /Project skills/i, 'skills present');
+  assert.match(out, /an auto-collected lesson to keep/, 'lessons NOT dropped just because skills exist');
+  assert.ok(out.indexOf('Project skills') < out.indexOf('Lessons learned'),
+    'author-curated skills rank ahead of machine-accumulated lessons');
+});
+
 test('.chalk/skills is spine state — committed by intake, excluded from review diffs', () => {
   assert.ok(SPINE_STATE_PATHS.includes('.chalk/skills'));
 });
