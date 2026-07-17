@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784275679379,
+  "updatedAt": 1784276097798,
   "order": 0,
   "cards": [
     {
@@ -1075,13 +1075,18 @@
     {
       "id": "task-8cf40444",
       "title": "feat(director): alignment checkpoint before build — human accepts the criteria/outcome, not just the plan",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1784275058513,
-      "updatedAt": 1784275679379,
+      "updatedAt": 1784276097798,
       "order": 65,
       "description": "- protocol.director.required defaults off; when off, chalk work behaves exactly as today (no regression)\n- With director.required on and criteria not accepted, chalk work AND the autonomous driver (chalk run) refuse before build, pointing the human at chalk align\n- chalk align records task.criteriaAccepted = { at, by }; after alignment chalk work proceeds past the gate\n- chalk align surfaces the task's acceptance criteria for the human to read before accepting (not blind), and refuses when there are no criteria yet",
       "testArtifact": {
         "specPath": "test/director-align.test.mjs",
+        "lastRun": {
+          "runId": "done-task-8cf40444",
+          "status": "passed",
+          "at": 1784276097798
+        },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/191"
       }
     },
