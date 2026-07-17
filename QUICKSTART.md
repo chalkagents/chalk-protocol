@@ -91,6 +91,9 @@ chalk doctor --json     # paste this into bug reports
 
 ## 6. Where to next
 
+- **Direct, don't babysit** — the director's harness (`chalk align` · `chalk raise` ·
+  `chalk pending` · `chalk harness`): [docs/harness.md](./docs/harness.md), or run the
+  ~2-minute offline walkthrough: `bash docs/demo/director-harness-demo.sh`
 - **Autonomy & the GitHub pipeline** (issues → branches → PRs → gated merges):
   [RUNNING-AUTONOMOUSLY.md](./RUNNING-AUTONOMOUSLY.md)
 - **Every config key**: [docs/CONFIG.md](./docs/CONFIG.md)

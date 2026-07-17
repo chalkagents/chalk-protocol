@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Director's Harness — a 90-second, offline demo of the align → digest → pending flow.
+# Director's Harness — a ~2-minute, offline demo of the full director loop:
+# align → raise → digest → pending → rebuild → compound (+ the harness view).
 # No LLM needed: a canned reviewer stands in for `chalk review` so the whole thing is deterministic
 # and safe to screen-record. Run from a chalk-protocol checkout:  bash director-harness-demo.sh
 set -euo pipefail
@@ -34,7 +35,22 @@ echo "   \$ chalk align $ID"
 c align "$ID"
 pause
 
-banner "3 · Now it builds — and the reviewer hands you a DECISION DIGEST  (#192)"
+banner "3 · Mid-work, the agent hits a fork the criteria don't answer — it RAISES it  (#209–211 chalk raise)"
+echo "   The agent works OUT LOUD instead of guessing:"
+echo "   \$ chalk raise \"encrypt refunds at rest?\" --options \"yes|no\" --why \"not in the ticket\""
+c raise "encrypt refunds at rest?" --options "yes|no" --why "not in the ticket"
+echo
+echo "   The build PAUSES on the open fork — a guess never ships:"
+echo "   \$ chalk work $ID"
+c work "$ID" 2>&1 | tail -1 || true
+echo
+RID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$D/.chalk/tasks.json'))[0].raised[0].id)")
+echo "   You decide, it feeds back, work resumes:"
+echo "   \$ chalk pending answer $RID \"yes — tenant KMS key\""
+c pending answer "$RID" "yes — tenant KMS key"
+pause
+
+banner "4 · Now it builds — and the reviewer hands you a DECISION DIGEST  (#192)"
 # canned adversarial reviewer: a real pass, plus the judgment calls the agent made
 cat > "$D/canned-reviewer.mjs" <<'EOF'
 console.log(JSON.stringify({
@@ -55,7 +71,7 @@ echo "   \$ chalk review $ID"
 c review "$ID" || true
 pause
 
-banner "4 · The DIRECTOR INBOX — steer the empty middle  (#193 chalk pending)"
+banner "5 · The DIRECTOR INBOX — steer the empty middle  (#193 chalk pending)"
 echo "   \$ chalk pending"
 c pending || true
 echo
@@ -67,7 +83,7 @@ echo "   \$ chalk pending   (the redirected call is gone; the medium one remains
 c pending || true
 pause
 
-banner "5 · The correction travels BACK into the work  (#198–200 · the loop closes)"
+banner "6 · The correction travels BACK into the work  (#198–200 · the loop closes)"
 echo "   The redirect isn't just logged — it lands in the agent's context to REBUILD to:"
 echo "   \$ chalk context $ID   (excerpt)"
 c context "$ID" 2>&1 | grep -iE "Director corrections|Instead of" | sed 's/^/     /'
@@ -77,13 +93,18 @@ echo "   \$ chalk done $ID"
 c done "$ID" 2>&1 | grep -iE "done|resolved" | sed 's/^/     /' || true
 pause
 
-banner "6 · Judgment COMPOUNDS — a NEW task already knows your taste  (#201–202 · the moat)"
+banner "7 · Judgment COMPOUNDS — a NEW task already knows your taste  (#201–202 · the moat)"
 c task add "Add payout endpoint" >/dev/null 2>&1
 NEW=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$D/.chalk/tasks.json')).find(function(t){return /payout/.test(t.title)}).id.slice(0,12))")
 c spec "$NEW" --criterion "payouts settle within 24h" >/dev/null 2>&1
 echo "   \$ chalk context $NEW   (excerpt — your earlier call, applied automatically)"
-c context "$NEW" 2>&1 | grep -iE "Director's calls so far|redirected:" | sed 's/^/     /'
+c context "$NEW" 2>&1 | grep -iE "Director's calls so far|redirected:|answered:" | sed 's/^/     /'
 echo
 echo "   The fork you decided once never comes back to be guessed again."
+pause
 
-banner "The loop:  align → digest → pending → rebuild → compound.  You can't direct what you can't verify."
+banner "8 · The KIT you composed — chalk harness  (#215–217)"
+c skill add "payments-style" "Money is always integer cents; never floats." >/dev/null 2>&1
+c harness
+
+banner "The loop:  align → raise → digest → pending → rebuild → compound.  You can't direct what you can't verify."

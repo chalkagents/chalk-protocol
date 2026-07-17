@@ -129,6 +129,30 @@ the single next action — including surfacing an integrity break before `verify
 
 ---
 
+## The director's layer (the empty middle)
+
+The gates decide *whether* work passes; the director's layer decides *what the work should be* —
+the mid-task judgment calls agents otherwise resolve silently. Five mechanisms, one loop:
+
+1. **Align** — with `protocol.director.required`, `chalk work` refuses until a human runs
+   `chalk align <id>`, accepting the criteria as the definition of *done* before any code exists.
+2. **Raise** — mid-work, the agent runs `chalk raise "<fork>"` for a call the criteria don't
+   answer; the task **pauses** (`work` exits 2, the driver blocks `needs:decision`) instead of
+   shipping a guess.
+3. **Digest** — the adversarial reviewer also emits the judgment calls the change embeds, each
+   scored by blast-radius × reversibility, even on a PASS.
+4. **Triage** — `chalk pending` is the human's mirror of `chalk next`: raised forks + med/high-risk
+   calls, ranked. `accept` confirms; `redirect "<do this instead>"` **re-opens the task** with a
+   directive the next `chalk work` must rebuild to; `answer` resolves a raise and unblocks.
+5. **Compound** — every accept/redirect/answer lands in a durable record (`.chalk/director.jsonl`)
+   and is injected into future tasks' context — the same fork never comes back to be guessed.
+
+`chalk harness` renders the composed kit (agents · skills · checks · flows); `chalk skill add`
+teaches the project reusable how-to (`.chalk/skills/`, injected text, never executable). The full
+framing lives in [docs/harness.md](./docs/harness.md).
+
+---
+
 ## CLI surface (v0)
 
 ```
@@ -150,6 +174,12 @@ chalk done <id> --force-review --why    override a failing review (logged decisi
 chalk guard add <path> | gen | list     author/lock the held-out regression set (P7)
 chalk audit                             run held-out set (output withheld); gates phase advance (P7)
 chalk phase <p> [--force-audit --why]   advance phase; blocked unless audit is green & fresh (P7)
+
+chalk align <id>                        director: accept the criteria as "done" before build (protocol.director.required)
+chalk raise "<fork>" [--options "a|b"]  agent: raise a mid-work judgment call instead of guessing; pauses the task
+chalk pending [accept|redirect|answer]  director inbox: raised forks + risk-ranked judgment calls
+chalk harness                           the composed kit: agents · skills · checks · flows
+chalk skill add "<name>" [--file F]     teach the project reusable how-to (injected into every agent)
 
 chalk update "<title>" [--type T]       append event to updates.jsonl
 chalk decision "<title>" [--why W]      append ADR-lite + decision-logged event
