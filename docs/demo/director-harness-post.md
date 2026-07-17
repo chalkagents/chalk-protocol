@@ -54,12 +54,27 @@ $ chalk pending redirect …#0 "key on charge_id+amount — a re-charge must not
 ```
 The risky, hard-to-undo calls rise to the top. You redirect them instead of discovering them in prod.
 
-**7/**
-align → digest → pending.
+**7/  ④ The redirect actually re-directs**
+```
+$ chalk pending redirect …#0 "key on charge_id+amount"
+✓ redirected — task re-opened for rework
+```
+The correction lands in the agent's context ("REBUILD to these"), it rebuilds to your call, and completing the task resolves it. Not a logged note you chase later — a loop that closes.
 
-The gates didn't go away. They became the accept button. The agent still moves fast — it just stops deciding things that were yours to decide.
+**8/  ⑤ And your judgment compounds**
+The next task's context already carries it:
+```
+## Director's calls so far (apply this taste)
+- redirected: "refund key = charge_id only" → key on charge_id+amount
+```
+The fork you decided once never comes back to be guessed again.
 
-**8/**
+**9/**
+align → digest → pending → rebuild → compound.
+
+The gates didn't go away. They became the accept button. The agent still moves fast — it just stops deciding things that were yours to decide, and it remembers what you decided.
+
+**10/**
 You can't direct what you can't verify.
 
 It's open source, runs offline in 90s:
@@ -83,7 +98,9 @@ So we reframed the whole thing from a *referee that catches cheats* into a **dir
 2. **A decision digest.** The reviewer no longer just says pass/block — it hands you the judgment calls the agent made, each scored by blast-radius and reversibility, to accept or redirect.
 3. **A director inbox.** `chalk pending` ranks those calls by risk across every task — the load-bearing, hard-to-undo ones at the top — so you steer the middle instead of discovering it later.
 
-The gates didn't disappear. They became the accept button. The agent still moves fast; it just stops deciding things that were yours to decide.
+And it closes the loop. When you redirect a call, the correction travels back into the work — the task re-opens, the agent rebuilds to your instruction, and the directive resolves on completion. Then it **compounds**: your decision, with its reasoning, folds into the next task's context, so the same fork never comes back to be guessed again. Judgment stops being disposable and starts accruing.
+
+The gates didn't disappear. They became the accept button. The agent still moves fast; it just stops deciding things that were yours to decide — and it remembers what you decided.
 
 **You can't direct what you can't verify.**
 
@@ -92,6 +109,7 @@ Open source, runs offline in about 90 seconds. Built with the tool itself — an
 ---
 
 ### Recording notes
-- Run `bash docs/demo/director-harness-demo.sh` in a chalk-protocol checkout; it pauses on Enter between the four beats — good for a screen recording.
-- Terminal: dark theme, ~100 cols, large font. The four `▐` banners are your scene cuts.
-- Beat 2 (the refusal) and beat 4 (the ranked inbox + redirect) are the money shots — hold on those.
+- Run `bash docs/demo/director-harness-demo.sh` in a chalk-protocol checkout; it pauses on Enter between the six beats — good for a screen recording.
+- Terminal: dark theme, ~100 cols, large font. The six `▐` banners are your scene cuts.
+- Beat 2 (the refusal), beat 4 (the ranked inbox + redirect), and beat 6 (a *new* task already carrying your past call — the moat) are the money shots — hold on those.
+- The arc to narrate: **align → digest → pending → rebuild → compound.** Beats 5–6 are the payoff the first cut of this demo didn't have — the loop actually closing and the judgment compounding.
