@@ -56,7 +56,8 @@
         "documentation": "docs"
       },
       "ciPollIntervalMs": 5000,
-      "ciPollAttempts": 24
+      "ciPollAttempts": 24,
+      "deployBase": "main"
     },
     "worktree": {
       "enabled": false,
