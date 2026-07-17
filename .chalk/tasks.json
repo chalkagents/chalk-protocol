@@ -6039,9 +6039,24 @@
   {
     "id": "task-d3cfdb8f",
     "title": "feat(director-mid-flight): C1 · chalk raise — the mid-flight raise primitive",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk raise \"<fork>\" [--options a|b|c] [--why ...] [--task <id>] records a raise on the target task's t.raised[]: {id, fork, options?, why?, at, by:'agent', status:'open'}"
+      },
+      {
+        "text": "Defaults to the current in-progress task; refuses cleanly when there is none and no --task"
+      },
+      {
+        "text": "options parse from a pipe-delimited list; chalk raise with no fork text lists the open raised forks; openRaises(task) accessor returns only open raises"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-raise.test.mjs",
+        "sha256": "6bb995a6bd70e461f4ad6e198e042056651b29c9c3f8d27c5c2eb720e1f5a89f"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -6059,6 +6074,7 @@
       "at": "2026-07-17T10:59:50.218Z"
     },
     "createdAt": "2026-07-17T10:59:50.218Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T11:03:08.721Z"
   }
 ]
