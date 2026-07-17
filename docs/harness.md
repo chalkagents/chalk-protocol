@@ -20,8 +20,7 @@ repeat). Just text, never executable.
 ## Checks — the gates, and why they're **one optional part**
 
 The gates (P1–P7 — a locked spec, an adversarial review, a held-out audit, the verify toolchain) were
-once framed as the whole product: "catch the cheating agent." That framing is commoditizing, and the
-gates are not the point.
+once framed as chalk's whole product: "catch the cheating agent." But the gates are not the point.
 
 **They're the accept button.** You can't direct what you can't verify — the gates are what let a
 director delegate to a fleet *without trusting it*. Powerful, but **optional and composable**: a
