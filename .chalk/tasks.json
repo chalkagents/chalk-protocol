@@ -5437,9 +5437,27 @@
   {
     "id": "task-3a49d957",
     "title": "feat(director-loop): A1 · redirect re-opens the task as an actionable directive",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk pending redirect records a durable directive on the task (t.directives[] = { choice, instead, at, by, resolved:false }) — the correction becomes actionable work, not just a log line"
+      },
+      {
+        "text": "Redirecting a DONE task re-opens it to in-progress (reopenedAt stamped) so it can be reworked to the director's call"
+      },
+      {
+        "text": "Redirecting a non-done (already active) task keeps its state and only attaches the directive (no spurious re-open)"
+      },
+      {
+        "text": "accept does NOT create a directive or re-open the task — only redirect re-directs"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-reopen.test.mjs",
+        "sha256": "382cff135e157cfd7f67fc165dbc5499adbbc42b7ea01ac597d487c398f510cf"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -5457,6 +5475,7 @@
       "at": "2026-07-17T09:32:56.704Z"
     },
     "createdAt": "2026-07-17T09:32:56.704Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T09:57:58.721Z"
   }
 ]
