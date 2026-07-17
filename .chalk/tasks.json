@@ -5402,7 +5402,7 @@
     "tests": [
       {
         "path": "test/director-rework-loop.test.mjs",
-        "sha256": "093540ea2ce0b9c9aaa85f83edf4b9d1c40c4163425a2880d01184949e435bb6"
+        "sha256": "9f8849e6afbfd16bc29b70c516948d71047408a8f1c15c09ee3bc46ccd1a7a2c"
       }
     ],
     "heldOut": [],
@@ -5422,7 +5422,50 @@
       "at": "2026-07-17T09:32:56.696Z"
     },
     "createdAt": "2026-07-17T09:32:56.696Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-17T10:17:47.943Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 2 explicitly requires that BOTH `chalk done` AND the pipeline merge resolve pending directives. Only the `chalk done` path (bin/chalk.mjs:1601) is tested. The pipeline-merge resolution added at bin/chalk.mjs:947 has NO test — reverting that single line leaves the entire locked suite green. That production auto-merge path (used by `chalk run`) ships directive-resolution behavior unverified, so a regression there would be silent. Per the coverage rule this is a vacuous pass for half of criterion 2."
+          },
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "runnableTasks now re-admits any in-progress task carrying an unresolved directive. A redirect on an already in-progress task (NOT a done→reopen) also attaches an unresolved directive (chalk.mjs:1940 pushes resolved:false regardless of reopen), so such a task becomes 'runnable' and could be re-fanned-out by `chalk run --parallel` while it is actively being worked. The tests only exercise the clean re-opened case; concurrent-pick / double-execution against an in-flight worktree is unverified."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`chalk done` resolves pending directives independent of `reopenedAt`, but `chalk next`'s '(re-opened for rework)' banner keys off `reopenedAt` while the pending-corrections block keys off pendingDirectives. A directive added to a task that was never done (no reopenedAt) will surface the '↻ pending rework' block without the 're-opened' banner — an inconsistent surfacing state the tests don't cover."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Model a re-opened task by overloading state='in-progress' + an unresolved directive rather than introducing a dedicated 'reopened'/'redirected' state",
+            "rationale": "Reuses existing state machine and the done-gate's `state==='in-progress'` guard so no new transitions are needed; runnableTasks distinguishes via pendingDirectives",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "`chalk done` and pipeline merge resolve ALL pending directives on the task, not only those a re-open was triggered for",
+            "rationale": "Completing the task is treated as satisfying every outstanding correction; keeps resolution logic a single filter with no per-directive targeting",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Surface pending corrections in `chalk next` inline under the in-progress list with the literal 'instead' instruction, rather than as a separate section or gate",
+            "rationale": "Keeps the redirect visible in the normal next-action flow so it isn't stranded, minimal output change",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-17T10:15:31.791Z"
   },
   {

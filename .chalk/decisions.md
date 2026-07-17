@@ -464,3 +464,8 @@
 
 - _when:_ 2026-07-17T09:48:21.910Z
 - _why:_ Criterion 1 named a single 'why' field. During review the reviewer (and its own risk digest, ranked HIGH) flagged that 'why' meant two different things by verdict: the agent's rationale for an accepted call vs the director's course-correction for a redirected one. Since #202's compounding feed reads this record and must say 'apply this rationale' vs 'do this instead', the record ships distinct 'rationale' (agent, always) + 'instruction' (director, redirect-only) fields, pinned by the locked test. Ratifying the deviation from criterion 1's literal field name.
+
+## Amended acceptance test for "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive"
+
+- _when:_ 2026-07-17T10:22:20.702Z
+- _why:_ Review BLOCK fix: (1) cover BOTH completion paths — added a resolveDirectives unit + a source assertion that done AND pipeline merge both call it (was vacuous for the merge path); (2) tighten runnableTasks to key on reopenedAt (needsRework) so a redirect on an already-active task can't be re-admitted/double-executed by chalk run --parallel.
