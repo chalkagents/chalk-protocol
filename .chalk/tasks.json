@@ -6471,9 +6471,27 @@
   {
     "id": "task-58e2ced9",
     "title": "feat(director-kit): D3 · reframe the gates as one optional 'Checks' part",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk harness frames the Checks section as OPTIONAL, the accept button, one part of the kit (not the whole product)"
+      },
+      {
+        "text": "A checks-OFF project (no verify/review/held-out, require-test off) renders a coherent harness with an 'all optional — runs without gates' note — reinforcing checks are not mandatory"
+      },
+      {
+        "text": "chalk harness closes by naming the CORE — the director's taste/judgment (align · digest · pending · raise) — with the gates as one part"
+      },
+      {
+        "text": "docs/harness.md documents the kit and frames the gates as one optional Checks part, with the director's taste/judgment as the defensible core"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-checks-reframe.test.mjs",
+        "sha256": "ca0b91fb75fa07285458b951762cdae9f04e04e71e697f6b5eefd553e55693ad"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -6491,7 +6509,8 @@
       "at": "2026-07-17T12:22:11.119Z"
     },
     "createdAt": "2026-07-17T12:22:11.120Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T12:57:20.185Z"
   },
   {
     "id": "task-225f6a98",

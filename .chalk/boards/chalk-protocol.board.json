@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784292797443,
+  "updatedAt": 1784293040185,
   "order": 0,
   "cards": [
     {
@@ -1289,10 +1289,15 @@
     {
       "id": "task-58e2ced9",
       "title": "feat(director-kit): D3 · reframe the gates as one optional 'Checks' part",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1784290931120,
-      "updatedAt": 1784290931120,
-      "order": 78
+      "updatedAt": 1784293040185,
+      "order": 78,
+      "description": "- chalk harness frames the Checks section as OPTIONAL, the accept button, one part of the kit (not the whole product)\n- A checks-OFF project (no verify/review/held-out, require-test off) renders a coherent harness with an 'all optional — runs without gates' note — reinforcing checks are not mandatory\n- chalk harness closes by naming the CORE — the director's taste/judgment (align · digest · pending · raise) — with the gates as one part\n- docs/harness.md documents the kit and frames the gates as one optional Checks part, with the director's taste/judgment as the defensible core",
+      "testArtifact": {
+        "specPath": "test/director-checks-reframe.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/217"
+      }
     },
     {
       "id": "task-225f6a98",
