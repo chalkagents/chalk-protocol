@@ -26,6 +26,21 @@ test('buildContext instructs the executor to raise a fork instead of guessing', 
   assert.match(out, /ONLY the few/i, 'and warns against raise-flooding (only the calls that need taste)');
 });
 
+test('the raise instruction is elastic — present at a normal budget, dropped under a tiny one (essentials survive)', () => {
+  const d = mkdtempSync(join(tmpdir(), 'chalk-raiseE-'));
+  chalk(d, 'init', '--name', 'demo');
+  writeFileSync(join(d, '.chalk/tasks.json'), JSON.stringify([{
+    id: 'task-9f3a2b1c', title: 'feat: a thing', state: 'in-progress', acceptanceCriteria: [{ text: 'UNIQUE_CRIT_ABC' }], tests: [],
+  }]));
+  assert.match(chalk(d, 'context', 'task-9f3a2b1c').out, /RAISE it/i, 'present at the default budget');
+  // squeeze the budget so only essentials fit — the raise block (guidance) must yield first
+  const cf = join(d, '.chalk/chalk.json'); const o = JSON.parse(readFileSync(cf, 'utf8'));
+  o.protocol.contextBudget = 1; writeFileSync(cf, JSON.stringify(o, null, 2));
+  const tiny = chalk(d, 'context', 'task-9f3a2b1c').out;
+  assert.doesNotMatch(tiny, /RAISE it/i, 'the raise block yields under extreme pressure (deleting the raiseFits guard fails here)');
+  assert.match(tiny, /UNIQUE_CRIT_ABC/, 'the acceptance criteria (essential) still survive');
+});
+
 test('both chalk-executor definitions document the raise convention (shipped + dogfood)', () => {
   for (const p of ['share/agents/chalk-executor.md', '.claude/agents/chalk-executor.md']) {
     const md = readFileSync(join(ROOT, p), 'utf8');
