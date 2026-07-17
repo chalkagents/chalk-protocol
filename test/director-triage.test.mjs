@@ -53,7 +53,7 @@ function repo(decisions) {
   const d = mkdtempSync(join(tmpdir(), 'chalk-triage-'));
   chalk(d, 'init', '--name', 'demo');
   writeFileSync(join(d, '.chalk/tasks.json'), JSON.stringify([{
-    id: 'task-abc1234', title: 'feat: the thing', state: 'done',
+    id: 'task-9f3a2b1c', title: 'feat: the thing', state: 'done',
     acceptanceCriteria: [{ text: 'works' }], tests: [], reviews: [{ verdict: 'pass', findings: [], decisions }],
   }]));
   return d;
@@ -71,27 +71,65 @@ test('chalk pending — lists med/high ranked with a ref; empty inbox reports cl
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /Director inbox/i);
   assert.match(r.out, /chose a global singleton/);
-  assert.match(r.out, /task-abc1234#0/, 'shows the accept/redirect ref');
+  assert.match(r.out, /task-9f3a2b1c#0/, 'shows the accept/redirect ref');
   // highest risk first
   assert.ok(r.out.indexOf('global singleton') < r.out.indexOf('defaulted the timeout'), 'ranked high before med');
 });
 
 test('chalk pending accept — resolves a call and drops it from the inbox', () => {
   const d = repo([{ choice: 'chose a global singleton', blastRadius: 'high', reversibility: 'hard' }]);
-  const r = chalk(d, 'pending', 'accept', 'task-abc1234#0');
+  const r = chalk(d, 'pending', 'accept', 'task-9f3a2b1c#0');
   assert.equal(r.code, 0, r.out);
   assert.ok(tasksOf(d)[0].reviews[0].decisions[0].accepted?.at, 'the decision is marked accepted');
   assert.match(chalk(d, 'pending').out, /inbox empty/i, 'accepted call leaves the inbox');
-  assert.notEqual(chalk(d, 'pending', 'accept', 'task-abc1234#0').code, 0, 'cannot re-accept a resolved call');
+  assert.notEqual(chalk(d, 'pending', 'accept', 'task-9f3a2b1c#0').code, 0, 'cannot re-accept a resolved call');
 });
 
 test('chalk pending redirect — records a course-correction and logs a decision', () => {
   const d = repo([{ choice: 'chose a global singleton', blastRadius: 'high', reversibility: 'hard' }]);
-  assert.notEqual(chalk(d, 'pending', 'redirect', 'task-abc1234#0').code, 0, 'redirect needs a reason');
-  const r = chalk(d, 'pending', 'redirect', 'task-abc1234#0', 'use dependency injection instead');
+  assert.notEqual(chalk(d, 'pending', 'redirect', 'task-9f3a2b1c#0').code, 0, 'redirect needs a reason');
+  const r = chalk(d, 'pending', 'redirect', 'task-9f3a2b1c#0', 'use dependency injection instead');
   assert.equal(r.code, 0, r.out);
   const dec = tasksOf(d)[0].reviews[0].decisions[0];
   assert.equal(dec.redirected?.why, 'use dependency injection instead');
   assert.match(readFileSync(join(d, '.chalk/decisions.md'), 'utf8'), /use dependency injection instead/, 'the redirect is logged to the decision record');
   assert.match(chalk(d, 'pending').out, /inbox empty/i, 'redirected call leaves the inbox');
+});
+
+// A spine + stub reviewer we control, so `chalk review`'s own rendering is exercised (criterion 2).
+function repoWithReviewer(verdictJson) {
+  const d = mkdtempSync(join(tmpdir(), 'chalk-triage-rev-'));
+  chalk(d, 'init', '--name', 'demo');
+  writeFileSync(join(d, '.chalk/tasks.json'), JSON.stringify([{
+    id: 'task-9f3a2b1c', title: 'feat: a thing', state: 'in-progress',
+    acceptanceCriteria: [{ text: 'works' }], tests: [], reviews: [],
+    pipeline: { stage: 'pr-open', at: '2026-01-01T00:00:00Z' }, pr: { number: 7, recorded: true },
+  }]));
+  writeFileSync(join(d, 'rev.mjs'), `console.log(${JSON.stringify(JSON.stringify(verdictJson))});`);
+  const cf = join(d, '.chalk/chalk.json');
+  const o = JSON.parse(readFileSync(cf, 'utf8'));
+  o.protocol.review = { ...(o.protocol.review || {}), command: `node ${join(d, 'rev.mjs')}` };
+  writeFileSync(cf, JSON.stringify(o, null, 2));
+  spawnSync('git', ['init', '-b', 'main'], { cwd: d });
+  spawnSync('git', ['add', '-A'], { cwd: d });
+  spawnSync('git', ['-c', 'user.email=t@t.t', '-c', 'user.name=t', 'commit', '-m', 'x'], { cwd: d });
+  writeFileSync(join(d, 'change.txt'), 'a change to review');
+  spawnSync('git', ['add', '-A'], { cwd: d });
+  spawnSync('git', ['-c', 'user.email=t@t.t', '-c', 'user.name=t', 'commit', '-m', 'change'], { cwd: d });
+  return d;
+}
+
+test('chalk review — ranks the decision digest highest-risk-first and badges each by risk (criterion 2)', () => {
+  const d = repoWithReviewer({ verdict: 'pass', findings: [], decisions: [
+    { choice: 'a small reversible tweak', rationale: 'x', blastRadius: 'low', reversibility: 'easy' },   // low
+    { choice: 'a load-bearing irreversible call', rationale: 'y', blastRadius: 'high', reversibility: 'hard' }, // high
+  ] });
+  const r = chalk(d, 'review', 'task-9f3a2b1c');
+  assert.equal(r.code, 0, `pass exits 0: ${r.out}`);
+  assert.match(r.out, /Decision digest/i);
+  // ranked: the HIGH-risk call is rendered ABOVE the low-risk one, regardless of input order
+  assert.ok(r.out.indexOf('load-bearing irreversible') < r.out.indexOf('small reversible tweak'),
+    'high-risk decision ranked above low-risk in the review digest');
+  // each line carries a risk badge — reverting the ranked/badged render to a plain list fails here
+  assert.match(r.out, /high[\s\S]*load-bearing irreversible/, 'the high badge sits with the high-risk call');
 });

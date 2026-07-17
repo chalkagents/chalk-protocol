@@ -1905,7 +1905,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         if (!why) die('redirect requires a course-correction: chalk pending redirect <task>#<n> "<what to do instead>"');
         d.redirected = { at: now(), by: flags.by || 'human', why: String(why) };
         s.upsertTask(t);
-        s.appendDecision({ title: `Redirected: ${d.choice || ref}`, why: String(why) });
+        s.appendDecision({ title: `Redirected: ${d.choice || ref}`, why: String(why), taskId: t.id });
         syncBrowser(s);
         ok(`redirected ${C.dim(ref)} ${C.dim(`— logged: ${why}`)}`);
       }
@@ -1915,7 +1915,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (!items.length) return ok(C.dim('director inbox empty — no med/high-risk judgment calls awaiting you.'));
     console.log(C.b(`Director inbox`) + C.dim(` — ${items.length} judgment call(s) awaiting accept/redirect (highest risk first):`));
     for (const it of items) {
-      const ref = `${it.taskId.slice(0, 12)}#${it.index}`;
+      const ref = `${it.taskId}#${it.index}`; // full id — a copy-back ref must round-trip exactly, not a prefix
       console.log(`  ${riskBadge(it.risk)} ${C.dim(ref)}  ${formatDecisionLine(it.decision).replace(/^◇ /, '')}`);
       console.log(C.dim(`        ↳ ${it.taskTitle.slice(0, 60)}`));
     }
