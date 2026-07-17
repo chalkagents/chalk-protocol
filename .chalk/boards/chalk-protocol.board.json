@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784282976162,
+  "updatedAt": 1784284507632,
   "order": 0,
   "cards": [
     {
@@ -1171,10 +1171,20 @@
     {
       "id": "task-86fadfe0",
       "title": "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1784280776696,
-      "updatedAt": 1784280776696,
-      "order": 72
+      "updatedAt": 1784284507632,
+      "order": 72,
+      "description": "- runnableTasks treats a re-opened task (in-progress + unresolved directive) as runnable so chalk run/work re-execute it; a plain in-progress task (no pending directive) is NOT re-picked\n- chalk done (and the pipeline merge) resolves the task's pending director corrections (resolved:true, resolvedAt) and reports it — the rework landed, so the loop closes\n- chalk next surfaces a re-opened task ('re-opened for rework') and its pending corrections with the rebuild instruction, so it is not silently stranded as plain in-progress",
+      "testArtifact": {
+        "specPath": "test/director-rework-loop.test.mjs",
+        "lastRun": {
+          "runId": "done-task-86fadfe0",
+          "status": "passed",
+          "at": 1784284507632
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/200"
+      }
     },
     {
       "id": "task-fc11b71e",

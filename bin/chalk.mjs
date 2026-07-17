@@ -2,7 +2,7 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_VERSION, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_VERSION, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, pendingDirectives, needsRework, resolveDirectives, resolveRef, workdir, buildContext } from '../lib/store.mjs';
 import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
@@ -265,7 +265,16 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (wip.length > 1) console.log(C.y(`  ! ${wip.length} tasks in-progress — protocol prefers ONE at a time; finish one first.`));
       for (const t of wip) {
         const short = t.id.slice(0, 12);
-        console.log(`  ${C.b('●')} ${C.b(t.title)} ${C.dim(short)} is in-progress.`);
+        // #200: a RE-OPENED task carries director corrections to rebuild to — surface them (banner +
+        // the corrections) so it isn't stranded as "just another in-progress task". Both key off
+        // needsRework (reopenedAt + pending) so the surfacing is consistent.
+        const rework = needsRework(t);
+        console.log(`  ${C.b('●')} ${C.b(t.title)} ${C.dim(short)} is in-progress.${rework ? C.y(' (re-opened for rework)') : ''}`);
+        if (rework) {
+          const pend = pendingDirectives(t);
+          console.log(C.y(`     ↻ ${pend.length} director correction(s) pending rework — rebuild, then \`chalk verify\` → \`chalk done\`:`));
+          for (const dir of pend) console.log(`       • Instead of "${dir.choice || 'your earlier choice'}": ${dir.instead}`);
+        }
         for (const c of t.acceptanceCriteria || []) console.log(`     → satisfy: ${c.text}`);
         if ((t.tests || []).length) {
           const broken = s.brokenLocks(t);
@@ -936,10 +945,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     catch { console.log(C.y(`  ⚠ couldn't fast-forward ${gh0.base || 'main'} locally — pull it manually (the remote is up to date).`)); }
     worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
     t.worktree = undefined; t.state = 'done'; t.doneAt = now();
+    const resolvedN = resolveDirectives(t); // #200: the pipeline rework landed — resolve (same helper as `done`)
     t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Merged + cleaned: PR #${t.pr.number}`, taskId: t.id });
-    ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓`);
+    ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓${resolvedN ? C.dim(` · ${resolvedN} director correction(s) resolved`) : ''}`);
   },
 
   // The scheduled-run unit (for cron / launchd / `/loop`): locked + doctor-gated + one bounded
@@ -1587,10 +1597,13 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       }
     }
     t.state = 'done'; t.doneAt = now();
+    // #200: completing the task resolves any director corrections it was re-opened to address — the
+    // rework landed, so the directive drops out of context (#199) and the loop closes.
+    const resolvedN = resolveDirectives(t);
     s.upsertTask(t);
     syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Done: ${t.title}`, taskId: t.id });
-    ok(`done ${C.b(t.title)} — verify green ✓`);
+    ok(`done ${C.b(t.title)} — verify green ✓${resolvedN ? C.dim(` · ${resolvedN} director correction(s) resolved`) : ''}`);
     // Funnel milestone: first `done` (#154). Fire-and-forget AFTER the user-facing output — not awaited,
     // guarded; the POST drains with the event loop and never gates or breaks the command. Inert unless opted in.
     void emitMilestone({ event: 'done', config: s.protocol().telemetry, env: process.env, stateFile: s.p.telemetry, version: CHALK_VERSION, now: now() });

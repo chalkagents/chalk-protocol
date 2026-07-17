@@ -5387,9 +5387,24 @@
   {
     "id": "task-86fadfe0",
     "title": "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "runnableTasks treats a re-opened task (in-progress + unresolved directive) as runnable so chalk run/work re-execute it; a plain in-progress task (no pending directive) is NOT re-picked"
+      },
+      {
+        "text": "chalk done (and the pipeline merge) resolves the task's pending director corrections (resolved:true, resolvedAt) and reports it — the rework landed, so the loop closes"
+      },
+      {
+        "text": "chalk next surfaces a re-opened task ('re-opened for rework') and its pending corrections with the rebuild instruction, so it is not silently stranded as plain in-progress"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-rework-loop.test.mjs",
+        "sha256": "3f6d06579a863c8e54d8f7c10982a4dc523a53f21205039370e10c798d39fcb4"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -5407,7 +5422,207 @@
       "at": "2026-07-17T09:32:56.696Z"
     },
     "createdAt": "2026-07-17T09:32:56.696Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-17T10:17:47.943Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 2 explicitly requires that BOTH `chalk done` AND the pipeline merge resolve pending directives. Only the `chalk done` path (bin/chalk.mjs:1601) is tested. The pipeline-merge resolution added at bin/chalk.mjs:947 has NO test — reverting that single line leaves the entire locked suite green. That production auto-merge path (used by `chalk run`) ships directive-resolution behavior unverified, so a regression there would be silent. Per the coverage rule this is a vacuous pass for half of criterion 2."
+          },
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "runnableTasks now re-admits any in-progress task carrying an unresolved directive. A redirect on an already in-progress task (NOT a done→reopen) also attaches an unresolved directive (chalk.mjs:1940 pushes resolved:false regardless of reopen), so such a task becomes 'runnable' and could be re-fanned-out by `chalk run --parallel` while it is actively being worked. The tests only exercise the clean re-opened case; concurrent-pick / double-execution against an in-flight worktree is unverified."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`chalk done` resolves pending directives independent of `reopenedAt`, but `chalk next`'s '(re-opened for rework)' banner keys off `reopenedAt` while the pending-corrections block keys off pendingDirectives. A directive added to a task that was never done (no reopenedAt) will surface the '↻ pending rework' block without the 're-opened' banner — an inconsistent surfacing state the tests don't cover."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Model a re-opened task by overloading state='in-progress' + an unresolved directive rather than introducing a dedicated 'reopened'/'redirected' state",
+            "rationale": "Reuses existing state machine and the done-gate's `state==='in-progress'` guard so no new transitions are needed; runnableTasks distinguishes via pendingDirectives",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "`chalk done` and pipeline merge resolve ALL pending directives on the task, not only those a re-open was triggered for",
+            "rationale": "Completing the task is treated as satisfying every outstanding correction; keeps resolution logic a single filter with no per-directive targeting",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Surface pending corrections in `chalk next` inline under the in-progress list with the literal 'instead' instruction, rather than as a separate section or gate",
+            "rationale": "Keeps the redirect visible in the normal next-action flow so it isn't stranded, minimal output change",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T10:24:33.203Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2's pipeline-merge resolution path is only verified by grepping bin/chalk.mjs for `resolveDirectives(t)` occurrences (>=2). This catches a straight revert of the call site but does NOT behaviorally exercise the merge path — it can't detect the call being placed on a dead branch, resolving the wrong task, or firing before the merge actually lands. The `chalk done` path, by contrast, is properly integration-tested."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "reopenedAt is set on done→redirect but never cleared (resolveDirectives only stamps directives). A task that was once re-opened, reworked, and returned to in-progress will still have reopenedAt set; a subsequent redirect while it is ACTIVE (never going back through done) would satisfy needsRework and re-admit it — the very 'active-redirect double-execution' case the design claims to exclude. Narrow corner, but the exclusion invariant relies on reopenedAt only ever coexisting with a done→reopen, which isn't guaranteed over a task's lifetime."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "needsRework gates purely on reopenedAt + unresolved directive and ignores task.state, while runnableTasks separately ORs it with state==='specd'. A done task that gets a fresh directive without state flipping (e.g., an external mutation) would be judged needsRework=true by the helper in isolation; the surfacing in `chalk next` only shows it because it iterates the wip list, so behavior is coupled to callers filtering by state rather than the helper itself."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Gate re-admission on a dedicated reopenedAt marker (set only on done→redirect) rather than 'in-progress + any unresolved directive'",
+            "rationale": "Prevents a redirect issued against an already-active task from re-admitting it to the driver and double-executing in-flight work",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Do not clear reopenedAt when directives are resolved; rely on state transitions (done) to drop the task out of runnableTasks",
+            "rationale": "Simpler completion path via the shared resolveDirectives helper; treats reopenedAt as a durable historical stamp",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Verify the second (pipeline-merge) completion path with a source-text grep assertion instead of a behavioral integration test",
+            "rationale": "Spinning up a full PR-merge pipeline in-test is heavy; the grep guards against silent removal of the call site",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Surface re-opened rework inline within the existing `chalk next` in-progress loop (banner + pending corrections) rather than as a distinct triage section",
+            "rationale": "Reuses the wip rendering so a re-opened task isn't stranded as plain in-progress, with minimal new output surface",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T10:27:16.361Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T10:29:55.310Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The pipeline-merge completion path (criterion 2's 'and the pipeline merge') is only covered by a brittle SOURCE-GREP assertion counting `resolveDirectives(t)` occurrences >= 2. No behavioral test drives a re-opened task through the merge path to assert directives actually resolve there. A refactor that renames the arg (e.g. resolveDirectives(task)) breaks the test without a real regression, and a call that is present-but-broken would still pass. The done path is genuinely integration-tested; the merge path is not."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "Criterion 2 says both completion paths resolve corrections 'and reports it'. The `chalk done` path appends '· N director correction(s) resolved' to its output, but the pipeline-merge path calls resolveDirectives silently — its emitUpdate only says 'Merged + cleaned', with no mention of resolved corrections. The merge path partially misses the 'reports it' half of the criterion."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "runnableTasks now returns some in-progress tasks (re-opened ones). doctor.mjs feeds runnableTasks into the testless/backlog-quality check and chalk.mjs line 340 uses it for empty-queue detection; a re-opened task with no test would now be flagged runnable-but-testless. Behaviorally reasonable but a subtly widened surface not directly asserted by the new tests."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "needsRework ignores task.state (gates purely on reopenedAt + pending directives); it is runnableTasks that ORs with state==='specd'. A done task carrying a stale reopenedAt + fresh unresolved directive from an external mutation would be judged needsRework=true by the helper in isolation. Safe only because callers filter by state — coupling correctness to caller discipline rather than the helper."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Gate re-admission on a dedicated `reopenedAt` marker (set only on done→redirect) rather than the criterion's literal 'in-progress + any unresolved directive'",
+            "rationale": "Prevents a directive added to an ALREADY-active task from re-admitting it to the driver and double-executing in-flight work under chalk run --parallel",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "resolveDirectives CLEARS reopenedAt when the rework lands, treating it as a transient re-open flag rather than a durable historical stamp",
+            "rationale": "So a stale re-open marker can never coexist with a later active-redirect and re-admit an in-flight task; keeps the 'reopenedAt ⇒ awaiting rework' invariant true for the task's whole lifetime — at the cost of losing the audit trail of when a task was re-opened",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Assert the pipeline-merge resolution via a source-code regex test instead of a behavioral end-to-end merge test",
+            "rationale": "Cheap way to guard against silently reverting one of the two call sites without standing up a full PR/merge fixture",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Merge path resolves directives silently (no user-facing 'corrections resolved' report) while done reports it",
+            "rationale": "Merge output already emits a work-item-accepted update; implementer chose not to add directive-count reporting there",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T10:33:13.152Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 2 explicitly covers 'the pipeline merge' path, but no test exercises that code path end-to-end — it is only asserted by a source-grep counting `resolveDirectives(t)` call sites (>=2). The grep would still pass if the merge-path call were placed but dead/unreached, or if resolveDirectives were subtly wrong for the merge context. The `chalk done` path is genuinely integration-tested; the pipeline merge is not. Non-vacuous overall (resolveDirectives is unit-tested + done path is real), so not blocking, but the merge branch's actual behavior is unverified."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "runnableTasks now returns some in-progress (re-opened) tasks, widening a helper long assumed to return only specd tasks. doctor.mjs:100-104 feeds it into the testless-backlog check: a re-opened task whose tests array is empty would now be flagged runnable-but-testless (fail w/o reviewer gate). Also run.mjs:77 comment ('runnableTasks only returns specd tasks') is now stale/misleading. Behaviorally the driver re-start (t.state='in-progress' again) is idempotent so re-execution works, but the widened surface is not directly asserted by the new tests."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "needsRework gates purely on reopenedAt + pending directive and ignores task.state; correctness of the 'no double-run of active work' guarantee depends entirely on reopenedAt being set ONLY on a done→redirect and cleared on resolve. That invariant lives in A1 (#198) code not in this diff — if any other path ever sets reopenedAt on an active task, an in-flight task gets re-admitted and double-executed. Coupling correctness to caller discipline rather than the helper itself."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Key re-admission on a dedicated reopenedAt marker rather than the literal criterion wording 'in-progress + unresolved directive'",
+            "rationale": "A directive added to an ALREADY-active task would otherwise re-admit and double-execute in-flight work under chalk run --parallel; reopenedAt distinguishes a done→reopen from a live redirect",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Clear reopenedAt inside resolveDirectives (delete the marker on rework completion) instead of relying on the done-state transition to drop it from runnableTasks",
+            "rationale": "Prevents a stale reopenedAt from coexisting with a future fresh directive and re-admitting a task later; keeps the reopenedAt⇒awaiting-rework invariant lifetime-true",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Make re-opened tasks report as in-progress-but-runnable (widen runnableTasks to return non-specd tasks)",
+            "rationale": "Reuses the existing state machine and the done-gate's state==='in-progress' guard so no new transition is needed",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Surface pending corrections only via chalk next's existing wip iteration (behavior coupled to callers filtering by state) rather than centralizing in the helper",
+            "rationale": "Minimal diff reusing the wip loop; but means a done task with a stale reopenedAt+fresh directive would read needsRework=true in isolation",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T10:15:31.791Z",
+    "doneAt": "2026-07-17T10:35:07.632Z"
   },
   {
     "id": "task-fc11b71e",
