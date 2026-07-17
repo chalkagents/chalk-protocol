@@ -27,6 +27,7 @@ import { runDoctor } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
+import { pulledIssuesLine } from '../lib/pull-count.mjs';
 import { missingRequiredTest, untrackedLockedTests } from '../lib/testgate.mjs';
 import { runBreakit } from '../lib/breakit.mjs';
 import { withJsonOutput, unwrapAgentOutput, runExecutorCaptured } from '../lib/cost.mjs';
@@ -409,7 +410,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         }
       } catch { /* best-effort — the tasks are already written to the spine */ }
     }
-    ok(`pulled ${C.b(String(created))} new issue(s) ${C.dim(`(${issues.length - created} already tracked)`)}`);
+    ok(`${pulledIssuesLine(C.b(String(created)))} ${C.dim(`(${issues.length - created} already tracked)`)}`);
   },
 
   // GitHub pipeline — create the feature branch + an isolated git worktree for a task.
