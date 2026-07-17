@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784284507632,
+  "updatedAt": 1784285432496,
   "order": 0,
   "cards": [
     {
@@ -1145,10 +1145,20 @@
     {
       "id": "task-6fec5f3f",
       "title": "feat(director-loop): B2 · inject prior director decisions into new-task context (the moat)",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1784280776685,
-      "updatedAt": 1784280776685,
-      "order": 70
+      "updatedAt": 1784285432496,
+      "order": 70,
+      "description": "- buildContext injects a '## Director's calls so far (apply this taste)' block from the durable record (#201) on NEW tasks — accepted → 'apply this rationale', redirected → 'do this instruction' (distinct, per B1's schema)\n- The block is bounded like lessons (most-recent-first, elided with a note under a tight context budget); the task essentials (criteria/tests/directives) are never displaced\n- No director decisions → no block (no regression to existing context)",
+      "testArtifact": {
+        "specPath": "test/director-compound.test.mjs",
+        "lastRun": {
+          "runId": "done-task-6fec5f3f",
+          "status": "passed",
+          "at": 1784285432496
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/202"
+      }
     },
     {
       "id": "task-e27fa89c",

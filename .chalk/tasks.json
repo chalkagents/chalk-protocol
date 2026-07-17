@@ -5208,9 +5208,24 @@
   {
     "id": "task-6fec5f3f",
     "title": "feat(director-loop): B2 · inject prior director decisions into new-task context (the moat)",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "buildContext injects a '## Director's calls so far (apply this taste)' block from the durable record (#201) on NEW tasks — accepted → 'apply this rationale', redirected → 'do this instruction' (distinct, per B1's schema)"
+      },
+      {
+        "text": "The block is bounded like lessons (most-recent-first, elided with a note under a tight context budget); the task essentials (criteria/tests/directives) are never displaced"
+      },
+      {
+        "text": "No director decisions → no block (no regression to existing context)"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-compound.test.mjs",
+        "sha256": "b5748bdf68da5cbbe1ef60c1e04804bee45257a112b96d9a5fe73d31b5a5d903"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -5228,7 +5243,166 @@
       "at": "2026-07-17T09:32:56.684Z"
     },
     "createdAt": "2026-07-17T09:32:56.685Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-17T10:41:30.658Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The director block is injected unconditionally, not gated to 'NEW tasks' — it renders whenever buildContext runs, including when `task` is null (no current task) and on the very task whose accept/redirect it may have just produced, so a decision logged against the current task can echo back into its own context. Harmless but broader than the 'on NEW tasks' scope the criterion states; no test pins the null-task or same-task case."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Tests assert the director block renders and is budget-priority in isolation, but none asserts the intended ordering/coexistence with lessons (director block first, lessons still present) or that directorBytes correctly reserves budget so both blocks fit. The 'higher-signal than lessons' priority tradeoff is implemented but unverified — a regression that dropped lessons entirely when director decisions exist would pass the suite."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The rendered heading ('## Director's calls so far (apply this taste — the human accepted/redirected these)') is longer than the criterion's quoted string ('## Director's calls so far (apply this taste)'); tests only match the loose substring /Director's calls so far/i, so the exact wording is unpinned and could drift."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Give the director block the leftover context budget BEFORE lessons (director wins the byte contest under pressure)",
+            "rationale": "Director's explicit accept/redirect calls are treated as higher-signal taste than auto-collected lessons",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Inject the block on every buildContext call rather than filtering to unresolved/other-task decisions or a 'new' task state",
+            "rationale": "Simplicity; the whole durable record is the compounding taste feed",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Fallback strings for missing fields ('a choice', '(see record)') instead of skipping malformed records",
+            "rationale": "Render gracefully rather than drop a director call",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Elision note wording and most-recent-first ordering mirror the lessons block convention",
+            "rationale": "Consistency with existing bounded-context behavior",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T10:42:08.657Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T10:44:36.297Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "design-intent",
+            "note": "Criterion 1 scopes the block to 'NEW tasks', but fitDirectorBlock is injected for ANY task passed to buildContext regardless of state (in-progress, re-opened, etc.). No test asserts suppression on non-new tasks. Consequence: a re-opened/in-progress task's OWN just-recorded director decision can surface in the compounding block AND simultaneously in the essential 'Director corrections' block (task.directives) — duplicate signal. Not a criterion failure (tests treat in-progress as 'new'), but it's an unconfirmed scope call worth a human's eye."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "directorLines renders anything that is not verdict==='redirected' as 'accepted:'. Any future/other verdict value (e.g. a logged non-accept/redirect) would be silently mislabeled as accepted. Safe today since B1's schema is accept/redirect only, but the else-branch is not defensive and no test pins non-accepted/non-redirected input."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "When directorBlock consumes nearly all leftover budget, lessons get remaining ≤ 0 and fitLessonsBlock still emits a heading-plus-elision-note block with zero lessons. Pre-existing behavior, but the new director-first budget split makes it easier to trigger; no test covers the director+lessons-both-under-pressure interaction (only director-alone elision and coexist-when-roomy are tested)."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Director decisions get the leftover budget BEFORE lessons; director block always ranks ahead of the lessons block",
+            "rationale": "Explicit human accept/redirect taste is treated as higher-signal than auto-collected lessons",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Inject the compounding block for every task (no task-state gating for 'new')",
+            "rationale": "Simpler; superset of the 'new task' requirement and tests pass a single in-progress task labeled NEW",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Binary rendering: redirected → 'choice → instruction', everything else → 'accepted: choice (because rationale)'",
+            "rationale": "B1 split the schema into exactly rationale (agent) vs instruction (director); accept/redirect are the only verdicts",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Elision note wording/threshold reuses the lessons pattern but omits the 'raise contextBudget / chalk archive' remediation hint that the lessons note carries",
+            "rationale": "Keep the director note terse",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T10:46:49.220Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T10:48:53.288Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "fitDirectorBlock returns null when nothing fits under budget (kept.length===0), so under extreme pressure the WHOLE director block silently vanishes — unlike fitLessonsBlock, which still emits the heading + an all-elided note. Criterion 2 asks for 'elided with a note'; in the total-starvation case there is no note at all. Minor and essentials are still protected, but it's an inconsistency with the sibling behavior it claims to mirror."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Criterion 1 scopes the block to 'NEW tasks', but the implementation injects it for ANY task passed to buildContext (the test task is state 'in-progress', not new). Only the current task's own decisions are filtered out. Injecting broadly is arguably beneficial, but no test pins the 'new-task' semantics, so a future narrowing/broadening would go uncaught."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No test covers the redirected-with-missing-instruction fallback ('(see record)') or the accepted-with-missing-rationale path, nor the interaction where the current task's own decision co-exists with a #199 directives block in the same render. Core paths are well covered, but these branches ship untested."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Director calls get leftover budget BEFORE lessons, and are ordered ahead of the lessons block in the output",
+            "rationale": "Explicit human accept/redirect taste is treated as higher-signal than auto-collected lessons",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Exclude the current task's own decisions from the compounding block (filter r.taskId !== task.id)",
+            "rationale": "The current task's corrections already surface in the essential #199 'Director corrections' block; re-listing would double the signal",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Director block is elastic/budget-elided like lessons rather than essential/never-dropped",
+            "rationale": "Prior taste is compounding guidance, not the task's binding contract, so it yields to essentials under pressure",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Render format 'accepted: \"choice\" (because rationale)' vs 'redirected: \"choice\" → instruction'",
+            "rationale": "Encodes the B1 schema split (rationale for accepted, instruction for redirected) as distinct human-readable lines",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T10:39:14.389Z",
+    "doneAt": "2026-07-17T10:50:32.496Z"
   },
   {
     "id": "task-e27fa89c",
