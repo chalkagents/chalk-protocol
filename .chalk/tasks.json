@@ -5233,9 +5233,27 @@
   {
     "id": "task-e27fa89c",
     "title": "feat(director-loop): B1 · a durable, structured director-decision record",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk pending accept/redirect write through to a durable append-only record (.chalk/director.jsonl) with structured fields: at, verdict (accepted|redirected), choice, why, risk, taskId, by"
+      },
+      {
+        "text": "The durable record survives a re-review that regenerates t.reviews[].decisions — accept/redirect history persists for the task's life, independent of the volatile per-review flags (fixes the #193 persistence finding)"
+      },
+      {
+        "text": "A directorDecisions() store accessor reads the record back; chalk decisions surfaces the director's accepted/redirected calls"
+      },
+      {
+        "text": ".chalk/director.jsonl is spine state — in SPINE_STATE_PATHS so it is excluded from review diffs and committed by intake (no bookkeeping churn in feature diffs)"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-record.test.mjs",
+        "sha256": "56e2eb68d8d4ddead0af8da6c67bcf7e3c74a25349f0fb4d66da98f581decfd6"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -5253,7 +5271,8 @@
       "at": "2026-07-17T09:32:56.691Z"
     },
     "createdAt": "2026-07-17T09:32:56.691Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T09:39:01.759Z"
   },
   {
     "id": "task-86fadfe0",
