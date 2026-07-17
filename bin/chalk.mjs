@@ -2072,14 +2072,21 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
     const v = p.verify || {};
     const verifyOn = ['test', 'typecheck', 'lint', 'build'].filter((k) => v[k]);
-    console.log('\n' + C.b('Checks') + C.dim(' — the gates (P1–P7)'));
+    const anyCheck = verifyOn.length || p.review?.command || p.regression?.required || p.requireTest;
+    // #217: the gates are ONE OPTIONAL part — the accept button, not the whole product.
+    console.log('\n' + C.b('Checks') + C.dim(' — the gates (P1–P7): OPTIONAL, the accept button · one part of the kit'));
     console.log(`  ${dot(verifyOn.length)} verify    ${verifyOn.length ? C.g(verifyOn.join(', ')) : C.dim('(none configured — vacuous green)')}`);
     console.log(`  ${dot(p.review?.command)} review    ${p.review?.command ? C.g(`adversarial (${(p.review.requiredAt || []).join(', ') || 'legacy'})`) : C.dim('off')}`);
     console.log(`  ${dot(p.regression?.required)} held-out  ${p.regression?.required ? C.g(`${(p.regression.tests || []).length} locked test(s)`) : C.dim('off')}`);
     console.log(`  ${dot(p.requireTest)} require-test ${p.requireTest ? C.g('on') : C.dim('off')}`);
+    if (!anyCheck) console.log(C.dim('  (all optional — this project runs without gates; add them when you want the accept button)'));
 
     console.log('\n' + C.b('Flows') + C.dim(' — how the loop runs'));
     console.log(C.dim('  run · pipeline · loop · autopilot   (read → work → verify → write)'));
+
+    // The whole point: the kit is composable; the gates are one part, the director's taste is the core.
+    console.log('\n' + C.dim('The gates are one part — your intent, taste & judgment (align · digest · pending · raise) are the core.'));
+    console.log(C.dim('Compose the kit around your goal: `chalk skill add` teaches it, the spine remembers. See docs/harness.md.'));
   },
 
   log({ flags }) {
