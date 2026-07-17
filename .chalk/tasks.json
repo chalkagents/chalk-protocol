@@ -5387,9 +5387,24 @@
   {
     "id": "task-86fadfe0",
     "title": "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "runnableTasks treats a re-opened task (in-progress + unresolved directive) as runnable so chalk run/work re-execute it; a plain in-progress task (no pending directive) is NOT re-picked"
+      },
+      {
+        "text": "chalk done (and the pipeline merge) resolves the task's pending director corrections (resolved:true, resolvedAt) and reports it — the rework landed, so the loop closes"
+      },
+      {
+        "text": "chalk next surfaces a re-opened task ('re-opened for rework') and its pending corrections with the rebuild instruction, so it is not silently stranded as plain in-progress"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-rework-loop.test.mjs",
+        "sha256": "093540ea2ce0b9c9aaa85f83edf4b9d1c40c4163425a2880d01184949e435bb6"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -5407,7 +5422,8 @@
       "at": "2026-07-17T09:32:56.696Z"
     },
     "createdAt": "2026-07-17T09:32:56.696Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T10:15:31.791Z"
   },
   {
     "id": "task-fc11b71e",
