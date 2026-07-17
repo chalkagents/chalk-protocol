@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784282513848,
+  "updatedAt": 1784282976162,
   "order": 0,
   "cards": [
     {
@@ -1179,10 +1179,20 @@
     {
       "id": "task-fc11b71e",
       "title": "feat(director-loop): A2 · inject pending director corrections into buildContext",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1784280776699,
-      "updatedAt": 1784280776699,
-      "order": 73
+      "updatedAt": 1784282976162,
+      "order": 73,
+      "description": "- buildContext surfaces a task's unresolved directives as a '### Director corrections (REBUILD to these)' block naming the corrected choice + what to do instead\n- Only UNRESOLVED directives are injected — a resolved directive is not re-surfaced\n- No directives → no block (no regression to existing context)\n- The corrections block is ESSENTIAL — never dropped for the context budget (only the elastic lessons block is trimmed), like the review-findings block it mirrors",
+      "testArtifact": {
+        "specPath": "test/director-context-inject.test.mjs",
+        "lastRun": {
+          "runId": "done-task-fc11b71e",
+          "status": "passed",
+          "at": 1784282976162
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/199"
+      }
     },
     {
       "id": "task-3a49d957",

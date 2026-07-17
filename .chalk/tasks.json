@@ -5412,9 +5412,27 @@
   {
     "id": "task-fc11b71e",
     "title": "feat(director-loop): A2 · inject pending director corrections into buildContext",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "buildContext surfaces a task's unresolved directives as a '### Director corrections (REBUILD to these)' block naming the corrected choice + what to do instead"
+      },
+      {
+        "text": "Only UNRESOLVED directives are injected — a resolved directive is not re-surfaced"
+      },
+      {
+        "text": "No directives → no block (no regression to existing context)"
+      },
+      {
+        "text": "The corrections block is ESSENTIAL — never dropped for the context budget (only the elastic lessons block is trimmed), like the review-findings block it mirrors"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-context-inject.test.mjs",
+        "sha256": "b28e2287e4e9704eac28daabd11a61686894620055ba34043488e7cc290a8c66"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -5432,7 +5450,58 @@
       "at": "2026-07-17T09:32:56.699Z"
     },
     "createdAt": "2026-07-17T09:32:56.699Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-17T10:08:07.637Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`dir.instead` has no fallback (unlike `dir.choice` which defaults to 'your earlier choice'). A directive with a missing/empty `instead` renders '...: undefined' or a dangling colon. A1 (#198) presumably guarantees `instead` is populated, but buildContext doesn't defend against it; no test covers a directive lacking `instead`."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Multiple-directive rendering (a task with two unresolved directives) is never exercised — only single-directive cases. The loop is trivial so risk is low, but ordering/formatting of stacked corrections is unverified."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The 'ESSENTIAL' test infers essentialness only indirectly: it asserts the correction survives while 'elided' appears for lessons. It does not construct a case where the correction would compete with lessons for the SAME bytes (essentials are computed before lessons regardless), so it proves the block is in `post` but not that it was a deliberate budget priority over a borderline lessons trim. Adequate for the criterion as written."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Placed the Director corrections block immediately after the review-findings block, inside the `if (task)` branch and within `post` (the always-kept essentials array)",
+            "rationale": "Mirrors the review-findings block so corrections are never budget-dropped; keeps human redirections adjacent to prior-review fixes in the executor's reading order",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Consumes a `task.directives` array with shape {choice, instead, resolved, at, by} and filters on truthy `!x.resolved`",
+            "rationale": "Assumes A1 (#198) writes this durable schema; unresolved = pending correction",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Fallback text 'your earlier choice' for a missing `choice`, but no fallback for a missing `instead`",
+            "rationale": "Treats `instead` as the always-present payload of a directive",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Rendered as free-text markdown prose in context rather than a structured/actionable field the executor can programmatically ack or resolve",
+            "rationale": "Consistency with the existing review-findings presentation; keeps A2 scoped to context injection, leaving resolution to a later slice",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T10:05:09.362Z",
+    "doneAt": "2026-07-17T10:09:36.162Z"
   },
   {
     "id": "task-3a49d957",
