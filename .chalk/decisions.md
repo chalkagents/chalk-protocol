@@ -509,3 +509,8 @@
 
 - _when:_ 2026-07-17T12:48:52.913Z
 - _why:_ Review low: assert the secondary harness rows (retro agent, held-out + require-test checks) so a regression on those config keys is caught, not just the core rows.
+
+## Released v0.1.1
+
+- _when:_ 2026-07-17T13:21:18.294Z
+- _why:_ Completion marker for the orphaned chore(release): v0.1.1 commit (18b8ef0): that cycle was superseded by the shipped+tagged v0.2.0, which carried its content to npm. Marked complete so the release orphan-recovery does not resume it (tagging the old tree would publish a stale 0.1.1).
