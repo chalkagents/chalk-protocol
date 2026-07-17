@@ -105,9 +105,11 @@ wrong product" comes from. Chalk owns it:
 | `chalk pending` | your inbox: raised forks + med/high-risk calls, ranked. `accept`, `redirect "<do this instead>"`, or `answer` each |
 | the loop closes | a redirect **re-opens the task** and the agent rebuilds to your call; your decisions **compound** into every future task's context |
 
+![the director's harness — align → raise → digest → pending → rebuild → compound](./docs/assets/director-harness.gif)
+
 `chalk harness` shows the kit assembled around your goal — agents · skills · checks · flows —
 and `chalk skill add` teaches the project your playbook. Full framing: [docs/harness.md](./docs/harness.md).
-A 90-second offline walkthrough: `bash docs/demo/director-harness-demo.sh`.
+Run it yourself, offline, in ~2 minutes: `bash docs/demo/director-harness-demo.sh`.
 
 ## Autonomous mode
 
