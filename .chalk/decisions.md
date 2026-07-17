@@ -489,3 +489,8 @@
 
 - _when:_ 2026-07-17T11:19:13.253Z
 - _why:_ Review med fix: pin the elastic behavior directly — the raise block is present at a normal budget and DROPS under a tiny one while essentials survive (deleting the raiseFits guard now fails a test).
+
+## Amended acceptance test for "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox"
+
+- _when:_ 2026-07-17T11:35:08.846Z
+- _why:_ Review BLOCK fix: the driver blocked raises as the default needs:human-input, but answer/criterion expect needs:decision — so answering wouldn't unblock a driver-blocked task. Fixed run.mjs to pass 'decision', and added a real driver end-to-end test (executor raises → driver blocks needs:decision → answer unblocks) so the mismatch can't hide.

@@ -6007,7 +6007,7 @@
     "tests": [
       {
         "path": "test/director-raise-route.test.mjs",
-        "sha256": "e51d0b7031356a30b3bf359b777694b44d56aff67b7b3af4b399db5ddfa97406"
+        "sha256": "501283a3af529241e06e17b35d1a28320df5401887418fde0d99dab09591158d"
       }
     ],
     "heldOut": [],
@@ -6027,7 +6027,72 @@
       "at": "2026-07-17T10:59:50.206Z"
     },
     "createdAt": "2026-07-17T10:59:50.208Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-17T11:32:09.940Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "Criterion 1 requires the driver to block a raise-parked task with needs:decision, but lib/run.mjs calls blockTask(...) with no needs arg, so it defaults to 'human-input' (blockTask signature: needs='human-input'). The block is therefore mislabeled versus the contract."
+          },
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "End-to-end break: the answer/unblock logic in `pending answer` only unblocks when `t.block?.needs === 'decision'`. Since the driver actually parks the task with needs:'human-input', answering a raise will NOT unblock a task the driver blocked — directly defeating criteria 3 ('unblocks a task parked on the raise') and 4 for the real driver path."
+          },
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "The locked test masks the above: repo() for the unblock case hardcodes `block:{needs:'decision'}` instead of producing the block via the driver. No test drives runDriver's raise-block path or asserts the needs value it sets, so the mismatch between code ('human-input') and the compensating unblock check ('decision') is never exercised. Reverting the run.mjs needs behavior (or the criterion's decision label) would still pass the suite — a vacuous pass on the driver path."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 4's test answers a raise on a task that is in-progress (not blocked), so the unblock-then-proceed transition is never verified as a single flow; 'work proceeds' is only checked in isolation from the block/unblock it depends on in practice."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "pending now prints 'Raised forks' before the Director inbox and returns undefined (not ok()) when only raises exist and no judgment calls remain; the empty-inbox exit path was reworked. No test asserts exit code / ok-line behavior for the mixed (raises + judgment calls) case, so the inbox-ranking output contract is only partially covered."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Pause on a raised fork by exiting 2 from `chalk work` and letting the pipeline/driver auto-block, mirroring the plan-approval/criteria gates",
+            "rationale": "Reuses the existing exit-2 → auto-block convention rather than inventing a new pause mechanism",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Unblock is gated on block.needs==='decision' specifically",
+            "rationale": "Intends to only revive tasks parked by a raise, not other blocks",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Answered raises are recorded as a new director-record verdict 'answered' (distinct from accepted/redirected), and rendered as its own line in the compounding taste feed",
+            "rationale": "Keeps mid-flight fork answers semantically separate from post-hoc review calls",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Raised forks are surfaced ABOVE the med/high-risk judgment-call inbox in `chalk pending`",
+            "rationale": "Agent-initiated forks are treated as higher urgency than review-surfaced calls",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Answer resolution matches raiseId by exact-or-prefix and picks the first match across all tasks",
+            "rationale": "Convenience for short ids typed from the pending list",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-17T11:29:24.006Z"
   },
   {
