@@ -5437,9 +5437,27 @@
   {
     "id": "task-3a49d957",
     "title": "feat(director-loop): A1 · redirect re-opens the task as an actionable directive",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk pending redirect records a durable directive on the task (t.directives[] = { choice, instead, at, by, resolved:false }) — the correction becomes actionable work, not just a log line"
+      },
+      {
+        "text": "Redirecting a DONE task re-opens it to in-progress (reopenedAt stamped) so it can be reworked to the director's call"
+      },
+      {
+        "text": "Redirecting a non-done (already active) task keeps its state and only attaches the directive (no spurious re-open)"
+      },
+      {
+        "text": "accept does NOT create a directive or re-open the task — only redirect re-directs"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-reopen.test.mjs",
+        "sha256": "382cff135e157cfd7f67fc165dbc5499adbbc42b7ea01ac597d487c398f510cf"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -5457,6 +5475,57 @@
       "at": "2026-07-17T09:32:56.704Z"
     },
     "createdAt": "2026-07-17T09:32:56.704Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-17T09:59:56.185Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Re-opening a DONE task only flips state→in-progress and stamps reopenedAt; it leaves any stale done-artifacts intact (e.g. t.pr/mergedAt, prior verify/review state). A previously-merged/released task now appearing as in-progress with those artifacts could confuse downstream (`chalk next`, audit, release, done-gate). No test asserts what happens to those fields, but this is outside the stated criteria."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The redirect emitUpdate ('progress-update') message string and the '— task re-opened for rework' output, plus the appendDirectorDecision/appendDecision durable records, are unasserted cosmetics — harmless, and the four core behaviors (directive shape, done→reopen, non-done no-reopen, accept-no-directive) are each covered and would fail if the change were reverted."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "emitUpdate uses generic type 'progress-update' for a redirect, while accept uses 'work-item-accepted'. A stored prior decision in tasks.json says to reuse 'decision-logged' for director accept/redirect events; the chosen type is inconsistent with both that note and the accept path. Cosmetic but worth confirming."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Re-open a redirected DONE task to 'in-progress' (rather than a dedicated 'redirected'/'reopened' state or back to 'todo')",
+            "rationale": "Reuses the existing active state so the executor's next `chalk work` picks it up; minimal new vocabulary",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "On re-open, only flip state + stamp reopenedAt; do not clear done-artifacts (pr, mergedAt, verify/review results)",
+            "rationale": "Keeps the diff small and scoped to the criteria; the directive drives rework",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Directive schema fixed to { choice, instead, at, by, resolved:false } with choice defaulting to '' when the decision has none",
+            "rationale": "Matches criterion 1's shape and keeps directives self-describing for the #199/#200 executor read",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Redirect emits a generic 'progress-update' event type",
+            "rationale": "Reuses an existing event type rather than introducing a director-specific one",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T09:57:58.721Z",
+    "doneAt": "2026-07-17T10:01:53.848Z"
   }
 ]

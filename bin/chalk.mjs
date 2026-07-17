@@ -1920,13 +1920,21 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         const why = _.slice(2).join(' ') || flags.why;
         if (!why) die('redirect requires a course-correction: chalk pending redirect <task>#<n> "<what to do instead>"');
         d.redirected = { at: now(), by, why: String(why) };
+        // #198 — make the correction ACTIONABLE: attach a durable directive to the task, and RE-OPEN a
+        // done task for rework. Without this a redirect only logs; the agent never rebuilds. The next
+        // `chalk work` sees the directive (#199) and re-runs to resolve it (#200).
+        t.directives = t.directives || [];
+        t.directives.push({ choice: d.choice || '', instead: String(why), at: now(), by, resolved: false });
+        const reopened = t.state === 'done';
+        if (reopened) { t.state = 'in-progress'; t.reopenedAt = now(); }
         s.upsertTask(t);
         s.appendDecision({ title: `Redirected: ${d.choice || ref}`, why: String(why), taskId: t.id });
         // Durable record (#201): the structured, compounding entry, alongside the human-readable log above.
         // rationale = the agent's original reason; instruction = the director's course-correction.
         s.appendDirectorDecision({ choice: d.choice, rationale: d.rationale, instruction: String(why), risk: decisionRisk(d), taskId: t.id, verdict: 'redirected', by });
         syncBrowser(s);
-        ok(`redirected ${C.dim(ref)} ${C.dim(`— logged: ${why}`)}`);
+        s.emitUpdate({ type: 'progress-update', title: `Redirected: ${d.choice || ref}`, description: String(why), taskId: t.id });
+        ok(`redirected ${C.dim(ref)}${reopened ? C.y(' — task re-opened for rework') : ''} ${C.dim(`— ${why}`)}`);
       }
       return;
     }
