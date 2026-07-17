@@ -494,3 +494,8 @@
 
 - _when:_ 2026-07-17T11:35:08.846Z
 - _why:_ Review BLOCK fix: the driver blocked raises as the default needs:human-input, but answer/criterion expect needs:decision — so answering wouldn't unblock a driver-blocked task. Fixed run.mjs to pass 'decision', and added a real driver end-to-end test (executor raises → driver blocks needs:decision → answer unblocks) so the mismatch can't hide.
+
+## Amended acceptance test for "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox"
+
+- _when:_ 2026-07-17T11:38:58.201Z
+- _why:_ Review low: pin the directorLines 'answered' render — an answered raise compounds into a new task's context as its own 'answered: fork → decision' line, not silently as 'accepted' (reverting the branch now fails).

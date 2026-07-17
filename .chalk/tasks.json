@@ -6007,7 +6007,7 @@
     "tests": [
       {
         "path": "test/director-raise-route.test.mjs",
-        "sha256": "501283a3af529241e06e17b35d1a28320df5401887418fde0d99dab09591158d"
+        "sha256": "58e63290fc16453694e754b12965ef8b85c6823a4918a1234752e29c68113f27"
       }
     ],
     "heldOut": [],
@@ -6091,6 +6091,71 @@
             "reversibility": "easy"
           }
         ]
+      },
+      {
+        "at": "2026-07-17T11:38:15.102Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The `why` field display in `chalk pending` (criterion 2 says fork+options+why) is never asserted — the test raise has no `why`, so a regression that dropped `why` rendering would go uncaught."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The new `directorLines` 'answered' branch in store.mjs (labels an answered raise distinctly in the #202 compounding taste feed injected into future agents) has no test. Reverting just that hunk fails nothing — an answered decision would silently render as 'accepted'. The durable *record* write is tested; its rendering back into agent context is not."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "`chalk pending` empty-state message text changed and the return path now yields `undefined` when raises exist but no review decisions do; no test pins the empty message, so low risk, but the behavior of `pending` with-raises-only prints no closing 'inbox empty' line by design."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "driver e2e re-run after answering: the executor stub literally re-runs `chalk raise`, which would re-raise the same fork and re-block. Harmless in the product (answer feeds back as a directive so a real agent stops re-raising), and openRaises correctly filters to status:'open' so answered raises don't re-trigger — loop closes as specified."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Block a raised-fork task with needs:'decision' (not the driver's default 'human-input')",
+            "rationale": "`chalk pending answer` keys its auto-unblock on block.needs==='decision', so the value is load-bearing coupling between the block reason and the answer path",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Merge raised forks into the existing `chalk pending` command (shown above the review inbox) rather than a dedicated `chalk raises`/inbox surface",
+            "rationale": "One director inbox for both mid-flight forks and post-review judgment calls keeps the director's attention in a single place",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Answer feeds back through the same `t.directives` (#199) 'Instead of X: Y' channel used by redirects, with resolved:false",
+            "rationale": "Reuses the proven buildContext injection so the next work rebuilds to the decision without a new mechanism",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Auto-unblock only when state==='blocked' && needs==='decision' && no open raises remain; multiple open raises on one task each need answering before resume",
+            "rationale": "Avoids resuming a task that still has unanswered forks and avoids touching tasks blocked for other reasons",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Run the executor first, then check for raises and discard the run — the work/driver still executes the agent before pausing",
+            "rationale": "The raise is written to the spine during the run, so the check must come after; but a task pre-carrying an open raise still pays a wasted executor run",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T11:38:58.198Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-17T11:29:24.006Z"
