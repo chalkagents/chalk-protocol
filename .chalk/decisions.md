@@ -449,3 +449,8 @@
 
 - _when:_ 2026-07-17T08:11:11.997Z
 - _why:_ Harden the gate contract per review finding: pin that a refused (unaligned) chalk work leaves no side effect — task state unchanged, criteria not marked accepted. Non-blocking low, but 'a refusal must not mutate state' is a core property of a gate.
+
+## Amended acceptance test for "feat(director): risk-based decision triage + a director inbox — own the empty middle"
+
+- _when:_ 2026-07-17T09:08:16.337Z
+- _why:_ Address review BLOCK (test-adequacy): add a chalk review test asserting criterion 2 — the digest is ranked highest-risk-first and risk-badged (reverting the render fails it). Also: realistic 13-char fixture id + full-id inbox ref (no prefix truncation), redirect logs with a taskId link.

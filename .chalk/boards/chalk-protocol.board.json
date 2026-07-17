@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784277754839,
+  "updatedAt": 1784279530868,
   "order": 0,
   "cards": [
     {
@@ -1059,10 +1059,20 @@
     {
       "id": "task-167041a5",
       "title": "feat(director): risk-based decision triage + a director inbox — own the empty middle",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1784275058501,
-      "updatedAt": 1784275058501,
-      "order": 63
+      "updatedAt": 1784279530868,
+      "order": 63,
+      "description": "- decisionRisk scores a decision from blastRadius × reversibility into low/med/high; an unknown field is treated as the middle (unknown is not safe)\n- chalk review ranks the decision digest highest-risk-first with a per-decision risk badge (composes on #192; the digest line format is unchanged so #192's locked test stays green)\n- chalk pending is the director inbox: unresolved med/high-risk decisions across ALL tasks (from each task's latest review), ranked by risk, each with a stable <task>#<n> ref; an empty inbox reports cleanly\n- chalk pending accept <ref> marks a decision accepted and drops it from the inbox; chalk pending redirect <ref> \"why\" records a course-correction and logs a decision; neither can re-resolve a resolved call",
+      "testArtifact": {
+        "specPath": "test/director-triage.test.mjs",
+        "lastRun": {
+          "runId": "done-task-167041a5",
+          "status": "passed",
+          "at": 1784279530868
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/193"
+      }
     },
     {
       "id": "task-7b477997",

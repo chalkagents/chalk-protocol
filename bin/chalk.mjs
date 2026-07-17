@@ -7,7 +7,7 @@ import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
-import { runReview, formatDecisionDigest } from '../lib/review.mjs';
+import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
@@ -1684,11 +1684,15 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (unblocked) console.log(C.g('  ✓ needs:review block cleared — task is runnable again'));
     for (const f of r.findings) console.log(`   ${sev(f.severity)} ${C.dim(`[${f.area}]`)} ${f.note}`);
     // The decision digest (#192): the accept button. Shown on PASS too — a clean change still embeds
-    // judgment calls the human directing this work may want to confirm or redirect.
-    const digest = formatDecisionDigest(r.decisions || []);
-    if (digest.length) {
-      console.log(C.b('   ◇ Decision digest') + C.dim(' — judgment calls the agent made; accept or redirect:'));
-      for (const line of digest) console.log(`     ${C.dim(line.replace(/^◇ /, ''))}`);
+    // judgment calls the human directing this work may want to confirm or redirect. Ranked highest-risk
+    // first and badged (#193) so the calls that touch a lot AND are hard to undo surface at the top.
+    const ranked = (r.decisions || [])
+      .map((d) => ({ line: formatDecisionLine(d), risk: decisionRisk(d) }))
+      .filter((x) => x.line)
+      .sort((a, b) => RISK_RANK[b.risk] - RISK_RANK[a.risk]);
+    if (ranked.length) {
+      console.log(C.b('   ◇ Decision digest') + C.dim(' — judgment calls the agent made; triage in `chalk pending`:'));
+      for (const { line, risk } of ranked) console.log(`     ${riskBadge(risk)} ${C.dim(line.replace(/^◇ /, ''))}`);
     }
     if (r.verdict !== 'pass') console.log(C.dim('   fix the blocking findings and re-run `chalk review`.'));
     process.exit(r.verdict === 'pass' ? 0 : 3);
@@ -1875,6 +1879,49 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
   },
 
+  // The director inbox (#193). `chalk pending` is the human's mirror of `chalk next`: the med/high-risk
+  // judgment calls the agent made (from the review decision digest, #192), across all tasks, ranked by
+  // risk and awaiting accept/redirect. `accept <task>#<n>` confirms a call; `redirect <task>#<n> "..."`
+  // records a course-correction. This is what makes the empty middle a place a human can direct.
+  pending({ _, flags }) {
+    const s = Store.open();
+    const sub = _[0];
+    if (sub === 'accept' || sub === 'redirect') {
+      const ref = _[1] || '';
+      const m = ref.match(/^(.+)#(\d+)$/);
+      if (!m) die(`usage: chalk pending ${sub} <task>#<n> ${sub === 'redirect' ? '"<why>"' : ''}`.trim() + '  (the ref is shown by `chalk pending`)');
+      const t = mustTask(s, m[1]);
+      const review = (t.reviews || []).slice(-1)[0];
+      const d = review && Array.isArray(review.decisions) ? review.decisions[Number(m[2])] : null;
+      if (!d) die(`no decision ${ref} — run \`chalk pending\` for the current inbox.`);
+      if (d.accepted || d.redirected) die('that decision is already resolved.');
+      if (sub === 'accept') {
+        d.accepted = { at: now(), by: flags.by || 'human' };
+        s.upsertTask(t); syncBrowser(s);
+        s.emitUpdate({ type: 'work-item-accepted', title: `Accepted decision: ${d.choice || ref}`, taskId: t.id });
+        ok(`accepted ${C.dim(ref)} — ${d.choice || '(decision)'}`);
+      } else {
+        const why = _.slice(2).join(' ') || flags.why;
+        if (!why) die('redirect requires a course-correction: chalk pending redirect <task>#<n> "<what to do instead>"');
+        d.redirected = { at: now(), by: flags.by || 'human', why: String(why) };
+        s.upsertTask(t);
+        s.appendDecision({ title: `Redirected: ${d.choice || ref}`, why: String(why), taskId: t.id });
+        syncBrowser(s);
+        ok(`redirected ${C.dim(ref)} ${C.dim(`— logged: ${why}`)}`);
+      }
+      return;
+    }
+    const items = pendingDecisions(s.tasks());
+    if (!items.length) return ok(C.dim('director inbox empty — no med/high-risk judgment calls awaiting you.'));
+    console.log(C.b(`Director inbox`) + C.dim(` — ${items.length} judgment call(s) awaiting accept/redirect (highest risk first):`));
+    for (const it of items) {
+      const ref = `${it.taskId}#${it.index}`; // full id — a copy-back ref must round-trip exactly, not a prefix
+      console.log(`  ${riskBadge(it.risk)} ${C.dim(ref)}  ${formatDecisionLine(it.decision).replace(/^◇ /, '')}`);
+      console.log(C.dim(`        ↳ ${it.taskTitle.slice(0, 60)}`));
+    }
+    console.log(C.dim(`  accept: chalk pending accept <ref>   ·   redirect: chalk pending redirect <ref> "<what to do instead>"`));
+  },
+
   log({ flags }) {
     const s = Store.open();
     const n = Number(flags.n || 15);
@@ -1893,6 +1940,7 @@ cmds.plans = cmds.sync; // alias — `chalk plans` projects both Browser views (
 
 // ---------------------------------------------------------------- helpers
 function sev(s) { return { high: C.r('▲ high'), med: C.y('▲ med '), low: C.dim('▲ low ') }[s] || C.dim('▲ ' + (s || '?')); }
+function riskBadge(r) { return { high: C.r('■ high'), med: C.y('■ med '), low: C.dim('■ low ') }[r] || C.dim('■ ?'); }
 function stateBadge(st) {
   return { todo: C.dim('○ todo  '), specd: C.y('◐ specd '), 'in-progress': C.b('● wip   '), blocked: C.y('⊘ blockd'), done: C.g('✓ done  ') }[st] || st;
 }
@@ -2002,6 +2050,7 @@ ${C.b('spine')}
   chalk lesson add "<what to remember>" ${C.dim('explicit add (records verbatim, even single-word text like "list")')}
   chalk lesson list [--all]             ${C.dim('print the lessons injected into agents (--all = full history)')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
+  chalk pending [accept <task>#<n> | redirect <task>#<n> "<why>"]   ${C.dim("director inbox: the med/high-risk judgment calls from review, ranked; accept or redirect each")}
   chalk log [--n N] [--type T] [--grep TEXT] [--reverse] [--json]
 
 ${C.b('chalk browser bridge')}

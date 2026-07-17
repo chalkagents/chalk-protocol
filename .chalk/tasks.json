@@ -4714,9 +4714,27 @@
   {
     "id": "task-167041a5",
     "title": "feat(director): risk-based decision triage + a director inbox — own the empty middle",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "decisionRisk scores a decision from blastRadius × reversibility into low/med/high; an unknown field is treated as the middle (unknown is not safe)"
+      },
+      {
+        "text": "chalk review ranks the decision digest highest-risk-first with a per-decision risk badge (composes on #192; the digest line format is unchanged so #192's locked test stays green)"
+      },
+      {
+        "text": "chalk pending is the director inbox: unresolved med/high-risk decisions across ALL tasks (from each task's latest review), ranked by risk, each with a stable <task>#<n> ref; an empty inbox reports cleanly"
+      },
+      {
+        "text": "chalk pending accept <ref> marks a decision accepted and drops it from the inbox; chalk pending redirect <ref> \"why\" records a course-correction and logs a decision; neither can re-resolve a resolved call"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-triage.test.mjs",
+        "sha256": "83a1799299a8db3e23c763257913e3af88ff9d9907037d9a6292caca1c190fab"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -4734,7 +4752,129 @@
       "at": "2026-07-17T07:57:38.498Z"
     },
     "createdAt": "2026-07-17T07:57:38.501Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-17T09:05:14.177Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 2 ('chalk review ranks the decision digest highest-risk-first with a per-decision risk badge') is not exercised by any test. The new review-command behavior lives in bin/chalk.mjs (the ranked/badged loop over formatDecisionLine+decisionRisk+RISK_RANK sort), but director-triage.test.mjs never invokes `chalk review`, and the locked #192 test (review-digest.test.mjs) only asserts the 'Decision digest' header and choice-text presence — not ordering and not the risk badge. Reverting the entire review-display change back to plain formatDecisionDigest would leave both #192 and the new triage tests green. That is a behavior change shipped with no asserting test (vacuous pass)."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The inbox ref uses taskId.slice(0,12), while real ids are `task-`+8 hex = 13 chars, so the displayed ref is a 12-char prefix that drops the last hex char. accept/redirect resolve it via s.task() (startsWith prefix match), which works only while the 12-char prefix stays unique across tasks; a collision would silently resolve the wrong task. Consistent with the repo's resolveRef convention, but the test only uses a non-standard 12-char id (task-abc1234), so the truncation-of-real-ids path is never exercised."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Accept/redirect resolutions are stored on the decision object inside a task's latest review. When a task is re-reviewed, runReview regenerates decisions fresh (no accepted/redirected flags carried over), so previously-accepted/redirected calls resurface in the inbox after any subsequent review. No test covers resolution persistence across re-review; may undercut the 'drops it from the inbox' guarantee over a task's life."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "redirect calls s.appendDecision({title,why}) without a taskId, so the logged course-correction is not linked to the task whose decision was redirected — weakening traceability back to the originating call."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Inbox excludes low-risk decisions entirely; only med/high surface",
+            "rationale": "Keep the director inbox focused on calls worth attention, not trivia",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Unknown blastRadius/reversibility scored as the middle (?? 1) rather than safe",
+            "rationale": "An omitted field should not let a decision slip under the radar (unknown ≠ safe)",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Risk = additive blast(0/1/2)+undo(0/2) with thresholds >=3 high / >=2 med, no true 'multiplication'",
+            "rationale": "Simple monotonic scoring that hits the required truth table for the four corners",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Ref format is a 12-char task-id prefix + #index resolved via startsWith",
+            "rationale": "Mirror the existing resolveRef/Store.task prefix convention",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Inbox reads only each task's latest review (later supersedes earlier)",
+            "rationale": "A newer review reflects current state of the change",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "redirect logs a global decision (appendDecision) without a taskId link",
+            "rationale": "Reuse the existing decision-record plumbing",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T09:10:54.499Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "decisionRisk uses an additive threshold (blast 0/1/2 + undo 0/2, unknown→1) rather than a literal product. The mapping matches all locked cases and treats unknown as the middle, but note reversibility has no 'med' bucket and blastRadius='med'+reversibility='easy' scores 1 → 'low', so a medium-blast reversible call is filtered out of the director inbox as trivia. This is a defensible scoping call but is not independently asserted beyond the locked mapping."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Verified #192's locked review-digest.test.mjs stays green: formatDecisionDigest is retained, low-risk decisions are still rendered in `chalk review` (the low filter applies only to `chalk pending`), the 'Decision digest' header still renders on pass and is absent with no decisions, and formatDecisionLine returns null for choice-less decisions. No regression found."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "All new behavior is covered (decisionRisk mapping incl. unknown, pendingDecisions ranking/latest-review/exclusions, pending list, accept, redirect+log, review ranking+badge). Minor gap: no test asserts the accept event is client-safe/portal-visible, nor a ref with a bad/non-existent task id path, nor that a low-risk decision can still be accepted by explicit ref even though it never appears in the inbox — but none of these are contract criteria."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Risk = additive score of blastRadius(low0/med1/high2)+reversibility(easy0/hard2), unknown→1; thresholds ≥3 high, ≥2 med, else low",
+            "rationale": "Produces the required low/med/high triage while making 'unknown not safe' fall to the middle; simpler than a true product",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "The `chalk pending` inbox excludes all low-risk decisions (including med-blast+easy-undo, which score low)",
+            "rationale": "Keep the director inbox to calls worth human attention, not trivia",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Split rendering: `chalk review` shows ALL decisions (ranked+badged) but `chalk pending` shows only med/high",
+            "rationale": "Preserve #192's full digest at review time while the cross-task inbox stays high-signal",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Stable ref is `<full-task-id>#<index-into-latest-review>`; accept/redirect resolve against the latest review only",
+            "rationale": "A copy-back ref must round-trip exactly; a later review supersedes earlier decisions",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "accept emits a client-safe 'work-item-accepted' portal event and redirect logs a 'decision-logged' entry",
+            "rationale": "Surface director actions in the client portal and decision record",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T09:02:09.462Z",
+    "doneAt": "2026-07-17T09:12:10.868Z"
   },
   {
     "id": "task-7b477997",
