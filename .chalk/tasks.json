@@ -6514,7 +6514,7 @@
     "tests": [
       {
         "path": "test/director-harness.test.mjs",
-        "sha256": "0d928cd23a74ed412b66eb2924f794d4ec15a146f4fc95e5ea64d99c4735d44b"
+        "sha256": "393171923e97dbf8c6ea88c480f5c8f5c449412b3ff649d2aade37c04e5e10ca"
       }
     ],
     "heldOut": [],
@@ -6534,7 +6534,62 @@
       "at": "2026-07-17T12:22:11.123Z"
     },
     "createdAt": "2026-07-17T12:22:11.123Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-17T12:48:21.682Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Several new output rows ship with no assertion: the 'retro' agent row, the 'held-out' check row, and the 'require-test' check row are all rendered by harness() but no locked test asserts them. If any of these regressed (wrong config key, crash on undefined), the suite would still pass. The core criteria (executor/planner/reviewer, verify, review, skills, flows names) ARE asserted, so this is a coverage gap on secondary rows, not a vacuous pass."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Criterion 2 says the view 'reflects actual config,' but the Flows section is a hardcoded static string ('run · pipeline · loop · autopilot') that does not reflect any config — it's the same in a bare and a fully-wired project. Consistent with the other three parts being config-reflective, Flows silently is not; acceptable since flows aren't config-gated, but worth noting the asymmetry."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "harness() calls Store.open() with no guard; outside a spine it will throw and die() rather than render. Tests only run inside an initialized project, so this path is untested. Matches sibling commands' behavior, so likely intended, but the 'no crash' criterion is only proven for a bare *initialized* project."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Exposed the kit as a new top-level command `chalk harness` rather than a `--kit` flag on `chalk status` or `chalk doctor`.",
+            "rationale": "A dedicated read-only 'director's-eye' view keeps status/doctor focused on operational state; harness is purely explanatory.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Rendered a 'retro' agent row and 'held-out'/'require-test' check rows beyond the four parts named in the criteria, and labeled an empty verify '(none configured — vacuous green)'.",
+            "rationale": "Gives a fuller picture of the assembled kit and reuses chalk's existing vacuous-green framing.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Flows are a fixed informational string, not derived from config.",
+            "rationale": "Flows (run/pipeline/loop/autopilot) are always-available commands, not per-project toggles, so there is nothing to reflect.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Truthiness of command strings drives the on/off dot (e.g. executor?.command), treating empty-string config as 'not wired'.",
+            "rationale": "Bare init writes empty-string commands; empty must read as unwired.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T12:48:52.909Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      }
+    ],
     "startedAt": "2026-07-17T12:45:19.719Z"
   },
   {
