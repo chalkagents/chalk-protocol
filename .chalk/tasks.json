@@ -5989,9 +5989,27 @@
   {
     "id": "task-5d2e2fbc",
     "title": "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "After a chalk work run, a task with OPEN raises does not proceed: chalk work exits 2 and the driver blocks it needs:decision — a guessed choice never ships past a raised fork"
+      },
+      {
+        "text": "chalk pending surfaces open raised forks (fork + options + why) across tasks, each with an answer ref"
+      },
+      {
+        "text": "chalk pending answer <raiseId> \"<decision>\" marks the raise answered, feeds the answer back as a directive (#199 channel so the next work rebuilds to it), compounds it to the durable director record (#201/#202), and unblocks a task parked on the raise"
+      },
+      {
+        "text": "Once the raise is answered, chalk work proceeds (no open raises left) — the mid-flight loop is closed"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-raise-route.test.mjs",
+        "sha256": "e51d0b7031356a30b3bf359b777694b44d56aff67b7b3af4b399db5ddfa97406"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -6009,7 +6027,8 @@
       "at": "2026-07-17T10:59:50.206Z"
     },
     "createdAt": "2026-07-17T10:59:50.208Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T11:29:24.006Z"
   },
   {
     "id": "task-622ec407",
