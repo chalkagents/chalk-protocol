@@ -4764,9 +4764,27 @@
   {
     "id": "task-8cf40444",
     "title": "feat(director): alignment checkpoint before build — human accepts the criteria/outcome, not just the plan",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "protocol.director.required defaults off; when off, chalk work behaves exactly as today (no regression)"
+      },
+      {
+        "text": "With director.required on and criteria not accepted, chalk work AND the autonomous driver (chalk run) refuse before build, pointing the human at chalk align"
+      },
+      {
+        "text": "chalk align records task.criteriaAccepted = { at, by }; after alignment chalk work proceeds past the gate"
+      },
+      {
+        "text": "chalk align surfaces the task's acceptance criteria for the human to read before accepting (not blind), and refuses when there are no criteria yet"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-align.test.mjs",
+        "sha256": "ba95720c3eb49cdefd1c1bfcb97891c246c45f99d8fa93f749c0a2f057526c92"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -4784,7 +4802,8 @@
       "at": "2026-07-17T07:57:38.513Z"
     },
     "createdAt": "2026-07-17T07:57:38.513Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T08:07:59.379Z"
   },
   {
     "id": "task-27eaa67d",
