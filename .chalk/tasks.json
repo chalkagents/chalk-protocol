@@ -6029,7 +6029,7 @@
     "tests": [
       {
         "path": "test/director-raise-contract.test.mjs",
-        "sha256": "89e812cb609a51457f30150614b1c23094bc4fa0ee8dffab5bd83d43ea6289d2"
+        "sha256": "c01a878f877947b872f0df00cc1afc0a5937f0b9fe4c97eccab40030486a81ac"
       }
     ],
     "heldOut": [],
@@ -6049,7 +6049,62 @@
       "at": "2026-07-17T10:59:50.215Z"
     },
     "createdAt": "2026-07-17T10:59:50.215Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-17T11:18:41.618Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 2 claims the raise block is elastic — 'first to yield under extreme pressure' — but the new locked test only asserts the instruction is PRESENT at default budget. No test drives buildContext under a tiny contextBudget to prove the raise block actually drops while essentials/director/lessons survive. If the raiseFits budget guard were deleted (block always emitted), the new test would still pass, so the 'yields first' behavior is effectively unverified except indirectly via the pre-existing locked context-budget tests."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "RAISE_INSTRUCTION's copy is duplicated/independent from the full convention in the two chalk-executor.md files; there is no gate keeping the terse in-context wording aligned with the executor-def wording, so they can drift silently (the agents-sync gate only checks the two .md files against each other, not against store.mjs)."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "raiseBlock adds bytes to every task context at realistic budgets; verify is assumed green, but any budget test asserting total-output size rather than just essential-survival would be sensitive to this addition. Worth confirming the locked context-budget tests pass unchanged."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Emit the raise block as the lowest-priority elastic section, computed after and subtracting essential+director+lessons bytes, placed just before the task 'post' section",
+            "rationale": "Keeps the pinned essential/director/lessons budgets untouched so locked context-budget tests stay green while still surfacing the instruction at any realistic budget",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Duplicate the raise guidance: a terse one-liner injected into context (store.mjs) plus the full convention in both executor definitions",
+            "rationale": "Context stays compact under budget pressure while the authoritative long-form lives in the agent contract",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Gate the raise block on `task` being present (no raise instruction in task-less context)",
+            "rationale": "The instruction is only meaningful mid-task, so skip it when there is no current task",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "For shell-less executors, instruct surfacing the fork in the one-line summary instead of failing",
+            "rationale": "Graceful degradation so executors without a shell tool can still escalate a fork to a human",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T11:19:13.249Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      }
+    ],
     "startedAt": "2026-07-17T11:16:34.820Z"
   },
   {

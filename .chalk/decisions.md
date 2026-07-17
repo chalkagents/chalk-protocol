@@ -484,3 +484,8 @@
 
 - _when:_ 2026-07-17T10:46:49.223Z
 - _why:_ Review med fix: the compounding block now excludes the CURRENT task's own decisions (they ride the essential Director corrections block, #199) — removes the duplicate-signal a re-opened task would show, and makes the block genuinely 'prior taste into a new task'. Pinned.
+
+## Amended acceptance test for "feat(director-mid-flight): C2 · executor contract — raise a fork instead of guessing"
+
+- _when:_ 2026-07-17T11:19:13.253Z
+- _why:_ Review med fix: pin the elastic behavior directly — the raise block is present at a normal budget and DROPS under a tiny one while essentials survive (deleting the raiseFits guard now fails a test).
