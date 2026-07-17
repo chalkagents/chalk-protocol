@@ -4732,7 +4732,7 @@
     "tests": [
       {
         "path": "test/director-triage.test.mjs",
-        "sha256": "464184943c6e07fb1f989b960e2045c358fcc8f83dd952252e8b86e602b1305c"
+        "sha256": "83a1799299a8db3e23c763257913e3af88ff9d9907037d9a6292caca1c190fab"
       }
     ],
     "heldOut": [],
@@ -4752,7 +4752,73 @@
       "at": "2026-07-17T07:57:38.498Z"
     },
     "createdAt": "2026-07-17T07:57:38.501Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-07-17T09:05:14.177Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "Criterion 2 ('chalk review ranks the decision digest highest-risk-first with a per-decision risk badge') is not exercised by any test. The new review-command behavior lives in bin/chalk.mjs (the ranked/badged loop over formatDecisionLine+decisionRisk+RISK_RANK sort), but director-triage.test.mjs never invokes `chalk review`, and the locked #192 test (review-digest.test.mjs) only asserts the 'Decision digest' header and choice-text presence — not ordering and not the risk badge. Reverting the entire review-display change back to plain formatDecisionDigest would leave both #192 and the new triage tests green. That is a behavior change shipped with no asserting test (vacuous pass)."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The inbox ref uses taskId.slice(0,12), while real ids are `task-`+8 hex = 13 chars, so the displayed ref is a 12-char prefix that drops the last hex char. accept/redirect resolve it via s.task() (startsWith prefix match), which works only while the 12-char prefix stays unique across tasks; a collision would silently resolve the wrong task. Consistent with the repo's resolveRef convention, but the test only uses a non-standard 12-char id (task-abc1234), so the truncation-of-real-ids path is never exercised."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Accept/redirect resolutions are stored on the decision object inside a task's latest review. When a task is re-reviewed, runReview regenerates decisions fresh (no accepted/redirected flags carried over), so previously-accepted/redirected calls resurface in the inbox after any subsequent review. No test covers resolution persistence across re-review; may undercut the 'drops it from the inbox' guarantee over a task's life."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "redirect calls s.appendDecision({title,why}) without a taskId, so the logged course-correction is not linked to the task whose decision was redirected — weakening traceability back to the originating call."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Inbox excludes low-risk decisions entirely; only med/high surface",
+            "rationale": "Keep the director inbox focused on calls worth attention, not trivia",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Unknown blastRadius/reversibility scored as the middle (?? 1) rather than safe",
+            "rationale": "An omitted field should not let a decision slip under the radar (unknown ≠ safe)",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Risk = additive blast(0/1/2)+undo(0/2) with thresholds >=3 high / >=2 med, no true 'multiplication'",
+            "rationale": "Simple monotonic scoring that hits the required truth table for the four corners",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Ref format is a 12-char task-id prefix + #index resolved via startsWith",
+            "rationale": "Mirror the existing resolveRef/Store.task prefix convention",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Inbox reads only each task's latest review (later supersedes earlier)",
+            "rationale": "A newer review reflects current state of the change",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "redirect logs a global decision (appendDecision) without a taskId link",
+            "rationale": "Reuse the existing decision-record plumbing",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-07-17T09:02:09.462Z"
   },
   {
