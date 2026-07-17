@@ -5402,7 +5402,7 @@
     "tests": [
       {
         "path": "test/director-rework-loop.test.mjs",
-        "sha256": "9f8849e6afbfd16bc29b70c516948d71047408a8f1c15c09ee3bc46ccd1a7a2c"
+        "sha256": "3f6d06579a863c8e54d8f7c10982a4dc523a53f21205039370e10c798d39fcb4"
       }
     ],
     "heldOut": [],
@@ -5464,6 +5464,60 @@
             "reversibility": "easy"
           }
         ]
+      },
+      {
+        "at": "2026-07-17T10:24:33.203Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 2's pipeline-merge resolution path is only verified by grepping bin/chalk.mjs for `resolveDirectives(t)` occurrences (>=2). This catches a straight revert of the call site but does NOT behaviorally exercise the merge path — it can't detect the call being placed on a dead branch, resolving the wrong task, or firing before the merge actually lands. The `chalk done` path, by contrast, is properly integration-tested."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "reopenedAt is set on done→redirect but never cleared (resolveDirectives only stamps directives). A task that was once re-opened, reworked, and returned to in-progress will still have reopenedAt set; a subsequent redirect while it is ACTIVE (never going back through done) would satisfy needsRework and re-admit it — the very 'active-redirect double-execution' case the design claims to exclude. Narrow corner, but the exclusion invariant relies on reopenedAt only ever coexisting with a done→reopen, which isn't guaranteed over a task's lifetime."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "needsRework gates purely on reopenedAt + unresolved directive and ignores task.state, while runnableTasks separately ORs it with state==='specd'. A done task that gets a fresh directive without state flipping (e.g., an external mutation) would be judged needsRework=true by the helper in isolation; the surfacing in `chalk next` only shows it because it iterates the wip list, so behavior is coupled to callers filtering by state rather than the helper itself."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Gate re-admission on a dedicated reopenedAt marker (set only on done→redirect) rather than 'in-progress + any unresolved directive'",
+            "rationale": "Prevents a redirect issued against an already-active task from re-admitting it to the driver and double-executing in-flight work",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Do not clear reopenedAt when directives are resolved; rely on state transitions (done) to drop the task out of runnableTasks",
+            "rationale": "Simpler completion path via the shared resolveDirectives helper; treats reopenedAt as a durable historical stamp",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Verify the second (pipeline-merge) completion path with a source-text grep assertion instead of a behavioral integration test",
+            "rationale": "Spinning up a full PR-merge pipeline in-test is heavy; the grep guards against silent removal of the call site",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Surface re-opened rework inline within the existing `chalk next` in-progress loop (banner + pending corrections) rather than as a distinct triage section",
+            "rationale": "Reuses the wip rendering so a re-opened task isn't stranded as plain in-progress, with minimal new output surface",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T10:27:16.361Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-17T10:15:31.791Z"

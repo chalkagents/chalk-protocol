@@ -469,3 +469,8 @@
 
 - _when:_ 2026-07-17T10:22:20.702Z
 - _why:_ Review BLOCK fix: (1) cover BOTH completion paths — added a resolveDirectives unit + a source assertion that done AND pipeline merge both call it (was vacuous for the merge path); (2) tighten runnableTasks to key on reopenedAt (needsRework) so a redirect on an already-active task can't be re-admitted/double-executed by chalk run --parallel.
+
+## Amended acceptance test for "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive"
+
+- _when:_ 2026-07-17T10:27:16.364Z
+- _why:_ Review-driven correctness fix: resolveDirectives now CLEARS reopenedAt when the rework lands, so a stale re-open marker can never coexist with a later active-redirect and re-admit an in-flight task. Pinned the invariant (clear-on-resolve + rework-terminates).
