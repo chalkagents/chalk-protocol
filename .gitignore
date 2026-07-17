@@ -11,3 +11,9 @@ node_modules/
 # P7 held-out set stays main-only — never checked out into a worktree sandbox (keep README tracked).
 .chalk/held-out/*
 !.chalk/held-out/README.md
+# Ephemeral spine concurrency artifacts (#110): the advisory lock (incl. `.lock.stale.*` steal temps)
+# + atomic-write temp files (`<file>.<pid>.tmp`, matched by *.tmp).
+.chalk/.lock*
+.chalk/*.tmp
+# Local migration backups — recovery artifacts, not versioned spine state (#159).
+.chalk/backups/

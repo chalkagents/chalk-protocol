@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# Director's Harness — a ~2-minute, offline demo of the full director loop:
+# align → raise → digest → pending → rebuild → compound (+ the harness view).
+# No LLM needed: a canned reviewer stands in for `chalk review` so the whole thing is deterministic
+# and safe to screen-record. Run from a chalk-protocol checkout:  bash director-harness-demo.sh
+set -euo pipefail
+
+ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null || pwd)"
+CHALK="${CHALK:-$ROOT/bin/chalk.mjs}"
+[ -f "$CHALK" ] || { echo "cannot find bin/chalk.mjs — run from a chalk-protocol checkout (or set CHALK=)"; exit 1; }
+D="$(mktemp -d)"; trap 'rm -rf "$D"' EXIT
+cd "$D"; git init -q -b main; git config user.email demo@demo.dev; git config user.name demo
+
+c() { node "$CHALK" "$@"; }               # chalk in the demo project
+banner() { printf '\n\033[1;35m▐ %s\033[0m\n\n' "$1"; }
+pause() { printf '\033[2m   … press enter …\033[0m'; read -r _; }
+
+banner "1 · A project in DIRECTOR mode — the human's judgment is first-class"
+c init --name payments --bare >/dev/null
+node -e "const f='$D/.chalk/chalk.json',o=JSON.parse(require('fs').readFileSync(f));o.protocol.director={required:true};o.protocol.requireTest=false;o.protocol.executor={command:'node -e \"require(\\'fs\\').writeFileSync(\\'charge.js\\',\\'// built\\')\"'};require('fs').writeFileSync(f,JSON.stringify(o,null,2))"
+c task add "Add refund endpoint" >/dev/null
+ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$D/.chalk/tasks.json'))[0].id)")
+c spec "$ID" --criterion "refunds are idempotent per charge id" >/dev/null
+c spec "$ID" --criterion "partial refunds are supported" >/dev/null
+c start "$ID" >/dev/null
+echo "   task scoped, criteria written. Now watch what happens when the agent tries to BUILD."
+pause
+
+banner "2 · The agent CANNOT one-shot past your intent  (#191 chalk align)"
+echo "   \$ chalk work $ID"
+c work "$ID" || true
+echo
+echo "   The build refuses. You review what 'done' means and accept it:"
+echo "   \$ chalk align $ID"
+c align "$ID"
+pause
+
+banner "3 · Mid-work, the agent hits a fork the criteria don't answer — it RAISES it  (#209–211 chalk raise)"
+echo "   The agent works OUT LOUD instead of guessing:"
+echo "   \$ chalk raise \"encrypt refunds at rest?\" --options \"yes|no\" --why \"not in the ticket\""
+c raise "encrypt refunds at rest?" --options "yes|no" --why "not in the ticket"
+echo
+echo "   The build PAUSES on the open fork — a guess never ships:"
+echo "   \$ chalk work $ID"
+c work "$ID" 2>&1 | tail -1 || true
+echo
+RID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$D/.chalk/tasks.json'))[0].raised[0].id)")
+echo "   You decide, it feeds back, work resumes:"
+echo "   \$ chalk pending answer $RID \"yes — tenant KMS key\""
+c pending answer "$RID" "yes — tenant KMS key"
+pause
+
+banner "4 · Now it builds — and the reviewer hands you a DECISION DIGEST  (#192)"
+# canned adversarial reviewer: a real pass, plus the judgment calls the agent made
+cat > "$D/canned-reviewer.mjs" <<'EOF'
+console.log(JSON.stringify({
+  verdict: "pass", findings: [],
+  decisions: [
+    { choice: "refund key = charge_id only (not charge_id+amount)", rationale: "simplest idempotency key",
+      blastRadius: "high", reversibility: "hard" },
+    { choice: "partial refunds default to the full remaining balance when amount omitted", rationale: "felt convenient",
+      blastRadius: "high", reversibility: "easy" },
+    { choice: "named the handler refund.js", rationale: "convention", blastRadius: "low", reversibility: "easy" }
+  ]
+}));
+EOF
+node -e "const f='$D/.chalk/chalk.json',o=JSON.parse(require('fs').readFileSync(f));o.protocol.review={command:'node $D/canned-reviewer.mjs',requiredAt:['per-task']};require('fs').writeFileSync(f,JSON.stringify(o,null,2))"
+c work "$ID" >/dev/null 2>&1 || true
+git add -A; git commit -q -m "feat: refund endpoint" || true
+echo "   \$ chalk review $ID"
+c review "$ID" || true
+pause
+
+banner "5 · The DIRECTOR INBOX — steer the empty middle  (#193 chalk pending)"
+echo "   \$ chalk pending"
+c pending || true
+echo
+echo "   The high-risk, hard-to-undo call is at the top. You redirect it instead of shipping it blind:"
+echo "   \$ chalk pending redirect $ID#0 \"key on charge_id+amount — a re-charge must not dedupe\""
+c pending redirect "$ID#0" "key on charge_id+amount — a re-charge must not dedupe" || true
+echo
+echo "   \$ chalk pending   (the redirected call is gone; the medium one remains for you)"
+c pending || true
+pause
+
+banner "6 · The correction travels BACK into the work  (#198–200 · the loop closes)"
+echo "   The redirect isn't just logged — it lands in the agent's context to REBUILD to:"
+echo "   \$ chalk context $ID   (excerpt)"
+c context "$ID" 2>&1 | grep -iE "Director corrections|Instead of" | sed 's/^/     /'
+echo
+echo "   The agent rebuilds to your call; completing the task RESOLVES the directive — loop closed:"
+echo "   \$ chalk done $ID"
+c done "$ID" 2>&1 | grep -iE "done|resolved" | sed 's/^/     /' || true
+pause
+
+banner "7 · Judgment COMPOUNDS — a NEW task already knows your taste  (#201–202 · the moat)"
+c task add "Add payout endpoint" >/dev/null 2>&1
+NEW=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$D/.chalk/tasks.json')).find(function(t){return /payout/.test(t.title)}).id.slice(0,12))")
+c spec "$NEW" --criterion "payouts settle within 24h" >/dev/null 2>&1
+echo "   \$ chalk context $NEW   (excerpt — your earlier call, applied automatically)"
+c context "$NEW" 2>&1 | grep -iE "Director's calls so far|redirected:|answered:" | sed 's/^/     /'
+echo
+echo "   The fork you decided once never comes back to be guessed again."
+pause
+
+banner "8 · The KIT you composed — chalk harness  (#215–217)"
+c skill add "payments-style" "Money is always integer cents; never floats." >/dev/null 2>&1
+c harness
+
+banner "The loop:  align → raise → digest → pending → rebuild → compound.  You can't direct what you can't verify."

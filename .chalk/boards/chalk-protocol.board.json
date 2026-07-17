@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1783427648306,
+  "updatedAt": 1784293439456,
   "order": 0,
   "cards": [
     {
@@ -436,7 +436,7 @@
     {
       "id": "task-f64af30f",
       "title": "fix: untrackedLockedTests blanket-exempts every `.chalk/` pin, so an untracked e2e acceptance spec ships a vacuous green",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1783417824961,
       "updatedAt": 1783417824961,
       "order": 23,
@@ -445,7 +445,7 @@
     {
       "id": "task-fb7b9744",
       "title": "test: pin the `.chalk/` exemption in untrackedLockedTests — the tracking gate's carve-out is unasserted in either direction",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1783417824964,
       "updatedAt": 1783417824964,
       "order": 24,
@@ -494,18 +494,38 @@
     {
       "id": "task-f8647c91",
       "title": "fix: chalk spec --test from a linked worktree records a '../<worktree>/…' lock path — dead after cleanup",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783417824970,
-      "updatedAt": 1783417824970,
-      "order": 27
+      "updatedAt": 1783523083431,
+      "order": 27,
+      "description": "- chalk spec --test <path> and chalk amend-spec --test <path> invoked from a linked git worktree record the lock 'path' relative to the worktree's copy of the project root (tree-relative, e.g. test/x.mjs) — never a '../<worktree>/…' path that points into the worktree and dies after chalk merge cleans it up\n- The recorded tree-relative path resolves under the canonical spine root as well (survives worktree cleanup): store.brokenLocks against the canonical root finds the file when it exists there and reports no false integrity break\n- From the canonical root (not inside a linked worktree) the recorded lock path is unchanged — still relative to the spine root — so no existing lock is rewritten; a monorepo subdir offset is preserved",
+      "testArtifact": {
+        "specPath": "test/spec-worktree-lockpath.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f8647c91",
+          "status": "passed",
+          "at": 1783523083431
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/111"
+      }
     },
     {
       "id": "task-96eabc01",
       "title": "feat: parallel task execution — scope P6 integrity per worktree, lock spine writes, fan out the driver",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783417824971,
-      "updatedAt": 1783417824971,
-      "order": 28
+      "updatedAt": 1783525968763,
+      "order": 28,
+      "description": "- verify() checks each in-progress task's locked tests against THAT task's own worktree (task.worktree, falling back to store.root) instead of one shared cwd — so a second in-progress task on its own branch no longer trips a false P6 integrity break in the first task's checkout\n- Single in-progress task behavior is unchanged: when the task's worktree equals the verify cwd (the common case), the integrity result is byte-identical to today\n- The opt-in all-locks DONE-task integrity check still runs against the verify cwd (the current worktree), preserving the #80 anti-cheat that catches the current task weakening an already-done task's locked test",
+      "testArtifact": {
+        "specPath": "test/verify-per-worktree-integrity.test.mjs",
+        "lastRun": {
+          "runId": "done-task-96eabc01",
+          "status": "passed",
+          "at": 1783525968763
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/110"
+      }
     },
     {
       "id": "task-90b8101a",
@@ -528,11 +548,19 @@
     {
       "id": "task-cc689423",
       "title": "refactor: unify the intake-commit spine paths and the reviewer diff-exclude list into one shared constant",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1783422773784,
-      "updatedAt": 1783422773784,
+      "updatedAt": 1783521700625,
       "order": 30,
-      "description": "- Define the spine-state path list once in a shared module imported by both bin/chalk.mjs (intake commit) and lib/review.mjs (diff excludes)\n- Ensure the intake commit covers every spine path the reviewer excludes (contract artifacts like `.chalk/tests/` and `.chalk/evidence/` remain visible/committed as today)\n- Add a test asserting the intake-commit path set and the reviewer-exclude set stay consistent, so a future divergence trips the suite"
+      "description": "- Define the spine-state path list once in a shared module imported by both bin/chalk.mjs (intake commit) and lib/review.mjs (diff excludes)\n- Ensure the intake commit covers every spine path the reviewer excludes (contract artifacts like `.chalk/tests/` and `.chalk/evidence/` remain visible/committed as today)\n- Add a test asserting the intake-commit path set and the reviewer-exclude set stay consistent, so a future divergence trips the suite",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-cc689423",
+          "status": "passed",
+          "at": 1783521700625
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/131"
+      }
     },
     {
       "id": "task-ae4422c1",
@@ -552,6 +580,764 @@
         "prNumber": 137,
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/137",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/129"
+      }
+    },
+    {
+      "id": "task-2ece6525",
+      "title": "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)",
+      "column": "done",
+      "createdAt": 1783525604348,
+      "updatedAt": 1783527873090,
+      "order": 32,
+      "description": "- Concurrent chalk processes mutating tasks.json via upsertTask do not lose updates: the read-modify-write runs under a cross-process advisory lock and RE-READS inside it, so N concurrent adds of distinct tasks all survive (no last-writer-wins clobber)\n- Spine JSON writes are atomic (temp file + rename): a concurrent reader always sees a complete valid file, and no .tmp residue is left after a successful write\n- The lock self-heals and stays out of the repo: a crashed holder's stale lock (older than the threshold) is stolen so a dead process cannot wedge the spine; the .lock and atomic-write temp files are gitignored",
+      "testArtifact": {
+        "specPath": "test/spine-concurrent-writes.test.mjs",
+        "lastRun": {
+          "runId": "done-task-2ece6525",
+          "status": "passed",
+          "at": 1783527873090
+        }
+      }
+    },
+    {
+      "id": "task-a111bb0a",
+      "title": "feat: chalk start refuses a second in-progress task unless protocol.parallel.enabled — make the one-at-a-time convention a hard gate (#110 slice 4)",
+      "column": "done",
+      "createdAt": 1783525604409,
+      "updatedAt": 1783526360864,
+      "order": 33,
+      "description": "- chalk start <id> refuses with a non-zero exit when another task is already in-progress and parallel mode is off; the task is NOT moved to in-progress, and the error names the blocking task and how to opt in\n- With protocol.parallel.enabled=true (or the --parallel flag) chalk start allows a second concurrent in-progress task\n- The gate does not fire when there is no other in-progress task (starting the first task) nor when re-running start on the already-in-progress task itself",
+      "testArtifact": {
+        "specPath": "test/start-single-wip-gate.test.mjs",
+        "lastRun": {
+          "runId": "done-task-a111bb0a",
+          "status": "passed",
+          "at": 1783526360864
+        }
+      }
+    },
+    {
+      "id": "task-cac4cb76",
+      "title": "feat: chalk pipeline --parallel N — fan out per-task stage chains in worktrees, serialize merges at the gate (#110 slice 3)",
+      "column": "done",
+      "createdAt": 1783525604493,
+      "updatedAt": 1783529187489,
+      "order": 34,
+      "description": "- chalk pipeline --parallel N runs up to N per-task chains (branch..evidence) concurrently, each in its own worktree, and never exceeds N in flight; every queued issue-backed task is chained (none dropped by the pool)\n- Merges are SERIALIZED — never concurrent — because they squash onto the shared base branch and contend; a chain that reaches the merge point cleanly is merged, and the git/gh stage runners are injectable so these invariants are testable without a live repo\n- A chain that blocks (non-zero) is NOT merged and is reported blocked; a merge that fails blocks that task; the sequential chalk pipeline (no --parallel) path is unchanged",
+      "testArtifact": {
+        "specPath": "test/pipeline-parallel.test.mjs",
+        "lastRun": {
+          "runId": "done-task-cac4cb76",
+          "status": "passed",
+          "at": 1783529187489
+        }
+      }
+    },
+    {
+      "id": "task-3c3ede10",
+      "title": "fix: vacuous verify trap — empty protocol.verify auto-passes P4; tighten chalk doctor to a blocker (#152)",
+      "column": "done",
+      "createdAt": 1783529632019,
+      "updatedAt": 1783530410126,
+      "order": 35,
+      "description": "- chalk doctor reports a blocking 'fail' when protocol.verify has NO configured gate AND there is a runnable task — even if that task HAS a locked test (an empty verify never runs it, so P4 passes vacuously). Softened to 'warn' when an adversarial reviewer gate is configured (the backstop)\n- The empty-verify blocker makes chalk doctor exit non-zero and autopilot (which gates on doctor 'fail' findings) refuse — so an unattended run cannot silently complete tasks against a vacuous verify\n- A project WITH a configured protocol.verify gate produces no such finding (no false positive); the check is independent of the existing per-task testless check",
+      "testArtifact": {
+        "specPath": "test/doctor-vacuous-verify.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3c3ede10",
+          "status": "passed",
+          "at": 1783530410126
+        }
+      }
+    },
+    {
+      "id": "task-daa45169",
+      "title": "fix: review diff-capture silently passes on no diff — abort loudly instead of a vacuous verdict (#151)",
+      "column": "done",
+      "createdAt": 1783530572745,
+      "updatedAt": 1783531587182,
+      "order": 36,
+      "description": "- When captureDiff yields an empty diff (all git-diff strategies produce nothing), runReview returns a distinct 'no-diff' status WITHOUT invoking the reviewer — so no pass/block verdict is fabricated over an empty change set\n- chalk review aborts LOUDLY on the no-diff status: non-zero exit, a clear 'no diff captured' message, and NO passing review recorded on the task; it is not treated as a retryable transient error\n- A review WITH a real (non-empty) diff is unaffected — the normal pass/block flow and recorded verdict are unchanged",
+      "testArtifact": {
+        "specPath": "test/review-no-diff.test.mjs",
+        "lastRun": {
+          "runId": "done-task-daa45169",
+          "status": "passed",
+          "at": 1783531587182
+        }
+      }
+    },
+    {
+      "id": "task-3846b6a0",
+      "title": "fix: merge ff-pull failure strands a stale base — chalk branch cuts from the fresh remote base (#150)",
+      "column": "done",
+      "createdAt": 1783532372785,
+      "updatedAt": 1783532960842,
+      "order": 37,
+      "description": "- chalk branch cuts the new worktree from the FRESH remote base (origin/<base>, after a best-effort fetch), so a stale local base (behind the remote — e.g. after a failed merge pull --ff-only) does not strand the next task on old code: the worktree contains the remote's latest commits\n- When origin/<base> cannot be resolved (no remote / offline), branch falls back to the local base and warns if a remote exists — never SILENTLY stale; the merge itself still completes (remote is source of truth), unchanged\n- The normal case (local base already current) is unaffected — the worktree is cut from the base tip as before",
+      "testArtifact": {
+        "specPath": "test/branch-fresh-base.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3846b6a0",
+          "status": "passed",
+          "at": 1783532960842
+        }
+      }
+    },
+    {
+      "id": "task-b118524b",
+      "title": "feat: spine/protocol migration — stamp writer version, detect skew on open, gated chalk migrate (#159)",
+      "column": "done",
+      "createdAt": 1783534784731,
+      "updatedAt": 1783535218374,
+      "order": 38,
+      "description": "- Opening a spine stamped with a NEWER chalk-protocol version than the running binary is REFUSED (non-zero exit, a clear upgrade message) rather than silently misread — enforced in Store.open via spineSkew\n- chalk migrate carries an old-schema spine (pre-writerVersion, version 1.0) forward to the current schema, is IDEMPOTENT on re-run (no-op when already current), backs the spine up before mutating, and --dry-run mutates NOTHING\n- A same-version (compatible) spine opens with NO migration prompt and NO mutation of chalk.json; chalk doctor surfaces skew (fail for newer, warn for needs-migrate)",
+      "testArtifact": {
+        "specPath": "test/spine-migration.test.mjs",
+        "lastRun": {
+          "runId": "done-task-b118524b",
+          "status": "passed",
+          "at": 1783535218374
+        }
+      }
+    },
+    {
+      "id": "task-76c4c9e7",
+      "title": "feat: chalk stats --public — PII-free shareable gate-efficacy artifact (markdown + shields badge) (#156)",
+      "column": "done",
+      "createdAt": 1783571791284,
+      "updatedAt": 1783572125101,
+      "order": 39,
+      "description": "- chalk stats --public emits a PII-FREE markdown summary carrying the efficacy headline (gate catches, tasks reviewed, block/pass verdicts, self-report↔gate disagreement rate, verify-RED blocks, gated-landing fraction, held-out audit) and NO task titles, file paths, or task ids (the churn 'worst' list is excluded)\n- chalk stats --badge emits shields.io endpoint JSON (schemaVersion, label, message = the gate-catch count, color); chalk stats --public --json emits the PII-free summary object\n- The public summary is derived purely from computeStats (deterministic for a fixed spine fixture, no new tracking) and README documents it as the social-proof block",
+      "testArtifact": {
+        "specPath": "test/stats-public.test.mjs",
+        "lastRun": {
+          "runId": "done-task-76c4c9e7",
+          "status": "passed",
+          "at": 1783572125101
+        }
+      }
+    },
+    {
+      "id": "task-d1c37a28",
+      "title": "feat: chalk feedback --submit — upstream feedback via prefilled GitHub issue URL (#157)",
+      "column": "done",
+      "createdAt": 1783572373840,
+      "updatedAt": 1783572550724,
+      "order": 40,
+      "description": "- buildUpstreamFeedbackUrl is a pure function that percent-encodes the message into a GitHub new-issue URL for the configured upstream repo, including the chalk version in the body and a user-feedback label\n- chalk feedback --submit \"<msg>\" prints that URL, works with NO .chalk spine (runs before Store.open), and never creates .chalk/feedback or calls the analysis agent; CHALK_UPSTREAM_REPO overrides the repo\n- The existing chalk feedback signal-analysis path is unchanged; an empty --submit message is a clear usage error",
+      "testArtifact": {
+        "specPath": "test/feedback-submit.test.mjs",
+        "lastRun": {
+          "runId": "done-task-d1c37a28",
+          "status": "passed",
+          "at": 1783572550724
+        }
+      }
+    },
+    {
+      "id": "task-31a6ed3b",
+      "title": "feat: package-update handling — fix --version, opt-out update notifier, chalk upgrade (#158)",
+      "column": "done",
+      "createdAt": 1783582679568,
+      "updatedAt": 1783583076136,
+      "order": 41,
+      "description": "- chalk --version and -v print the installed PACKAGE version (semver) and exit 0; chalk version still prints only the protocol tag (chalk/0) for scripts that parse it\n- The update notifier is skip-FIRST and inert in every non-interactive/opted-out context (non-TTY, --json, CI, CHALK_NO_UPDATE_CHECK, protocol.updateCheck:false), prefers a fresh once-per-day cache over the network, and a registry failure never throws or changes a command's exit code / --json output\n- chalk upgrade [--dry-run] prints (or runs) the correct global-npm update command",
+      "testArtifact": {
+        "specPath": "test/update-notifier.test.mjs",
+        "lastRun": {
+          "runId": "done-task-31a6ed3b",
+          "status": "passed",
+          "at": 1783583076136
+        }
+      }
+    },
+    {
+      "id": "task-60394447",
+      "title": "docs: document the promote CI-poll knobs (ciPollIntervalMs/ciPollAttempts) in CONFIG + a runtime hint (#153)",
+      "column": "done",
+      "createdAt": 1783583243047,
+      "updatedAt": 1783583729253,
+      "order": 42,
+      "description": "- docs/CONFIG.md's github section DESCRIBES ciPollIntervalMs and ciPollAttempts — what they control (remote-CI polling cadence during merge/promote) and the ciPollAttempts:0 never-wait escape — not merely lists them; the docs/CONFIG.md ↔ initSpine drift gate stays green\n- The release --promote CI-poll timeout (still-pending) message points the user at github.ciPollAttempts / ciPollIntervalMs",
+      "testArtifact": {
+        "specPath": "test/config-cipoll-docs.test.mjs",
+        "lastRun": {
+          "runId": "done-task-60394447",
+          "status": "passed",
+          "at": 1783583729253
+        }
+      }
+    },
+    {
+      "id": "task-f2c154c5",
+      "title": "feat: post-run feedback nudge — after a productive `chalk run`, point the user at `chalk feedback --submit` (opt-out via CHALK_NO_NUDGE) (#155)",
+      "column": "done",
+      "createdAt": 1783868984802,
+      "updatedAt": 1783869247448,
+      "order": 43,
+      "description": "- feedbackNudge() returns a string pointing at 'chalk feedback --submit' after a productive run (merged>0 or blocked>0), and null on a no-op sweep (0/0) or when CHALK_NO_NUDGE is set\n- chalk run wires feedbackNudge into its end-of-run summary (imported + called with the loop's merged/blocked totals)",
+      "testArtifact": {
+        "specPath": "test/feedback-nudge.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f2c154c5",
+          "status": "passed",
+          "at": 1783869247448
+        }
+      }
+    },
+    {
+      "id": "task-81a90f03",
+      "title": "fix: decouple the issue-pull count from the loop parser — one shared literal so a CLI reword can't silently zero the standing loop's steady-state detection",
+      "column": "done",
+      "createdAt": 1783910735461,
+      "updatedAt": 1783910968435,
+      "order": 44,
+      "description": "- The 'pulled N new issue(s)' phrasing and its parser live in one shared module (lib/pull-count.mjs); bin/chalk.mjs emits via pulledIssuesLine and lib/loop.mjs reads via parsePulledIssues — no divergent inline literal\n- parsePulledIssues round-trips pulledIssuesLine, reads the count through bold-ANSI wrapping + the '(N already tracked)' suffix, and returns 0 when the line is absent",
+      "testArtifact": {
+        "specPath": "test/pull-count.test.mjs",
+        "lastRun": {
+          "runId": "done-task-81a90f03",
+          "status": "passed",
+          "at": 1783910968435
+        }
+      }
+    },
+    {
+      "id": "task-f68a76ae",
+      "title": "fix: reviewer diffs against the LOCAL base first — a stale/divergent local dev balloons the review diff to the whole branch history; prefer origin/<base>",
+      "column": "done",
+      "createdAt": 1783915753672,
+      "updatedAt": 1783915964365,
+      "order": 45,
+      "description": "- captureDiff's strategy order prefers origin/<base>...HEAD over <base>...HEAD, so a stale/divergent local base branch can't balloon the review diff to the whole base-vs-trunk history\n- The strategy list is exposed as a pure function (diffStrategies) and preserves working-tree-first + the branchless last-commit/empty-tree fallbacks after the base-relative diffs",
+      "testArtifact": {
+        "specPath": "test/review-diff-base.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f68a76ae",
+          "status": "passed",
+          "at": 1783915964365
+        }
+      }
+    },
+    {
+      "id": "task-6ee416c2",
+      "title": "ci: add concurrency groups — cancel superseded test runs; serialize releases without cancelling an in-flight publish",
+      "column": "done",
+      "createdAt": 1783919156200,
+      "updatedAt": 1783919575145,
+      "order": 46,
+      "description": "- test.yml declares a top-level concurrency group with cancel-in-progress: true so a newer push supersedes an in-flight test run\n- release.yml declares a top-level concurrency group with cancel-in-progress: false — a publish is never cancelled mid-flight",
+      "testArtifact": {
+        "specPath": "test/ci-concurrency.test.mjs",
+        "lastRun": {
+          "runId": "done-task-6ee416c2",
+          "status": "passed",
+          "at": 1783919575145
+        }
+      }
+    },
+    {
+      "id": "task-cb9bccc9",
+      "title": "chore: enable GitHub Discussions + add issue/feedback templates and a post-run feedback nudge",
+      "column": "in_progress",
+      "createdAt": 1783946677585,
+      "updatedAt": 1783946677585,
+      "order": 47
+    },
+    {
+      "id": "task-c9513f37",
+      "title": "docs: document the promote CI-poll knobs (ciPollIntervalMs / ciPollAttempts) in help and CONFIG",
+      "column": "in_progress",
+      "createdAt": 1783946677592,
+      "updatedAt": 1783946677592,
+      "order": 48
+    },
+    {
+      "id": "task-9f631779",
+      "title": "docs(skills): add a chalk-autopilot-setup skill for readying an unattended run",
+      "column": "done",
+      "createdAt": 1783946677595,
+      "updatedAt": 1783950306610,
+      "order": 49,
+      "description": "- .claude/skills/chalk-autopilot-setup/SKILL.md exists with YAML frontmatter whose description triggers on 'set up autopilot'/'ready for unattended'/'chalk doctor fails'/'resume after churn'\n- Provides a chalk doctor FAIL/WARN -> fix table: set executor.command, configure a reviewer (avoid same-model as executor — self-preference bias), lock tests on runnable tasks, set worktree.setup\n- Documents held-out isolation (P7, #82): gitignored in-repo dir hidden by a worktree, OR a manual-mode path OUTSIDE the repo root; and the vacuous-verify guard (empty protocol.verify prints GREEN checking nothing)\n- Documents churn/handoff resume: exceeding handoff.maxAttempts (default 3) writes .chalk/handoffs/<id>-N.md; resume in a FRESH session with chalk context <id>",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-9f631779",
+          "status": "passed",
+          "at": 1783950306610
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/149"
+      }
+    },
+    {
+      "id": "task-3807fafa",
+      "title": "docs(skills): add a chalk-dogfood skill for contributing to chalk via chalk",
+      "column": "done",
+      "createdAt": 1783946677598,
+      "updatedAt": 1783950078557,
+      "order": 50,
+      "description": "- .claude/skills/chalk-dogfood/SKILL.md exists with YAML frontmatter whose description triggers on 'contribute to chalk'/'dogfood'/'run the loop on chalk itself'\n- States issue-backed tasks go through the GitHub pipeline (chalk branch -> work -> commit -> pr -> review -> merge); hand-committing to main skips the PR record and leaves stages stale\n- Encodes the ordering gotchas: commit issue-intake spine metadata in its OWN chore(spine) commit BEFORE feature work, commit review-fix changes MANUALLY (chalk commit no-ops #134) verifying git status clean + git show --stat HEAD before chalk merge, commit sha256-pinned locked tests in the same change, and reconcile with chore(spine) after out-of-band merges\n- Links chalk-commit (#141) and chalk-ship (#142)",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-3807fafa",
+          "status": "passed",
+          "at": 1783950078557
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/148"
+      }
+    },
+    {
+      "id": "task-d450bc60",
+      "title": "docs(skills): add a chalk-release skill for the release + protected-deploy flow",
+      "column": "done",
+      "createdAt": 1783946677601,
+      "updatedAt": 1783949870634,
+      "order": 51,
+      "description": "- .claude/skills/chalk-release/SKILL.md exists with YAML frontmatter whose description triggers on 'cut a release'/'promote release'/'release stuck'\n- Documents chalk release --commit (release commit + tag, orphan-resume via git log --grep at any depth, #125) vs --promote (base->deployBase promotion PR, CI poll, merge, tag deploy tip, #98; requires base != deployBase)\n- Documents the --version semantics + version-collision probing, and the CI-poll knobs ciPollIntervalMs / ciPollAttempts (default ~5s x 24)\n- Documents how to safely re-run after an interruption at each step (idempotent resume)",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-d450bc60",
+          "status": "passed",
+          "at": 1783949870634
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/147"
+      }
+    },
+    {
+      "id": "task-44fb4b34",
+      "title": "docs(skills): add a chalk-add-command skill for scaffolding a new CLI command",
+      "column": "done",
+      "createdAt": 1783946677603,
+      "updatedAt": 1783949396555,
+      "order": 52,
+      "description": "- .claude/skills/chalk-add-command/SKILL.md exists with YAML frontmatter whose description triggers on 'add a CLI command'/'new chalk command'\n- Step-by-step with the 4 wiring points: lib/<name>.mjs logic module, a method on the cmds object in bin/chalk.mjs, a help line in the help text/arg parser, and a LOCKED acceptance test in test/protocol.test.mjs or test/pipeline.test.mjs\n- States the test-is-contract rule (that suite IS the contract; make node --test green) and that the spine (lib/store.mjs) is the only state writer; reuse lib/* utilities\n- References the chalk-codebase skill for the module map",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-44fb4b34",
+          "status": "passed",
+          "at": 1783949396555
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/146"
+      }
+    },
+    {
+      "id": "task-d14e3648",
+      "title": "docs(skills): add a chalk-debug-gate skill for diagnosing RED verify / review BLOCK / audit RED",
+      "column": "done",
+      "createdAt": 1783946677606,
+      "updatedAt": 1783949208448,
+      "order": 53,
+      "description": "- .claude/skills/chalk-debug-gate/SKILL.md exists with YAML frontmatter whose description triggers on 'verify red'/'review blocked'/'audit failed'/'cant mark done'\n- Provides a symptom -> gate -> remediation decision tree covering RED verify (toolchain vs test-integrity VIOLATED vs e2e), review BLOCK, audit RED (P7), and done-gate refusals (P4/P6/P5)\n- States review BLOCK is agent-owned (needs:review, not a human dep): fix findings, git commit MANUALLY (chalk commit no-ops #134), re-run chalk review, chalk unblock clears it (#117)\n- States audit RED tells you ONLY that a criterion regressed, never the held-out assertion: fix against the spec, never inspect .chalk/held-out/",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-d14e3648",
+          "status": "passed",
+          "at": 1783949208448
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/145"
+      }
+    },
+    {
+      "id": "task-86cb4f90",
+      "title": "docs(skills): add a chalk-locked-tests skill for the pin/amend test workflow",
+      "column": "done",
+      "createdAt": 1783946677609,
+      "updatedAt": 1783949019315,
+      "order": 54,
+      "description": "- .claude/skills/chalk-locked-tests/SKILL.md exists with YAML frontmatter whose description triggers on 'lock a test'/'amend spec'/'test integrity'\n- Documents the create->pin->commit sequence: author a fail-first test, chalk spec --test <path> to sha256-lock, and commit the lock in the SAME change (untracked lock ships a vacuous green)\n- Documents chalk amend-spec <id> --test <path> --why as the ONLY sanctioned way to change a locked test, that it STALES any prior passing review (fresh review required before done), and to amend only AFTER the suite is green\n- States locked files are read-only: never edit/weaken/delete/rename directly; put a real asserting test for CLI-wiring/e2e criteria IN the locked file",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-86cb4f90",
+          "status": "passed",
+          "at": 1783949019315
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/144"
+      }
+    },
+    {
+      "id": "task-7502f310",
+      "title": "docs(skills): add a chalk-branch-cleanup skill for pruning stale branches",
+      "column": "done",
+      "createdAt": 1783946677611,
+      "updatedAt": 1783948826191,
+      "order": 55,
+      "description": "- .claude/skills/chalk-branch-cleanup/SKILL.md exists with YAML frontmatter (name, description) whose description triggers on 'clean up branches'\n- Prominently documents that git branch --merged is UNRELIABLE here (squash merges are not ancestors) and PR state must be verified via gh pr list --head <branch> --state all --json state (delete only when MERGED)\n- Includes exact commands: git fetch --prune, git push origin --delete, git branch -vv gone-detection + -D, resync main to origin/main\n- Includes the safety step: never delete an OPEN/no-PR branch without checking git log origin/main..<branch> for unmerged commits first",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-7502f310",
+          "status": "passed",
+          "at": 1783948826191
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/143"
+      }
+    },
+    {
+      "id": "task-c81bb14c",
+      "title": "docs(skills): add a chalk-ship skill for pushing and landing PRs safely",
+      "column": "done",
+      "createdAt": 1783946677614,
+      "updatedAt": 1783948652246,
+      "order": 56,
+      "description": "- .claude/skills/chalk-ship/SKILL.md exists with YAML frontmatter (name: chalk-ship, description) whose description triggers on 'push'/'open PR'/'land'\n- Documents the single-PR path (normal squash-merge when nothing stacks)\n- Documents the stacked-PR --delete-branch trap and the bottom-up A<-B<-C landing procedure with exact gh commands (merge without --delete-branch, gh pr edit --base, retarget children, delete branches last)\n- Includes the pre-merge committed-fix check (ties to #134) and cross-references chalk-commit",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-c81bb14c",
+          "status": "passed",
+          "at": 1783948652246
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/142"
+      }
+    },
+    {
+      "id": "task-1a995ac3",
+      "title": "docs(skills): add a chalk-commit skill for uniform commit discipline",
+      "column": "done",
+      "createdAt": 1783946677616,
+      "updatedAt": 1783948322858,
+      "order": 57,
+      "description": "- .claude/skills/chalk-commit/SKILL.md exists with YAML frontmatter (name: chalk-commit, description) whose description triggers on 'commit'/'save changes'\n- Documents conventional-commit format (types, imperative, <=70 chars, no period), the chore(spine): reconcile pattern, and the Closes #n body convention\n- Documents the chalk commit no-op hazard (#134) with an explicit manual-commit-after-review checklist (git add/commit, verify git status clean + git show --stat HEAD before chalk merge)\n- States the Co-Authored-By policy: omitted on pipeline-agent commits, applied on human/main-loop commits; includes a concrete example commit and cross-references chalk-conventions",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-1a995ac3",
+          "status": "passed",
+          "at": 1783948322858
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/141"
+      }
+    },
+    {
+      "id": "task-93125c3f",
+      "title": "feat: spine/protocol migration — version-stamp the spine, detect skew on open, add gated chalk migrate",
+      "column": "in_progress",
+      "createdAt": 1784016402056,
+      "updatedAt": 1784016402056,
+      "order": 58
+    },
+    {
+      "id": "task-b8b31103",
+      "title": "feat: proper package-update handling — fix --version, add an opt-out update notifier + chalk upgrade",
+      "column": "in_progress",
+      "createdAt": 1784016402062,
+      "updatedAt": 1784016402062,
+      "order": 59
+    },
+    {
+      "id": "task-b2776be2",
+      "title": "feat: chalk feedback --submit — let downstream users send feedback upstream via a prefilled GitHub issue URL",
+      "column": "in_progress",
+      "createdAt": 1784016402065,
+      "updatedAt": 1784016402065,
+      "order": 60
+    },
+    {
+      "id": "task-91805b0d",
+      "title": "feat: chalk stats --public — a shareable gate-efficacy artifact (bad changes the gate caught)",
+      "column": "in_progress",
+      "createdAt": 1784016402068,
+      "updatedAt": 1784016402068,
+      "order": 61
+    },
+    {
+      "id": "task-e675a65c",
+      "title": "feat: opt-in anonymous activation telemetry (init → first green verify → done funnel)",
+      "column": "done",
+      "createdAt": 1784016402070,
+      "updatedAt": 1784018738648,
+      "order": 62,
+      "description": "- Telemetry is OFF by default: with no opt-in config and no env, no network call, no install-id write, and no payload is emitted on init/verify/done\n- When enabled, the emitted payload contains ONLY whitelisted fields (event name, chalk version, random anonymous install id, timestamp) — never code, paths, prompts, diffs, or repo identity\n- Emission is fire-and-forget and non-blocking: a network/DNS failure (or unreachable endpoint) never changes a command's exit code or throws\n- chalk telemetry --show prints the resolved enabled state and EXACTLY the payload that would be sent; CHALK_TELEMETRY=0 and a config flag hard-disable, and CI (process.env.CI) disables by default\n- Opt-in is prompted once at chalk init (default N); README + docs/CONFIG.md document the telemetry config, the env kill-switch, and the whitelisted fields",
+      "testArtifact": {
+        "specPath": "test/telemetry.test.mjs",
+        "lastRun": {
+          "runId": "done-task-e675a65c",
+          "status": "passed",
+          "at": 1784018738648
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/154"
+      }
+    },
+    {
+      "id": "task-167041a5",
+      "title": "feat(director): risk-based decision triage + a director inbox — own the empty middle",
+      "column": "done",
+      "createdAt": 1784275058501,
+      "updatedAt": 1784279530868,
+      "order": 63,
+      "description": "- decisionRisk scores a decision from blastRadius × reversibility into low/med/high; an unknown field is treated as the middle (unknown is not safe)\n- chalk review ranks the decision digest highest-risk-first with a per-decision risk badge (composes on #192; the digest line format is unchanged so #192's locked test stays green)\n- chalk pending is the director inbox: unresolved med/high-risk decisions across ALL tasks (from each task's latest review), ranked by risk, each with a stable <task>#<n> ref; an empty inbox reports cleanly\n- chalk pending accept <ref> marks a decision accepted and drops it from the inbox; chalk pending redirect <ref> \"why\" records a course-correction and logs a decision; neither can re-resolve a resolved call",
+      "testArtifact": {
+        "specPath": "test/director-triage.test.mjs",
+        "lastRun": {
+          "runId": "done-task-167041a5",
+          "status": "passed",
+          "at": 1784279530868
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/193"
+      }
+    },
+    {
+      "id": "task-7b477997",
+      "title": "feat(director): reviewer emits a decision digest — the accept button, not just pass/block",
+      "column": "done",
+      "createdAt": 1784275058509,
+      "updatedAt": 1784277754839,
+      "order": 64,
+      "description": "- The reviewer prompt requests a DECISION DIGEST — the judgment calls the implementer made — each with blastRadius + reversibility, framed for accept/redirect, and requested EVEN ON A PASS\n- parseVerdict extracts a decisions array when present but stays additive: a verdict with no decisions keeps the exact {verdict,findings} shape, so older reviewers and pinned contracts are unaffected\n- chalk review renders the decision digest (on PASS and BLOCK) and records it on the task's review entry (t.reviews[].decisions)\n- The shipped (share/agents) and dogfood (.claude/agents) chalk-reviewer definitions both describe the decisions output and stay in sync (agents-sync drift gate stays green)",
+      "testArtifact": {
+        "specPath": "test/review-digest.test.mjs",
+        "lastRun": {
+          "runId": "done-task-7b477997",
+          "status": "passed",
+          "at": 1784277754839
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/192"
+      }
+    },
+    {
+      "id": "task-8cf40444",
+      "title": "feat(director): alignment checkpoint before build — human accepts the criteria/outcome, not just the plan",
+      "column": "done",
+      "createdAt": 1784275058513,
+      "updatedAt": 1784276097798,
+      "order": 65,
+      "description": "- protocol.director.required defaults off; when off, chalk work behaves exactly as today (no regression)\n- With director.required on and criteria not accepted, chalk work AND the autonomous driver (chalk run) refuse before build, pointing the human at chalk align\n- chalk align records task.criteriaAccepted = { at, by }; after alignment chalk work proceeds past the gate\n- chalk align surfaces the task's acceptance criteria for the human to read before accepting (not blind), and refuses when there are no criteria yet",
+      "testArtifact": {
+        "specPath": "test/director-align.test.mjs",
+        "lastRun": {
+          "runId": "done-task-8cf40444",
+          "status": "passed",
+          "at": 1784276097798
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/191"
+      }
+    },
+    {
+      "id": "task-27eaa67d",
+      "title": "Misalignment on design concept of the agent guiding the acceptance criteria.",
+      "column": "in_progress",
+      "createdAt": 1784275058517,
+      "updatedAt": 1784275058517,
+      "order": 66
+    },
+    {
+      "id": "task-ee0e7a1b",
+      "title": "fix: vacuous verify trap for tasks queued after init — empty protocol.verify prints GREEN checking nothing",
+      "column": "in_progress",
+      "createdAt": 1784275058520,
+      "updatedAt": 1784275058520,
+      "order": 67
+    },
+    {
+      "id": "task-64a8ecda",
+      "title": "fix: review diff-capture silently falls back to \"(no diff captured)\", letting a reviewer verdict on no diff",
+      "column": "in_progress",
+      "createdAt": 1784275058523,
+      "updatedAt": 1784275058523,
+      "order": 68
+    },
+    {
+      "id": "task-21d1c437",
+      "title": "fix: merge cleanup fast-forward failure still marks the task done, leaving a stale local base",
+      "column": "in_progress",
+      "createdAt": 1784275058526,
+      "updatedAt": 1784275058526,
+      "order": 69
+    },
+    {
+      "id": "task-6fec5f3f",
+      "title": "feat(director-loop): B2 · inject prior director decisions into new-task context (the moat)",
+      "column": "done",
+      "createdAt": 1784280776685,
+      "updatedAt": 1784285432496,
+      "order": 70,
+      "description": "- buildContext injects a '## Director's calls so far (apply this taste)' block from the durable record (#201) on NEW tasks — accepted → 'apply this rationale', redirected → 'do this instruction' (distinct, per B1's schema)\n- The block is bounded like lessons (most-recent-first, elided with a note under a tight context budget); the task essentials (criteria/tests/directives) are never displaced\n- No director decisions → no block (no regression to existing context)",
+      "testArtifact": {
+        "specPath": "test/director-compound.test.mjs",
+        "lastRun": {
+          "runId": "done-task-6fec5f3f",
+          "status": "passed",
+          "at": 1784285432496
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/202"
+      }
+    },
+    {
+      "id": "task-e27fa89c",
+      "title": "feat(director-loop): B1 · a durable, structured director-decision record",
+      "column": "done",
+      "createdAt": 1784280776691,
+      "updatedAt": 1784281771441,
+      "order": 71,
+      "description": "- chalk pending accept/redirect write through to a durable append-only record (.chalk/director.jsonl) with structured fields: at, verdict (accepted|redirected), choice, why, risk, taskId, by\n- The durable record survives a re-review that regenerates t.reviews[].decisions — accept/redirect history persists for the task's life, independent of the volatile per-review flags (fixes the #193 persistence finding)\n- A directorDecisions() store accessor reads the record back; chalk decisions surfaces the director's accepted/redirected calls\n- .chalk/director.jsonl is spine state — in SPINE_STATE_PATHS so it is excluded from review diffs and committed by intake (no bookkeeping churn in feature diffs)",
+      "testArtifact": {
+        "specPath": "test/director-record.test.mjs",
+        "lastRun": {
+          "runId": "done-task-e27fa89c",
+          "status": "passed",
+          "at": 1784281771441
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/201"
+      }
+    },
+    {
+      "id": "task-86fadfe0",
+      "title": "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive",
+      "column": "done",
+      "createdAt": 1784280776696,
+      "updatedAt": 1784284507632,
+      "order": 72,
+      "description": "- runnableTasks treats a re-opened task (in-progress + unresolved directive) as runnable so chalk run/work re-execute it; a plain in-progress task (no pending directive) is NOT re-picked\n- chalk done (and the pipeline merge) resolves the task's pending director corrections (resolved:true, resolvedAt) and reports it — the rework landed, so the loop closes\n- chalk next surfaces a re-opened task ('re-opened for rework') and its pending corrections with the rebuild instruction, so it is not silently stranded as plain in-progress",
+      "testArtifact": {
+        "specPath": "test/director-rework-loop.test.mjs",
+        "lastRun": {
+          "runId": "done-task-86fadfe0",
+          "status": "passed",
+          "at": 1784284507632
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/200"
+      }
+    },
+    {
+      "id": "task-fc11b71e",
+      "title": "feat(director-loop): A2 · inject pending director corrections into buildContext",
+      "column": "done",
+      "createdAt": 1784280776699,
+      "updatedAt": 1784282976162,
+      "order": 73,
+      "description": "- buildContext surfaces a task's unresolved directives as a '### Director corrections (REBUILD to these)' block naming the corrected choice + what to do instead\n- Only UNRESOLVED directives are injected — a resolved directive is not re-surfaced\n- No directives → no block (no regression to existing context)\n- The corrections block is ESSENTIAL — never dropped for the context budget (only the elastic lessons block is trimmed), like the review-findings block it mirrors",
+      "testArtifact": {
+        "specPath": "test/director-context-inject.test.mjs",
+        "lastRun": {
+          "runId": "done-task-fc11b71e",
+          "status": "passed",
+          "at": 1784282976162
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/199"
+      }
+    },
+    {
+      "id": "task-3a49d957",
+      "title": "feat(director-loop): A1 · redirect re-opens the task as an actionable directive",
+      "column": "done",
+      "createdAt": 1784280776704,
+      "updatedAt": 1784282513848,
+      "order": 74,
+      "description": "- chalk pending redirect records a durable directive on the task (t.directives[] = { choice, instead, at, by, resolved:false }) — the correction becomes actionable work, not just a log line\n- Redirecting a DONE task re-opens it to in-progress (reopenedAt stamped) so it can be reworked to the director's call\n- Redirecting a non-done (already active) task keeps its state and only attaches the directive (no spurious re-open)\n- accept does NOT create a directive or re-open the task — only redirect re-directs",
+      "testArtifact": {
+        "specPath": "test/director-reopen.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3a49d957",
+          "status": "passed",
+          "at": 1784282513848
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/198"
+      }
+    },
+    {
+      "id": "task-5d2e2fbc",
+      "title": "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox",
+      "column": "done",
+      "createdAt": 1784285990208,
+      "updatedAt": 1784288597108,
+      "order": 75,
+      "description": "- After a chalk work run, a task with OPEN raises does not proceed: chalk work exits 2 and the driver blocks it needs:decision — a guessed choice never ships past a raised fork\n- chalk pending surfaces open raised forks (fork + options + why) across tasks, each with an answer ref\n- chalk pending answer <raiseId> \"<decision>\" marks the raise answered, feeds the answer back as a directive (#199 channel so the next work rebuilds to it), compounds it to the durable director record (#201/#202), and unblocks a task parked on the raise\n- Once the raise is answered, chalk work proceeds (no open raises left) — the mid-flight loop is closed",
+      "testArtifact": {
+        "specPath": "test/director-raise-route.test.mjs",
+        "lastRun": {
+          "runId": "done-task-5d2e2fbc",
+          "status": "passed",
+          "at": 1784288597108
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/211"
+      }
+    },
+    {
+      "id": "task-622ec407",
+      "title": "feat(director-mid-flight): C2 · executor contract — raise a fork instead of guessing",
+      "column": "done",
+      "createdAt": 1784285990215,
+      "updatedAt": 1784287385674,
+      "order": 76,
+      "description": "- buildContext injects a mid-flight raise instruction telling the executor to run chalk raise for a fork the criteria don't answer, and to raise only the few that need taste (not flood)\n- The raise instruction is a LOW-priority elastic context block — present at any realistic budget but first to yield under extreme pressure, so the essential/director/lessons budget the locked context-budget tests pin stays unchanged\n- Both chalk-executor definitions (shipped share/agents + dogfood .claude/agents) document the raise convention and stay in sync (agents-sync drift gate green)",
+      "testArtifact": {
+        "specPath": "test/director-raise-contract.test.mjs",
+        "lastRun": {
+          "runId": "done-task-622ec407",
+          "status": "passed",
+          "at": 1784287385674
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/210"
+      }
+    },
+    {
+      "id": "task-d3cfdb8f",
+      "title": "feat(director-mid-flight): C1 · chalk raise — the mid-flight raise primitive",
+      "column": "done",
+      "createdAt": 1784285990218,
+      "updatedAt": 1784286405307,
+      "order": 77,
+      "description": "- chalk raise \"<fork>\" [--options a|b|c] [--why ...] [--task <id>] records a raise on the target task's t.raised[]: {id, fork, options?, why?, at, by:'agent', status:'open'}\n- Defaults to the current in-progress task; refuses cleanly when there is none and no --task\n- options parse from a pipe-delimited list; chalk raise with no fork text lists the open raised forks; openRaises(task) accessor returns only open raises",
+      "testArtifact": {
+        "specPath": "test/director-raise.test.mjs",
+        "lastRun": {
+          "runId": "done-task-d3cfdb8f",
+          "status": "passed",
+          "at": 1784286405307
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/209"
+      }
+    },
+    {
+      "id": "task-58e2ced9",
+      "title": "feat(director-kit): D3 · reframe the gates as one optional 'Checks' part",
+      "column": "done",
+      "createdAt": 1784290931120,
+      "updatedAt": 1784293439456,
+      "order": 78,
+      "description": "- chalk harness frames the Checks section as OPTIONAL, the accept button, one part of the kit (not the whole product)\n- A checks-OFF project (no verify/review/held-out, require-test off) renders a coherent harness with an 'all optional — runs without gates' note — reinforcing checks are not mandatory\n- chalk harness closes by naming the CORE — the director's taste/judgment (align · digest · pending · raise) — with the gates as one part\n- docs/harness.md documents the kit and frames the gates as one optional Checks part, with the director's taste/judgment as the defensible core",
+      "testArtifact": {
+        "specPath": "test/director-checks-reframe.test.mjs",
+        "lastRun": {
+          "runId": "done-task-58e2ced9",
+          "status": "passed",
+          "at": 1784293439456
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/217"
+      }
+    },
+    {
+      "id": "task-225f6a98",
+      "title": "feat(director-kit): D1 · chalk harness — the kit made visible",
+      "column": "done",
+      "createdAt": 1784290931123,
+      "updatedAt": 1784292797443,
+      "order": 79,
+      "description": "- chalk harness shows the four parts of the kit — Agents, Skills, Checks, Flows — in one read-only view\n- It reflects actual config: wired agents show their command / unwired show '(not wired)'; configured verify + wired review show as on; project skills (#215) are surfaced\n- A bare project still renders coherently (none/off states, no crash) — reinforcing the parts are composable, not mandatory\n- chalk harness is READ-ONLY — it mutates no spine state",
+      "testArtifact": {
+        "specPath": "test/director-harness.test.mjs",
+        "lastRun": {
+          "runId": "done-task-225f6a98",
+          "status": "passed",
+          "at": 1784292797443
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/216"
+      }
+    },
+    {
+      "id": "task-0547837d",
+      "title": "feat(director-kit): D2 · skills as a first-class part (.chalk/skills → context)",
+      "column": "done",
+      "createdAt": 1784290931126,
+      "updatedAt": 1784292107004,
+      "order": 80,
+      "description": "- chalk skill add \"<name>\" [--file <path> | \"<text>\"] writes .chalk/skills/<slug>.md; chalk skill (no sub) lists them; an empty skill is refused\n- buildContext injects a '## Project skills (apply these)' block from .chalk/skills/*.md, each skill a titled section with its content — the affirmative playbook, distinct from lessons\n- The skills block is elastic — present at a realistic budget, dropped under extreme pressure while essentials survive (does not disturb the locked context-budget tests)\n- .chalk/skills is spine state (in SPINE_STATE_PATHS — committed by intake, excluded from review diffs), consistent with lessons.md",
+      "testArtifact": {
+        "specPath": "test/director-skills.test.mjs",
+        "lastRun": {
+          "runId": "done-task-0547837d",
+          "status": "passed",
+          "at": 1784292107004
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/215"
       }
     }
   ]

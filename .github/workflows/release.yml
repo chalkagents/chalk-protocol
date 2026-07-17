@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
   id-token: write # OIDC for npm trusted publishing / --provenance
+# Serialize releases and NEVER cancel an in-flight publish — a half-cancelled release is worse than a wait.
+concurrency:
+  group: release
+  cancel-in-progress: false
 jobs:
   publish:
     runs-on: ubuntu-latest

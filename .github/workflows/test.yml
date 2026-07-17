@@ -5,6 +5,11 @@ on:
     branches: [main, dev]
   pull_request:
 
+# Cancel superseded runs — a newer push to the same branch/PR makes the in-flight run moot (saves CI).
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest

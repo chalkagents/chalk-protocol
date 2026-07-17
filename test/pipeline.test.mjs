@@ -907,12 +907,13 @@ test('doctor — flags missing executor + testless runnable tasks; READY when co
   assert.match(r.out, /no protocol.executor.command/);
   assert.match(r.out, /no locked test/i);
 
-  // Configure executor + lock a real test → READY.
+  // Configure executor + a verify command + lock a real test → READY. A verify command is required:
+  // an empty protocol.verify makes P4 vacuous even with a locked test, which doctor now blocks (#152).
   writeFileSync(join(d, 'spec.test.txt'), 'contract\n');
   chalk(d, 'spec', id, '--test', 'spec.test.txt');
-  conf(d, (o) => { o.executor = { command: 'true' }; });
+  conf(d, (o) => { o.executor = { command: 'true' }; o.verify = { test: 'true' }; });
   r = chalk(d, 'doctor');
-  assert.equal(r.code, 0, 'READY once executor + locked test exist');
+  assert.equal(r.code, 0, 'READY once executor + verify + locked test exist');
   assert.match(r.out, /READY/);
 
   // A toolchain verify command with no worktree.setup → a warning (a fresh worktree lacks packages).

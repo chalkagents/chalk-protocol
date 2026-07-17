@@ -364,3 +364,153 @@
 
 - _when:_ 2026-07-07T11:24:06.269Z
 - _why:_ PR #135 already merged to dev and adversarially reviewed (PASS); the task's spine record was reverted by a dev rebase during the #114/#125 recovery — reconciling state to reflect reality
+
+## Unify spine-state paths in one SPINE_STATE_PATHS constant (store.mjs); intake commit + reviewer excludes both derive from it (#131)
+
+- _when:_ 2026-07-08T14:41:50.209Z
+- _why:_ The intake-commit list was a 4-path subset of the reviewer's 10-path exclude set, so review-hidden-but-intake-uncommitted paths (chalk.json/questions.json/decisions.md/lessons.md/handoffs/analysis) floated into the next task branch — the #114 scoped-diff leak. Intake now commits the FULL set; a manually-edited uncommitted chalk.json at pull time is swept into the chore(spine) commit, which is correct since chalk owns spine state.
+
+## Record locked-test paths relative to the worktree's project root, not the main checkout (#111)
+
+- _when:_ 2026-07-08T15:04:58.793Z
+- _why:_ chalk spec/amend-spec --test run from a task worktree recorded a ../<worktree>/… path that dies after chalk merge cleans the worktree up. lockTest now maps main->worktree by the in-repo offset (linkedWorktree, pure fs) and records tree-relative — valid in every checkout; non-worktree behavior unchanged.
+
+## Decompose #110 (parallel task execution) into 4 slices; scope task-96eabc0 to slice 1 (per-worktree P6)
+
+- _when:_ 2026-07-08T15:46:44.302Z
+- _why:_ The issue bundles 4 workstreams (per-worktree P6 integrity, atomic spine writes, start-gate, driver fan-out) — too broad for one gate. Slice 1 (verify() checks each in-progress task's locks in ITS OWN worktree) is the keystone hard-tooth and is self-contained + locally verifiable. The done-task all-locks loop stays at cwd to preserve the #80 anti-cheat. Slices 2-4 queued as follow-ons with dep edges.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-07-08T16:14:04.920Z
+- _why:_ Add coverage the review required: stale-lock self-heal, archive routing through the lock, and gitignore of .lock/temp files (#110 slice 2 review fixes)
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-07-08T16:18:19.790Z
+- _why:_ Add a revert-detectable atomicity test (concurrent reader during unlocked writes) to pin criterion 2 — review round 2 required it (#110 slice 2)
+
+## Amended acceptance test for "feat: chalk pipeline --parallel N — fan out per-task stage chains in worktrees, serialize merges at the gate (#110 slice 3)"
+
+- _when:_ 2026-07-08T16:41:03.892Z
+- _why:_ Review round 1 fixes: cover the default production path (stopBefore truncation via dry-run + a stub-CLI test of defaultRunChain/defaultRunMerge command construction and phase ordering) — #110 slice 3
+
+## Amended acceptance test for "fix: merge ff-pull failure strands a stale base — chalk branch cuts from the fresh remote base (#150)"
+
+- _when:_ 2026-07-08T17:45:05.643Z
+- _why:_ Review fix: cover the 'remote exists but base unresolvable → warn' path and gate the warning on git remote (not a parseable origin URL) — #150
+
+## Migrated spine 1.0 → 1.1
+
+- _when:_ 2026-07-08T18:27:17.321Z
+- _why:_ chalk migrate: stamp the writer version (chalk-protocol package) on the spine (backup: /Users/devid/Documents/projects/personal/chalk-protocol/.chalk/backups/2026-07-08T18-27-17-319Z)
+
+## Amended acceptance test for "feat: package-update handling — fix --version, opt-out update notifier, chalk upgrade (#158)"
+
+- _when:_ 2026-07-09T07:39:55.823Z
+- _why:_ Review round 1: cover chalk upgrade --dry-run (criterion 3, was untested) and the interactive notice-producing path (#158)
+
+## Amended acceptance test for "docs: document the promote CI-poll knobs (ciPollIntervalMs/ciPollAttempts) in CONFIG + a runtime hint (#153)"
+
+- _when:_ 2026-07-09T07:52:05.358Z
+- _why:_ Review fix: corrected the inaccurate ciPollAttempts:0 description (it BLOCKS a pending check, not local-verify fallback) + added a brokeCheck behavioral test tying the doc to code (#153)
+
+## Post-run feedback nudge points users at chalk feedback --submit
+
+- _when:_ 2026-07-12T15:14:07.505Z
+- _why:_ Closes the product loop at the moment of experience; opt-out via CHALK_NO_NUDGE keeps it from nagging
+
+## issue-pull count phrasing + parser unified in lib/pull-count.mjs
+
+- _when:_ 2026-07-13T02:49:28.500Z
+- _why:_ Emitter/parser held duplicate literals; a CLI reword would silently zero the standing loop's steady-state count
+
+## Reviewer prefers origin/<base> over local base in captureDiff
+
+- _when:_ 2026-07-13T04:12:44.429Z
+- _why:_ Stale/divergent local base branch ballooned the review diff to the whole branch history, causing false scope-bloat findings
+
+## CI concurrency: test cancels superseded runs, release serializes without cancelling
+
+- _when:_ 2026-07-13T05:12:55.215Z
+- _why:_ Redundant test runs pile up on PR+push; concurrent release tags could double-publish — but a publish must never be cancelled mid-flight
+
+## Amended acceptance test for "feat: opt-in anonymous activation telemetry (init → first green verify → done funnel)"
+
+- _when:_ 2026-07-14T08:29:33.061Z
+- _why:_ Add end-to-end CLI call-site tests (init/verify/done deliver to a local collector; OFF delivers nothing; unreachable endpoint never changes exit code) to close the review's test-adequacy gap; redesigned to mark-sent only on successful delivery
+
+## Amended acceptance test for "feat: opt-in anonymous activation telemetry (init → first green verify → done funnel)"
+
+- _when:_ 2026-07-14T08:38:32.022Z
+- _why:_ Add prompt-consent unit tests (affirmative-only, default N, inert non-interactively), ENABLED --show coverage, and --no-telemetry/off cases; emission is now truly fire-and-forget (non-awaited, exitCode)
+
+## Amended acceptance test for "feat(director): alignment checkpoint before build — human accepts the criteria/outcome, not just the plan"
+
+- _when:_ 2026-07-17T08:11:11.997Z
+- _why:_ Harden the gate contract per review finding: pin that a refused (unaligned) chalk work leaves no side effect — task state unchanged, criteria not marked accepted. Non-blocking low, but 'a refusal must not mutate state' is a core property of a gate.
+
+## Amended acceptance test for "feat(director): risk-based decision triage + a director inbox — own the empty middle"
+
+- _when:_ 2026-07-17T09:08:16.337Z
+- _why:_ Address review BLOCK (test-adequacy): add a chalk review test asserting criterion 2 — the digest is ranked highest-risk-first and risk-badged (reverting the render fails it). Also: realistic 13-char fixture id + full-id inbox ref (no prefix truncation), redirect logs with a taskId link.
+
+## Amended acceptance test for "feat(director-loop): B1 · a durable, structured director-decision record"
+
+- _when:_ 2026-07-17T09:42:47.439Z
+- _why:_ Review-driven schema fix: split the overloaded 'why' into 'rationale' (agent's reason, always) and 'instruction' (director's course-correction, redirect only). The single field meant two things by verdict, and #202's compounding feed builds on this record — a hard-to-undo schema, so fix it at the foundation.
+
+## director-record schema: split 'why' into 'rationale' + 'instruction' (#201)
+
+- _when:_ 2026-07-17T09:48:21.910Z
+- _why:_ Criterion 1 named a single 'why' field. During review the reviewer (and its own risk digest, ranked HIGH) flagged that 'why' meant two different things by verdict: the agent's rationale for an accepted call vs the director's course-correction for a redirected one. Since #202's compounding feed reads this record and must say 'apply this rationale' vs 'do this instead', the record ships distinct 'rationale' (agent, always) + 'instruction' (director, redirect-only) fields, pinned by the locked test. Ratifying the deviation from criterion 1's literal field name.
+
+## Amended acceptance test for "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive"
+
+- _when:_ 2026-07-17T10:22:20.702Z
+- _why:_ Review BLOCK fix: (1) cover BOTH completion paths — added a resolveDirectives unit + a source assertion that done AND pipeline merge both call it (was vacuous for the merge path); (2) tighten runnableTasks to key on reopenedAt (needsRework) so a redirect on an already-active task can't be re-admitted/double-executed by chalk run --parallel.
+
+## Amended acceptance test for "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive"
+
+- _when:_ 2026-07-17T10:27:16.364Z
+- _why:_ Review-driven correctness fix: resolveDirectives now CLEARS reopenedAt when the rework lands, so a stale re-open marker can never coexist with a later active-redirect and re-admit an in-flight task. Pinned the invariant (clear-on-resolve + rework-terminates).
+
+## Amended acceptance test for "feat(director-loop): B2 · inject prior director decisions into new-task context (the moat)"
+
+- _when:_ 2026-07-17T10:42:08.661Z
+- _why:_ Review coverage gap: pin that the director block and lessons COEXIST (director-first, lessons still present) — the budget-priority design was implemented but unverified; a regression dropping lessons entirely would otherwise pass.
+
+## Amended acceptance test for "feat(director-loop): B2 · inject prior director decisions into new-task context (the moat)"
+
+- _when:_ 2026-07-17T10:46:49.223Z
+- _why:_ Review med fix: the compounding block now excludes the CURRENT task's own decisions (they ride the essential Director corrections block, #199) — removes the duplicate-signal a re-opened task would show, and makes the block genuinely 'prior taste into a new task'. Pinned.
+
+## Amended acceptance test for "feat(director-mid-flight): C2 · executor contract — raise a fork instead of guessing"
+
+- _when:_ 2026-07-17T11:19:13.253Z
+- _why:_ Review med fix: pin the elastic behavior directly — the raise block is present at a normal budget and DROPS under a tiny one while essentials survive (deleting the raiseFits guard now fails a test).
+
+## Amended acceptance test for "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox"
+
+- _when:_ 2026-07-17T11:35:08.846Z
+- _why:_ Review BLOCK fix: the driver blocked raises as the default needs:human-input, but answer/criterion expect needs:decision — so answering wouldn't unblock a driver-blocked task. Fixed run.mjs to pass 'decision', and added a real driver end-to-end test (executor raises → driver blocks needs:decision → answer unblocks) so the mismatch can't hide.
+
+## Amended acceptance test for "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox"
+
+- _when:_ 2026-07-17T11:38:58.201Z
+- _why:_ Review low: pin the directorLines 'answered' render — an answered raise compounds into a new task's context as its own 'answered: fork → decision' line, not silently as 'accepted' (reverting the branch now fails).
+
+## Amended acceptance test for "feat(director-kit): D2 · skills as a first-class part (.chalk/skills → context)"
+
+- _when:_ 2026-07-17T12:29:30.229Z
+- _why:_ Review low: pin the skills-vs-lessons budget priority (skills rank ahead, lessons still kept) — the deliberate 'author-curated over auto-collected' ordering was untested; reversing it would have passed.
+
+## Amended acceptance test for "feat(director-kit): D1 · chalk harness — the kit made visible"
+
+- _when:_ 2026-07-17T12:48:52.913Z
+- _why:_ Review low: assert the secondary harness rows (retro agent, held-out + require-test checks) so a regression on those config keys is caught, not just the core rows.
+
+## Released v0.1.1
+
+- _when:_ 2026-07-17T13:21:18.294Z
+- _why:_ Completion marker for the orphaned chore(release): v0.1.1 commit (18b8ef0): that cycle was superseded by the shipped+tagged v0.2.0, which carried its content to npm. Marked complete so the release orphan-recovery does not resume it (tagging the old tree would publish a stale 0.1.1).

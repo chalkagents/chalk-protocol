@@ -38,11 +38,14 @@ Each iteration of the loop (`lib/run.mjs`):
 2. Mark it `in-progress`.
 3. **Run the executor** (`protocol.executor.command`) — it gets the task's `chalk context` **on
    stdin** and edits the working tree.
-4. **Run `chalk verify`.** ← *the gate decides, not the executor.* The executor's exit code is
+4. If the executor **raised a fork** (`chalk raise` — a judgment call the criteria don't answer),
+   the task **blocks `needs:decision`** instead of proceeding on a guess. Answer it with
+   `chalk pending answer <id> "<decision>"` and re-run — the answer feeds into the next attempt.
+5. **Run `chalk verify`.** ← *the gate decides, not the executor.* The executor's exit code is
    **ignored** (P4 — it can't self-certify).
-5. RED → the task is **auto-`blocked`** and the run moves on (or stops, with `--until blocked`).
-6. Review due (per `review.requiredAt`) and not passing → auto-`blocked` too.
-7. Else → `done`. Loop.
+6. RED → the task is **auto-`blocked`** and the run moves on (or stops, with `--until blocked`).
+7. Review due (per `review.requiredAt`) and not passing → auto-`blocked` too.
+8. Else → `done`. Loop.
 
 `--dry-run` prints the planned order and changes nothing. `--max N` caps iterations (default 50).
 With no executor configured, `run` degrades to printing the manual `next` action.

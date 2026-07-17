@@ -2,9 +2,12 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, depsSatisfied, runnableTasks, resolveRef, workdir, buildContext } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_VERSION, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, pendingDirectives, needsRework, resolveDirectives, openRaises, resolveRef, workdir, buildContext } from '../lib/store.mjs';
+import { runMigrate } from '../lib/migrate.mjs';
+import { checkForUpdate } from '../lib/update.mjs';
+import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
-import { runReview } from '../lib/review.mjs';
+import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
@@ -15,11 +18,11 @@ import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
 import { postReviewToPr } from '../lib/prreview.mjs';
 import { brokeCheck, ciStatus } from '../lib/brokecheck.mjs';
 import { mergeBlockers } from '../lib/mergegate.mjs';
-import { extractQuestions, planApprovalRequired } from '../lib/planning.mjs';
+import { extractQuestions, planApprovalRequired, criteriaAcceptedRequired } from '../lib/planning.mjs';
 import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } from '../lib/release.mjs';
 import { runSpecs, isSpec } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
-import { runPipeline } from '../lib/pipeline.mjs';
+import { runPipeline, runPipelineParallel } from '../lib/pipeline.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
@@ -30,16 +33,16 @@ import { withJsonOutput, unwrapAgentOutput, runExecutorCaptured } from '../lib/c
 import { runMutation } from '../lib/mutation.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
-import { collectSignals, runFeedback, feedbackDir } from '../lib/feedback.mjs';
+import { collectSignals, runFeedback, feedbackDir, buildUpstreamFeedbackUrl, UPSTREAM_REPO } from '../lib/feedback.mjs';
 import { runDiscovery } from '../lib/discovery.mjs';
 import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
 import { runArchive } from '../lib/archive.mjs';
-import { computeStats } from '../lib/stats.mjs';
+import { computeStats, publicStats, renderPublicMarkdown, renderBadge } from '../lib/stats.mjs';
 import { REVIEW_OVERRIDE_TITLE, AUDIT_TITLE } from '../lib/markers.mjs';
 import { portalModel } from '../lib/portal.mjs';
 import { basename, dirname, relative } from 'node:path';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, readSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
@@ -83,6 +86,17 @@ function clearReviewBlockOnPass(t) {
 const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
 const ok = (msg) => console.log(C.g('✓ ') + msg);
+
+// Blocking read of one line from stdin (fd 0) for interactive prompts. Returns '' on EOF/error, so a
+// caller treats "no input" as a decline. The TTY/CI/opt-out guards live in promptTelemetryOptIn (lib).
+function readStdinLine() {
+  try { const buf = Buffer.alloc(64); const n = readSync(0, buf, 0, 64, null); return buf.toString('utf8', 0, n); } catch { return ''; }
+}
+// Ask the one-time telemetry opt-in question, wired to the real terminal (#154).
+const askTelemetryOptIn = () => promptTelemetryOptIn({
+  isTTY: !!(process.stdin.isTTY && process.stdout.isTTY), env: process.env,
+  read: readStdinLine, write: (s) => process.stdout.write(C.dim(s)),
+});
 // Refresh both Chalk Browser views after a state change. Best-effort — a projection error must
 // never break a gate or a CLI command, so failures are swallowed (run `chalk sync` to see them).
 const syncBrowser = (s) => { try { projectPlans(s); projectBoard(s); } catch { /* non-fatal */ } };
@@ -95,7 +109,7 @@ const cmds = {
     catch (e) { die(String(e.message || e)); }
   },
 
-  init({ flags }) {
+  async init({ flags }) {
     const root = process.cwd();
     // Preset resolution: explicit --preset X wins; bare --preset OR no flag at all auto-detects from
     // marker files (the path of least resistance must be the safe one); --bare opts out explicitly.
@@ -117,6 +131,21 @@ const cmds = {
       writeFileSync(join(root, '.chalk', 'chalk.json'), JSON.stringify(meta, null, 2));
     }
     ok(`initialized .chalk/ for ${C.b(meta.project.name)} (protocol ${meta.protocol.version})${preset ? C.dim(` · preset ${preset}${auto ? ' (auto-detected — override with --preset <stack> or --bare)' : ''}`) : ''}`);
+    // Opt-in anonymous telemetry (#154). Consent resolution: an explicit --telemetry / --no-telemetry
+    // flag wins (scriptable, non-interactive); otherwise ask ONCE here, and only in an interactive TTY
+    // (the prompt is inert when piped/CI/scripted). Default OFF. Opting in flips the config flag and
+    // fires the `init` funnel milestone (awaited, guarded — never breaks init).
+    const optIn = flags.telemetry === true ? true
+      : flags['no-telemetry'] === true ? false
+      : askTelemetryOptIn();
+    if (optIn) {
+      meta.protocol.telemetry = { ...(meta.protocol.telemetry || {}), enabled: true };
+      writeFileSync(join(root, '.chalk', 'chalk.json'), JSON.stringify(meta, null, 2));
+      console.log(C.dim('  telemetry ON — anonymous only; inspect with `chalk telemetry --show`, turn off with CHALK_TELEMETRY=0 or protocol.telemetry.enabled=false'));
+      // Fire-and-forget: don't await — the milestone POST rides the event loop and completes as the
+      // process drains, so init's output is never gated on the network. Guarded; never breaks init.
+      void emitMilestone({ event: 'init', config: meta.protocol.telemetry, env: process.env, stateFile: new Store(root).p.telemetry, version: CHALK_VERSION, now: now() });
+    }
     if (executor === 'opencode') console.log(C.dim('  opencode executor configured · set CHALK_OPENCODE_MODEL (e.g. anthropic/claude-opus-4-8); see docs/integrations/opencode.md'));
     if (executor === 'claude') {
       for (const r of installClaudeAgents(root)) console.log(C.dim(`  ${r.action} .claude/agents/${r.name}`));
@@ -161,6 +190,44 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     console.log(PROTOCOL);
   },
 
+  // Opt-in anonymous telemetry (#154): inspect exactly what would be sent, and the resolved state.
+  // `--show` (or bare) prints the whitelist + a sample payload so consent is inspectable.
+  telemetry({ flags = {} } = {}) {
+    const s = Store.open();
+    const st = telemetryStatus({ config: s.protocol().telemetry, env: process.env, stateFile: s.p.telemetry, version: CHALK_VERSION, now: now() });
+    console.log(C.b('chalk telemetry') + C.dim(` · ${st.enabled ? C.g('ENABLED') : 'OFF'}`));
+    console.log(`  opted in:    ${st.optedIn ? C.g('yes') : C.dim('no (default)')}`);
+    if (st.killSwitch) console.log(`  disabled by: ${C.y(st.killSwitch)}`);
+    console.log(`  fields sent: ${st.fields.join(', ')}   ${C.dim('(nothing else — no code, paths, prompts, diffs, or repo identity)')}`);
+    console.log(`  milestones:  ${st.events.join(' → ')}${st.nextEvent ? C.dim(`   (next: ${st.nextEvent})`) : C.dim('   (funnel complete)')}`);
+    console.log(`  endpoint:    ${st.endpoint}`);
+    console.log('  would send:  ' + JSON.stringify(st.samplePayload));
+    console.log(C.dim('  opt in at `chalk init`, or set protocol.telemetry.enabled; hard-disable with CHALK_TELEMETRY=0.'));
+  },
+
+  // Update to the latest published chalk-protocol (global npm install). --dry-run just prints the command.
+  upgrade({ flags }) {
+    const cmd = 'npm i -g chalk-protocol@latest';
+    if (flags['dry-run'] === true) { console.log(C.b('chalk upgrade') + C.dim(' · would run:') + '\n  ' + cmd); return; }
+    console.log(C.dim(`  running: ${cmd}`));
+    try { execSync(cmd, { stdio: 'inherit' }); ok('upgraded to the latest chalk-protocol'); }
+    catch (e) { die(`upgrade failed: ${String(e.message).split('\n').slice(-1)[0]}\n  run it yourself: ${cmd}`); }
+  },
+
+  // Carry an older spine forward to the current schema (#159). Gated + reversible: backs the spine up
+  // before mutating, records a decision, and is a no-op when already current. `--dry-run` shows the plan.
+  migrate({ flags }) {
+    const s = Store.open();
+    const dryRun = flags['dry-run'] === true;
+    const r = runMigrate(s, { dryRun });
+    if (r.upToDate) return ok(`spine already current ${C.dim(`(schema ${r.from} · chalk ${CHALK_VERSION})`)} — nothing to migrate.`);
+    console.log(C.b('chalk migrate') + C.dim(` · schema ${r.from} → ${r.to}`));
+    for (const st of r.steps) console.log(`  ${C.dim(`${st.from}→${st.to}`)}  ${st.describe}`);
+    if (dryRun) return console.log(C.y('  (dry run — nothing written)'));
+    syncBrowser(s);
+    ok(`migrated spine ${C.b(`${r.from} → ${r.to}`)}${r.backup ? C.dim(` · backup ${r.backup}`) : ''}`);
+  },
+
   // The single command an agent calls to learn its next action (which gate is blocking).
   next({ flags = {} } = {}) {
     const s = Store.open();
@@ -198,7 +265,16 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (wip.length > 1) console.log(C.y(`  ! ${wip.length} tasks in-progress — protocol prefers ONE at a time; finish one first.`));
       for (const t of wip) {
         const short = t.id.slice(0, 12);
-        console.log(`  ${C.b('●')} ${C.b(t.title)} ${C.dim(short)} is in-progress.`);
+        // #200: a RE-OPENED task carries director corrections to rebuild to — surface them (banner +
+        // the corrections) so it isn't stranded as "just another in-progress task". Both key off
+        // needsRework (reopenedAt + pending) so the surfacing is consistent.
+        const rework = needsRework(t);
+        console.log(`  ${C.b('●')} ${C.b(t.title)} ${C.dim(short)} is in-progress.${rework ? C.y(' (re-opened for rework)') : ''}`);
+        if (rework) {
+          const pend = pendingDirectives(t);
+          console.log(C.y(`     ↻ ${pend.length} director correction(s) pending rework — rebuild, then \`chalk verify\` → \`chalk done\`:`));
+          for (const dir of pend) console.log(`       • Instead of "${dir.choice || 'your earlier choice'}": ${dir.instead}`);
+        }
         for (const c of t.acceptanceCriteria || []) console.log(`     → satisfy: ${c.text}`);
         if ((t.tests || []).length) {
           const broken = s.brokenLocks(t);
@@ -334,7 +410,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       // Best-effort: a non-git tree or a commit failure must not fail intake — the tasks are persisted.
       try {
         if (gitTry(s.root, 'rev-parse --is-inside-work-tree') === 'true') {
-          const spineFiles = ['.chalk/tasks.json', '.chalk/updates.jsonl', '.chalk/boards', '.chalk/plans'].filter((p) => existsSync(join(s.root, p)));
+          // Commit EVERY spine-state path the reviewer excludes (#131), not just a subset — a path
+          // that intake left uncommitted but review hid would float into the next task branch.
+          const spineFiles = SPINE_STATE_PATHS.filter((p) => existsSync(join(s.root, p)));
           if (gitCommitPaths(s.root, `chore(spine): import ${created} issue(s) into the backlog`, spineFiles))
             console.log(C.dim(`  committed intake to the spine · chore(spine): import ${created} issue(s)`));
         }
@@ -362,7 +440,19 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (wt.enabled !== false) {
       const repo = (currentRepo(s.root) || basename(s.root)).split('/').pop();
       const dir = resolve(s.root, wt.dir || '..', `${repo}-${t.branch.replace(/\//g, '-')}`);
-      try { worktreeAdd(s.root, { dir, branch: t.branch, base: gh0.base || 'main' }); }
+      // Cut the worktree from the FRESH remote base, not the local one (#150). A prior merge's
+      // `pull --ff-only` may have failed (local base had commits), leaving it behind the remote — a
+      // worktree cut from that stale base branches off old code. Remote is source of truth: best-effort
+      // fetch, then start from `origin/<base>` when it resolves; otherwise fall back to the local base
+      // (and say so when a remote exists, so it's never SILENTLY stale). Only affects a NEW branch.
+      const base = gh0.base || 'main';
+      let startPoint = base;
+      gitTry(s.root, `fetch origin ${base}`);
+      if (gitTry(s.root, `rev-parse --verify --quiet origin/${base}`)) startPoint = `origin/${base}`;
+      // Warn whenever we fall back AND a remote exists (any name) — gate on `git remote`, not a
+      // parseable origin URL, so a non-'origin'/unparseable remote still gets the not-silently-stale flag.
+      else if (gitTry(s.root, 'remote').split('\n').some(Boolean)) console.log(C.y(`  ⚠ couldn't resolve origin/${base} — cutting from local ${base} (may be stale; fetch it manually).`));
+      try { worktreeAdd(s.root, { dir, branch: t.branch, base: startPoint }); }
       catch (e) { die(`worktree add failed: ${String(e.message).split('\n').slice(-2).join(' ')}`); }
       // No spine is copied into the worktree: it is a pure code sandbox. Any `chalk` command run from
       // here (the executor's, or a manual one) resolves to the MAIN checkout's single canonical spine
@@ -524,6 +614,26 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Plan approved: ${t.title}`, taskId: t.id });
     ok(`plan approved ${C.dim(`for ${t.title}`)} — \`chalk work ${t.id.slice(0, 12)}\` may proceed`);
+  },
+
+  // Alignment gate (the director checkpoint, #191). Marks a task's acceptance criteria human-accepted
+  // as the definition of *done* so `work` may build. Surfaces the criteria for the human to read rather
+  // than accepting blind — the fix for #160, where an autonomous run built everything then was misaligned.
+  align({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const criteria = t.acceptanceCriteria || [];
+    if (!criteria.length && !(t.tests || []).length) {
+      die(`nothing to align on — the task has no acceptance criteria yet. Add them first:\n    chalk spec ${t.id.slice(0, 12)} --criterion "..."  (or --test <path>)`);
+    }
+    // Surface what "done" means so the human accepts with eyes open, not blind.
+    console.log(C.b(`Acceptance criteria for ${t.title}:`));
+    criteria.forEach((c, i) => console.log(`  ${i + 1}. ${c.text}`));
+    (t.tests || []).forEach((x) => console.log(C.dim(`  · locked test: ${x.path}`)));
+    t.criteriaAccepted = { at: now(), by: flags.by || 'human' };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Criteria aligned: ${t.title}`, taskId: t.id });
+    ok(`aligned ${C.dim(`— criteria accepted (by: ${t.criteriaAccepted.by})`)} — \`chalk work ${t.id.slice(0, 12)}\` may proceed`);
   },
 
   // Release stage — turn the merged, done work into a shipped release: a CHANGELOG entry + semver
@@ -689,7 +799,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         const everyMs = gh0.ciPollIntervalMs ?? 5000, maxAttempts = gh0.ciPollAttempts ?? 24;
         let st = ciStatus(s, { pr: { number: prNum } });
         for (let i = 0; st === 'pending' && i < maxAttempts; i++) { sleepMs(everyMs); st = ciStatus(s, { pr: { number: prNum } }); }
-        if (st === 'fail' || st === 'pending') die(`release --promote: CI on promotion PR #${prNum} is ${st === 'fail' ? 'RED' : 'still pending'} — resolve it and re-run. Nothing was marked released.`);
+        if (st === 'fail' || st === 'pending') die(`release --promote: CI on promotion PR #${prNum} is ${st === 'fail' ? 'RED' : `still pending after ${maxAttempts} check(s) — raise github.ciPollAttempts / ciPollIntervalMs for slower CI`} — resolve it and re-run. Nothing was marked released.`);
         try { runGh(s.root, gh0.command, `pr merge ${prNum} --merge`); }
         catch (e) {
           let merged = false; // mirror `chalk merge`: the merge may have SUCCEEDED even if gh exited non-zero
@@ -735,6 +845,13 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.error(C.r('✗ ') + 'plan not approved — a human must run `chalk approve-plan ' + t.id.slice(0, 12) + '` (answer the scoping questions first).');
       process.exit(2);
     }
+    // Alignment gate (the director checkpoint, #191): when director mode is required, no code is built
+    // until a human has accepted the criteria as the definition of done. Checked BEFORE the state flip
+    // so a refusal leaves no side effect. Exit 2 → the pipeline auto-blocks (needs:human-input) + handoff.
+    if (criteriaAcceptedRequired(s, t)) {
+      console.error(C.r('✗ ') + 'criteria not accepted — a human must run `chalk align ' + t.id.slice(0, 12) + '` to accept the acceptance criteria as the definition of done before build.');
+      process.exit(2);
+    }
     if (t.state === 'todo' || t.state === 'specd') {
       if (!((t.acceptanceCriteria || []).length || (t.tests || []).length)) die('GATE P1: task has no acceptance criteria.');
       t.state = 'in-progress'; t.startedAt = now(); s.upsertTask(t);
@@ -746,6 +863,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       const t0 = Date.now();
       const { usage } = runExecutorCaptured(withRunner(s.protocol().runner, ex), { cwd: workdir(s, t), input: buildContext(s, t) }); // #99: claude-shaped → usage captured; runner prefix like every sibling stage
       s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0, ...(usage || {}) });
+    }
+    // #211: the agent may have RAISED a fork mid-work (chalk raise writes it to the spine). Re-read and
+    // pause for the director instead of proceeding to verify/done on a guessed choice. Exit 2 → the
+    // pipeline/driver auto-blocks (needs decision); answer via `chalk pending`, then re-run `chalk work`.
+    const raised = openRaises(s.task(t.id));
+    if (raised.length) {
+      console.error(C.r('✗ ') + `${raised.length} fork(s) raised for the director — answer via \`chalk pending\`, then re-run \`chalk work ${t.id.slice(0, 12)}\`. Not proceeding on a guess.`);
+      process.exit(2);
     }
     const v = runVerify(s, { cwd: workdir(s, t) });
     if (!v.green) {
@@ -828,10 +953,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     catch { console.log(C.y(`  ⚠ couldn't fast-forward ${gh0.base || 'main'} locally — pull it manually (the remote is up to date).`)); }
     worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
     t.worktree = undefined; t.state = 'done'; t.doneAt = now();
+    const resolvedN = resolveDirectives(t); // #200: the pipeline rework landed — resolve (same helper as `done`)
     t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Merged + cleaned: PR #${t.pr.number}`, taskId: t.id });
-    ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓`);
+    ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓${resolvedN ? C.dim(` · ${resolvedN} director correction(s) resolved`) : ''}`);
   },
 
   // The scheduled-run unit (for cron / launchd / `/loop`): locked + doctor-gated + one bounded
@@ -958,6 +1084,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const since = typeof flags.since === 'string' ? flags.since : undefined;
     if (flags.since && (!since || Number.isNaN(Date.parse(since)))) die(`--since needs a date, e.g. --since 2026-01-01${since ? ` (got "${since}")` : ''}`);
     const st = computeStats(s, { since });
+    // Shareable, PII-free artifact (#156): --badge → shields.io JSON, --public --json → the summary
+    // object, --public/--md → a README-embeddable markdown block. Sourced from the same computeStats.
+    if (flags.public || flags.badge || flags.md) {
+      const pub = publicStats(st);
+      if (flags.badge) return console.log(renderBadge(pub));
+      if (flags.json === true) return console.log(JSON.stringify(pub, null, 2));
+      return console.log(renderPublicMarkdown(pub));
+    }
     if (flags.json === true) { console.log(JSON.stringify(st, null, 2)); return; }
     if (!st.tasks.total) { console.log(C.dim(`  no gate activity yet${since ? ' in this window' : ''} — nothing in the spine to report. Run the loop first (chalk next).`)); return; }
     const pct = (n, d) => (d ? `${n}/${d} (${Math.round((100 * n) / d)}%)` : '0/0');
@@ -1032,9 +1166,18 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
   // GitHub pipeline — the unattended driver: walk every issue-backed task issue→merge, blocking
   // on any gate failure and continuing to the next. The safety is the gates, not a human.
-  pipeline({ flags }) {
+  async pipeline({ flags }) {
     const s = Store.open();
-    const r = runPipeline(s, process.argv[1], { max: Number(flags.max || 20), dryRun: flags['dry-run'] === true, log: (m) => console.log(C.dim(m)) });
+    // Parallel fan-out (#110 slice 3): `--parallel N` runs N task chains at once, serializing merges.
+    if (flags.parallel) {
+      const parallel = flags.parallel === true ? 4 : Number(flags.parallel) || 4;
+      const r = await runPipelineParallel(s, process.argv[1], { max: Number(flags.max || 20), parallel, log: (m) => console.log(C.dim(m)) });
+      syncBrowser(s);
+      console.log('\n' + C.b('chalk pipeline · parallel summary'));
+      console.log(`  ${C.g(`✓ ${r.merged.length} merged`)}  ${r.blocked.length ? C.y(`⊘ ${r.blocked.length} blocked`) + '  ' : ''}${C.dim(`(≤${r.parallel} concurrent · merges serialized · gates are the safety)`)}`);
+      process.exit(r.blocked.length ? 2 : 0);
+    }
+    const r = runPipeline(s, process.argv[1], { max: Number(flags.max || 20), dryRun: flags['dry-run'] === true, only: flags.only || null, stopBefore: flags['stop-before'] || null, log: (m) => console.log(C.dim(m)) });
     if (r.dryRun) { console.log(C.dim(`  (${r.planned.length} task(s) planned — dry run, no changes)`)); return; }
     syncBrowser(s);
     console.log('\n' + C.b('chalk pipeline · summary'));
@@ -1207,12 +1350,24 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   },
 
   // GATE P1 — refuse to start without machine-checkable acceptance criteria.
-  start({ _ }) {
+  start({ _, flags }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
     const hasCriteria = (t.acceptanceCriteria || []).length || (t.tests || []).length;
     if (!hasCriteria) die(`GATE P1: task has no acceptance criteria. Add them first:\n    chalk spec ${t.id.slice(0, 12)} --criterion "..."  (or --test <path>)`);
     if (t.state === 'done') die('task already done.');
+    // One-at-a-time is now a hard gate (#110 slice 4), not a soft `chalk next` warning. Silently
+    // allowing a second in-progress task (yesterday's behavior) then RED-ing verify's shared-cwd P6
+    // check was the trap — the parallel machinery (per-worktree P6, spine-write safety, driver
+    // fan-out) opts in via protocol.parallel.enabled or `--parallel`. Re-starting the SAME task is fine.
+    const parallel = flags?.parallel || s.protocol().parallel?.enabled;
+    if (!parallel && t.state !== 'in-progress') {
+      const others = s.tasks().filter((x) => x.state === 'in-progress' && x.id !== t.id);
+      if (others.length) {
+        const o = others[0];
+        die(`${others.length} task(s) already in-progress (e.g. ${o.id.slice(0, 12)} — ${o.title.slice(0, 48)}).\n    Chalk works ONE task at a time. Finish it (chalk done), block it (chalk block), or enable\n    concurrent work with protocol.parallel.enabled=true in .chalk/chalk.json (or pass --parallel).`);
+      }
+    }
     t.state = 'in-progress'; t.startedAt = now();
     s.upsertTask(t);
     syncBrowser(s);
@@ -1308,7 +1463,20 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   // Feedback loop — close the product cycle. Collect external signals (.chalk/feedback/ + --input),
   // run the analysis agent, and file improvement issues into the backlog (dedup + severity floor +
   // dry-run, same convergence discipline as `chalk retro`), then archive the processed signals.
-  feedback({ flags }) {
+  feedback({ _, flags }) {
+    // Downstream → upstream channel (#157): print a prefilled GitHub new-issue URL for chalk's OWN
+    // repo. Deliberately runs BEFORE Store.open — a user reporting a bug shouldn't need a `.chalk/`
+    // spine — and never touches the local feedback signal path.
+    if (flags.submit !== undefined) {
+      const message = typeof flags.submit === 'string' ? flags.submit : _.join(' ');
+      if (!message.trim()) die('usage: chalk feedback --submit "<your feedback for the chalk maintainers>"');
+      const repo = process.env.CHALK_UPSTREAM_REPO || UPSTREAM_REPO;
+      const url = buildUpstreamFeedbackUrl({ message, version: CHALK_VERSION, repo });
+      console.log(C.b('chalk feedback') + C.dim(` · send to ${repo}`));
+      console.log('  ' + C.dim('open this to file it (no login needed to draft, GitHub account to submit):'));
+      console.log('  ' + url);
+      return;
+    }
     const s = Store.open();
     const gh0 = s.protocol().github || {};
     const dry = flags['dry-run'] === true;
@@ -1370,7 +1538,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     ok(`portal: wrote ${C.b(String(Object.keys(files).length))} file(s) to ${out}/ ${C.dim(`(${m.scope.length} scope, ${m.milestones.length} ms, ${m.updates.length} updates)`)}`);
   },
 
-  verify() {
+  async verify() {
     const s = Store.open();
     const wip = s.tasks().find((t) => t.state === 'in-progress');
     const v = runVerify(s, { cwd: workdir(s, wip) });
@@ -1392,11 +1560,19 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (v.green && v.toolchain.every((r) => r.status === 'skipped') && !(v.e2e || []).length) {
       console.log(C.y('  ⚠ VACUOUS — no verify commands configured; this green checked NOTHING. Set protocol.verify.test in .chalk/chalk.json (or `chalk init --preset <stack>` on a fresh project).'));
     }
-    process.exit(v.green ? 0 : 2);
+    if (!v.green) process.exit(2);
+    // Funnel milestone: first GREEN verify (#154). Fire-and-forget — NOT awaited; the guarded POST rides
+    // the event loop and delivers as the process drains, so verify's output/exit are never gated on the
+    // network. `exitCode` (not `process.exit`) lets an in-flight send finish; the unref'd safety timer
+    // force-exits if anything (a slow collector, a stray handle) keeps the loop alive — so verify can
+    // never hang. Default-OFF telemetry adds no pending work and exits immediately.
+    void emitMilestone({ event: 'verify', config: s.protocol().telemetry, env: process.env, stateFile: s.p.telemetry, version: CHALK_VERSION, now: now() });
+    process.exitCode = 0;
+    setTimeout(() => process.exit(0), 900).unref();
   },
 
   // GATE P4 + P6 (+ P5) — done is impossible unless verify is green, locks intact, review passed.
-  done({ _, flags }) {
+  async done({ _, flags }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
     if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
@@ -1429,10 +1605,16 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       }
     }
     t.state = 'done'; t.doneAt = now();
+    // #200: completing the task resolves any director corrections it was re-opened to address — the
+    // rework landed, so the directive drops out of context (#199) and the loop closes.
+    const resolvedN = resolveDirectives(t);
     s.upsertTask(t);
     syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Done: ${t.title}`, taskId: t.id });
-    ok(`done ${C.b(t.title)} — verify green ✓`);
+    ok(`done ${C.b(t.title)} — verify green ✓${resolvedN ? C.dim(` · ${resolvedN} director correction(s) resolved`) : ''}`);
+    // Funnel milestone: first `done` (#154). Fire-and-forget AFTER the user-facing output — not awaited,
+    // guarded; the POST drains with the event loop and never gates or breaks the command. Inert unless opted in.
+    void emitMilestone({ event: 'done', config: s.protocol().telemetry, env: process.env, stateFile: s.p.telemetry, version: CHALK_VERSION, now: now() });
   },
 
   // P6 — the ONLY sanctioned path to change a locked acceptance test.
@@ -1495,6 +1677,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
     console.log(C.dim('  running adversarial reviewer…'));
     let r = runReview(s, t);
+    // No diff to review → abort loudly (#151). Not a transient flake, so no retry: a PASS over an empty
+    // change set is a vacuous certification. Records NO review and exits non-zero so the gate can't be
+    // cleared on nothing — the pipeline then auto-blocks the task rather than merging it.
+    if (r.status === 'no-diff') die('review ABORTED — no diff captured: the change set is EMPTY, so the reviewer would grade nothing.\n  Check protocol.github.base and that the branch has committed changes (or that you are in the task worktree).');
     if (r.status === 'error' && !flags['no-retry']) {
       // A transient reviewer failure — a dropped/truncated response or a momentary bad parse — is not a
       // verdict, so retry once so a flake doesn't sink the review; only a SECOND consecutive error is fatal.
@@ -1504,7 +1690,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       r = runReview(s, t);
     }
     if (r.status === 'error') die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
-    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings });
+    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [] });
     // Same pipeline-order rule as the manual path above (#102): the verdict is recorded either way —
     // the done/merge gates read t.reviews — but the stage only advances when the PR already exists.
     if (r.verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
@@ -1518,6 +1704,17 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     console.log((r.verdict === 'pass' ? C.g('● review PASS') : C.r('● review BLOCK')) + ` ${C.dim(t.title)}` + (posted.posted ? C.dim(' · posted to PR') : ''));
     if (unblocked) console.log(C.g('  ✓ needs:review block cleared — task is runnable again'));
     for (const f of r.findings) console.log(`   ${sev(f.severity)} ${C.dim(`[${f.area}]`)} ${f.note}`);
+    // The decision digest (#192): the accept button. Shown on PASS too — a clean change still embeds
+    // judgment calls the human directing this work may want to confirm or redirect. Ranked highest-risk
+    // first and badged (#193) so the calls that touch a lot AND are hard to undo surface at the top.
+    const ranked = (r.decisions || [])
+      .map((d) => ({ line: formatDecisionLine(d), risk: decisionRisk(d) }))
+      .filter((x) => x.line)
+      .sort((a, b) => RISK_RANK[b.risk] - RISK_RANK[a.risk]);
+    if (ranked.length) {
+      console.log(C.b('   ◇ Decision digest') + C.dim(' — judgment calls the agent made; triage in `chalk pending`:'));
+      for (const { line, risk } of ranked) console.log(`     ${riskBadge(risk)} ${C.dim(line.replace(/^◇ /, ''))}`);
+    }
     if (r.verdict !== 'pass') console.log(C.dim('   fix the blocking findings and re-run `chalk review`.'));
     process.exit(r.verdict === 'pass' ? 0 : 3);
   },
@@ -1653,6 +1850,18 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const s = Store.open();
     const text = s.decisions().trim();
     console.log(text || 'no decisions recorded yet.');
+    // The durable director-decision record (#201) — accept/redirect calls that compound into future
+    // context. Distinct from the prose log above; surfaced here so a director can review their calls.
+    const dd = s.directorDecisions();
+    if (dd.length) {
+      console.log(C.b(`\nDirector's calls`) + C.dim(` (${dd.length}) — accepted/redirected judgment calls that compound into future work:`));
+      for (const r of dd) {
+        const badge = r.verdict === 'redirected' ? C.y('↳ redirected') : C.g('✓ accepted  ');
+        // accepted → the agent's rationale; redirected → the director's instruction ("do this instead").
+        const note = r.verdict === 'redirected' ? (r.instruction ? ` → ${r.instruction}` : '') : (r.rationale ? ` — ${r.rationale}` : '');
+        console.log(`  ${badge} ${C.dim(r.at.slice(0, 10))}  ${r.choice || '(decision)'}${C.dim(note)}`);
+      }
+    }
   },
 
   // Add a durable lesson to .chalk/lessons.md — injected into every agent's context so the loop
@@ -1703,6 +1912,183 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
   },
 
+  // The director inbox (#193). `chalk pending` is the human's mirror of `chalk next`: the med/high-risk
+  // judgment calls the agent made (from the review decision digest, #192), across all tasks, ranked by
+  // risk and awaiting accept/redirect. `accept <task>#<n>` confirms a call; `redirect <task>#<n> "..."`
+  // records a course-correction. This is what makes the empty middle a place a human can direct.
+  pending({ _, flags }) {
+    const s = Store.open();
+    const sub = _[0];
+    if (sub === 'accept' || sub === 'redirect') {
+      const ref = _[1] || '';
+      const m = ref.match(/^(.+)#(\d+)$/);
+      if (!m) die(`usage: chalk pending ${sub} <task>#<n> ${sub === 'redirect' ? '"<why>"' : ''}`.trim() + '  (the ref is shown by `chalk pending`)');
+      const t = mustTask(s, m[1]);
+      const review = (t.reviews || []).slice(-1)[0];
+      const d = review && Array.isArray(review.decisions) ? review.decisions[Number(m[2])] : null;
+      if (!d) die(`no decision ${ref} — run \`chalk pending\` for the current inbox.`);
+      if (d.accepted || d.redirected) die('that decision is already resolved.');
+      const by = flags.by || 'human';
+      if (sub === 'accept') {
+        d.accepted = { at: now(), by };
+        s.upsertTask(t);
+        // Durable record (#201): survives a re-review that would regenerate d.accepted away.
+        s.appendDirectorDecision({ choice: d.choice, rationale: d.rationale, risk: decisionRisk(d), taskId: t.id, verdict: 'accepted', by });
+        syncBrowser(s);
+        s.emitUpdate({ type: 'work-item-accepted', title: `Accepted decision: ${d.choice || ref}`, taskId: t.id });
+        ok(`accepted ${C.dim(ref)} — ${d.choice || '(decision)'}`);
+      } else {
+        const why = _.slice(2).join(' ') || flags.why;
+        if (!why) die('redirect requires a course-correction: chalk pending redirect <task>#<n> "<what to do instead>"');
+        d.redirected = { at: now(), by, why: String(why) };
+        // #198 — make the correction ACTIONABLE: attach a durable directive to the task, and RE-OPEN a
+        // done task for rework. Without this a redirect only logs; the agent never rebuilds. The next
+        // `chalk work` sees the directive (#199) and re-runs to resolve it (#200).
+        t.directives = t.directives || [];
+        t.directives.push({ choice: d.choice || '', instead: String(why), at: now(), by, resolved: false });
+        const reopened = t.state === 'done';
+        if (reopened) { t.state = 'in-progress'; t.reopenedAt = now(); }
+        s.upsertTask(t);
+        s.appendDecision({ title: `Redirected: ${d.choice || ref}`, why: String(why), taskId: t.id });
+        // Durable record (#201): the structured, compounding entry, alongside the human-readable log above.
+        // rationale = the agent's original reason; instruction = the director's course-correction.
+        s.appendDirectorDecision({ choice: d.choice, rationale: d.rationale, instruction: String(why), risk: decisionRisk(d), taskId: t.id, verdict: 'redirected', by });
+        syncBrowser(s);
+        s.emitUpdate({ type: 'progress-update', title: `Redirected: ${d.choice || ref}`, description: String(why), taskId: t.id });
+        ok(`redirected ${C.dim(ref)}${reopened ? C.y(' — task re-opened for rework') : ''} ${C.dim(`— ${why}`)}`);
+      }
+      return;
+    }
+    // Answer a mid-flight raise (#211): the director decides a fork the agent raised. The answer feeds
+    // back into the work (as a directive, #199) and unblocks the task so the next `chalk work` rebuilds
+    // to it — and it compounds as durable taste (#201/#202).
+    if (sub === 'answer') {
+      const rid = _[1] || '';
+      let found = null;
+      for (const t of s.tasks()) { const r = openRaises(t).find((x) => x.id === rid || x.id.startsWith(rid || '\0')); if (r) { found = { t, r }; break; } }
+      if (!found) die(`no open raise ${rid} — run \`chalk pending\` for the current raises.`);
+      const decision = _.slice(2).join(' ') || flags.answer;
+      if (!decision) die('answer requires the decision: chalk pending answer <id> "<what to do>"');
+      const { t, r } = found; const by = flags.by || 'human';
+      r.status = 'answered'; r.answer = String(decision); r.answeredAt = now(); r.answeredBy = by;
+      t.directives = t.directives || [];
+      t.directives.push({ choice: r.fork, instead: String(decision), at: now(), by, resolved: false, fromRaise: r.id });
+      s.appendDirectorDecision({ choice: r.fork, instruction: String(decision), taskId: t.id, verdict: 'answered', by });
+      let unblocked = false;
+      if (t.state === 'blocked' && t.block?.needs === 'decision' && !openRaises(t).length) { t.state = t.blockedFrom || 'in-progress'; delete t.block; delete t.blockedFrom; unblocked = true; }
+      s.upsertTask(t); syncBrowser(s);
+      s.emitUpdate({ type: 'question-answered', title: `Answered raise: ${r.fork}`, description: String(decision), taskId: t.id });
+      ok(`answered ${C.dim(r.id.slice(0, 10))}${unblocked ? C.g(' — task unblocked; re-run chalk work') : C.dim(' — guides the next chalk work')}`);
+      return;
+    }
+    // Raised forks (#211) — the agent explicitly asked for the director's call; show them first.
+    const raises = s.tasks().flatMap((t) => openRaises(t).map((r) => ({ t, r })));
+    if (raises.length) {
+      console.log(C.b('Raised forks') + C.dim(` — ${raises.length} the agent asked you to decide:`));
+      for (const { t, r } of raises) console.log(`  ${C.y('⁇')} ${C.dim(r.id.slice(0, 10))} ${r.fork}${r.options?.length ? C.dim(` [${r.options.join(' | ')}]`) : ''}${r.why ? C.dim(` — ${r.why}`) : ''} ${C.dim(`↳ ${t.title.slice(0, 40)}`)}`);
+      console.log(C.dim('  answer: chalk pending answer <id> "<what to do>"'));
+    }
+    const items = pendingDecisions(s.tasks());
+    if (!items.length) return raises.length ? undefined : ok(C.dim('director inbox empty — no raised forks or judgment calls awaiting you.'));
+    console.log((raises.length ? '\n' : '') + C.b(`Director inbox`) + C.dim(` — ${items.length} judgment call(s) awaiting accept/redirect (highest risk first):`));
+    for (const it of items) {
+      const ref = `${it.taskId}#${it.index}`; // full id — a copy-back ref must round-trip exactly, not a prefix
+      console.log(`  ${riskBadge(it.risk)} ${C.dim(ref)}  ${formatDecisionLine(it.decision).replace(/^◇ /, '')}`);
+      console.log(C.dim(`        ↳ ${it.taskTitle.slice(0, 60)}`));
+    }
+    console.log(C.dim(`  accept: chalk pending accept <ref>   ·   redirect: chalk pending redirect <ref> "<what to do instead>"`));
+  },
+
+  // Mid-flight raise (#209): the agent works OUT LOUD — when it hits a fork that needs the director's
+  // taste it runs `chalk raise "<fork>"` instead of silently guessing. Records the fork on the task; the
+  // director sees it (chalk pending, #211) and answers, and the answer feeds back into the work. With no
+  // fork text, lists the open raises awaiting a decision.
+  raise({ _, flags }) {
+    const s = Store.open();
+    const fork = _.join(' ').trim() || flags.fork;
+    if (!fork) {
+      const all = s.tasks().flatMap((t) => openRaises(t).map((r) => ({ t, r })));
+      if (!all.length) return ok(C.dim('no open raised forks.'));
+      console.log(C.b('Raised forks (awaiting the director):'));
+      for (const { t, r } of all) console.log(`  ${C.y('⁇')} ${C.dim(r.id.slice(0, 10))} ${r.fork}${r.options?.length ? C.dim(` [${r.options.join(' | ')}]`) : ''} ${C.dim(`↳ ${t.title.slice(0, 40)}`)}`);
+      return;
+    }
+    const t = flags.task ? mustTask(s, flags.task) : s.tasks().find((x) => x.state === 'in-progress');
+    if (!t) die('no in-progress task to raise against — pass --task <id>, or start a task first.');
+    t.raised = t.raised || [];
+    const r = { id: id('raise'), fork, ...(flags.options ? { options: String(flags.options).split('|').map((o) => o.trim()).filter(Boolean) } : {}),
+      ...(flags.why ? { why: String(flags.why) } : {}), at: now(), by: flags.by || 'agent', status: 'open' };
+    t.raised.push(r);
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Raised: ${fork}`, taskId: t.id });
+    ok(`raised ${C.dim(r.id.slice(0, 10))} ${C.dim('— the director will decide (chalk pending)')}`);
+  },
+
+  // Project skills (#215): first-class reusable how-to authored as .chalk/skills/<name>.md and injected
+  // into every agent's context — the affirmative playbook (distinct from lessons, which are mistakes not
+  // to repeat). `chalk skill add "<name>" [--file <path> | "<text>"]`; no sub → list. Just text, not code.
+  skill({ _, flags }) {
+    const s = Store.open();
+    if (_[0] === 'add') {
+      const name = _[1] || flags.name;
+      if (!name) die('usage: chalk skill add "<name>" [--file <path> | "<text>"]');
+      const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (!slug) die('a skill name needs at least one letter or number.');
+      let text = flags.file ? '' : (_.slice(2).join(' ') || flags.text || '');
+      if (flags.file) { try { text = readFileSync(resolve(flags.file), 'utf8'); } catch { die(`cannot read --file ${flags.file}`); } }
+      if (!text.trim()) die('a skill needs content — pass "<text>" or --file <path>.');
+      const dir = join(s.root, '.chalk', 'skills'); mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, `${slug}.md`), text.trim() + '\n');
+      s.emitUpdate({ type: 'progress-update', title: `Skill added: ${slug}` });
+      ok(`skill ${C.b(slug)} added ${C.dim("— applied in every agent's context")}`);
+    } else {
+      const skills = s.skills();
+      if (!skills.length) return ok(C.dim('no project skills yet — add one: chalk skill add "<name>" --file <path>'));
+      console.log(C.b('Project skills') + C.dim(" (applied in every agent's context):"));
+      for (const sk of skills) console.log(`  ${C.g('◆')} ${sk.name} ${C.dim(`(${sk.text.trim().split('\n').length} line(s))`)}`);
+    }
+  },
+
+  // The kit made visible (#216): a read-only view of the parts assembled around this project's goal —
+  // Agents (the doers), Skills (your playbook), Checks (the gates), Flows (how the loop runs). The spine
+  // is the star; this shows what's composed on it. Purely informational — no mutation.
+  harness() {
+    const s = Store.open();
+    const p = s.protocol();
+    const dot = (v) => (v ? C.g('●') : C.dim('○'));
+    const cmd = (c) => (c ? C.g(c) : C.dim('(not wired)'));
+    console.log(C.b('Chalk harness') + C.dim(` — ${s.meta().project?.name || 'project'} · the kit assembled around your goal`));
+
+    console.log('\n' + C.b('Agents') + C.dim(' — the doers (BYO models)'));
+    console.log(`  ${dot(p.executor?.command)} executor  ${cmd(p.executor?.command)}`);
+    console.log(`  ${dot(p.planner?.command)} planner   ${cmd(p.planner?.command)}`);
+    console.log(`  ${dot(p.review?.command)} reviewer  ${cmd(p.review?.command)}`);
+    console.log(`  ${dot(p.retro?.command)} retro     ${cmd(p.retro?.command)}`);
+
+    console.log('\n' + C.b('Skills') + C.dim(' — your project playbook, injected into every agent'));
+    const skills = s.skills();
+    if (skills.length) for (const sk of skills) console.log(`  ${C.g('◆')} ${sk.name}`);
+    else console.log(C.dim('  (none — chalk skill add "<name>" --file <path>)'));
+
+    const v = p.verify || {};
+    const verifyOn = ['test', 'typecheck', 'lint', 'build'].filter((k) => v[k]);
+    const anyCheck = verifyOn.length || p.review?.command || p.regression?.required || p.requireTest;
+    // #217: the gates are ONE OPTIONAL part — the accept button, not the whole product.
+    console.log('\n' + C.b('Checks') + C.dim(' — the gates (P1–P7): OPTIONAL, the accept button · one part of the kit'));
+    console.log(`  ${dot(verifyOn.length)} verify    ${verifyOn.length ? C.g(verifyOn.join(', ')) : C.dim('(none configured — vacuous green)')}`);
+    console.log(`  ${dot(p.review?.command)} review    ${p.review?.command ? C.g(`adversarial (${(p.review.requiredAt || []).join(', ') || 'legacy'})`) : C.dim('off')}`);
+    console.log(`  ${dot(p.regression?.required)} held-out  ${p.regression?.required ? C.g(`${(p.regression.tests || []).length} locked test(s)`) : C.dim('off')}`);
+    console.log(`  ${dot(p.requireTest)} require-test ${p.requireTest ? C.g('on') : C.dim('off')}`);
+    if (!anyCheck) console.log(C.dim('  (all optional — this project runs without gates; add them when you want the accept button)'));
+
+    console.log('\n' + C.b('Flows') + C.dim(' — how the loop runs'));
+    console.log(C.dim('  run · pipeline · loop · autopilot   (read → work → verify → write)'));
+
+    // The whole point: the kit is composable; the gates are one part, the director's taste is the core.
+    console.log('\n' + C.dim('The gates are one part — your intent, taste & judgment (align · digest · pending · raise) are the core.'));
+    console.log(C.dim('Compose the kit around your goal: `chalk skill add` teaches it, the spine remembers. See docs/harness.md.'));
+  },
+
   log({ flags }) {
     const s = Store.open();
     const n = Number(flags.n || 15);
@@ -1721,6 +2107,7 @@ cmds.plans = cmds.sync; // alias — `chalk plans` projects both Browser views (
 
 // ---------------------------------------------------------------- helpers
 function sev(s) { return { high: C.r('▲ high'), med: C.y('▲ med '), low: C.dim('▲ low ') }[s] || C.dim('▲ ' + (s || '?')); }
+function riskBadge(r) { return { high: C.r('■ high'), med: C.y('■ med '), low: C.dim('■ low ') }[r] || C.dim('■ ?'); }
 function stateBadge(st) {
   return { todo: C.dim('○ todo  '), specd: C.y('◐ specd '), 'in-progress': C.b('● wip   '), blocked: C.y('⊘ blockd'), done: C.g('✓ done  ') }[st] || st;
 }
@@ -1770,7 +2157,11 @@ ${C.b('setup')}
   chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--verify-test "cmd"] [--bare] [--runner fvm] [--executor claude|opencode|none]
                                        ${C.dim('auto-detects the stack preset (verify/regression/break-it); --executor claude ships the agent files')}
   chalk agents [--claude]              ${C.dim('(re)install the agent contract; --claude adds the Claude Code agent definitions')}
+  chalk --version | -v                 ${C.dim('print the installed package version (+ protocol tag)')}
+  chalk upgrade [--dry-run]            ${C.dim('update to the latest published chalk-protocol (global npm)')}
+  chalk telemetry [--show]             ${C.dim('opt-in anonymous usage telemetry — show exactly what would be sent (off by default)')}
   chalk status
+  chalk harness                        ${C.dim('the kit assembled around your goal: agents · skills · checks · flows')}
   chalk next                           ${C.dim('the agent entrypoint: what to do next')}
   chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
 
@@ -1789,8 +2180,9 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
   chalk doctor [--json]                ${C.dim('preflight readiness check for autonomous runs (read-only); --json for bug reports')}
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
-  chalk stats [--since D] [--json]     ${C.dim('gate-efficacy report: review catches, churn, gate-vs-bypass (pure read)')}
+  chalk stats [--since D] [--json] [--public|--badge]   ${C.dim('gate-efficacy report; --public: PII-free shareable markdown, --badge: shields.io JSON')}
   chalk archive [--dry-run]            ${C.dim('compact the spine: move done+released tasks (+their events) to .chalk/archive/')}
+  chalk migrate [--dry-run]            ${C.dim('carry an older spine forward to the current schema (backs up first, idempotent)')}
   chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
   chalk autopilot [--max N] [--min-severity med]   ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
   chalk loop [--max-rounds N] [--max N] [--min-severity med]   ${C.dim('bounded STANDING loop: pull→sweep→converge, self-terminating')}
@@ -1806,9 +2198,11 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
   chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
+  chalk align <id> [--by NAME]         ${C.dim('director checkpoint: accept the acceptance criteria as the definition of done before build (protocol.director.required)')}
   chalk release [--version x|--major|--minor|--patch] [--commit] [--promote] [--no-tag] [--dry-run]  ${C.dim('ship merged work: CHANGELOG + version + tag (--commit: commit the bump, tag that commit; --promote: PR github.base→github.deployBase, tag the deploy tip)')}
   chalk discover "<brief>" [--file <path>] [--dry-run]  ${C.dim('intake: brief → scoped tasks with criteria')}
   chalk feedback [--input "..."] [--dry-run] [--min-severity low|med|high]  ${C.dim('signals → improvement issues')}
+  chalk feedback --submit "<msg>"      ${C.dim('send feedback UPSTREAM to the chalk maintainers (prefilled GitHub issue URL, no spine needed)')}
   chalk portal [--out <dir>] [--slug <slug>] [--dry-run]  ${C.dim('publish spine → client portal data')}
 
 ${C.b('held-out regression (P7)')}  ${C.dim('hidden from the implementing agent')}
@@ -1823,7 +2217,10 @@ ${C.b('spine')}
   chalk lesson "<what to remember>"     ${C.dim('add to the lessons memory injected into every agent')}
   chalk lesson add "<what to remember>" ${C.dim('explicit add (records verbatim, even single-word text like "list")')}
   chalk lesson list [--all]             ${C.dim('print the lessons injected into agents (--all = full history)')}
+  chalk skill add "<name>" [--file <path> | "<text>"] | (list)   ${C.dim('first-class project how-to (.chalk/skills/) injected into every agent')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
+  chalk pending [accept <task>#<n> | redirect <task>#<n> "<why>" | answer <raiseId> "<decision>"]   ${C.dim("director inbox: review judgment calls (accept/redirect) + mid-flight raised forks (answer)")}
+  chalk raise "<fork>" [--options "a|b|c"] [--why "..."] [--task <id>]   ${C.dim("the agent raises a mid-flight fork for the director instead of guessing; no arg lists open raises")}
   chalk log [--n N] [--type T] [--grep TEXT] [--reverse] [--json]
 
 ${C.b('chalk browser bridge')}
@@ -1835,11 +2232,27 @@ ${C.b('chalk browser bridge')}
 const [, , cmd, ...rest] = process.argv;
 const parsed = parse(rest);
 try {
+  // `--version`/`-v` report the PACKAGE version (+ protocol tag); `chalk version` keeps the bare
+  // protocol tag for scripts that parse it (#158).
+  if (cmd === '--version' || cmd === '-v') { console.log(`chalk-protocol ${CHALK_VERSION} · protocol ${PROTOCOL}`); process.exit(0); }
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') { printHelp(); process.exit(0); }
   const fn = cmds[cmd];
   if (!fn) die(`unknown command: ${cmd}  (try \`chalk help\`)`);
   warnSpineTamper(cmd);
-  fn(parsed);
+  // Opt-out update nudge (#158) — INTERACTIVE only. The isTTY gate short-circuits before any config
+  // read or network, so it is completely inert under test/CI/pipe/--json. Best-effort: wrapped so it
+  // can never slow, break, or change the exit code of the actual command below.
+  if (process.stdout.isTTY && parsed.flags.json !== true) {
+    let updateCheckConfig;
+    try { const r = findRoot(); if (r) updateCheckConfig = new Store(r).protocol()?.updateCheck; } catch { /* no spine — env/default still apply */ }
+    try {
+      const notice = await checkForUpdate({ current: CHALK_VERSION, isTTY: true, json: false, env: process.env, updateCheckConfig, now: Date.now() });
+      if (notice) console.error(C.dim('  ' + notice));
+    } catch { /* an update check must never affect the command */ }
+  }
+  // Await so an async handler (e.g. the parallel pipeline) surfaces its rejection through this catch
+  // rather than as an unhandled promise; sync handlers await-through unchanged.
+  await Promise.resolve(fn(parsed));
 } catch (e) {
   die(e.message);
 }

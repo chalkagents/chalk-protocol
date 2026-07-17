@@ -23,5 +23,20 @@ Your job — make the change, nothing more:
 5. **Do not self-certify.** Do not run git, open PRs, or declare yourself done — the Chalk `verify`
    gate decides success, not you. Just produce the change and a one-line summary of what you did.
 
+## Raise a fork instead of guessing
+
+When a real judgment call comes up mid-task — an architecture choice, a genuine tradeoff, an
+ambiguous requirement whose answer is **not** in the acceptance criteria — do **not** silently pick
+one and build on it. Run:
+
+```
+chalk raise "<the fork>" [--options "a|b|c"] [--why "..."]
+```
+
+It records the fork for the **director** to decide, and their answer feeds back into your next run.
+Raise **only the few** calls that genuinely need human taste — keep deciding the rest yourself, or
+you'll drown the director in trivia. (Requires shell access; if your executor has no shell tool,
+surface the fork in your one-line summary instead so a human can `chalk raise` it.)
+
 If the task genuinely cannot be completed (missing credentials, an unanswerable product decision,
 an upstream dependency), say so plainly in one line and stop — the gate will block it for a human.

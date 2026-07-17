@@ -61,6 +61,13 @@ with code size (`locPerTest`, default 2000).
 `{ required }` — when true, `chalk work` refuses until a human runs `chalk approve-plan <id>`
 (after the planner's scoping questions are answered). Default false.
 
+### `director`
+
+`{ required }` — director mode's alignment checkpoint (#191). When true, `chalk work` refuses until a
+human runs `chalk align <id>` to accept the task's acceptance criteria as the definition of *done* —
+before any code is built. Where `plan.required` gates the approach, this gates the framing of *done*
+(the empty-middle misalignment in #160). Default false.
+
 ### `executor`
 
 `{ command }` — the agent that writes code for `chalk run`/`chalk work`/`chalk pipeline`: receives
@@ -132,6 +139,12 @@ issue labels to branch types (`bug→fix`). Merge runs the broke-check: remote C
 PR has checks, else local verify (labeled when it falls back). `base` is the integration branch
 PRs target; `deployBase` is the protected deploy branch `chalk release --promote` promotes to
 (promotion PR merged with a MERGE commit, tag on its tip — set it ≠ `base` to enable).
+`ciPollIntervalMs` / `ciPollAttempts` tune how the broke-check waits on remote CI (during `merge` and
+`release --promote`): while the PR's checks are still pending it polls every `ciPollIntervalMs`
+(default `5000`) up to `ciPollAttempts` times (default `24` ≈ 2 min) — raise them for slow CI. Set
+`ciPollAttempts: 0` to not wait at all: CI is evaluated once, so a still-pending check then **blocks**
+the merge rather than being waited on. (This does not fall back to local verify — that happens only
+when the PR has no checks at all, independent of these knobs.)
 
 ### `worktree`
 
@@ -167,3 +180,17 @@ tasks out — the front door that turns an idea into a criteria-bearing backlog.
 `{ dir }` (default `.project`) — `chalk portal` publishes client-facing scope/milestones/updates
 derived from the spine (client-safe event types only). Archived released tasks still appear:
 `chalk archive` compaction never erases shipped history.
+
+### `telemetry`
+
+`{ enabled, endpoint }` (default `{ enabled: false, endpoint: '' }`) — **opt-in**, anonymous activation
+telemetry. **OFF by default.** When you opt in (prompted once at `chalk init`, or set
+`enabled: true`), chalk reports only three funnel **milestones** — `init`, the first GREEN `verify`,
+and the first `done` — each **once per install**, together with the chalk version and a random
+anonymous install id. The complete payload whitelist is `event, version, installId, ts` and **nothing
+else** — no code, paths, prompts, diffs, or repo identity ever leaves the machine. Emission is
+fire-and-forget and non-blocking: a network failure never changes a command's exit code. Hard kill
+switches: `CHALK_TELEMETRY=0` (env) and CI (`process.env.CI`) both disable it regardless of config.
+Inspect exactly what would be sent with `chalk telemetry --show`. `endpoint` overrides the collector
+(empty → the default). The anonymous id + sent-milestone flags live in gitignored
+`.chalk/local/telemetry.json`.
