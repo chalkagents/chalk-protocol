@@ -864,6 +864,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       const { usage } = runExecutorCaptured(withRunner(s.protocol().runner, ex), { cwd: workdir(s, t), input: buildContext(s, t) }); // #99: claude-shaped → usage captured; runner prefix like every sibling stage
       s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0, ...(usage || {}) });
     }
+    // #211: the agent may have RAISED a fork mid-work (chalk raise writes it to the spine). Re-read and
+    // pause for the director instead of proceeding to verify/done on a guessed choice. Exit 2 → the
+    // pipeline/driver auto-blocks (needs decision); answer via `chalk pending`, then re-run `chalk work`.
+    const raised = openRaises(s.task(t.id));
+    if (raised.length) {
+      console.error(C.r('✗ ') + `${raised.length} fork(s) raised for the director — answer via \`chalk pending\`, then re-run \`chalk work ${t.id.slice(0, 12)}\`. Not proceeding on a guess.`);
+      process.exit(2);
+    }
     const v = runVerify(s, { cwd: workdir(s, t) });
     if (!v.green) {
       const churn = overAttemptBudget(s, t) ? ` (churn — ${t.attempts} attempts without green; resume in a FRESH session)` : '';
@@ -1951,9 +1959,38 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       }
       return;
     }
+    // Answer a mid-flight raise (#211): the director decides a fork the agent raised. The answer feeds
+    // back into the work (as a directive, #199) and unblocks the task so the next `chalk work` rebuilds
+    // to it — and it compounds as durable taste (#201/#202).
+    if (sub === 'answer') {
+      const rid = _[1] || '';
+      let found = null;
+      for (const t of s.tasks()) { const r = openRaises(t).find((x) => x.id === rid || x.id.startsWith(rid || '\0')); if (r) { found = { t, r }; break; } }
+      if (!found) die(`no open raise ${rid} — run \`chalk pending\` for the current raises.`);
+      const decision = _.slice(2).join(' ') || flags.answer;
+      if (!decision) die('answer requires the decision: chalk pending answer <id> "<what to do>"');
+      const { t, r } = found; const by = flags.by || 'human';
+      r.status = 'answered'; r.answer = String(decision); r.answeredAt = now(); r.answeredBy = by;
+      t.directives = t.directives || [];
+      t.directives.push({ choice: r.fork, instead: String(decision), at: now(), by, resolved: false, fromRaise: r.id });
+      s.appendDirectorDecision({ choice: r.fork, instruction: String(decision), taskId: t.id, verdict: 'answered', by });
+      let unblocked = false;
+      if (t.state === 'blocked' && t.block?.needs === 'decision' && !openRaises(t).length) { t.state = t.blockedFrom || 'in-progress'; delete t.block; delete t.blockedFrom; unblocked = true; }
+      s.upsertTask(t); syncBrowser(s);
+      s.emitUpdate({ type: 'question-answered', title: `Answered raise: ${r.fork}`, description: String(decision), taskId: t.id });
+      ok(`answered ${C.dim(r.id.slice(0, 10))}${unblocked ? C.g(' — task unblocked; re-run chalk work') : C.dim(' — guides the next chalk work')}`);
+      return;
+    }
+    // Raised forks (#211) — the agent explicitly asked for the director's call; show them first.
+    const raises = s.tasks().flatMap((t) => openRaises(t).map((r) => ({ t, r })));
+    if (raises.length) {
+      console.log(C.b('Raised forks') + C.dim(` — ${raises.length} the agent asked you to decide:`));
+      for (const { t, r } of raises) console.log(`  ${C.y('⁇')} ${C.dim(r.id.slice(0, 10))} ${r.fork}${r.options?.length ? C.dim(` [${r.options.join(' | ')}]`) : ''}${r.why ? C.dim(` — ${r.why}`) : ''} ${C.dim(`↳ ${t.title.slice(0, 40)}`)}`);
+      console.log(C.dim('  answer: chalk pending answer <id> "<what to do>"'));
+    }
     const items = pendingDecisions(s.tasks());
-    if (!items.length) return ok(C.dim('director inbox empty — no med/high-risk judgment calls awaiting you.'));
-    console.log(C.b(`Director inbox`) + C.dim(` — ${items.length} judgment call(s) awaiting accept/redirect (highest risk first):`));
+    if (!items.length) return raises.length ? undefined : ok(C.dim('director inbox empty — no raised forks or judgment calls awaiting you.'));
+    console.log((raises.length ? '\n' : '') + C.b(`Director inbox`) + C.dim(` — ${items.length} judgment call(s) awaiting accept/redirect (highest risk first):`));
     for (const it of items) {
       const ref = `${it.taskId}#${it.index}`; // full id — a copy-back ref must round-trip exactly, not a prefix
       console.log(`  ${riskBadge(it.risk)} ${C.dim(ref)}  ${formatDecisionLine(it.decision).replace(/^◇ /, '')}`);
@@ -2115,7 +2152,7 @@ ${C.b('spine')}
   chalk lesson add "<what to remember>" ${C.dim('explicit add (records verbatim, even single-word text like "list")')}
   chalk lesson list [--all]             ${C.dim('print the lessons injected into agents (--all = full history)')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
-  chalk pending [accept <task>#<n> | redirect <task>#<n> "<why>"]   ${C.dim("director inbox: the med/high-risk judgment calls from review, ranked; accept or redirect each")}
+  chalk pending [accept <task>#<n> | redirect <task>#<n> "<why>" | answer <raiseId> "<decision>"]   ${C.dim("director inbox: review judgment calls (accept/redirect) + mid-flight raised forks (answer)")}
   chalk raise "<fork>" [--options "a|b|c"] [--why "..."] [--task <id>]   ${C.dim("the agent raises a mid-flight fork for the director instead of guessing; no arg lists open raises")}
   chalk log [--n N] [--type T] [--grep TEXT] [--reverse] [--json]
 
