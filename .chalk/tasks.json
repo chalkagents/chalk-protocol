@@ -4739,7 +4739,7 @@
   {
     "id": "task-7b477997",
     "title": "feat(director): reviewer emits a decision digest — the accept button, not just pass/block",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "The reviewer prompt requests a DECISION DIGEST — the judgment calls the implementer made — each with blastRadius + reversibility, framed for accept/redirect, and requested EVEN ON A PASS"
@@ -4777,8 +4777,53 @@
       "at": "2026-07-17T07:57:38.509Z"
     },
     "createdAt": "2026-07-17T07:57:38.509Z",
-    "reviews": [],
-    "startedAt": "2026-07-17T08:38:50.091Z"
+    "reviews": [
+      {
+        "at": "2026-07-17T08:41:05.965Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The locked test/review-digest.test.mjs verifies criterion 4's sync claim only indirectly (via the separate agents-sync.test.mjs drift gate), not within this task's own locked contract. Both files are in fact in sync, so this is not a defect — but a future digest edit to only one file would be caught by the OTHER test file, not this one."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The manual-review path (no reviewer.command configured, bin/chalk.mjs:1616) still pushes a review entry WITHOUT a decisions field. Harmless since consumers read `t.reviews[].decisions || []` and a human manual review has no AI digest, but it means t.reviews entries are non-uniform — some have `decisions`, some don't."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "decisions key is attached to the parsed verdict ONLY when non-empty (additive), rather than always defaulting to []",
+            "rationale": "Preserves the exact {verdict,findings} object shape for legacy reviewers and pinned contracts so no consumer sees a new field",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Digest render format `◇ [blast:x · undo:y] choice — rationale`, stripping the leading diamond per-line under a colored section header",
+            "rationale": "Lets a director triage blast-radius/reversibility at a glance; cosmetic",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "formatDecisionDigest drops any decision lacking both choice and rationale, and renders missing blast/undo as `?`",
+            "rationale": "Tolerate a sloppy reviewer without crashing or emitting noise",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Manual/human review path was left unchanged — no decisions recorded there",
+            "rationale": "A human manual review produces no AI-generated digest; scoped the feature to the adversarial path only",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T08:38:50.091Z",
+    "doneAt": "2026-07-17T08:42:34.839Z"
   },
   {
     "id": "task-8cf40444",
