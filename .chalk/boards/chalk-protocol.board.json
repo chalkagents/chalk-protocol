@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784288597108,
+  "updatedAt": 1784290931126,
   "order": 0,
   "cards": [
     {
@@ -1285,6 +1285,30 @@
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/209"
       }
+    },
+    {
+      "id": "task-58e2ced9",
+      "title": "feat(director-kit): D3 · reframe the gates as one optional 'Checks' part",
+      "column": "todo",
+      "createdAt": 1784290931120,
+      "updatedAt": 1784290931120,
+      "order": 78
+    },
+    {
+      "id": "task-225f6a98",
+      "title": "feat(director-kit): D1 · chalk harness — the kit made visible",
+      "column": "todo",
+      "createdAt": 1784290931123,
+      "updatedAt": 1784290931123,
+      "order": 79
+    },
+    {
+      "id": "task-0547837d",
+      "title": "feat(director-kit): D2 · skills as a first-class part (.chalk/skills → context)",
+      "column": "todo",
+      "createdAt": 1784290931126,
+      "updatedAt": 1784290931126,
+      "order": 80
     }
   ]
 }

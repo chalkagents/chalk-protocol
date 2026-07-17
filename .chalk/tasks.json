@@ -6467,5 +6467,80 @@
     ],
     "startedAt": "2026-07-17T11:03:08.721Z",
     "doneAt": "2026-07-17T11:06:45.307Z"
+  },
+  {
+    "id": "task-58e2ced9",
+    "title": "feat(director-kit): D3 · reframe the gates as one optional 'Checks' part",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 217,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/217",
+      "body": "Part of the **director-kit** milestone — EPIC D. Reframe the gates as one optional \"Checks\" part.\n\n## Problem\nThe gates (P1–P7 + verify/regression/review) read today as chalk's WHOLE product. The pivot demotes them to **one part** of the kit — \"Checks\" — powerful but optional, alongside agents/flows/skills. This is positioning made concrete in the harness view + docs.\n\n## Acceptance sketch (to be locked at spec time)\n- `chalk harness` (#216) groups the gates + verify/regression/review under a **\"Checks\"** section, presented as ONE (optional) part of the kit — with a clear on/off/how-many signal.\n- A project with checks minimal/off still renders a coherent harness (Checks just shows \"none/optional\"), reinforcing they're not mandatory.\n- A short docs/help framing: the gates are **Checks** — one composable part, not the whole story (the defensible core is the director's taste/judgment, built in #191–211).\n- Locked test.\n\n## Touchpoints\n`bin/chalk.mjs` (the harness Checks section), `docs/` (a framing note).\n\n## Dependencies\nDepends on **#216** (the view it groups into). Closes EPIC D.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T12:22:11.119Z"
+    },
+    "createdAt": "2026-07-17T12:22:11.120Z",
+    "reviews": []
+  },
+  {
+    "id": "task-225f6a98",
+    "title": "feat(director-kit): D1 · chalk harness — the kit made visible",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 216,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/216",
+      "body": "Part of the **director-kit** milestone — EPIC D. The kit made visible — \"the spine becomes the star.\"\n\n## Problem\nChalk already HAS the parts — agents (`protocol.executor/planner/reviewer/retro`), checks (the gates + verify/regression/review), flows (run/pipeline/loop/autopilot), and now skills (#215) — but nothing shows them as one assembled **kit**. The composition is invisible, so the \"harness\" framing isn't legible.\n\n## Acceptance sketch (to be locked at spec time)\n- `chalk harness` prints the project's assembled parts, read-only, reflecting actual config:\n  - **Agents** — which BYO commands are wired (executor/planner/reviewer/retro) vs. empty.\n  - **Checks** — which gates/verify/regression/review are ON (see #217 for the framing).\n  - **Flows** — the available drivers (run / pipeline / loop / autopilot).\n  - **Skills** — the project skills (#215) count/names.\n- Purely informational (no mutation); a bare project and a fully-wired one both render coherently.\n- Locked test.\n\n## Touchpoints\n`bin/chalk.mjs` (new `harness` command + help), reads `protocol()` + skills.\n\n## Dependencies\nBest after **#215** (so it can surface skills). Hosts the #217 Checks framing.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T12:22:11.123Z"
+    },
+    "createdAt": "2026-07-17T12:22:11.123Z",
+    "reviews": []
+  },
+  {
+    "id": "task-0547837d",
+    "title": "feat(director-kit): D2 · skills as a first-class part (.chalk/skills → context)",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 215,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/215",
+      "body": "Part of the **director-kit** milestone — EPIC D (the kit reframe). Skills as a first-class part. Build FIRST (the harness view #216 shows it).\n\n## Problem\nThe artifact promotes **skills** — reusable domain how-to — to first-class, but chalk has no project-skills concept (only auto-collected `lessons` and Claude-Code agent-def frontmatter). A project should be able to teach its agents \"how we do X here\" and have it applied on every task.\n\n## Acceptance sketch (to be locked at spec time)\n- `chalk skill add \"<name>\" [--file <path> | \"<text>\"]` writes `.chalk/skills/<name>.md`; `chalk skill list` lists them; `chalk skill` (no arg) lists.\n- `buildContext` injects a bounded `## Project skills (apply these)` block from `.chalk/skills/*.md` — **elastic like lessons/director-calls**: present at realistic budgets, yields under extreme pressure, essentials never displaced (do NOT disturb the locked context-budget tests).\n- `.chalk/skills/` is spine state (in SPINE_STATE_PATHS — committed by intake, excluded from review diffs), consistent with `lessons.md`.\n- Locked test.\n\n## Guardrail (avoid framework-creep)\nA skill is just **injected reusable text** — NOT a plugin, hook, or executable. Keeps \"taste, not framework.\"\n\n## Touchpoints\n`bin/chalk.mjs` (skill command + help), `lib/store.mjs` (skills accessor + buildContext block + path + SPINE_STATE_PATHS).\n\n## Dependencies\nNone. Feeds #216 (the harness view surfaces skills).\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T12:22:11.126Z"
+    },
+    "createdAt": "2026-07-17T12:22:11.126Z",
+    "reviews": []
   }
 ]
