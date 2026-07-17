@@ -5208,9 +5208,24 @@
   {
     "id": "task-6fec5f3f",
     "title": "feat(director-loop): B2 · inject prior director decisions into new-task context (the moat)",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "buildContext injects a '## Director's calls so far (apply this taste)' block from the durable record (#201) on NEW tasks — accepted → 'apply this rationale', redirected → 'do this instruction' (distinct, per B1's schema)"
+      },
+      {
+        "text": "The block is bounded like lessons (most-recent-first, elided with a note under a tight context budget); the task essentials (criteria/tests/directives) are never displaced"
+      },
+      {
+        "text": "No director decisions → no block (no regression to existing context)"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-compound.test.mjs",
+        "sha256": "0d5d979ffe8f0349389f22428281bce0c6b0975609cc15997eec06fd8fc89960"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -5228,7 +5243,8 @@
       "at": "2026-07-17T09:32:56.684Z"
     },
     "createdAt": "2026-07-17T09:32:56.685Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T10:39:14.389Z"
   },
   {
     "id": "task-e27fa89c",
