@@ -4714,9 +4714,27 @@
   {
     "id": "task-167041a5",
     "title": "feat(director): risk-based decision triage + a director inbox — own the empty middle",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "decisionRisk scores a decision from blastRadius × reversibility into low/med/high; an unknown field is treated as the middle (unknown is not safe)"
+      },
+      {
+        "text": "chalk review ranks the decision digest highest-risk-first with a per-decision risk badge (composes on #192; the digest line format is unchanged so #192's locked test stays green)"
+      },
+      {
+        "text": "chalk pending is the director inbox: unresolved med/high-risk decisions across ALL tasks (from each task's latest review), ranked by risk, each with a stable <task>#<n> ref; an empty inbox reports cleanly"
+      },
+      {
+        "text": "chalk pending accept <ref> marks a decision accepted and drops it from the inbox; chalk pending redirect <ref> \"why\" records a course-correction and logs a decision; neither can re-resolve a resolved call"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-triage.test.mjs",
+        "sha256": "464184943c6e07fb1f989b960e2045c358fcc8f83dd952252e8b86e602b1305c"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -4734,7 +4752,8 @@
       "at": "2026-07-17T07:57:38.498Z"
     },
     "createdAt": "2026-07-17T07:57:38.501Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T09:02:09.462Z"
   },
   {
     "id": "task-7b477997",
