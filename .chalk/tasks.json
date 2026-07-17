@@ -5989,9 +5989,27 @@
   {
     "id": "task-5d2e2fbc",
     "title": "feat(director-mid-flight): C3 · raised forks pause the task + route to the inbox",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "After a chalk work run, a task with OPEN raises does not proceed: chalk work exits 2 and the driver blocks it needs:decision — a guessed choice never ships past a raised fork"
+      },
+      {
+        "text": "chalk pending surfaces open raised forks (fork + options + why) across tasks, each with an answer ref"
+      },
+      {
+        "text": "chalk pending answer <raiseId> \"<decision>\" marks the raise answered, feeds the answer back as a directive (#199 channel so the next work rebuilds to it), compounds it to the durable director record (#201/#202), and unblocks a task parked on the raise"
+      },
+      {
+        "text": "Once the raise is answered, chalk work proceeds (no open raises left) — the mid-flight loop is closed"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-raise-route.test.mjs",
+        "sha256": "58e63290fc16453694e754b12965ef8b85c6823a4918a1234752e29c68113f27"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -6009,7 +6027,204 @@
       "at": "2026-07-17T10:59:50.206Z"
     },
     "createdAt": "2026-07-17T10:59:50.208Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-17T11:32:09.940Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "Criterion 1 requires the driver to block a raise-parked task with needs:decision, but lib/run.mjs calls blockTask(...) with no needs arg, so it defaults to 'human-input' (blockTask signature: needs='human-input'). The block is therefore mislabeled versus the contract."
+          },
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "End-to-end break: the answer/unblock logic in `pending answer` only unblocks when `t.block?.needs === 'decision'`. Since the driver actually parks the task with needs:'human-input', answering a raise will NOT unblock a task the driver blocked — directly defeating criteria 3 ('unblocks a task parked on the raise') and 4 for the real driver path."
+          },
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "The locked test masks the above: repo() for the unblock case hardcodes `block:{needs:'decision'}` instead of producing the block via the driver. No test drives runDriver's raise-block path or asserts the needs value it sets, so the mismatch between code ('human-input') and the compensating unblock check ('decision') is never exercised. Reverting the run.mjs needs behavior (or the criterion's decision label) would still pass the suite — a vacuous pass on the driver path."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "Criterion 4's test answers a raise on a task that is in-progress (not blocked), so the unblock-then-proceed transition is never verified as a single flow; 'work proceeds' is only checked in isolation from the block/unblock it depends on in practice."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "pending now prints 'Raised forks' before the Director inbox and returns undefined (not ok()) when only raises exist and no judgment calls remain; the empty-inbox exit path was reworked. No test asserts exit code / ok-line behavior for the mixed (raises + judgment calls) case, so the inbox-ranking output contract is only partially covered."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Pause on a raised fork by exiting 2 from `chalk work` and letting the pipeline/driver auto-block, mirroring the plan-approval/criteria gates",
+            "rationale": "Reuses the existing exit-2 → auto-block convention rather than inventing a new pause mechanism",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Unblock is gated on block.needs==='decision' specifically",
+            "rationale": "Intends to only revive tasks parked by a raise, not other blocks",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Answered raises are recorded as a new director-record verdict 'answered' (distinct from accepted/redirected), and rendered as its own line in the compounding taste feed",
+            "rationale": "Keeps mid-flight fork answers semantically separate from post-hoc review calls",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Raised forks are surfaced ABOVE the med/high-risk judgment-call inbox in `chalk pending`",
+            "rationale": "Agent-initiated forks are treated as higher urgency than review-surfaced calls",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Answer resolution matches raiseId by exact-or-prefix and picks the first match across all tasks",
+            "rationale": "Convenience for short ids typed from the pending list",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T11:38:15.102Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The `why` field display in `chalk pending` (criterion 2 says fork+options+why) is never asserted — the test raise has no `why`, so a regression that dropped `why` rendering would go uncaught."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The new `directorLines` 'answered' branch in store.mjs (labels an answered raise distinctly in the #202 compounding taste feed injected into future agents) has no test. Reverting just that hunk fails nothing — an answered decision would silently render as 'accepted'. The durable *record* write is tested; its rendering back into agent context is not."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "`chalk pending` empty-state message text changed and the return path now yields `undefined` when raises exist but no review decisions do; no test pins the empty message, so low risk, but the behavior of `pending` with-raises-only prints no closing 'inbox empty' line by design."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "driver e2e re-run after answering: the executor stub literally re-runs `chalk raise`, which would re-raise the same fork and re-block. Harmless in the product (answer feeds back as a directive so a real agent stops re-raising), and openRaises correctly filters to status:'open' so answered raises don't re-trigger — loop closes as specified."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Block a raised-fork task with needs:'decision' (not the driver's default 'human-input')",
+            "rationale": "`chalk pending answer` keys its auto-unblock on block.needs==='decision', so the value is load-bearing coupling between the block reason and the answer path",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Merge raised forks into the existing `chalk pending` command (shown above the review inbox) rather than a dedicated `chalk raises`/inbox surface",
+            "rationale": "One director inbox for both mid-flight forks and post-review judgment calls keeps the director's attention in a single place",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Answer feeds back through the same `t.directives` (#199) 'Instead of X: Y' channel used by redirects, with resolved:false",
+            "rationale": "Reuses the proven buildContext injection so the next work rebuilds to the decision without a new mechanism",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Auto-unblock only when state==='blocked' && needs==='decision' && no open raises remain; multiple open raises on one task each need answering before resume",
+            "rationale": "Avoids resuming a task that still has unanswered forks and avoids touching tasks blocked for other reasons",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Run the executor first, then check for raises and discard the run — the work/driver still executes the agent before pausing",
+            "rationale": "The raise is written to the spine during the run, so the check must come after; but a task pre-carrying an open raise still pays a wasted executor run",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T11:38:58.198Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T11:41:47.650Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The open-raise gate is enforced only in `chalk work` (bin) and `runDriver` (run.mjs), not in `chalk done`. A raise generally can't reach done because work exits 2 before verify, but there's no direct guard on done — if a task were otherwise green/reviewed it could in principle be marked done with an open raise. Not covered by criteria or tests."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`answer` resolves the raise id via prefix match (`x.id.startsWith(rid)`) and takes the FIRST match across all tasks. Ambiguous short prefixes could answer the wrong fork silently; no disambiguation or collision guard. Tests only use full ids."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "The `chalk pending` empty-state message text changed ('no med/high-risk judgment calls awaiting you.' → 'no raised forks or judgment calls awaiting you.'). Confirmed no existing test asserts the old string, so safe, but it is a user-facing copy change bundled in."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 3's '#199 feed-back' is asserted only by presence of the directive object on the task, not by verifying buildContext actually renders it into the next work prompt. Verified manually (store.mjs line 655 consumes dir.choice/dir.instead, matching the pushed shape) so the feed-back is real, but the locked test doesn't exercise that render path; the `--options`/why rendering in pending also lacks a 'why' case."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Block a raised task as needs:'decision' rather than the default 'human-input'",
+            "rationale": "`chalk pending answer` only unblocks tasks whose block.needs==='decision', so this coupling is what lets answering resume the parked task; distinguishes an intentional director fork from an executor-can't-make-green stall",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "`chalk work` exits code 2 on an open raise (mirrors the driver auto-block-needs-decision convention)",
+            "rationale": "Signals the pipeline/driver to auto-block rather than treating it as a hard failure or silent proceed",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "An answered raise is dual-written: a transient task directive (resolved:false, feeds next work) AND a durable director.jsonl record with a new verdict:'answered'",
+            "rationale": "Directive drives the immediate rebuild (#199); the durable record makes it compound as taste (#201/#202) and stop recurring",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "New 'answered' verdict rendered as its own line in directorLines ('answered: fork → decision'), distinct from accepted/redirected",
+            "rationale": "Keeps a mid-flight fork semantically separate from a post-hoc accept so future context reads truthfully",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Surface raised forks ABOVE the review judgment-call inbox in `chalk pending` output",
+            "rationale": "A raise is an explicit blocking ask, so it's prioritized over accept/redirect triage",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Task is only unblocked when NO open raises remain (guarded), leaving it parked if other forks are still open",
+            "rationale": "Prevents resuming work while an unanswered fork would still force another guess",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T11:29:24.006Z",
+    "doneAt": "2026-07-17T11:43:17.108Z"
   },
   {
     "id": "task-622ec407",
