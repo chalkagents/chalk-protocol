@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784286994820,
+  "updatedAt": 1784287385674,
   "order": 0,
   "cards": [
     {
@@ -1243,13 +1243,18 @@
     {
       "id": "task-622ec407",
       "title": "feat(director-mid-flight): C2 · executor contract — raise a fork instead of guessing",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1784285990215,
-      "updatedAt": 1784286994820,
+      "updatedAt": 1784287385674,
       "order": 76,
       "description": "- buildContext injects a mid-flight raise instruction telling the executor to run chalk raise for a fork the criteria don't answer, and to raise only the few that need taste (not flood)\n- The raise instruction is a LOW-priority elastic context block — present at any realistic budget but first to yield under extreme pressure, so the essential/director/lessons budget the locked context-budget tests pin stays unchanged\n- Both chalk-executor definitions (shipped share/agents + dogfood .claude/agents) document the raise convention and stay in sync (agents-sync drift gate green)",
       "testArtifact": {
         "specPath": "test/director-raise-contract.test.mjs",
+        "lastRun": {
+          "runId": "done-task-622ec407",
+          "status": "passed",
+          "at": 1784287385674
+        },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/210"
       }
     },

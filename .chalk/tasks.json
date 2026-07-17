@@ -6014,7 +6014,7 @@
   {
     "id": "task-622ec407",
     "title": "feat(director-mid-flight): C2 · executor contract — raise a fork instead of guessing",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "buildContext injects a mid-flight raise instruction telling the executor to run chalk raise for a fork the criteria don't answer, and to raise only the few that need taste (not flood)"
@@ -6103,9 +6103,58 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T11:21:30.778Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The elasticity test only checks the two extremes (default budget vs budget=1). It never asserts the ordering claim in criterion 2 that the raise block yields *before* lessons/director under moderate pressure — a bug swapping raise ahead of lessons in the budget calc would still pass all three tests as long as essentials survive at budget=1."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "The terse RAISE_INSTRUCTION string in lib/store.mjs and the full 'Raise a fork instead of guessing' section in the two .md files are independent copies of the same convention. The agents-sync drift gate only compares the two .md files to each other; nothing pins the in-code injected wording to the executor-def wording, so they can drift silently (e.g. flag names like --options/--why change in one but not the other)."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "buildContext now emits raiseBlock between lessons and the essential 'post' section at any budget with leftover headroom. Locked context-budget tests are claimed green, but any downstream consumer that asserted exact full-context output or 'lessons is the last elastic block' would see new bytes; the guard protects essential/director/lessons byte-budgets but not exact-output snapshots."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Injected raise guidance as a NEW lowest-priority elastic block appended after director+lessons, gated by a leftover-budget check (raiseFits), rather than folding it into the always-present essential contract text.",
+            "rationale": "Keeps the locked essential/director/lessons budget math untouched so pinned context-budget tests stay green, while still surfacing the instruction at realistic budgets.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Gated the raise block on `task` being present (no task ⇒ no raise instruction).",
+            "rationale": "The raise convention is only meaningful mid-task, so it's suppressed for taskless context calls.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Duplicated the convention: a terse one-liner in code + a full prose section in both executor defs, instead of a single sourced string.",
+            "rationale": "Context budget favors terseness in-band while the agent definition can afford the full explanation; accepted the copy-drift risk.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Fallback instruction for shell-less executors: 'surface the fork in your one-line summary' so a human can chalk raise it.",
+            "rationale": "chalk raise needs shell access; without a graceful fallback, non-shell executors would be told to run an unavailable command.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ]
       }
     ],
-    "startedAt": "2026-07-17T11:16:34.820Z"
+    "startedAt": "2026-07-17T11:16:34.820Z",
+    "doneAt": "2026-07-17T11:23:05.674Z"
   },
   {
     "id": "task-d3cfdb8f",

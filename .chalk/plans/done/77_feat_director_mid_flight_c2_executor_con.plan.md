@@ -7,18 +7,18 @@ created: "2026-07-17T10:59:50.215Z"
 todos:
   - id: "task-622ec407-c1"
     content: "buildContext injects a mid-flight raise instruction telling the executor to run chalk raise for a fork the criteria don't answer, and to raise only the few that need taste (not flood)"
-    status: pending
+    status: done
   - id: "task-622ec407-c2"
     content: "The raise instruction is a LOW-priority elastic context block — present at any realistic budget but first to yield under extreme pressure, so the essential/director/lessons budget the locked context-budget tests pin stays unchanged"
-    status: pending
+    status: done
   - id: "task-622ec407-c3"
     content: "Both chalk-executor definitions (shipped share/agents + dogfood .claude/agents) document the raise convention and stay in sync (agents-sync drift gate green)"
-    status: pending
+    status: done
 ---
 
 # feat(director-mid-flight): C2 · executor contract — raise a fork instead of guessing
 
-> state: **in-progress** · phase: discovery
+> state: **done** · phase: discovery
 
 ## Objective
 
@@ -29,6 +29,12 @@ todos:
 ## Locked tests (read-only — P6)
 
 - `test/director-raise-contract.test.mjs`
+
+## Reviews
+
+- **pass** · 2026-07-17T11:18 · adversary
+- **stale** · 2026-07-17T11:19 · amend-spec
+- **pass** · 2026-07-17T11:21 · adversary
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._
