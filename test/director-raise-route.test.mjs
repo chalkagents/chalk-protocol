@@ -5,7 +5,7 @@
 // Locked for task-5d2e2fbc.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -69,4 +69,32 @@ test('chalk work — proceeds once the raise is answered (no open raises left)',
   chalk(d, 'pending', 'answer', 'raise-abc123', 'LRU');
   const r = chalk(d, 'work', 'task-9f3a2b1c');
   assert.doesNotMatch(r.out, /raised for the director/i, 'no longer blocked on the (now answered) raise');
+});
+
+test('driver end-to-end — an executor that raises blocks the task needs:decision; answering unblocks it', () => {
+  const d = mkdtempSync(join(tmpdir(), 'chalk-route-e2e-'));
+  execSync('git init -b main', { cwd: d, stdio: 'pipe' });
+  execSync('git config user.email t@t.t && git config user.name t', { cwd: d, stdio: 'pipe' });
+  chalk(d, 'init', '--name', 'demo');
+  const cf = join(d, '.chalk/chalk.json'); const o = JSON.parse(readFileSync(cf, 'utf8'));
+  // the executor itself RAISES a fork mid-work (against the current in-progress task)
+  o.protocol.executor = { command: `node ${CLI} raise "which eviction policy?" --options "LRU|TTL"` };
+  o.protocol.requireTest = false; o.protocol.worktree = { enabled: false, dir: '..', setup: '' };
+  writeFileSync(cf, JSON.stringify(o, null, 2));
+  chalk(d, 'task', 'add', 'feat: caching');
+  const id = JSON.parse(readFileSync(join(d, '.chalk/tasks.json')))[0].id.slice(0, 12);
+  chalk(d, 'spec', id, '--criterion', 'works');
+
+  chalk(d, 'run', '--max', '1', '--until', 'blocked');
+  let t = taskOf(d);
+  assert.equal(t.state, 'blocked', 'the driver parked the task on the raised fork');
+  assert.equal(t.block.needs, 'decision', 'and blocked it as needs:decision — NOT the default human-input');
+  const raise = (t.raised || []).find((r) => r.status === 'open');
+  assert.ok(raise, 'the executor actually raised a fork');
+
+  const r = chalk(d, 'pending', 'answer', raise.id, 'use an LRU with a size cap');
+  assert.equal(r.code, 0, r.out);
+  t = taskOf(d);
+  assert.notEqual(t.state, 'blocked', 'answering the raise unblocks the DRIVER-blocked task (needs:decision matched)');
+  assert.ok((t.directives || []).some((x) => x.fromRaise === raise.id), 'the answer fed back as a directive');
 });
