@@ -54,3 +54,13 @@ test('bounded — under a tight budget the newest calls are kept and older ones 
   assert.match(out, /director call\(s\) elided/i, 'older calls are elided with a note, not silently dropped');
   assert.match(out, /the new work/, 'the task acceptance criteria (essential) are never displaced');
 });
+
+test('director block and lessons COEXIST — director ranks first, lessons are NOT dropped (priority, not exclusion)', () => {
+  const d = repo([{ at: '2026-01-01', verdict: 'accepted', choice: 'a director call', rationale: 'taste', by: 'human' }]);
+  chalk(d, 'lesson', 'add', 'an auto-collected lesson to keep');
+  const out = chalk(d, 'context', 'task-9f3a2b1c').out;
+  assert.match(out, /Director's calls so far/i, 'director block present');
+  assert.match(out, /an auto-collected lesson to keep/, 'lessons are NOT dropped just because director decisions exist');
+  assert.ok(out.indexOf("Director's calls so far") < out.indexOf('Lessons learned'),
+    'director calls (explicit human taste) rank ahead of auto-collected lessons');
+});
