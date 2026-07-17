@@ -474,3 +474,8 @@
 
 - _when:_ 2026-07-17T10:27:16.364Z
 - _why:_ Review-driven correctness fix: resolveDirectives now CLEARS reopenedAt when the rework lands, so a stale re-open marker can never coexist with a later active-redirect and re-admit an in-flight task. Pinned the invariant (clear-on-resolve + rework-terminates).
+
+## Amended acceptance test for "feat(director-loop): B2 · inject prior director decisions into new-task context (the moat)"
+
+- _when:_ 2026-07-17T10:42:08.661Z
+- _why:_ Review coverage gap: pin that the director block and lessons COEXIST (director-first, lessons still present) — the budget-priority design was implemented but unverified; a regression dropping lessons entirely would otherwise pass.
