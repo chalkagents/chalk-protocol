@@ -5233,7 +5233,7 @@
   {
     "id": "task-e27fa89c",
     "title": "feat(director-loop): B1 · a durable, structured director-decision record",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "chalk pending accept/redirect write through to a durable append-only record (.chalk/director.jsonl) with structured fields: at, verdict (accepted|redirected), choice, why, risk, taskId, by"
@@ -5325,9 +5325,64 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T09:47:22.393Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "design-intent",
+            "note": "Criterion 1 literally enumerates the field `why`, but the record ships no `why` field — the implementer split it into `rationale` (agent's reason) and `instruction` (director's course-correction, redirect-only). This is a defensible, better-normalized design that #202 downstream depends on, and the locked test pins it — but it is a deviation from the written contract's field list that a director should knowingly ratify rather than have silently substituted."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "director.jsonl is append-only with no dedup. Because the resolve-guard (`d.accepted||d.redirected`) lives on the volatile t.reviews[].decisions flag, a re-review that regenerates decisions clears that guard — so re-accepting/re-redirecting the same decision after re-review appends a second (possibly conflicting) durable entry for the same choice/taskId. No test covers this re-resolve path."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The 'survives re-review' test hand-rewrites tasks.json rather than driving runReview, so it proves only that a separate file isn't touched (nearly tautological) — it does not exercise the real regeneration path or that accept still functions correctly after a genuine re-review. directorDecisions() is also only tested indirectly via `chalk decisions`, never for its own return shape."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Model the durable record with distinct `rationale` (agent) and `instruction` (director) fields instead of the single `why` field named in the acceptance criteria",
+            "rationale": "Keeping the agent's original reason separate from the director's course-correction is needed for the compounding-context feed (#202) to say 'apply this rationale' vs 'do this instead'",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Snapshot the computed risk via decisionRisk(d) into the record at write time rather than recomputing on read",
+            "rationale": "Freezes the risk classification as-of the director's call so later logic changes don't retroactively alter history",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Append-only JSONL with no dedup/supersede semantics for re-resolved decisions",
+            "rationale": "Simplest durable substrate; treats every director call as an immutable event",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Default `by` to 'human' when --by is absent",
+            "rationale": "Most accept/redirect calls come from a human director at the CLI",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Surface the durable record as a new 'Director's calls' section appended to `chalk decisions` rather than a dedicated command",
+            "rationale": "Co-locates director judgment history with the existing prose decision log",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
       }
     ],
-    "startedAt": "2026-07-17T09:39:01.759Z"
+    "startedAt": "2026-07-17T09:39:01.759Z",
+    "doneAt": "2026-07-17T09:49:31.441Z"
   },
   {
     "id": "task-86fadfe0",
