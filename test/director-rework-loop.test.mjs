@@ -32,12 +32,22 @@ test('runnableTasks — ONLY a re-opened task (reopenedAt + unresolved directive
   assert.ok(!ids.includes('t4'), 'once reworked (directive resolved), it is no longer runnable — the loop terminates');
 });
 
-test('resolveDirectives — marks pending corrections resolved (idempotent) and returns the count', () => {
-  const t = { directives: [dir(false), dir(false), dir(true)] };
+test('resolveDirectives — resolves pending corrections, clears the re-open marker, is idempotent', () => {
+  const t = { reopenedAt: 'x', directives: [dir(false), dir(false), dir(true)] };
   assert.equal(resolveDirectives(t), 2, 'resolves the two pending; the already-resolved is not recounted');
   assert.ok(t.directives.every((d) => d.resolved), 'all resolved');
   assert.ok(t.directives[0].resolvedAt, 'stamped when');
+  assert.equal(t.reopenedAt, undefined, 'the re-open marker is cleared so a stale marker can never re-admit the task later');
   assert.equal(resolveDirectives(t), 0, 'idempotent — nothing left to resolve');
+});
+
+test('rework terminates — a task reworked then redirected WHILE ACTIVE is not re-admitted (stale-marker invariant)', () => {
+  // re-opened, reworked to done → resolveDirectives cleared reopenedAt
+  const t = { id: 'z', state: 'in-progress', reopenedAt: 'x', directives: [dir(false)] };
+  resolveDirectives(t);
+  // now a fresh directive is added while the task is active again (NOT a done→reopen)
+  t.directives.push(dir(false));
+  assert.equal(runnableTasks([t]).length, 0, 'no reopenedAt ⇒ not re-admitted ⇒ no double-execution of in-flight work');
 });
 
 test('BOTH completion paths resolve directives — chalk done AND the pipeline merge call resolveDirectives', () => {
@@ -63,6 +73,7 @@ test('chalk done — resolves the task\'s pending director corrections (the loop
   assert.equal(t.state, 'done');
   assert.equal(t.directives[0].resolved, true, 'completing the rework resolves the directive');
   assert.ok(t.directives[0].resolvedAt, 'and stamps when');
+  assert.equal(t.reopenedAt, undefined, 'the re-open marker is cleared on completion');
   assert.match(r.out, /correction\(s\) resolved/i, 'the resolution is reported');
   assert.equal(pendingDirectives(t).length, 0, 'nothing left pending');
 });
