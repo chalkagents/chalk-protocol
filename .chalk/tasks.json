@@ -4764,9 +4764,27 @@
   {
     "id": "task-8cf40444",
     "title": "feat(director): alignment checkpoint before build — human accepts the criteria/outcome, not just the plan",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "protocol.director.required defaults off; when off, chalk work behaves exactly as today (no regression)"
+      },
+      {
+        "text": "With director.required on and criteria not accepted, chalk work AND the autonomous driver (chalk run) refuse before build, pointing the human at chalk align"
+      },
+      {
+        "text": "chalk align records task.criteriaAccepted = { at, by }; after alignment chalk work proceeds past the gate"
+      },
+      {
+        "text": "chalk align surfaces the task's acceptance criteria for the human to read before accepting (not blind), and refuses when there are no criteria yet"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-align.test.mjs",
+        "sha256": "968f4e51f2447e46cc4b74419140405586fb10e4431ebdfb06b33c84085fa9a5"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -4784,7 +4802,60 @@
       "at": "2026-07-17T07:57:38.513Z"
     },
     "createdAt": "2026-07-17T07:57:38.513Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-17T08:10:33.526Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "`chalk align` only refuses when BOTH acceptanceCriteria and tests are empty; a task with locked tests but no acceptanceCriteria aligns while surfacing only test paths, which is a defensible reading of 'criteria as spec' but slightly loosens criterion 4's literal 'no criteria yet' refusal. Not a functional gap."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "No test asserts the ordering that the align gate is checked BEFORE the state flip in `chalk work` (i.e. a refusal leaves no side effect / task not moved to in-progress). Behavior is correct in the code but this 'no side effect on refusal' property is unverified."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Gate sits after the stageDone('verified') early-return, so an already-verified task never requires alignment; acceptable but untested for the director-on case."
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T08:11:11.994Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T08:13:44.172Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "chalk align refuses only when BOTH acceptanceCriteria and tests are empty (`!criteria.length && !(t.tests||[]).length`). A task with locked tests but zero textual criteria can be aligned while surfacing no criteria text — a slightly looser reading of criterion 4 ('surfaces the criteria... refuses when there are no criteria yet'), though defensible since the human still sees the locked test paths."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The default attribution `by: 'human'` is never asserted (only the explicit --by 'jerel' path is), and the chalk run block reason's 'points the human at chalk align' wording is not asserted in the run test (only needs=human-input + handoff). Both are exercised indirectly; behavior itself (predicate, work refusal, run block, align record) is covered such that reverting any code path fails a test."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "Backward compatibility for pre-existing spines relies on optional chaining (`director?.required`) rather than a migration adding the key; verified safe (undefined→false), so old spines stay opt-out. No regression, noted for completeness."
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T08:07:59.379Z",
+    "doneAt": "2026-07-17T08:14:57.798Z"
   },
   {
     "id": "task-27eaa67d",

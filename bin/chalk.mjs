@@ -18,7 +18,7 @@ import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
 import { postReviewToPr } from '../lib/prreview.mjs';
 import { brokeCheck, ciStatus } from '../lib/brokecheck.mjs';
 import { mergeBlockers } from '../lib/mergegate.mjs';
-import { extractQuestions, planApprovalRequired } from '../lib/planning.mjs';
+import { extractQuestions, planApprovalRequired, criteriaAcceptedRequired } from '../lib/planning.mjs';
 import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } from '../lib/release.mjs';
 import { runSpecs, isSpec } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
@@ -607,6 +607,26 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     ok(`plan approved ${C.dim(`for ${t.title}`)} — \`chalk work ${t.id.slice(0, 12)}\` may proceed`);
   },
 
+  // Alignment gate (the director checkpoint, #191). Marks a task's acceptance criteria human-accepted
+  // as the definition of *done* so `work` may build. Surfaces the criteria for the human to read rather
+  // than accepting blind — the fix for #160, where an autonomous run built everything then was misaligned.
+  align({ _, flags }) {
+    const s = Store.open();
+    const t = mustTask(s, _[0]);
+    const criteria = t.acceptanceCriteria || [];
+    if (!criteria.length && !(t.tests || []).length) {
+      die(`nothing to align on — the task has no acceptance criteria yet. Add them first:\n    chalk spec ${t.id.slice(0, 12)} --criterion "..."  (or --test <path>)`);
+    }
+    // Surface what "done" means so the human accepts with eyes open, not blind.
+    console.log(C.b(`Acceptance criteria for ${t.title}:`));
+    criteria.forEach((c, i) => console.log(`  ${i + 1}. ${c.text}`));
+    (t.tests || []).forEach((x) => console.log(C.dim(`  · locked test: ${x.path}`)));
+    t.criteriaAccepted = { at: now(), by: flags.by || 'human' };
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Criteria aligned: ${t.title}`, taskId: t.id });
+    ok(`aligned ${C.dim(`— criteria accepted (by: ${t.criteriaAccepted.by})`)} — \`chalk work ${t.id.slice(0, 12)}\` may proceed`);
+  },
+
   // Release stage — turn the merged, done work into a shipped release: a CHANGELOG entry + semver
   // bump (from the change types) + a git tag, marking each task `released` so it's idempotent.
   release({ flags }) {
@@ -814,6 +834,13 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // Exit 2 → the pipeline auto-blocks (needs:human-input) + handoff.
     if (planApprovalRequired(s, t)) {
       console.error(C.r('✗ ') + 'plan not approved — a human must run `chalk approve-plan ' + t.id.slice(0, 12) + '` (answer the scoping questions first).');
+      process.exit(2);
+    }
+    // Alignment gate (the director checkpoint, #191): when director mode is required, no code is built
+    // until a human has accepted the criteria as the definition of done. Checked BEFORE the state flip
+    // so a refusal leaves no side effect. Exit 2 → the pipeline auto-blocks (needs:human-input) + handoff.
+    if (criteriaAcceptedRequired(s, t)) {
+      console.error(C.r('✗ ') + 'criteria not accepted — a human must run `chalk align ' + t.id.slice(0, 12) + '` to accept the acceptance criteria as the definition of done before build.');
       process.exit(2);
     }
     if (t.state === 'todo' || t.state === 'specd') {
@@ -1948,6 +1975,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}
   chalk approve-plan <id> [--force --why "..."]  ${C.dim('human checkpoint: approve the plan so work can start')}
+  chalk align <id> [--by NAME]         ${C.dim('director checkpoint: accept the acceptance criteria as the definition of done before build (protocol.director.required)')}
   chalk release [--version x|--major|--minor|--patch] [--commit] [--promote] [--no-tag] [--dry-run]  ${C.dim('ship merged work: CHANGELOG + version + tag (--commit: commit the bump, tag that commit; --promote: PR github.base→github.deployBase, tag the deploy tip)')}
   chalk discover "<brief>" [--file <path>] [--dry-run]  ${C.dim('intake: brief → scoped tasks with criteria')}
   chalk feedback [--input "..."] [--dry-run] [--min-severity low|med|high]  ${C.dim('signals → improvement issues')}
