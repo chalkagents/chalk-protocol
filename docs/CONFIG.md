@@ -61,6 +61,13 @@ with code size (`locPerTest`, default 2000).
 `{ required }` — when true, `chalk work` refuses until a human runs `chalk approve-plan <id>`
 (after the planner's scoping questions are answered). Default false.
 
+### `director`
+
+`{ required }` — director mode's alignment checkpoint (#191). When true, `chalk work` refuses until a
+human runs `chalk align <id>` to accept the task's acceptance criteria as the definition of *done* —
+before any code is built. Where `plan.required` gates the approach, this gates the framing of *done*
+(the empty-middle misalignment in #160). Default false.
+
 ### `executor`
 
 `{ command }` — the agent that writes code for `chalk run`/`chalk work`/`chalk pipeline`: receives
