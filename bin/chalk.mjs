@@ -1836,7 +1836,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.log(C.b(`\nDirector's calls`) + C.dim(` (${dd.length}) — accepted/redirected judgment calls that compound into future work:`));
       for (const r of dd) {
         const badge = r.verdict === 'redirected' ? C.y('↳ redirected') : C.g('✓ accepted  ');
-        console.log(`  ${badge} ${C.dim(r.at.slice(0, 10))}  ${r.choice || '(decision)'}${r.why ? C.dim(` — ${r.why}`) : ''}`);
+        // accepted → the agent's rationale; redirected → the director's instruction ("do this instead").
+        const note = r.verdict === 'redirected' ? (r.instruction ? ` → ${r.instruction}` : '') : (r.rationale ? ` — ${r.rationale}` : '');
+        console.log(`  ${badge} ${C.dim(r.at.slice(0, 10))}  ${r.choice || '(decision)'}${C.dim(note)}`);
       }
     }
   },
@@ -1910,7 +1912,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         d.accepted = { at: now(), by };
         s.upsertTask(t);
         // Durable record (#201): survives a re-review that would regenerate d.accepted away.
-        s.appendDirectorDecision({ choice: d.choice, why: d.rationale, risk: decisionRisk(d), taskId: t.id, verdict: 'accepted', by });
+        s.appendDirectorDecision({ choice: d.choice, rationale: d.rationale, risk: decisionRisk(d), taskId: t.id, verdict: 'accepted', by });
         syncBrowser(s);
         s.emitUpdate({ type: 'work-item-accepted', title: `Accepted decision: ${d.choice || ref}`, taskId: t.id });
         ok(`accepted ${C.dim(ref)} — ${d.choice || '(decision)'}`);
@@ -1921,7 +1923,8 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         s.upsertTask(t);
         s.appendDecision({ title: `Redirected: ${d.choice || ref}`, why: String(why), taskId: t.id });
         // Durable record (#201): the structured, compounding entry, alongside the human-readable log above.
-        s.appendDirectorDecision({ choice: d.choice, why: String(why), risk: decisionRisk(d), taskId: t.id, verdict: 'redirected', by });
+        // rationale = the agent's original reason; instruction = the director's course-correction.
+        s.appendDirectorDecision({ choice: d.choice, rationale: d.rationale, instruction: String(why), risk: decisionRisk(d), taskId: t.id, verdict: 'redirected', by });
         syncBrowser(s);
         ok(`redirected ${C.dim(ref)} ${C.dim(`— logged: ${why}`)}`);
       }

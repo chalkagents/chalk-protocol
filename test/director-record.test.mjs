@@ -39,11 +39,13 @@ test('chalk pending accept / redirect — write through to the durable director.
   assert.equal(recs.length, 2, 'both calls recorded durably');
   const acc = recs.find((r) => r.verdict === 'accepted');
   assert.equal(acc.choice, 'chose a process-global cache');
+  assert.equal(acc.rationale, 'simplest', "an accepted call keeps the AGENT's original rationale");
   assert.equal(acc.risk, 'high', 'the computed risk is captured with the decision');
   assert.equal(acc.taskId, 'task-9f3a2b1c', 'the originating task is linked');
   assert.ok(acc.at && acc.by, 'provenance (when / who) is recorded');
   const red = recs.find((r) => r.verdict === 'redirected');
-  assert.equal(red.why, 'use an LRU with a size cap', 'the redirect course-correction is the why');
+  assert.equal(red.instruction, 'use an LRU with a size cap', "a redirect stores the DIRECTOR's course-correction as `instruction`");
+  assert.equal(red.rationale, 'convenient', "and preserves the agent's original rationale separately — the two are not conflated");
 });
 
 test('the durable record SURVIVES a re-review that regenerates t.reviews[].decisions', () => {
