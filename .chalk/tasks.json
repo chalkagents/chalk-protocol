@@ -6471,7 +6471,7 @@
   {
     "id": "task-58e2ced9",
     "title": "feat(director-kit): D3 · reframe the gates as one optional 'Checks' part",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "chalk harness frames the Checks section as OPTIONAL, the accept button, one part of the kit (not the whole product)"
@@ -6509,8 +6509,101 @@
       "at": "2026-07-17T12:22:11.119Z"
     },
     "createdAt": "2026-07-17T12:22:11.120Z",
-    "reviews": [],
-    "startedAt": "2026-07-17T12:57:20.185Z"
+    "reviews": [
+      {
+        "at": "2026-07-17T12:59:35.938Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The checks-OFF coherence test (criterion 2) only asserts the presence of the 'all optional — runs without gates' note and exit code 0. It does not verify the rest of the harness still renders coherently (Agents/Skills/Flows/core lines) in the everything-off configuration, so a partial breakage of the surrounding output could slip through. Low risk since the existing #216 harness test covers structure on default config."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "anyCheck treats review as active only via p.review.command, and regression via p.regression.required — consistent with the dots rendered, but a project that has requiredAt set yet an empty command (or regression.tests without required) would still show the 'all optional' note. Edge, not contradicting the criteria as written."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Placed the framing entirely in cosmetic output/docs (harness command header text + closing lines + new docs/harness.md) rather than changing any gate behavior or config semantics",
+            "rationale": "D3 is a positioning/reframe task; the accept-button demotion is messaging, not a functional change to gating",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Derived the 'all optional — runs without gates' note from a single anyCheck expression (verify||review.command||regression.required||requireTest) shown only when ALL are off",
+            "rationale": "Simplest signal that no gate is engaged; reinforces optionality without per-row noise",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Fixed the core mechanisms to the string 'align · digest · pending · raise' as THE director core",
+            "rationale": "Names concrete commands as the defensible center; ties messaging to shippable features",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Authored docs/harness.md asserting the gates 'were once framed as the whole product… that framing is commoditizing' — an opinionated product-strategy claim baked into user-facing docs",
+            "rationale": "Advances the director-pivot narrative; but it editorializes about market positioning in reference docs",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T13:02:24.865Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Criterion 1 requires the Checks section be framed as 'the accept button, one part of the kit (not the whole product)'. Tests assert the substrings 'OPTIONAL', 'accept button', and 'one part of the kit' appear anywhere in output — they don't assert these are attached to the Checks header specifically. A future edit could satisfy the regex while degrading the framing, but current output is correct."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "anyCheck treats a project that has held-out regression tests configured but regression.required=false (or review command empty) as 'no gates', printing the 'runs without gates' note. This matches criterion 2's definition (require-test off, held-out off) but the note keys on 'required'/'command' truthiness rather than presence of config — acceptable for a framing message, worth confirming intent."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "director-harness.test.mjs only asserts the literal word 'Checks' is present, which the reframed header still contains; no existing test pins the old 'the gates (P1–P7)' string, so the header text change is safe."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Defined a checks-OFF project via anyCheck = verify keys || review.command || regression.required || requireTest, printing the 'all optional — runs without gates' note only when all four are falsy",
+            "rationale": "Gives criterion 2 a concrete trigger; ties the note to the same signals the dots render",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Named the director-core as exactly 'align · digest · pending · raise' both in the closing harness line and docs, and made docs/harness.md a brand-new standalone file rather than folding into README",
+            "rationale": "Pins a canonical four-verb vocabulary for the director-taste 'core' pivot and keeps the manifesto separate from operational README",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Delivered the reframe as pure output/copy changes (no behavior/config change to gate enforcement)",
+            "rationale": "Scope is framing/positioning per the D3 pivot; avoids touching enforcement logic",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Baked marketing/positioning language ('not a tool that catches cheating agents', 'the core is not the kit — it's you') into shipped CLI output and docs",
+            "rationale": "Advances the director-harness narrative pivot",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T12:57:20.185Z",
+    "doneAt": "2026-07-17T13:03:59.456Z"
   },
   {
     "id": "task-225f6a98",
