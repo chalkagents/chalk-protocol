@@ -2049,6 +2049,39 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
   },
 
+  // The kit made visible (#216): a read-only view of the parts assembled around this project's goal —
+  // Agents (the doers), Skills (your playbook), Checks (the gates), Flows (how the loop runs). The spine
+  // is the star; this shows what's composed on it. Purely informational — no mutation.
+  harness() {
+    const s = Store.open();
+    const p = s.protocol();
+    const dot = (v) => (v ? C.g('●') : C.dim('○'));
+    const cmd = (c) => (c ? C.g(c) : C.dim('(not wired)'));
+    console.log(C.b('Chalk harness') + C.dim(` — ${s.meta().project?.name || 'project'} · the kit assembled around your goal`));
+
+    console.log('\n' + C.b('Agents') + C.dim(' — the doers (BYO models)'));
+    console.log(`  ${dot(p.executor?.command)} executor  ${cmd(p.executor?.command)}`);
+    console.log(`  ${dot(p.planner?.command)} planner   ${cmd(p.planner?.command)}`);
+    console.log(`  ${dot(p.review?.command)} reviewer  ${cmd(p.review?.command)}`);
+    console.log(`  ${dot(p.retro?.command)} retro     ${cmd(p.retro?.command)}`);
+
+    console.log('\n' + C.b('Skills') + C.dim(' — your project playbook, injected into every agent'));
+    const skills = s.skills();
+    if (skills.length) for (const sk of skills) console.log(`  ${C.g('◆')} ${sk.name}`);
+    else console.log(C.dim('  (none — chalk skill add "<name>" --file <path>)'));
+
+    const v = p.verify || {};
+    const verifyOn = ['test', 'typecheck', 'lint', 'build'].filter((k) => v[k]);
+    console.log('\n' + C.b('Checks') + C.dim(' — the gates (P1–P7)'));
+    console.log(`  ${dot(verifyOn.length)} verify    ${verifyOn.length ? C.g(verifyOn.join(', ')) : C.dim('(none configured — vacuous green)')}`);
+    console.log(`  ${dot(p.review?.command)} review    ${p.review?.command ? C.g(`adversarial (${(p.review.requiredAt || []).join(', ') || 'legacy'})`) : C.dim('off')}`);
+    console.log(`  ${dot(p.regression?.required)} held-out  ${p.regression?.required ? C.g(`${(p.regression.tests || []).length} locked test(s)`) : C.dim('off')}`);
+    console.log(`  ${dot(p.requireTest)} require-test ${p.requireTest ? C.g('on') : C.dim('off')}`);
+
+    console.log('\n' + C.b('Flows') + C.dim(' — how the loop runs'));
+    console.log(C.dim('  run · pipeline · loop · autopilot   (read → work → verify → write)'));
+  },
+
   log({ flags }) {
     const s = Store.open();
     const n = Number(flags.n || 15);
@@ -2121,6 +2154,7 @@ ${C.b('setup')}
   chalk upgrade [--dry-run]            ${C.dim('update to the latest published chalk-protocol (global npm)')}
   chalk telemetry [--show]             ${C.dim('opt-in anonymous usage telemetry — show exactly what would be sent (off by default)')}
   chalk status
+  chalk harness                        ${C.dim('the kit assembled around your goal: agents · skills · checks · flows')}
   chalk next                           ${C.dim('the agent entrypoint: what to do next')}
   chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
 
