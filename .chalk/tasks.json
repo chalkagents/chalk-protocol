@@ -6496,7 +6496,7 @@
   {
     "id": "task-225f6a98",
     "title": "feat(director-kit): D1 · chalk harness — the kit made visible",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "chalk harness shows the four parts of the kit — Agents, Skills, Checks, Flows — in one read-only view"
@@ -6588,9 +6588,58 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T12:51:41.898Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "Harness reports require-test via plain truthiness (p.requireTest ? 'on' : 'off'), but the actual gate (lib/testgate.mjs) treats it as ON unless === false. For a spine where requireTest is undefined/absent (e.g. an older or hand-edited config), the gate enforces require-test while harness would display 'off' — a misleading divergence. Tests only cover the fresh-init default (true), so this inconsistency is unasserted."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The Flows section is entirely hardcoded static text ('run · pipeline · loop · autopilot') and does not reflect any actual config, unlike Agents/Skills/Checks. This satisfies the letter of criterion #1 (show the four parts) but the row is purely decorative — it can never surface a project-specific or misconfigured flow state."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The READ-ONLY test only diffs tasks.json + chalk.json. It would not catch incidental writes to other spine artifacts (.chalk/local, skills dir, boards). Adequate for the current no-op implementation but a shallow guarantee of the 'mutates no spine state' criterion."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Named the command `chalk harness` (vs e.g. `kit`, `overview`, `parts`) and slotted it under the setup/status help group",
+            "rationale": "'Harness' matches the product framing ('the kit made visible', the director's harness); placing it near status frames it as an informational read",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Render Flows as fixed prose rather than deriving from configured/available flow commands",
+            "rationale": "Flows aren't individually toggled in config the way agents/checks are; a static list communicates the loop shape cheaply",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Model 'require-test on/off' on plain truthiness of protocol.requireTest instead of mirroring the gate's `=== false` default-on semantics",
+            "rationale": "Simpler display logic; relies on init writing requireTest:true by default",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Scoped Checks to verify/review/held-out/require-test and Agents to executor/planner/reviewer/retro, omitting other wired stages (discovery, planner-plan, feedback, prbody, handoff, e2e)",
+            "rationale": "Keep the view to the core P1–P7 gates and the four primary agents rather than every optional protocol.* command",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ]
       }
     ],
-    "startedAt": "2026-07-17T12:45:19.719Z"
+    "startedAt": "2026-07-17T12:45:19.719Z",
+    "doneAt": "2026-07-17T12:53:17.443Z"
   },
   {
     "id": "task-0547837d",
