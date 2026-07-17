@@ -5223,7 +5223,7 @@
     "tests": [
       {
         "path": "test/director-compound.test.mjs",
-        "sha256": "3922d124a57cf35c520b7b65d97860ec11e196ddb977dff186c273b06586583c"
+        "sha256": "b5748bdf68da5cbbe1ef60c1e04804bee45257a112b96d9a5fe73d31b5a5d903"
       }
     ],
     "heldOut": [],
@@ -5294,6 +5294,60 @@
       },
       {
         "at": "2026-07-17T10:42:08.657Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T10:44:36.297Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "design-intent",
+            "note": "Criterion 1 scopes the block to 'NEW tasks', but fitDirectorBlock is injected for ANY task passed to buildContext regardless of state (in-progress, re-opened, etc.). No test asserts suppression on non-new tasks. Consequence: a re-opened/in-progress task's OWN just-recorded director decision can surface in the compounding block AND simultaneously in the essential 'Director corrections' block (task.directives) — duplicate signal. Not a criterion failure (tests treat in-progress as 'new'), but it's an unconfirmed scope call worth a human's eye."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "directorLines renders anything that is not verdict==='redirected' as 'accepted:'. Any future/other verdict value (e.g. a logged non-accept/redirect) would be silently mislabeled as accepted. Safe today since B1's schema is accept/redirect only, but the else-branch is not defensive and no test pins non-accepted/non-redirected input."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "When directorBlock consumes nearly all leftover budget, lessons get remaining ≤ 0 and fitLessonsBlock still emits a heading-plus-elision-note block with zero lessons. Pre-existing behavior, but the new director-first budget split makes it easier to trigger; no test covers the director+lessons-both-under-pressure interaction (only director-alone elision and coexist-when-roomy are tested)."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Director decisions get the leftover budget BEFORE lessons; director block always ranks ahead of the lessons block",
+            "rationale": "Explicit human accept/redirect taste is treated as higher-signal than auto-collected lessons",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Inject the compounding block for every task (no task-state gating for 'new')",
+            "rationale": "Simpler; superset of the 'new task' requirement and tests pass a single in-progress task labeled NEW",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Binary rendering: redirected → 'choice → instruction', everything else → 'accepted: choice (because rationale)'",
+            "rationale": "B1 split the schema into exactly rationale (agent) vs instruction (director); accept/redirect are the only verdicts",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Elision note wording/threshold reuses the lessons pattern but omits the 'raise contextBudget / chalk archive' remediation hint that the lessons note carries",
+            "rationale": "Keep the director note terse",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-07-17T10:46:49.220Z",
         "by": "amend-spec",
         "verdict": "stale",
         "note": "locked test amended after review — re-review required"
