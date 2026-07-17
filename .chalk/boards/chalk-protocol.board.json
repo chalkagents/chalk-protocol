@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784276097798,
+  "updatedAt": 1784277530091,
   "order": 0,
   "cards": [
     {
@@ -1067,28 +1067,23 @@
     {
       "id": "task-7b477997",
       "title": "feat(director): reviewer emits a decision digest — the accept button, not just pass/block",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1784275058509,
-      "updatedAt": 1784275058509,
-      "order": 64
+      "updatedAt": 1784277530091,
+      "order": 64,
+      "description": "- The reviewer prompt requests a DECISION DIGEST — the judgment calls the implementer made — each with blastRadius + reversibility, framed for accept/redirect, and requested EVEN ON A PASS\n- parseVerdict extracts a decisions array when present but stays additive: a verdict with no decisions keeps the exact {verdict,findings} shape, so older reviewers and pinned contracts are unaffected\n- chalk review renders the decision digest (on PASS and BLOCK) and records it on the task's review entry (t.reviews[].decisions)\n- The shipped (share/agents) and dogfood (.claude/agents) chalk-reviewer definitions both describe the decisions output and stay in sync (agents-sync drift gate stays green)",
+      "testArtifact": {
+        "specPath": "test/review-digest.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/192"
+      }
     },
     {
       "id": "task-8cf40444",
       "title": "feat(director): alignment checkpoint before build — human accepts the criteria/outcome, not just the plan",
-      "column": "done",
+      "column": "todo",
       "createdAt": 1784275058513,
-      "updatedAt": 1784276097798,
-      "order": 65,
-      "description": "- protocol.director.required defaults off; when off, chalk work behaves exactly as today (no regression)\n- With director.required on and criteria not accepted, chalk work AND the autonomous driver (chalk run) refuse before build, pointing the human at chalk align\n- chalk align records task.criteriaAccepted = { at, by }; after alignment chalk work proceeds past the gate\n- chalk align surfaces the task's acceptance criteria for the human to read before accepting (not blind), and refuses when there are no criteria yet",
-      "testArtifact": {
-        "specPath": "test/director-align.test.mjs",
-        "lastRun": {
-          "runId": "done-task-8cf40444",
-          "status": "passed",
-          "at": 1784276097798
-        },
-        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/191"
-      }
+      "updatedAt": 1784275058513,
+      "order": 65
     },
     {
       "id": "task-27eaa67d",
