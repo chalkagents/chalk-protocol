@@ -2,7 +2,7 @@
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
-import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_VERSION, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, pendingDirectives, needsRework, resolveDirectives, resolveRef, workdir, buildContext } from '../lib/store.mjs';
+import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_VERSION, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, pendingDirectives, needsRework, resolveDirectives, openRaises, resolveRef, workdir, buildContext } from '../lib/store.mjs';
 import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
@@ -1962,6 +1962,31 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     console.log(C.dim(`  accept: chalk pending accept <ref>   ·   redirect: chalk pending redirect <ref> "<what to do instead>"`));
   },
 
+  // Mid-flight raise (#209): the agent works OUT LOUD — when it hits a fork that needs the director's
+  // taste it runs `chalk raise "<fork>"` instead of silently guessing. Records the fork on the task; the
+  // director sees it (chalk pending, #211) and answers, and the answer feeds back into the work. With no
+  // fork text, lists the open raises awaiting a decision.
+  raise({ _, flags }) {
+    const s = Store.open();
+    const fork = _.join(' ').trim() || flags.fork;
+    if (!fork) {
+      const all = s.tasks().flatMap((t) => openRaises(t).map((r) => ({ t, r })));
+      if (!all.length) return ok(C.dim('no open raised forks.'));
+      console.log(C.b('Raised forks (awaiting the director):'));
+      for (const { t, r } of all) console.log(`  ${C.y('⁇')} ${C.dim(r.id.slice(0, 10))} ${r.fork}${r.options?.length ? C.dim(` [${r.options.join(' | ')}]`) : ''} ${C.dim(`↳ ${t.title.slice(0, 40)}`)}`);
+      return;
+    }
+    const t = flags.task ? mustTask(s, flags.task) : s.tasks().find((x) => x.state === 'in-progress');
+    if (!t) die('no in-progress task to raise against — pass --task <id>, or start a task first.');
+    t.raised = t.raised || [];
+    const r = { id: id('raise'), fork, ...(flags.options ? { options: String(flags.options).split('|').map((o) => o.trim()).filter(Boolean) } : {}),
+      ...(flags.why ? { why: String(flags.why) } : {}), at: now(), by: flags.by || 'agent', status: 'open' };
+    t.raised.push(r);
+    s.upsertTask(t); syncBrowser(s);
+    s.emitUpdate({ type: 'progress-update', title: `Raised: ${fork}`, taskId: t.id });
+    ok(`raised ${C.dim(r.id.slice(0, 10))} ${C.dim('— the director will decide (chalk pending)')}`);
+  },
+
   log({ flags }) {
     const s = Store.open();
     const n = Number(flags.n || 15);
@@ -2091,6 +2116,7 @@ ${C.b('spine')}
   chalk lesson list [--all]             ${C.dim('print the lessons injected into agents (--all = full history)')}
   chalk question add "<q>" [--for us|client] | resolve <id> "<answer>" | (list)
   chalk pending [accept <task>#<n> | redirect <task>#<n> "<why>"]   ${C.dim("director inbox: the med/high-risk judgment calls from review, ranked; accept or redirect each")}
+  chalk raise "<fork>" [--options "a|b|c"] [--why "..."] [--task <id>]   ${C.dim("the agent raises a mid-flight fork for the director instead of guessing; no arg lists open raises")}
   chalk log [--n N] [--type T] [--grep TEXT] [--reverse] [--json]
 
 ${C.b('chalk browser bridge')}

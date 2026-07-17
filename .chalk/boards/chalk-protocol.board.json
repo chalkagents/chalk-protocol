@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784285990218,
+  "updatedAt": 1784286405307,
   "order": 0,
   "cards": [
     {
@@ -1251,10 +1251,20 @@
     {
       "id": "task-d3cfdb8f",
       "title": "feat(director-mid-flight): C1 · chalk raise — the mid-flight raise primitive",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1784285990218,
-      "updatedAt": 1784285990218,
-      "order": 77
+      "updatedAt": 1784286405307,
+      "order": 77,
+      "description": "- chalk raise \"<fork>\" [--options a|b|c] [--why ...] [--task <id>] records a raise on the target task's t.raised[]: {id, fork, options?, why?, at, by:'agent', status:'open'}\n- Defaults to the current in-progress task; refuses cleanly when there is none and no --task\n- options parse from a pipe-delimited list; chalk raise with no fork text lists the open raised forks; openRaises(task) accessor returns only open raises",
+      "testArtifact": {
+        "specPath": "test/director-raise.test.mjs",
+        "lastRun": {
+          "runId": "done-task-d3cfdb8f",
+          "status": "passed",
+          "at": 1784286405307
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/209"
+      }
     }
   ]
 }

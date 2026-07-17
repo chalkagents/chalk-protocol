@@ -6039,9 +6039,24 @@
   {
     "id": "task-d3cfdb8f",
     "title": "feat(director-mid-flight): C1 · chalk raise — the mid-flight raise primitive",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk raise \"<fork>\" [--options a|b|c] [--why ...] [--task <id>] records a raise on the target task's t.raised[]: {id, fork, options?, why?, at, by:'agent', status:'open'}"
+      },
+      {
+        "text": "Defaults to the current in-progress task; refuses cleanly when there is none and no --task"
+      },
+      {
+        "text": "options parse from a pipe-delimited list; chalk raise with no fork text lists the open raised forks; openRaises(task) accessor returns only open raises"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-raise.test.mjs",
+        "sha256": "6bb995a6bd70e461f4ad6e198e042056651b29c9c3f8d27c5c2eb720e1f5a89f"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -6059,6 +6074,63 @@
       "at": "2026-07-17T10:59:50.218Z"
     },
     "createdAt": "2026-07-17T10:59:50.218Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-07-17T11:05:10.847Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The command emits a `progress-update` event (s.emitUpdate) and calls syncBrowser as side effects, but no test asserts either. Not part of the acceptance criteria, so non-blocking, but the update-log integration is unverified."
+          },
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "An undocumented `--by` override (flags.by) can spoof provenance away from 'agent'; criterion says raises are by:'agent'. Harmless for now but no test locks that the CLI default path can't be overridden, and the help text omits --by."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "The no-fork listing test only exercises a single task/single raise. Cross-task aggregation (flatMap over s.tasks()) and the 'no open raised forks' empty-state branch are not directly asserted."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Pipe '|' as the sole --options delimiter, split/trim/filter-empty",
+            "rationale": "Matches the criterion's 'pipe-delimited list' and avoids comma collisions with prose options",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "raise only RECORDS the fork (status:'open') and does not pause/route the task",
+            "rationale": "Pausing + director routing + answer feedback explicitly scoped to #211; C1 is the storage+listing primitive",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Defaults target to the first task with state==='in-progress' via Array.find",
+            "rationale": "Mirrors the 'current in-progress task' criterion; single-active-task assumption",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Provenance field `by` defaults to 'agent' but is overridable via flags.by",
+            "rationale": "Anticipates future director/human raises while defaulting to agent",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Status vocabulary 'open' vs (test hints) 'answered'",
+            "rationale": "openRaises filters status==='open'; downstream states named implicitly by the resolver (#211)",
+            "blastRadius": "low",
+            "reversibility": "hard"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-07-17T11:03:08.721Z",
+    "doneAt": "2026-07-17T11:06:45.307Z"
   }
 ]
