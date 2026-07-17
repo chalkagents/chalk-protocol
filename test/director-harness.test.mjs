@@ -47,8 +47,11 @@ test('chalk harness — reflects actual config: wired agents + configured checks
 test('chalk harness — a BARE project still renders coherently (none/off states, no crash)', () => {
   const out = chalk(project(), 'harness').out;
   assert.match(out, /planner\s+\(not wired\)/);
+  assert.match(out, /retro\s+\(not wired\)/, 'the retro agent row renders (unwired on a bare project)');
   assert.match(out, /Skills[\s\S]*\(none/, 'skills show a none-state');
   assert.match(out, /verify\s+\(none configured/, 'an empty verify is shown, not hidden');
+  assert.match(out, /held-out\s+off/, 'the held-out check row renders (off by default)');
+  assert.match(out, /require-test on/, 'the require-test check row renders (on by default)');
 });
 
 test('chalk harness — is READ-ONLY (does not mutate the spine)', () => {
