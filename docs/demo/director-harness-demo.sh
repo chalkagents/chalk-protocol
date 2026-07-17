@@ -17,7 +17,8 @@ pause() { printf '\033[2m   … press enter …\033[0m'; read -r _; }
 
 banner "1 · A project in DIRECTOR mode — the human's judgment is first-class"
 c init --name payments --bare >/dev/null
-node -e "const f='$D/.chalk/chalk.json',o=JSON.parse(require('fs').readFileSync(f));o.protocol.director={required:true};o.protocol.requireTest=false;o.protocol.executor={command:'node -e \"require(\\'fs\\').writeFileSync(\\'charge.js\\',\\'// built\\')\"'};require('fs').writeFileSync(f,JSON.stringify(o,null,2))"
+printf "require('fs').writeFileSync('charge.js','// built')\n" > "$D/agent-stub.mjs"
+node -e "const f='$D/.chalk/chalk.json',o=JSON.parse(require('fs').readFileSync(f));o.protocol.director={required:true};o.protocol.requireTest=false;o.protocol.executor={command:'node agent-stub.mjs'};require('fs').writeFileSync(f,JSON.stringify(o,null,2))"
 c task add "Add refund endpoint" >/dev/null
 ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$D/.chalk/tasks.json'))[0].id)")
 c spec "$ID" --criterion "refunds are idempotent per charge id" >/dev/null
@@ -64,7 +65,7 @@ console.log(JSON.stringify({
   ]
 }));
 EOF
-node -e "const f='$D/.chalk/chalk.json',o=JSON.parse(require('fs').readFileSync(f));o.protocol.review={command:'node $D/canned-reviewer.mjs',requiredAt:['per-task']};require('fs').writeFileSync(f,JSON.stringify(o,null,2))"
+node -e "const f='$D/.chalk/chalk.json',o=JSON.parse(require('fs').readFileSync(f));o.protocol.review={command:'node canned-reviewer.mjs',requiredAt:['per-task']};require('fs').writeFileSync(f,JSON.stringify(o,null,2))"
 c work "$ID" >/dev/null 2>&1 || true
 git add -A; git commit -q -m "feat: refund endpoint" || true
 echo "   \$ chalk review $ID"
