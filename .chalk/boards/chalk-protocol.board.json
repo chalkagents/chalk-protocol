@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784279530868,
+  "updatedAt": 1784280776704,
   "order": 0,
   "cards": [
     {
@@ -1141,6 +1141,46 @@
       "createdAt": 1784275058526,
       "updatedAt": 1784275058526,
       "order": 69
+    },
+    {
+      "id": "task-6fec5f3f",
+      "title": "feat(director-loop): B2 · inject prior director decisions into new-task context (the moat)",
+      "column": "todo",
+      "createdAt": 1784280776685,
+      "updatedAt": 1784280776685,
+      "order": 70
+    },
+    {
+      "id": "task-e27fa89c",
+      "title": "feat(director-loop): B1 · a durable, structured director-decision record",
+      "column": "todo",
+      "createdAt": 1784280776691,
+      "updatedAt": 1784280776691,
+      "order": 71
+    },
+    {
+      "id": "task-86fadfe0",
+      "title": "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive",
+      "column": "todo",
+      "createdAt": 1784280776696,
+      "updatedAt": 1784280776696,
+      "order": 72
+    },
+    {
+      "id": "task-fc11b71e",
+      "title": "feat(director-loop): A2 · inject pending director corrections into buildContext",
+      "column": "todo",
+      "createdAt": 1784280776699,
+      "updatedAt": 1784280776699,
+      "order": 73
+    },
+    {
+      "id": "task-3a49d957",
+      "title": "feat(director-loop): A1 · redirect re-opens the task as an actionable directive",
+      "column": "todo",
+      "createdAt": 1784280776704,
+      "updatedAt": 1784280776704,
+      "order": 74
     }
   ]
 }

@@ -5204,5 +5204,130 @@
       "reason": "decision",
       "seq": 1
     }
+  },
+  {
+    "id": "task-6fec5f3f",
+    "title": "feat(director-loop): B2 · inject prior director decisions into new-task context (the moat)",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 202,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/202",
+      "body": "Part of the **director-loop** milestone — EPIC B (judgment compounds). **This is the defensible moat** — seam-03: \"judgment as a compounding asset.\"\n\n## Problem\n\nPast director calls never inform future work, so the same fork recurs task after task. The director's-harness thesis is that \"the agent gets more *you* over time\" — that only happens if accepted/redirected decisions (with their *why*) fold back into future context.\n\n## Acceptance sketch (to be locked at spec time)\n\n- `buildContext` injects a **bounded** `## Director's calls so far (apply this taste)` block, built from the durable record (#201), most-recent-first.\n- Bounded by a budget knob (like `lessons` / `contextBudget`), with an elision note when trimmed — the essentials (criteria/tests/handoff/directives) are never displaced.\n- **Empty/off** when there are no director decisions yet (no regression to existing context for projects that don't use it).\n- Covered by a locked test: a prior decision appears in a *new* task's context, and the block respects the budget.\n\n## Touchpoints\n- `lib/store.mjs` — `buildContext` (a new bounded block, sibling to the elastic lessons block), plus a budget/cap knob.\n\n## Dependencies\nDepends on **#201** (the durable record). Turns on the compounding loop.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T09:32:56.684Z"
+    },
+    "createdAt": "2026-07-17T09:32:56.685Z",
+    "reviews": []
+  },
+  {
+    "id": "task-e27fa89c",
+    "title": "feat(director-loop): B1 · a durable, structured director-decision record",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 201,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/201",
+      "body": "Part of the **director-loop** milestone — EPIC B (judgment compounds). This is the foundation for the moat (seam-03).\n\n## Problem\n\nAccept/redirect resolutions live on `t.reviews[].decisions` — per-task, tied to the **latest** review, and **regenerated on re-review** (the #193 adversarial reviewer explicitly flagged this: a re-review drops prior accepted/redirected flags, so resolutions don't persist over a task's life). For judgment to **compound**, decisions need a durable, queryable record independent of the volatile review array.\n\n## Acceptance sketch (to be locked at spec time)\n\n- Accept/redirect (`chalk pending`) write through to a **durable** record — `{ choice, why, risk, taskId, verdict: accepted|redirected, at, by }` — e.g. structured entries in `decisions.md` or a new `.chalk/director.jsonl`.\n- The record **survives re-review** (unlike `t.reviews[].decisions`).\n- A read accessor (e.g. `directorDecisions(store)`) returns them for query/injection.\n- Surfaced to the human via `chalk decisions` (or a new view).\n- Covered by a locked test (including the survives-re-review property).\n\n## Touchpoints\n- `lib/store.mjs` (the record + accessor), `bin/chalk.mjs` (`pending` accept/redirect write-through).\n\n## Dependencies\nNone. Also **resolves the #193 persistence finding**. Enables #202.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T09:32:56.691Z"
+    },
+    "createdAt": "2026-07-17T09:32:56.691Z",
+    "reviews": []
+  },
+  {
+    "id": "task-86fadfe0",
+    "title": "feat(director-loop): A3 · driver re-runs a redirected task and resolves the directive",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 200,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/200",
+      "body": "Part of the **director-loop** milestone — EPIC A (redirect actually re-directs).\n\n## Problem\n\nA re-opened task carrying a director correction (#198) with the correction in its context (#199) must actually flow back through work → verify → done, and the directive be **marked resolved** on completion — otherwise the loop never closes and the inbox/task state drifts.\n\n## Acceptance sketch (to be locked at spec time)\n\n- `chalk work` / `chalk run` treat a redirected (re-opened) task as **runnable** and re-execute it.\n- On successful completion (verify green → `done`), the task's outstanding director directives are marked **resolved**.\n- A task with unresolved directives is **surfaced** — e.g. `chalk next` / `chalk status` notes \"N director correction(s) pending rework\" so it isn't silently stranded.\n- Covered by a locked test: redirect → work → directive resolved end-to-end.\n\n## Touchpoints\n- `lib/run.mjs` (driver), `bin/chalk.mjs` (`work`/`done`, `next`/`status`), `runnableTasks` in `lib/store.mjs`.\n\n## Dependencies\nDepends on **#198** and **#199**. Closes EPIC A — the visible loop.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T09:32:56.696Z"
+    },
+    "createdAt": "2026-07-17T09:32:56.696Z",
+    "reviews": []
+  },
+  {
+    "id": "task-fc11b71e",
+    "title": "feat(director-loop): A2 · inject pending director corrections into buildContext",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 199,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/199",
+      "body": "Part of the **director-loop** milestone — EPIC A (redirect actually re-directs).\n\n## Problem\n\nEven once a task is re-opened with a directive (#198), the executor's next `chalk work` run can't *see* the correction. `buildContext` already surfaces prior **review** findings (lib/store.mjs, the `### Address these review findings` block) but nothing for director redirects.\n\n## Acceptance sketch (to be locked at spec time)\n\n- `buildContext` includes a `### Director corrections (rebuild to these)` block listing the current task's **unresolved** directives (the choice that was rejected → what to do instead + why).\n- The block is an **essential** section (never dropped for the context budget), exactly like the review-findings block it mirrors.\n- The block is **absent** when the task has no unresolved directives (no empty header, no regression to existing context).\n- Covered by a locked test asserting the directive text appears in `buildContext` output.\n\n## Touchpoints\n- `lib/store.mjs` — `buildContext` (mirror the existing review-findings block at ~lines 564–568).\n\n## Dependencies\nDepends on **#198** (the directive must exist on the task). Feeds #200.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T09:32:56.699Z"
+    },
+    "createdAt": "2026-07-17T09:32:56.699Z",
+    "reviews": []
+  },
+  {
+    "id": "task-3a49d957",
+    "title": "feat(director-loop): A1 · redirect re-opens the task as an actionable directive",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 198,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/198",
+      "body": "Part of the **director-loop** milestone — EPIC A (redirect actually re-directs). Follows #191–193.\n\n## Problem\n\n`chalk pending redirect <task>#<n> \"why\"` (shipped in #193) only sets `d.redirected` on the review decision, appends a line to `decisions.md`, and drops the item from the inbox. **The correction never becomes work** — the task stays `done`, the agent never rebuilds. A redirect has to make the call *actionable*.\n\n## Acceptance sketch (to be locked at spec time)\n\n- A redirect records a durable **directive** on the task — `{ choice, instead (the \"why\"/what-to-do), at, by, resolved:false }` — not just a `decisions.md` line.\n- Redirecting a `done`/reviewed task transitions it back to a **runnable** state (e.g. `in-progress` or `specd`), flagged as needing rework per the director's correction.\n- Redirecting an `in-progress` task keeps its state but attaches the directive.\n- The redirected decision leaves the inbox (as today via `d.redirected`); the task now carries an **unresolved directive** until rework completes (resolved in #200).\n- Covered by a locked test.\n\n## Touchpoints\n- `bin/chalk.mjs` — the `pending` command's `redirect` branch.\n- The task state machine (`TASK_STATES`) + spine.\n\n## Dependencies\nNone — builds directly on the shipped `chalk pending` (#193). Enables #199 (context injection) and #200 (re-run + resolve).\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T09:32:56.704Z"
+    },
+    "createdAt": "2026-07-17T09:32:56.704Z",
+    "reviews": []
   }
 ]
