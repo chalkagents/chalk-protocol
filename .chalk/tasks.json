@@ -6521,9 +6521,27 @@
   {
     "id": "task-0547837d",
     "title": "feat(director-kit): D2 · skills as a first-class part (.chalk/skills → context)",
-    "state": "todo",
-    "acceptanceCriteria": [],
-    "tests": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "chalk skill add \"<name>\" [--file <path> | \"<text>\"] writes .chalk/skills/<slug>.md; chalk skill (no sub) lists them; an empty skill is refused"
+      },
+      {
+        "text": "buildContext injects a '## Project skills (apply these)' block from .chalk/skills/*.md, each skill a titled section with its content — the affirmative playbook, distinct from lessons"
+      },
+      {
+        "text": "The skills block is elastic — present at a realistic budget, dropped under extreme pressure while essentials survive (does not disturb the locked context-budget tests)"
+      },
+      {
+        "text": ".chalk/skills is spine state (in SPINE_STATE_PATHS — committed by intake, excluded from review diffs), consistent with lessons.md"
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/director-skills.test.mjs",
+        "sha256": "0e6e8f4cef70c57bc22ee103c807fd8f9ea9a97471ac76fa643cd4404d89b8e6"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -6541,6 +6559,7 @@
       "at": "2026-07-17T12:22:11.126Z"
     },
     "createdAt": "2026-07-17T12:22:11.126Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-07-17T12:26:34.741Z"
   }
 ]

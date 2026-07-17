@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784290931126,
+  "updatedAt": 1784291194741,
   "order": 0,
   "cards": [
     {
@@ -1305,10 +1305,15 @@
     {
       "id": "task-0547837d",
       "title": "feat(director-kit): D2 · skills as a first-class part (.chalk/skills → context)",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1784290931126,
-      "updatedAt": 1784290931126,
-      "order": 80
+      "updatedAt": 1784291194741,
+      "order": 80,
+      "description": "- chalk skill add \"<name>\" [--file <path> | \"<text>\"] writes .chalk/skills/<slug>.md; chalk skill (no sub) lists them; an empty skill is refused\n- buildContext injects a '## Project skills (apply these)' block from .chalk/skills/*.md, each skill a titled section with its content — the affirmative playbook, distinct from lessons\n- The skills block is elastic — present at a realistic budget, dropped under extreme pressure while essentials survive (does not disturb the locked context-budget tests)\n- .chalk/skills is spine state (in SPINE_STATE_PATHS — committed by intake, excluded from review diffs), consistent with lessons.md",
+      "testArtifact": {
+        "specPath": "test/director-skills.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/215"
+      }
     }
   ]
 }
