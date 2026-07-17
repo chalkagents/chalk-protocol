@@ -10,7 +10,7 @@ import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runnableTasks, pendingDirectives } from '../lib/store.mjs';
+import { runnableTasks, pendingDirectives, resolveDirectives } from '../lib/store.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
 const chalk = (cwd, ...args) => { const r = spawnSync('node', [CLI, ...args], { cwd, encoding: 'utf8' }); return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` }; };
@@ -18,16 +18,32 @@ const taskOf = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf
 
 const dir = (resolved = false) => ({ choice: 'process-global cache', instead: 'use an LRU with a size cap', at: 'x', by: 'human', resolved });
 
-test('runnableTasks — a re-opened task (in-progress + unresolved directive) is runnable; a plain in-progress task is not', () => {
-  const reopened = { id: 't1', state: 'in-progress', directives: [dir(false)] };
-  const plainWip = { id: 't2', state: 'in-progress' };
-  const reworked = { id: 't3', state: 'in-progress', directives: [dir(true)] };
-  const specd = { id: 't4', state: 'specd' };
-  const ids = runnableTasks([reopened, plainWip, reworked, specd]).map((t) => t.id);
-  assert.ok(ids.includes('t1'), 'the re-opened task is picked up so the driver re-executes it');
-  assert.ok(ids.includes('t4'), 'ordinary specd tasks still run');
-  assert.ok(!ids.includes('t2'), 'a normal in-progress task is NOT re-picked (ordinary work unaffected)');
-  assert.ok(!ids.includes('t3'), 'once its directive is resolved, a re-opened task is no longer runnable');
+test('runnableTasks — ONLY a re-opened task (reopenedAt + unresolved directive) is re-admitted', () => {
+  const reopened = { id: 't1', state: 'in-progress', reopenedAt: 'x', directives: [dir(false)] };
+  const activeRedirect = { id: 't2', state: 'in-progress', directives: [dir(false)] }; // redirected while ACTIVE, not re-opened
+  const plainWip = { id: 't3', state: 'in-progress' };
+  const reworked = { id: 't4', state: 'in-progress', reopenedAt: 'x', directives: [dir(true)] }; // rework already landed
+  const specd = { id: 't5', state: 'specd' };
+  const ids = runnableTasks([reopened, activeRedirect, plainWip, reworked, specd]).map((t) => t.id);
+  assert.ok(ids.includes('t1'), 'a re-opened task awaiting rework is re-admitted so the driver re-executes it');
+  assert.ok(ids.includes('t5'), 'ordinary specd tasks still run');
+  assert.ok(!ids.includes('t2'), 'a directive on an ALREADY-active task does NOT re-admit it — no double-execution');
+  assert.ok(!ids.includes('t3'), 'a plain in-progress task is untouched');
+  assert.ok(!ids.includes('t4'), 'once reworked (directive resolved), it is no longer runnable — the loop terminates');
+});
+
+test('resolveDirectives — marks pending corrections resolved (idempotent) and returns the count', () => {
+  const t = { directives: [dir(false), dir(false), dir(true)] };
+  assert.equal(resolveDirectives(t), 2, 'resolves the two pending; the already-resolved is not recounted');
+  assert.ok(t.directives.every((d) => d.resolved), 'all resolved');
+  assert.ok(t.directives[0].resolvedAt, 'stamped when');
+  assert.equal(resolveDirectives(t), 0, 'idempotent — nothing left to resolve');
+});
+
+test('BOTH completion paths resolve directives — chalk done AND the pipeline merge call resolveDirectives', () => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs'), 'utf8');
+  const calls = (src.match(/resolveDirectives\(t\)/g) || []).length;
+  assert.ok(calls >= 2, `directive-resolution must fire on both completion paths (done + pipeline merge); found ${calls} call site(s) — reverting either trips this`);
 });
 
 function repo(task) {
