@@ -60,9 +60,13 @@ test('chalk work — refuses an unaligned required task, proceeds once aligned',
   chalk(d, 'task', 'add', 'T'); const id = tasks(d)[0].id.slice(0, 12);
   chalk(d, 'spec', id, '--criterion', 'x'); chalk(d, 'start', id);
 
+  const stateBefore = tasks(d)[0].state;
   const blocked = chalk(d, 'work', id);
   assert.notEqual(blocked.status, 0, 'work refuses without alignment');
   assert.match(`${blocked.stdout}${blocked.stderr}`, /not accepted|align/i);
+  // The gate is checked BEFORE the state flip: a refusal must leave no side effect (task not advanced).
+  assert.equal(tasks(d)[0].state, stateBefore, 'refused work leaves the task state unchanged');
+  assert.ok(!tasks(d)[0].criteriaAccepted, 'a refusal does not mark the criteria accepted');
 
   chalk(d, 'align', id);
   // now work gets past the alignment gate (it may still RED on verify, but not on alignment)
