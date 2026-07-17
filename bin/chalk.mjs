@@ -945,11 +945,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     catch { console.log(C.y(`  ⚠ couldn't fast-forward ${gh0.base || 'main'} locally — pull it manually (the remote is up to date).`)); }
     worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
     t.worktree = undefined; t.state = 'done'; t.doneAt = now();
-    resolveDirectives(t); // #200: the pipeline rework landed — resolve corrections (same helper as `done`)
+    const resolvedN = resolveDirectives(t); // #200: the pipeline rework landed — resolve (same helper as `done`)
     t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Merged + cleaned: PR #${t.pr.number}`, taskId: t.id });
-    ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓`);
+    ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓${resolvedN ? C.dim(` · ${resolvedN} director correction(s) resolved`) : ''}`);
   },
 
   // The scheduled-run unit (for cron / launchd / `/loop`): locked + doctor-gated + one bounded
