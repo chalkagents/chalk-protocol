@@ -4714,7 +4714,7 @@
   {
     "id": "task-167041a5",
     "title": "feat(director): risk-based decision triage + a director inbox — own the empty middle",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "decisionRisk scores a decision from blastRadius × reversibility into low/med/high; an unknown field is treated as the middle (unknown is not safe)"
@@ -4817,9 +4817,64 @@
             "reversibility": "easy"
           }
         ]
+      },
+      {
+        "at": "2026-07-17T09:10:54.499Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "decisionRisk uses an additive threshold (blast 0/1/2 + undo 0/2, unknown→1) rather than a literal product. The mapping matches all locked cases and treats unknown as the middle, but note reversibility has no 'med' bucket and blastRadius='med'+reversibility='easy' scores 1 → 'low', so a medium-blast reversible call is filtered out of the director inbox as trivia. This is a defensible scoping call but is not independently asserted beyond the locked mapping."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Verified #192's locked review-digest.test.mjs stays green: formatDecisionDigest is retained, low-risk decisions are still rendered in `chalk review` (the low filter applies only to `chalk pending`), the 'Decision digest' header still renders on pass and is absent with no decisions, and formatDecisionLine returns null for choice-less decisions. No regression found."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "All new behavior is covered (decisionRisk mapping incl. unknown, pendingDecisions ranking/latest-review/exclusions, pending list, accept, redirect+log, review ranking+badge). Minor gap: no test asserts the accept event is client-safe/portal-visible, nor a ref with a bad/non-existent task id path, nor that a low-risk decision can still be accepted by explicit ref even though it never appears in the inbox — but none of these are contract criteria."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Risk = additive score of blastRadius(low0/med1/high2)+reversibility(easy0/hard2), unknown→1; thresholds ≥3 high, ≥2 med, else low",
+            "rationale": "Produces the required low/med/high triage while making 'unknown not safe' fall to the middle; simpler than a true product",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "The `chalk pending` inbox excludes all low-risk decisions (including med-blast+easy-undo, which score low)",
+            "rationale": "Keep the director inbox to calls worth human attention, not trivia",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Split rendering: `chalk review` shows ALL decisions (ranked+badged) but `chalk pending` shows only med/high",
+            "rationale": "Preserve #192's full digest at review time while the cross-task inbox stays high-signal",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Stable ref is `<full-task-id>#<index-into-latest-review>`; accept/redirect resolve against the latest review only",
+            "rationale": "A copy-back ref must round-trip exactly; a later review supersedes earlier decisions",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "accept emits a client-safe 'work-item-accepted' portal event and redirect logs a 'decision-logged' entry",
+            "rationale": "Surface director actions in the client portal and decision record",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ]
       }
     ],
-    "startedAt": "2026-07-17T09:02:09.462Z"
+    "startedAt": "2026-07-17T09:02:09.462Z",
+    "doneAt": "2026-07-17T09:12:10.868Z"
   },
   {
     "id": "task-7b477997",
