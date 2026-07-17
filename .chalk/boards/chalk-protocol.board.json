@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784018738648,
+  "updatedAt": 1784275058526,
   "order": 0,
   "cards": [
     {
@@ -1055,6 +1055,62 @@
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/154"
       }
+    },
+    {
+      "id": "task-167041a5",
+      "title": "feat(director): risk-based decision triage + a director inbox — own the empty middle",
+      "column": "todo",
+      "createdAt": 1784275058501,
+      "updatedAt": 1784275058501,
+      "order": 63
+    },
+    {
+      "id": "task-7b477997",
+      "title": "feat(director): reviewer emits a decision digest — the accept button, not just pass/block",
+      "column": "todo",
+      "createdAt": 1784275058509,
+      "updatedAt": 1784275058509,
+      "order": 64
+    },
+    {
+      "id": "task-8cf40444",
+      "title": "feat(director): alignment checkpoint before build — human accepts the criteria/outcome, not just the plan",
+      "column": "todo",
+      "createdAt": 1784275058513,
+      "updatedAt": 1784275058513,
+      "order": 65
+    },
+    {
+      "id": "task-27eaa67d",
+      "title": "Misalignment on design concept of the agent guiding the acceptance criteria.",
+      "column": "in_progress",
+      "createdAt": 1784275058517,
+      "updatedAt": 1784275058517,
+      "order": 66
+    },
+    {
+      "id": "task-ee0e7a1b",
+      "title": "fix: vacuous verify trap for tasks queued after init — empty protocol.verify prints GREEN checking nothing",
+      "column": "in_progress",
+      "createdAt": 1784275058520,
+      "updatedAt": 1784275058520,
+      "order": 67
+    },
+    {
+      "id": "task-64a8ecda",
+      "title": "fix: review diff-capture silently falls back to \"(no diff captured)\", letting a reviewer verdict on no diff",
+      "column": "in_progress",
+      "createdAt": 1784275058523,
+      "updatedAt": 1784275058523,
+      "order": 68
+    },
+    {
+      "id": "task-21d1c437",
+      "title": "fix: merge cleanup fast-forward failure still marks the task done, leaving a stale local base",
+      "column": "in_progress",
+      "createdAt": 1784275058526,
+      "updatedAt": 1784275058526,
+      "order": 69
     }
   ]
 }

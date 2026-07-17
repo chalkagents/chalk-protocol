@@ -4710,5 +4710,224 @@
     ],
     "startedAt": "2026-07-14T08:08:55.657Z",
     "doneAt": "2026-07-14T08:45:38.648Z"
+  },
+  {
+    "id": "task-167041a5",
+    "title": "feat(director): risk-based decision triage + a director inbox — own the empty middle",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 193,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/193",
+      "body": "## The white space chalk should own\n\nEvery AI coding tool gates the **plan** and the **PR**. **Nobody owns the mid-task \"empty middle\"** — the judgment calls an agent hits *while* building and silently one-shots past (HiL-Bench 2026). #160 is exactly this failure mode observed in the wild.\n\nThe defensible mechanism — win on the mechanism, not the slogan — is **risk-based decision triage**.\n\n## The mechanism: score choices, escalate the risky ones\n\nBefore `chalk done`, the agent runs a **risk pass over its own choices** and scores each on:\n\n- **Reversibility** — how hard is this to undo later?\n- **Blast radius** — how much of the system / product surface does it touch?\n- **Ambiguity** — how underspecified was the intent here?\n\nChoices above a threshold **do not get one-shotted** — they auto-convert to `chalk question --for us` / `chalk block --needs decision`, so the agent **escalates instead of assuming**. Low-risk choices flow through untouched (this must not turn every task into a wall of questions — the threshold and a cap matter).\n\n## The surface: a director inbox\n\nMirror `chalk next` (the agent's entrypoint) with the **human's** entrypoint: a **risk-ranked queue of decisions awaiting judgment** — e.g. `chalk pending`, or reuse the existing `lib/boards.mjs` / `lib/portal.mjs` surfaces. This is what makes chalk *feel* like a director's harness rather than a linter.\n\n## Sequencing note\n\nThis is **Tier 2** — heavier than the reviewer decision-digest (sibling issue). Recommend gating it on the digest slice landing + the demo post drawing signal, per the content-first validation plan. Filed now so the mechanism is on record and scoped.\n\n## Acceptance sketch (to be locked during spec)\n\n- The agent produces a per-choice risk score (reversibility × blast-radius × ambiguity) over its diff before `done`.\n- Choices above a configurable threshold auto-escalate to a decision/question rather than passing silently; below-threshold choices are unaffected; a cap prevents question-flooding.\n- A director inbox surface lists pending decisions ranked by risk.\n- Covered by a locked test.\n\nMilestone: director-harness. Relates to #160.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T07:57:38.498Z"
+    },
+    "createdAt": "2026-07-17T07:57:38.501Z",
+    "reviews": []
+  },
+  {
+    "id": "task-7b477997",
+    "title": "feat(director): reviewer emits a decision digest — the accept button, not just pass/block",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 192,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/192",
+      "body": "## The reframe\n\nChalk's adversarial reviewer is framed as a *referee refuting a cheat* — its output is essentially pass/block against acceptance criteria. That's the commoditizing \"catch a cheating agent\" frame.\n\nUnder the director's harness, the same engine should also produce **the accept button**: a **decision digest** the human reviews and acts on.\n\n## The mechanism: reviewer emits a decision digest\n\nExtend the reviewer output (same run, same diff) to surface, alongside the pass/block verdict:\n\n- The **N judgment calls the agent made** while implementing the task (the choices it *silently* resolved),\n- Each with its **rationale** and a **blast-radius / reversibility** note,\n- Framed for **accept / redirect**, not just \"is this a violation.\"\n\nSo the human reads a short \"here's what I decided on your behalf — confirm or redirect each\" list instead of re-reading a diff.\n\n## Why now\n\n- It's a **small, high-leverage change** — reuses `lib/review.mjs` and the existing reviewer agent; mostly an output-shape + prompt change.\n- It produces the exact artifact the **content-demo** needs (agent surfaces a judgment call → director redirects it → screen recording), so it's product + marketing in one slice.\n- It reframes the gate from *cop* → *accept button* without demoting it: the gates stay, they just speak the director's language.\n\n## Acceptance sketch (to be locked during spec)\n\n- `chalk review` output includes a structured decision digest (judgment calls + rationale + blast-radius), separable from the pass/block verdict.\n- The digest is present even on a PASS verdict (a clean change can still contain judgment calls worth confirming).\n- Covered by a locked test asserting the digest shape.\n\nMilestone: director-harness. Relates to #160.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T07:57:38.509Z"
+    },
+    "createdAt": "2026-07-17T07:57:38.509Z",
+    "reviews": []
+  },
+  {
+    "id": "task-8cf40444",
+    "title": "feat(director): alignment checkpoint before build — human accepts the criteria/outcome, not just the plan",
+    "state": "todo",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 191,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/191",
+      "body": "## The gap\n\nReported empirically in #160: in autonomous mode (`chalk run` / `chalk pipeline`) the agent scoped criteria, looped, and built everything — **but ended up misaligned with what the human actually wanted.** There was no point at which a human confirmed *\"yes, this is what done means\"* before the build committed.\n\nToday chalk gates the **plan** (`chalk approve-plan`) and the **outcome** (`verify`/`review`/`done`). It does **not** gate the *framing of done* — the acceptance criteria themselves. In director terms: the human never gets to press accept on the spec before the agent one-shots past it.\n\n> \"needs alignment on what is done… needs alignment on outcome… approval / go-ahead on acceptance criteria / prototype before build.\" — #160\n\n## The mechanism: an alignment checkpoint before build\n\nIntroduce a **criteria/outcome accept gate** that, in director mode, blocks `chalk work` until the human has signed off on the acceptance criteria (and optionally a prototype/plan). Concretely:\n\n- After `chalk discover` / criteria authoring, the agent emits a **plain-language \"here's what I think *done* means\"** restatement — outcome, criteria, and the judgment calls it's assuming — not the raw criteria list.\n- A new gate (e.g. `chalk align <id>` / an approve-criteria step, mirroring the existing `approve-plan`) requires explicit human go-ahead. Without it, `chalk work` refuses in director mode.\n- In autonomous mode this is opt-in via config (`protocol.director.alignBeforeBuild`), so unattended runs can still fan out — but the default for a director-mode project is **align first**.\n\n## Why this is the pivot's keystone\n\nThis is the direct fix for #160 and the mechanism behind *\"you can't direct what you can't verify\"* — the criteria **are** the spec of done, and the human must accept them before build, not discover the mismatch at review. It reuses the `approve-plan` checkpoint pattern already in the codebase.\n\n## Acceptance sketch (to be locked during spec)\n\n- A director-mode project cannot reach `chalk work`/build on a task whose criteria have not been human-accepted.\n- The accept step surfaces a plain-language outcome restatement, not just the raw criteria.\n- Autonomous runs honor an opt-in/opt-out config knob; the behavior is covered by a locked test.\n\nAnchor: #160. Milestone: director-harness.\n"
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T07:57:38.513Z"
+    },
+    "createdAt": "2026-07-17T07:57:38.513Z",
+    "reviews": []
+  },
+  {
+    "id": "task-27eaa67d",
+    "title": "Misalignment on design concept of the agent guiding the acceptance criteria.",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 160,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/160",
+      "body": "### Where did you get stuck?\n\nBasically the agent just ran and looped but by the end of the process it was misaligned after building everything\n\nbuilders won't understand what the agents understands to write the acceptance criterias\n- needs feedback on design concept early on\n- needs alignment on what is done\n- needs alignment on outcome \n- approval / go ahead on acceptance criteria / prototype before build\n\n\n\n### What did you expect to happen?\n\nAlignment before criteria and before build to ensure alignment of build. \n\n### Which stage?\n\nAutonomous mode (run / pipeline)"
+    },
+    "branchType": "feat",
+    "labels": [
+      "director"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T07:57:38.517Z"
+    },
+    "createdAt": "2026-07-17T07:57:38.517Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "decision",
+      "reason": "Milestone anchor (#160, Jerel's misalignment report), not a build unit. The work lives in #191/#192/#193 (director-harness milestone). Kept as the theme anchor; no direct code work on this task.",
+      "at": "2026-07-17T07:58:17.828Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-27eaa67-1.md",
+      "at": "2026-07-17T07:58:17.857Z",
+      "reason": "decision",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-ee0e7a1b",
+    "title": "fix: vacuous verify trap for tasks queued after init — empty protocol.verify prints GREEN checking nothing",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 152,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/152",
+      "body": "## Bug\nAn empty `protocol.verify` config makes every `chalk verify` print GREEN while checking nothing. This is warned at `chalk init` (`bin/chalk.mjs:129-138`) and in verify output (line 1392-1393), but it is not enforced by the gates. A developer who queues tasks into a project whose verify was never configured gets tasks that auto-pass P4 without any real testing; `chalk run` will happily “complete” them.\n\n## Why it matters\nThe whole product value is the verify gate. A vacuous verify silently defeats it for anyone who didn’t configure verify at init time.\n\n## Suggested direction\nHave `chalk start`/`chalk work`/`chalk done` (or `chalk next`) refuse or loudly warn when `protocol.verify` is empty on a runnable task — not only at init. `chalk doctor` warns only when a reviewer backstop is absent; tighten this.\n\n## Acceptance\n- A locked test asserts a runnable task with empty `protocol.verify` cannot silently reach `done` via a vacuous green.\n\nGrounded in: `bin/chalk.mjs:129-138`, `1392-1393`; `lib/doctor.mjs:89`."
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T07:57:38.520Z"
+    },
+    "createdAt": "2026-07-17T07:57:38.520Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #152 — already shipped to dev as task-3c3ede1 (vacuous-verify doctor blocker). Re-imported by an unfiltered issue pull; no code work remains. Closes when dev→main lands #152.",
+      "at": "2026-07-17T07:58:17.604Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-ee0e7a1-1.md",
+      "at": "2026-07-17T07:58:17.637Z",
+      "reason": "decision",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-64a8ecda",
+    "title": "fix: review diff-capture silently falls back to \"(no diff captured)\", letting a reviewer verdict on no diff",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 151,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/151",
+      "body": "## Bug\n`captureDiff` (`lib/review.mjs:78-93`) tries `git diff HEAD` → `base...HEAD` → `origin/base...HEAD` → `git diff`, and if all fail emits `\"(no diff captured — read the source files in the current directory)\"`. A reviewer running in isolation (remote LLM without the working tree) then produces a PASS or BLOCK verdict on **no diff** — and the fallback message isn’t alarming enough to catch it.\n\n## Why it matters\nSame class of hazard as #134: a gate can certify against incomplete input. A vacuous diff → a vacuous review.\n\n## Suggested direction\nWhen no diff is captured, either fail the review stage loudly (config/env problem, like a reviewer ERROR rather than a BLOCK), or require the reviewer to explicitly acknowledge tree-inspection mode. Surface it in `chalk review` output and diagnostics, not just the prompt.\n\n## Acceptance\n- A locked test where all diff strategies fail asserts the review does NOT silently pass — it errors or is clearly flagged as diffless.\n\nGrounded in: `lib/review.mjs:78-93`. Related: #134."
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T07:57:38.523Z"
+    },
+    "createdAt": "2026-07-17T07:57:38.523Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #151 — already shipped to dev as task-daa4516 (diffless-review guard). Re-imported by an unfiltered issue pull; no code work remains. Closes when dev→main lands #151.",
+      "at": "2026-07-17T07:58:17.679Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-64a8ecd-1.md",
+      "at": "2026-07-17T07:58:17.710Z",
+      "reason": "decision",
+      "seq": 1
+    }
+  },
+  {
+    "id": "task-21d1c437",
+    "title": "fix: merge cleanup fast-forward failure still marks the task done, leaving a stale local base",
+    "state": "blocked",
+    "acceptanceCriteria": [],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 150,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/150",
+      "body": "## Bug\nAfter a squash-merge, `chalk merge` best-effort fast-forwards the primary base branch locally (`bin/chalk.mjs:825-829`). If that ff-pull fails (e.g. local `main` has commits), the failure is printed as a warning but does **not** fail the merge gate — the task is marked `done` anyway (`bin/chalk.mjs:830-834`).\n\n## Why it matters\nThe developer’s primary checkout is left dirty/stale. The next `chalk branch` for the following task may branch off a stale base or fail. The warning is printed mid-merge-output and easily missed.\n\n## Suggested direction\nEither (a) surface the ff failure more loudly and record it on the task, or (b) make the next `chalk branch` fetch/validate the base tip before branching rather than trusting local. Remote is source of truth, so don’t block `done` — but don’t silently strand a stale base either.\n\n## Acceptance\n- A locked test drives a merge where the local base ff-pull fails, asserting the task still completes AND the stale-base condition is either recovered or clearly flagged before the next branch.\n\nGrounded in: `bin/chalk.mjs:825-834`."
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-07-17T07:57:38.526Z"
+    },
+    "createdAt": "2026-07-17T07:57:38.526Z",
+    "reviews": [],
+    "blockedFrom": "todo",
+    "block": {
+      "needs": "decision",
+      "reason": "Duplicate of #150 — already shipped to dev as task-3846b6a (fresh-base branch recovery). Re-imported by an unfiltered issue pull; no code work remains. Closes when dev→main lands #150.",
+      "at": "2026-07-17T07:58:17.752Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-21d1c43-1.md",
+      "at": "2026-07-17T07:58:17.786Z",
+      "reason": "decision",
+      "seq": 1
+    }
   }
 ]
