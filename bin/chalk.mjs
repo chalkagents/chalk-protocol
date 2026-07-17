@@ -7,7 +7,7 @@ import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
-import { runReview } from '../lib/review.mjs';
+import { runReview, formatDecisionDigest } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
@@ -1669,7 +1669,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       r = runReview(s, t);
     }
     if (r.status === 'error') die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
-    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings });
+    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [] });
     // Same pipeline-order rule as the manual path above (#102): the verdict is recorded either way —
     // the done/merge gates read t.reviews — but the stage only advances when the PR already exists.
     if (r.verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
@@ -1683,6 +1683,13 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     console.log((r.verdict === 'pass' ? C.g('● review PASS') : C.r('● review BLOCK')) + ` ${C.dim(t.title)}` + (posted.posted ? C.dim(' · posted to PR') : ''));
     if (unblocked) console.log(C.g('  ✓ needs:review block cleared — task is runnable again'));
     for (const f of r.findings) console.log(`   ${sev(f.severity)} ${C.dim(`[${f.area}]`)} ${f.note}`);
+    // The decision digest (#192): the accept button. Shown on PASS too — a clean change still embeds
+    // judgment calls the human directing this work may want to confirm or redirect.
+    const digest = formatDecisionDigest(r.decisions || []);
+    if (digest.length) {
+      console.log(C.b('   ◇ Decision digest') + C.dim(' — judgment calls the agent made; accept or redirect:'));
+      for (const line of digest) console.log(`     ${C.dim(line.replace(/^◇ /, ''))}`);
+    }
     if (r.verdict !== 'pass') console.log(C.dim('   fix the blocking findings and re-run `chalk review`.'));
     process.exit(r.verdict === 'pass' ? 0 : 3);
   },

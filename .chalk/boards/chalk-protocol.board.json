@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784276097798,
+  "updatedAt": 1784277754839,
   "order": 0,
   "cards": [
     {
@@ -1067,10 +1067,20 @@
     {
       "id": "task-7b477997",
       "title": "feat(director): reviewer emits a decision digest — the accept button, not just pass/block",
-      "column": "todo",
+      "column": "done",
       "createdAt": 1784275058509,
-      "updatedAt": 1784275058509,
-      "order": 64
+      "updatedAt": 1784277754839,
+      "order": 64,
+      "description": "- The reviewer prompt requests a DECISION DIGEST — the judgment calls the implementer made — each with blastRadius + reversibility, framed for accept/redirect, and requested EVEN ON A PASS\n- parseVerdict extracts a decisions array when present but stays additive: a verdict with no decisions keeps the exact {verdict,findings} shape, so older reviewers and pinned contracts are unaffected\n- chalk review renders the decision digest (on PASS and BLOCK) and records it on the task's review entry (t.reviews[].decisions)\n- The shipped (share/agents) and dogfood (.claude/agents) chalk-reviewer definitions both describe the decisions output and stay in sync (agents-sync drift gate stays green)",
+      "testArtifact": {
+        "specPath": "test/review-digest.test.mjs",
+        "lastRun": {
+          "runId": "done-task-7b477997",
+          "status": "passed",
+          "at": 1784277754839
+        },
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/192"
+      }
     },
     {
       "id": "task-8cf40444",

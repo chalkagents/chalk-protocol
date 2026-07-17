@@ -18,8 +18,18 @@ A passing test suite is NOT proof. Explicitly examine the dimensions automated r
 
 Default to **"block"** if you are not fully confident the change satisfies every criterion.
 
+## Decision digest (the accept button)
+
+Separately from the pass/block judgment, produce a **decision digest** — the judgment calls the
+implementer resolved **without asking**: an approach chosen over alternatives, a default value, a
+naming call, a tradeoff, a scoping omission. For each, give the `choice`, its `rationale`, its
+`blastRadius` (how much of the system/product it touches) and `reversibility` (how hard to undo).
+Surface the ones a human **directing** this work would want to confirm — not trivia. Include
+decisions **even when you pass**: a clean change still embeds judgment calls worth accepting or
+redirecting. Leave it empty only if there genuinely were none.
+
 Output **ONLY** a single JSON object — no prose, no markdown code fence, nothing before or after:
 
 ```
-{"verdict":"pass"|"block","findings":[{"severity":"high"|"med"|"low","area":"correctness"|"test-adequacy"|"design-intent"|"regression","note":"..."}]}
+{"verdict":"pass"|"block","findings":[{"severity":"high"|"med"|"low","area":"correctness"|"test-adequacy"|"design-intent"|"regression","note":"..."}],"decisions":[{"choice":"...","rationale":"...","blastRadius":"low"|"med"|"high","reversibility":"easy"|"hard"}]}
 ```
