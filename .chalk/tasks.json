@@ -6521,7 +6521,7 @@
   {
     "id": "task-0547837d",
     "title": "feat(director-kit): D2 · skills as a first-class part (.chalk/skills → context)",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "chalk skill add \"<name>\" [--file <path> | \"<text>\"] writes .chalk/skills/<slug>.md; chalk skill (no sub) lists them; an empty skill is refused"
@@ -6613,8 +6613,63 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-07-17T12:32:36.690Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "correctness",
+            "note": "fitSkillsBlock byte accounting is slightly optimistic: it costs each rendered skill as bytes+1 (single \\n) but the final string joins skills with '\\n\\n' and appends heading/note/trailing newlines. Under a tight-but-nonzero budget the rendered block can exceed `remaining` by a few bytes per kept skill. Harmless for the locked context-budget tests (they have no skills so skillsBytes=0), but the fit is not strictly bounded."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Slug collision is untested and silent: two distinct names that slug to the same file (e.g. 'API Conventions' vs 'api-conventions') overwrite each other with no warning. Not a criterion violation, but an unguarded data-loss edge."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "No `skill remove`/`skill edit` path — skills can only be added or overwritten by re-adding the same slug. Acceptable for D2's scope, but lifecycle management is left entirely to manual file editing."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Skills are budgeted and rendered ABOVE auto-lessons (skills win the leftover budget first; lessons fill the remainder).",
+            "rationale": "Author-curated affirmative playbook is treated as higher-signal than machine-accumulated lessons, so under pressure lessons yield before skills.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Skill body is plain injected markdown text, never executable — no code/hooks.",
+            "rationale": "Explicit guardrail against framework-creep; a skill is context, not a plugin.",
+            "blastRadius": "med",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Name is slugged (lowercase, non-alphanumeric→hyphen) into <slug>.md and re-adding the same slug silently overwrites.",
+            "rationale": "Predictable filename mapping consistent with a single-file-per-skill model; treats add as upsert.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "`--file` takes precedence over inline text when both are supplied; empty/whitespace-only content is refused.",
+            "rationale": "Deterministic source resolution and a minimum-content guard to keep the injected block meaningful.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Elision note wording and per-skill '### <name>' section format chosen without a spec-fixed template; skills ordered by filename sort.",
+            "rationale": "Mirrors the other elastic blocks' render style; alphabetical order is stable but not priority-aware.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
       }
     ],
-    "startedAt": "2026-07-17T12:26:34.741Z"
+    "startedAt": "2026-07-17T12:26:34.741Z",
+    "doneAt": "2026-07-17T12:41:47.004Z"
   }
 ]
