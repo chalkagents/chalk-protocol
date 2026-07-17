@@ -514,3 +514,8 @@
 
 - _when:_ 2026-07-17T13:21:18.294Z
 - _why:_ Completion marker for the orphaned chore(release): v0.1.1 commit (18b8ef0): that cycle was superseded by the shipped+tagged v0.2.0, which carried its content to npm. Marked complete so the release orphan-recovery does not resume it (tagging the old tree would publish a stale 0.1.1).
+
+## Released v0.3.0
+
+- _when:_ 2026-07-17T13:25:43.013Z
+- _why:_ 66 change(s); promoted dev→main (PR already merged); tagged v0.3.0 on main
