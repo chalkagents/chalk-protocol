@@ -71,6 +71,17 @@ test('chalk work — proceeds once the raise is answered (no open raises left)',
   assert.doesNotMatch(r.out, /raised for the director/i, 'no longer blocked on the (now answered) raise');
 });
 
+test('an answered raise COMPOUNDS into a new task\'s context, rendered distinctly (not as "accepted")', () => {
+  const d = repo();
+  chalk(d, 'pending', 'answer', 'raise-abc123', 'use an LRU with a size cap');
+  chalk(d, 'task', 'add', 'feat: another thing');
+  const nid = JSON.parse(readFileSync(join(d, '.chalk/tasks.json'))).find((t) => /another/.test(t.title)).id.slice(0, 12);
+  chalk(d, 'spec', nid, '--criterion', 'x');
+  const out = chalk(d, 'context', nid).out;
+  assert.match(out, /Director's calls so far/i, 'the answer is durable taste that compounds into future work');
+  assert.match(out, /answered: "which cache eviction policy\?" → use an LRU with a size cap/, 'rendered as an answered fork (its own line), not silently as "accepted"');
+});
+
 test('driver end-to-end — an executor that raises blocks the task needs:decision; answering unblocks it', () => {
   const d = mkdtempSync(join(tmpdir(), 'chalk-route-e2e-'));
   execSync('git init -b main', { cwd: d, stdio: 'pipe' });
