@@ -569,7 +569,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (stageDone(t, 'planned')) return ok(`plan ${C.dim('(already done)')}`);
     const profile = resolveAgentRole(s.protocol(), 'planner');
     if (!profile?.command) die('no planner configured (protocol.agents.roles.planner or protocol.planner.command).');
-    const agentResult = runAgent('planner', { profile, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
+    const agentResult = runAgent('planner', { profile, cwd: workdir(s, t), context: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
     const planOut = agentResult.text;
     const planText = planOut.trim();
     if (!planText) die('planner produced no plan.');
@@ -856,7 +856,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const executorProfile = resolveAgentRole(s.protocol(), 'executor');
     if (executorProfile?.command) {
       t.attempts = (t.attempts || 0) + 1; s.upsertTask(t);   // churn budget: each work run counts
-      runAgent('executor', { profile: executorProfile, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
+      runAgent('executor', { profile: executorProfile, cwd: workdir(s, t), context: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
     }
     // #211: the agent may have RAISED a fork mid-work (chalk raise writes it to the spine). Re-read and
     // pause for the director instead of proceeding to verify/done on a guessed choice. Exit 2 → the

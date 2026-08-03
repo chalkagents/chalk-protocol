@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785743727488,
+  "updatedAt": 1785743752703,
   "order": 0,
   "cards": [
     {
@@ -1433,11 +1433,15 @@
     {
       "id": "task-5c353a1f",
       "title": "refactor: make Chalk role instructions provider-neutral",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1785743727488,
-      "updatedAt": 1785743727488,
+      "updatedAt": 1785743752703,
       "order": 86,
-      "description": "- Canonical instructions exist for every agent-backed role named by Agent Adapter Protocol v1.\n- Canonical content contains no provider command, model name, native tool list, or provider frontmatter.\n- Agent Runner supplies canonical instructions separately from task/run context.\n- Adapters can combine the fields when their CLI has no system-prompt concept.\n- Existing Claude agent files, if retained, are generated or checked from the canonical source instead of serving as the source of truth.\n- Provider-native generated assets are optional conveniences, not runtime requirements.\n- Drift tests prove generated/native assets cannot silently diverge from canonical instructions.\n- Executor raise behavior and reviewer decision-digest behavior remain present."
+      "description": "- Canonical instructions exist for every agent-backed role named by Agent Adapter Protocol v1.\n- Canonical content contains no provider command, model name, native tool list, or provider frontmatter.\n- Agent Runner supplies canonical instructions separately from task/run context.\n- Adapters can combine the fields when their CLI has no system-prompt concept.\n- Existing Claude agent files, if retained, are generated or checked from the canonical source instead of serving as the source of truth.\n- Provider-native generated assets are optional conveniences, not runtime requirements.\n- Drift tests prove generated/native assets cannot silently diverge from canonical instructions.\n- Executor raise behavior and reviewer decision-digest behavior remain present.",
+      "testArtifact": {
+        "specPath": "test/role-instructions.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/232"
+      }
     }
   ]
 }

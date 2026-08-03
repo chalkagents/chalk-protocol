@@ -33,7 +33,7 @@ todos:
 
 # refactor: make Chalk role instructions provider-neutral
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -45,6 +45,10 @@ todos:
 - Provider-native generated assets are optional conveniences, not runtime requirements.
 - Drift tests prove generated/native assets cannot silently diverge from canonical instructions.
 - Executor raise behavior and reviewer decision-digest behavior remain present.
+
+## Locked tests (read-only — P6)
+
+- `test/role-instructions.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

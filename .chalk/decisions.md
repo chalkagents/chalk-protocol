@@ -589,3 +589,8 @@
 
 - _when:_ 2026-08-03T07:54:13.722Z
 - _why:_ User explicitly directed bypassing external model review for this milestone; capability enforcement, malicious read-only mutation refusal, structured schemas, diagnostics, and executor access are protected by locked tests and full verify is GREEN.
+
+## Keep provider-neutral canonical role instructions separate from run context and generate native assets from that source.
+
+- _when:_ 2026-08-03T08:07:18.086Z
+- _why:_ Adapters can map the two fields to native system/user prompt surfaces or combine them for raw CLIs, while generated conveniences cannot become runtime dependencies or drift.
