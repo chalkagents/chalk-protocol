@@ -649,3 +649,13 @@
 
 - _when:_ 2026-08-03T09:37:25.751Z
 - _why:_ Milestone owner explicitly authorized bypassing external model reviewers for this milestone; locked acceptance test and full verify are GREEN.
+
+## Overrode review gate for "docs: publish the provider-neutral quickstart, migration guide, and adapter-author guide"
+
+- _when:_ 2026-08-03T09:53:09.076Z
+- _why:_ Director explicitly authorized bypassing external model review for this milestone; locked acceptance test and full chalk verify are GREEN.
+
+## Published provider-neutral onboarding and adapter documentation
+
+- _when:_ 2026-08-03T09:53:16.960Z
+- _why:_ Make init → connect → doctor → run the default autonomous path while preserving manual and raw-command compatibility.

@@ -7650,7 +7650,7 @@
   {
     "id": "task-9498ac31",
     "title": "docs: publish the provider-neutral quickstart, migration guide, and adapter-author guide",
-    "state": "specd",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "The main quickstart uses `chalk init → chalk connect → chalk doctor → chalk run` as the autonomous happy path."
@@ -7683,7 +7683,12 @@
         "text": "Release notes identify compatibility behavior and any deprecation timeline without removing legacy support."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/provider-neutral-docs.test.mjs",
+        "sha256": "70bccc9420d9c489f4774b69ca52033c5b8996e001ce281b8c444fe39c138cb7"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -7701,6 +7706,8 @@
       "at": "2026-08-03T09:38:47.981Z"
     },
     "createdAt": "2026-08-03T09:38:47.982Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-08-03T09:39:06.813Z",
+    "doneAt": "2026-08-03T09:53:09.077Z"
   }
 ]
