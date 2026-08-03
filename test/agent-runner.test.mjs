@@ -16,7 +16,7 @@ const fake = (fixture) => `${JSON.stringify(process.execPath)} ${JSON.stringify(
 
 test('runAgent returns one normalized result for planner text and executor streaming', () => {
   const planner = runAgent('planner', { command: fake('text'), input: 'plan input', output: { kind: 'text' } });
-  assert.deepEqual(Object.keys(planner).sort(), ['diagnostics', 'identity', 'status', 'structured', 'text', 'usage']);
+  assert.deepEqual(Object.keys(planner).sort(), ['capabilities', 'diagnostics', 'identity', 'status', 'structured', 'text', 'usage']);
   assert.equal(planner.status, 'ok');
   assert.equal(planner.text, 'fake output: plan input');
   assert.equal(planner.structured, null);

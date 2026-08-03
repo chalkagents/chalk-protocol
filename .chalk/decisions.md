@@ -569,3 +569,18 @@
 
 - _when:_ 2026-08-03T07:37:11.406Z
 - _why:_ User explicitly directed bypassing external model review for this milestone; profiles, migration, identity, legacy compatibility, config drift, and credential-safe doctor output are locked by tests and full verify is GREEN.
+
+## Amended acceptance test for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:40:44.383Z
+- _why:_ Protocol capability enforcement extends the normalized Agent Runner result with a capabilities field; update the earlier seam contract without weakening its existing assertions.
+
+## Amended acceptance test for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:40:55.966Z
+- _why:_ Lock the evolved Agent Runner result contract after adding the capabilities field required by Protocol v1.
+
+## Enforce read-only roles with net workspace content snapshots and centralize structured decoding in Agent Runner.
+
+- _when:_ 2026-08-03T07:51:45.314Z
+- _why:_ Adapter claims alone cannot protect the workspace; Chalk can independently refuse mutated results, preserve user data, and give every provider the same role-schema diagnostics.

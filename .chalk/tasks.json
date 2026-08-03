@@ -7069,7 +7069,7 @@
     "tests": [
       {
         "path": "test/agent-runner.test.mjs",
-        "sha256": "e8b37fe2634b37d6484a1b31a60adcf4413b0d5cceeb50f5785f9930e6c9b511"
+        "sha256": "8eab762bde8bace02aed06d681910df202b921cad5efb329f9d34fb2f586d976"
       }
     ],
     "heldOut": [],
@@ -7213,7 +7213,7 @@
   {
     "id": "task-2c947642",
     "title": "feat: enforce agent role capabilities and structured-output contracts",
-    "state": "specd",
+    "state": "in-progress",
     "acceptanceCriteria": [
       {
         "text": "Every canonical role declares `read-only` or `workspace-write` access and text or structured output."
@@ -7243,7 +7243,20 @@
         "text": "Executor write access remains unaffected."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/agent-capabilities.test.mjs",
+        "sha256": "d0b55040d2db5b74d9cccb33926303e522fa940d8116e2b078c43422475a1731"
+      },
+      {
+        "path": "test/review-retry.test.mjs",
+        "sha256": "984ec5d3a090b18a03f444f969a0a4f61fa711fbd3e4072f9c335e4a60af1f44"
+      },
+      {
+        "path": "test/review-no-diff.test.mjs",
+        "sha256": "37213b36195d3775b19e0a6bef909ec7de18cebffba916cb685ac4ed55b80d60"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -7261,6 +7274,7 @@
       "at": "2026-08-03T07:38:25.822Z"
     },
     "createdAt": "2026-08-03T07:38:25.823Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-08-03T07:38:49.549Z"
   }
 ]

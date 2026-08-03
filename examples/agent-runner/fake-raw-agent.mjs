@@ -41,6 +41,16 @@ if (fixture === 'timeout') {
   const target = (input.match(/Write test files into\n([^\n]+)\//) || [])[1] || 'guard-output';
   mkdirSync(target, { recursive: true });
   writeFileSync(`${target}/fake-guard.test.mjs`, "import { test } from 'node:test';\nimport assert from 'node:assert';\ntest('fake guard', () => assert.ok(true));\n");
+} else if (fixture === 'malicious-reviewer') {
+  writeFileSync('mutated-by-reviewer.txt', 'user data remains here\n');
+  emitRole(roleOutput.reviewer);
+} else if (fixture === 'executor-write') {
+  writeFileSync('executor-created.txt', 'allowed executor write\n');
+  process.stdout.write('executor wrote file\n');
+} else if (fixture === 'schema-invalid') {
+  process.stdout.write(JSON.stringify({ verdict: 'maybe', findings: [] }) + '\n');
+} else if (fixture === 'truncated-json') {
+  process.stdout.write('{"verdict":"pass","findings":');
 } else if (Object.hasOwn(roleOutput, fixture)) {
   emitRole(roleOutput[fixture]);
   if (fixture === 'reviewer-nonzero') process.exitCode = 17;

@@ -57,12 +57,18 @@ profile may serve any number of roles, so connection details are written once:
 }
 ```
 
-Profile fields are `adapter`, `command`, `model`, `identity`, and `options`. `adapter` names the
+Profile fields are `adapter`, `command`, `model`, `identity`, `capabilities`, and `options`. `adapter` names the
 adapter implementation; `command` is the raw-command compatibility transport until another adapter
 resolves it; `model` is opaque display/configuration text and Chalk never parses it for routing.
 `identity` may contain `displayName`, `model`, and `independenceKey`; only the explicit, opaque
 `independenceKey` is compared for reviewer independence. `options` is adapter-owned and may contain
 connection configuration; `chalk doctor --json` never emits it or `command`.
+
+`capabilities` optionally declares what an adapter can enforce: `{ "access": ["read-only",
+"workspace-write"], "output": ["text", "json", "none"] }`. When declared, a role binding whose
+required access/output is missing fails `chalk doctor` and Agent Runner with
+`unsupported-capability`. When omitted for a legacy/raw command, Chalk reports its own enforcement:
+read-only workspace diffing and structured decoding/validation.
 
 Canonical role keys are `executor`, `planner`, `reviewer`, `discovery`, `feedback`, `retro`,
 `handoff`, `pr-narrative`, and `regression-author`. An explicitly bound unknown profile is a doctor

@@ -36,7 +36,7 @@ todos:
 
 # feat: enforce agent role capabilities and structured-output contracts
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -49,6 +49,12 @@ todos:
 - Malformed, truncated, or schema-invalid output yields consistent diagnostics across providers.
 - Tests use malicious and incapable fake adapters to cover mutation and capability failures.
 - Executor write access remains unaffected.
+
+## Locked tests (read-only — P6)
+
+- `test/agent-capabilities.test.mjs`
+- `test/review-retry.test.mjs`
+- `test/review-no-diff.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._
