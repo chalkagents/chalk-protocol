@@ -764,3 +764,8 @@
 
 - _when:_ 2026-08-04T12:59:00.991Z
 - _why:_ Those completed tasks were committed before the GitHub pipeline was used. The four promotion blockers #240-#243 were subsequently landed through scoped PRs with CI and recorded review; historical stage metadata remains truthful.
+
+## Overrode review gate for "test: validate the provider-neutral release candidate locally"
+
+- _when:_ 2026-08-03T11:38:38.428Z
+- _why:_ Director requested an offline release-candidate smoke with no model calls; npm pack/install, 75 offline conformance cases, installed manual lifecycle, and full repository verify are GREEN.
