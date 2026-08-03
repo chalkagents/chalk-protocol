@@ -604,3 +604,8 @@
 
 - _when:_ 2026-08-03T08:28:57.992Z
 - _why:_ This keeps the core interface small and provider-neutral while concentrating provider volatility in deep adapters that can be tested through the same request/response contract.
+
+## Overrode review gate for "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1"
+
+- _when:_ 2026-08-03T08:31:15.926Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; the locked adapter test covers provider ownership, compatibility, normalized identity/usage, redaction, core neutrality, and package assets, and full verify is GREEN.

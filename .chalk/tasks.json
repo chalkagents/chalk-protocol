@@ -7338,7 +7338,7 @@
   {
     "id": "task-42ddf49a",
     "title": "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Claude adapter owns CLI flags, canonical prompt mapping, output-envelope decoding, usage normalization, and permission mapping."
@@ -7392,6 +7392,7 @@
     },
     "createdAt": "2026-08-03T08:10:52.717Z",
     "reviews": [],
-    "startedAt": "2026-08-03T08:11:16.736Z"
+    "startedAt": "2026-08-03T08:11:16.736Z",
+    "doneAt": "2026-08-03T08:31:15.927Z"
   }
 ]
