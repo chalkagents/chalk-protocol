@@ -519,3 +519,8 @@
 
 - _when:_ 2026-07-17T13:25:43.013Z
 - _why:_ 66 change(s); promoted dev→main (PR already merged); tagged v0.3.0 on main
+
+## Overrode review gate for "design: specify Agent Adapter Protocol v1 and canonical role contracts"
+
+- _when:_ 2026-08-03T06:54:55.872Z
+- _why:_ User explicitly directed bypassing external model review for now; configured Claude model is unavailable, and milestone #5 is replacing provider-specific review wiring with provider-agnostic adapters.

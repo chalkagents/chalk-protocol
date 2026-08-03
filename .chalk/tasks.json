@@ -6976,7 +6976,7 @@
   {
     "id": "task-4ee30eb2",
     "title": "design: specify Agent Adapter Protocol v1 and canonical role contracts",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "A normative protocol document uses MUST/SHOULD/MAY language and carries an explicit version."
@@ -7033,6 +7033,7 @@
       "at": "2026-08-03T06:04:22.334Z",
       "reason": "human-input",
       "seq": 1
-    }
+    },
+    "doneAt": "2026-08-03T06:54:55.874Z"
   }
 ]
