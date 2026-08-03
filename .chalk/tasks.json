@@ -7277,5 +7277,55 @@
     "reviews": [],
     "startedAt": "2026-08-03T07:38:49.549Z",
     "doneAt": "2026-08-03T07:54:13.723Z"
+  },
+  {
+    "id": "task-5c353a1f",
+    "title": "refactor: make Chalk role instructions provider-neutral",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Canonical instructions exist for every agent-backed role named by Agent Adapter Protocol v1."
+      },
+      {
+        "text": "Canonical content contains no provider command, model name, native tool list, or provider frontmatter."
+      },
+      {
+        "text": "Agent Runner supplies canonical instructions separately from task/run context."
+      },
+      {
+        "text": "Adapters can combine the fields when their CLI has no system-prompt concept."
+      },
+      {
+        "text": "Existing Claude agent files, if retained, are generated or checked from the canonical source instead of serving as the source of truth."
+      },
+      {
+        "text": "Provider-native generated assets are optional conveniences, not runtime requirements."
+      },
+      {
+        "text": "Drift tests prove generated/native assets cannot silently diverge from canonical instructions."
+      },
+      {
+        "text": "Executor raise behavior and reviewer decision-digest behavior remain present."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 232,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/232",
+      "body": "Parent roadmap: #226\nDepends on: #227, #228, #229\n\n## Problem\n\nThe canonical executor, planner, reviewer, and retro instructions are packaged as Claude-native agent Markdown with Claude-specific frontmatter and wiring examples. Other providers either miss those instructions or require bespoke copies.\n\n## Scope\n\nMake Chalk own canonical provider-neutral role instructions. Agent Runner requests carry instructions and context as separate fields; adapters decide how to map them onto system/user prompts or a single combined prompt.\n\n## Acceptance criteria\n\n- [ ] Canonical instructions exist for every agent-backed role named by Agent Adapter Protocol v1.\n- [ ] Canonical content contains no provider command, model name, native tool list, or provider frontmatter.\n- [ ] Agent Runner supplies canonical instructions separately from task/run context.\n- [ ] Adapters can combine the fields when their CLI has no system-prompt concept.\n- [ ] Existing Claude agent files, if retained, are generated or checked from the canonical source instead of serving as the source of truth.\n- [ ] Provider-native generated assets are optional conveniences, not runtime requirements.\n- [ ] Drift tests prove generated/native assets cannot silently diverge from canonical instructions.\n- [ ] Executor raise behavior and reviewer decision-digest behavior remain present.\n\n## Non-goals\n\n- Rewriting the behavioral intent of existing roles.\n- Choosing provider-specific tools or permissions.\n- Adding a prompt templating language."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T07:55:27.487Z"
+    },
+    "createdAt": "2026-08-03T07:55:27.488Z",
+    "reviews": []
   }
 ]
