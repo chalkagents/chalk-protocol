@@ -769,3 +769,8 @@
 
 - _when:_ 2026-08-03T11:38:38.428Z
 - _why:_ Director requested an offline release-candidate smoke with no model calls; npm pack/install, 75 offline conformance cases, installed manual lifecycle, and full repository verify are GREEN.
+
+## Overrode review gate for "release: prepare v0.4.0 locally"
+
+- _when:_ 2026-08-03T12:34:37.472Z
+- _why:_ Director requested local-only v0.4.0 release preparation with no model calls; versioned offline pack/install, installed CLI smoke, 75 conformance cases, and full repository verify are GREEN.

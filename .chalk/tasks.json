@@ -8076,5 +8076,34 @@
     "reviews": [],
     "startedAt": "2026-08-03T11:30:03.961Z",
     "doneAt": "2026-08-03T11:38:38.430Z"
+  },
+  {
+    "id": "task-2b356654",
+    "title": "release: prepare v0.4.0 locally",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "package metadata consistently reports version 0.4.0"
+      },
+      {
+        "text": "the changelog promotes the provider-agnostic runtime notes from Unreleased to v0.4.0 dated 2026-08-03 and preserves compatibility and deprecation guidance"
+      },
+      {
+        "text": "npm pack produces chalk-protocol-0.4.0.tgz containing the provider-neutral guides and all first-party adapter entrypoints"
+      },
+      {
+        "text": "the v0.4.0 tarball installs offline in a clean temporary project and the installed CLI reports 0.4.0, initializes a project, and passes offline adapter conformance"
+      },
+      {
+        "text": "the full Chalk verify gate is GREEN and release preparation creates no tag, push, GitHub Action, or external model call"
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-08-03T12:28:00.212Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T12:28:14.789Z",
+    "doneAt": "2026-08-03T12:34:37.473Z"
   }
 ]
