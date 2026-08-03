@@ -6972,5 +6972,55 @@
     "startedAt": "2026-07-17T12:26:34.741Z",
     "doneAt": "2026-07-17T12:41:47.004Z",
     "released": "0.3.0"
+  },
+  {
+    "id": "task-4ee30eb2",
+    "title": "design: specify Agent Adapter Protocol v1 and canonical role contracts",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "A normative protocol document uses MUST/SHOULD/MAY language and carries an explicit version."
+      },
+      {
+        "text": "Request and response examples cover text output, structured JSON output, failure, and usage reporting."
+      },
+      {
+        "text": "Every existing agent-backed Chalk stage maps to a named role and output contract."
+      },
+      {
+        "text": "Access requests distinguish at least `read-only` and `workspace-write`."
+      },
+      {
+        "text": "Identity includes an opaque reviewer-independence key; Chalk does not infer it from provider names."
+      },
+      {
+        "text": "Compatibility behavior for current command strings is specified."
+      },
+      {
+        "text": "A fake-adapter fixture demonstrates that the contract is implementable without importing Chalk internals."
+      },
+      {
+        "text": "The design explicitly identifies what remains inside Chalk core versus inside an adapter."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 227,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/227",
+      "body": "Parent roadmap: #226\n\n## Problem\n\nChalk describes agents as BYO commands, but the actual contract is implicit and varies by call site. Provider-specific prompt transport, output recovery, permissions, usage capture, and identity cannot move behind adapters until the seam is specified.\n\n## Deliverable\n\nWrite a versioned Agent Adapter Protocol v1 describing:\n\n- the request envelope: protocol version, role, canonical instructions, task context, requested access, expected output contract, timeout, and working-directory semantics;\n- the response envelope: status, text, optional structured payload, normalized usage, opaque identity metadata, and diagnostics;\n- lifecycle and error behavior: exit codes, malformed output, timeouts, partial output, unknown fields, and forward compatibility;\n- canonical role contracts for executor, planner, reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring;\n- the raw-command compatibility behavior for existing `protocol.*.command` users.\n\nThe contract should separate provider-neutral role semantics from provider-native prompt or agent-file formats.\n\n## Acceptance criteria\n\n- [ ] A normative protocol document uses MUST/SHOULD/MAY language and carries an explicit version.\n- [ ] Request and response examples cover text output, structured JSON output, failure, and usage reporting.\n- [ ] Every existing agent-backed Chalk stage maps to a named role and output contract.\n- [ ] Access requests distinguish at least `read-only` and `workspace-write`.\n- [ ] Identity includes an opaque reviewer-independence key; Chalk does not infer it from provider names.\n- [ ] Compatibility behavior for current command strings is specified.\n- [ ] A fake-adapter fixture demonstrates that the contract is implementable without importing Chalk internals.\n- [ ] The design explicitly identifies what remains inside Chalk core versus inside an adapter.\n\n## Non-goals\n\n- Implementing the Agent Runner.\n- Implementing any real provider adapter.\n- Choosing model names or provider-specific flags."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T05:53:06.110Z"
+    },
+    "createdAt": "2026-08-03T05:53:06.115Z",
+    "reviews": []
   }
 ]

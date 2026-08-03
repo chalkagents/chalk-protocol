@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1784293439456,
+  "updatedAt": 1785736386115,
   "order": 0,
   "cards": [
     {
@@ -1339,6 +1339,15 @@
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/215"
       }
+    },
+    {
+      "id": "task-4ee30eb2",
+      "title": "design: specify Agent Adapter Protocol v1 and canonical role contracts",
+      "column": "todo",
+      "createdAt": 1785736386115,
+      "updatedAt": 1785736386115,
+      "order": 81,
+      "description": "- A normative protocol document uses MUST/SHOULD/MAY language and carries an explicit version.\n- Request and response examples cover text output, structured JSON output, failure, and usage reporting.\n- Every existing agent-backed Chalk stage maps to a named role and output contract.\n- Access requests distinguish at least `read-only` and `workspace-write`.\n- Identity includes an opaque reviewer-independence key; Chalk does not infer it from provider names.\n- Compatibility behavior for current command strings is specified.\n- A fake-adapter fixture demonstrates that the contract is implementable without importing Chalk internals.\n- The design explicitly identifies what remains inside Chalk core versus inside an adapter."
     }
   ]
 }
