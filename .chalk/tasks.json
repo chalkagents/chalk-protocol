@@ -7153,7 +7153,7 @@
   {
     "id": "task-03b0db1c",
     "title": "feat: add provider-neutral agent profiles, role bindings, and explicit identity",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Configuration supports named profiles and a role-to-profile map."
@@ -7207,6 +7207,7 @@
     },
     "createdAt": "2026-08-03T07:23:30.051Z",
     "reviews": [],
-    "startedAt": "2026-08-03T07:24:00.068Z"
+    "startedAt": "2026-08-03T07:24:00.068Z",
+    "doneAt": "2026-08-03T07:37:11.408Z"
   }
 ]

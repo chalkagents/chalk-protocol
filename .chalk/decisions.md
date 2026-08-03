@@ -564,3 +564,8 @@
 
 - _when:_ 2026-08-03T07:34:57.878Z
 - _why:_ This makes migration additive and idempotent, preserves user edits indefinitely, and lets explicit named profiles take over role-by-role without a flag day.
+
+## Overrode review gate for "feat: add provider-neutral agent profiles, role bindings, and explicit identity"
+
+- _when:_ 2026-08-03T07:37:11.406Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; profiles, migration, identity, legacy compatibility, config drift, and credential-safe doctor output are locked by tests and full verify is GREEN.
