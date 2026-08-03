@@ -7517,5 +7517,64 @@
     "reviews": [],
     "startedAt": "2026-08-03T08:45:04.926Z",
     "doneAt": "2026-08-03T08:58:51.138Z"
+  },
+  {
+    "id": "task-ffc05b83",
+    "title": "feat: add chalk connect for guided agent setup and role assignment",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk connect` discovers supported installed CLIs through adapter-owned probes."
+      },
+      {
+        "text": "Interactive setup offers manual, assisted, and autonomous presets."
+      },
+      {
+        "text": "Users can assign different profiles to builder and reviewer roles."
+      },
+      {
+        "text": "The flow explains and checks reviewer independence without requiring provider-specific knowledge."
+      },
+      {
+        "text": "Setup writes provider-neutral profiles and role bindings instead of legacy command fields."
+      },
+      {
+        "text": "Existing projects can run `chalk connect` safely; user-edited legacy commands are preserved unless migration is explicitly accepted."
+      },
+      {
+        "text": "Non-interactive flags cover CI and scripted setup."
+      },
+      {
+        "text": "Default validation is offline and cannot incur model cost."
+      },
+      {
+        "text": "An explicit `chalk agent test <profile> --live` performs a real smoke call."
+      },
+      {
+        "text": "Missing binary, missing authentication, unsupported capability, and ambiguous detection messages include exact next actions."
+      },
+      {
+        "text": "Re-running connect is idempotent and never clobbers manually edited profile values."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 236,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/236",
+      "body": "Parent roadmap: #226\nDepends on: #230, #231, #233, #234, #235\n\n## Problem\n\nUsers currently choose from a fixed `--executor` list or manually edit several command fields. Retrofitting planner, reviewer, retro, model identity, and permissions requires provider-specific documentation.\n\n## Scope\n\nAdd a guided `chalk connect` workflow that discovers adapter manifests and installed CLIs, creates profiles, binds roles, and validates readiness without making an unexpected model call.\n\n## Acceptance criteria\n\n- [ ] `chalk connect` discovers supported installed CLIs through adapter-owned probes.\n- [ ] Interactive setup offers manual, assisted, and autonomous presets.\n- [ ] Users can assign different profiles to builder and reviewer roles.\n- [ ] The flow explains and checks reviewer independence without requiring provider-specific knowledge.\n- [ ] Setup writes provider-neutral profiles and role bindings instead of legacy command fields.\n- [ ] Existing projects can run `chalk connect` safely; user-edited legacy commands are preserved unless migration is explicitly accepted.\n- [ ] Non-interactive flags cover CI and scripted setup.\n- [ ] Default validation is offline and cannot incur model cost.\n- [ ] An explicit `chalk agent test <profile> --live` performs a real smoke call.\n- [ ] Missing binary, missing authentication, unsupported capability, and ambiguous detection messages include exact next actions.\n- [ ] Re-running connect is idempotent and never clobbers manually edited profile values.\n\n## Non-goals\n\n- Logging into provider accounts.\n- Selecting the best commercial model for the user.\n- Removing `chalk init --executor` in the first release."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T08:59:59.414Z"
+    },
+    "createdAt": "2026-08-03T08:59:59.416Z",
+    "reviews": []
   }
 ]
