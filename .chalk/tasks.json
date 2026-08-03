@@ -7394,5 +7394,58 @@
     "reviews": [],
     "startedAt": "2026-08-03T08:11:16.736Z",
     "doneAt": "2026-08-03T08:31:15.927Z"
+  },
+  {
+    "id": "task-f0880c0a",
+    "title": "feat: ship an Agent Adapter Protocol conformance kit",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "A single command runs the adapter conformance suite against a configured adapter executable."
+      },
+      {
+        "text": "Fixtures cover verbatim multiline input, text output, structured output, noisy output, malformed output, non-zero exit, timeout, missing usage, reported usage, identity, and diagnostics."
+      },
+      {
+        "text": "Capability checks cover read-only, workspace-write, and unsupported-capability reporting."
+      },
+      {
+        "text": "A mutation fixture proves that a read-only adapter cannot receive a passing conformance result after changing the workspace."
+      },
+      {
+        "text": "Claude, OpenCode, raw-command, and fake adapters run through the same harness."
+      },
+      {
+        "text": "Results support human-readable and JSON output."
+      },
+      {
+        "text": "The harness makes no network call unless an explicit `--live` mode is selected."
+      },
+      {
+        "text": "The protocol version tested is printed in every result."
+      },
+      {
+        "text": "External adapter author documentation uses only public package artifacts."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 234,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/234",
+      "body": "Parent roadmap: #226\nDepends on: #227, #231, #233\n\n## Problem\n\nA documented adapter contract is insufficient if adapter authors cannot prove that prompt transport, permissions, structured output, failures, and usage normalization behave consistently.\n\n## Scope\n\nShip an offline conformance harness and fixtures that any built-in or external adapter can run without making a model call.\n\n## Acceptance criteria\n\n- [ ] A single command runs the adapter conformance suite against a configured adapter executable.\n- [ ] Fixtures cover verbatim multiline input, text output, structured output, noisy output, malformed output, non-zero exit, timeout, missing usage, reported usage, identity, and diagnostics.\n- [ ] Capability checks cover read-only, workspace-write, and unsupported-capability reporting.\n- [ ] A mutation fixture proves that a read-only adapter cannot receive a passing conformance result after changing the workspace.\n- [ ] Claude, OpenCode, raw-command, and fake adapters run through the same harness.\n- [ ] Results support human-readable and JSON output.\n- [ ] The harness makes no network call unless an explicit `--live` mode is selected.\n- [ ] The protocol version tested is printed in every result.\n- [ ] External adapter author documentation uses only public package artifacts.\n\n## Non-goals\n\n- Certifying model quality.\n- Testing provider authentication.\n- Making paid model calls in the default suite."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T08:32:18.576Z"
+    },
+    "createdAt": "2026-08-03T08:32:18.578Z",
+    "reviews": []
   }
 ]

@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785745875927,
+  "updatedAt": 1785745938578,
   "order": 0,
   "cards": [
     {
@@ -1465,6 +1465,15 @@
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/233"
       }
+    },
+    {
+      "id": "task-f0880c0a",
+      "title": "feat: ship an Agent Adapter Protocol conformance kit",
+      "column": "todo",
+      "createdAt": 1785745938578,
+      "updatedAt": 1785745938578,
+      "order": 88,
+      "description": "- A single command runs the adapter conformance suite against a configured adapter executable.\n- Fixtures cover verbatim multiline input, text output, structured output, noisy output, malformed output, non-zero exit, timeout, missing usage, reported usage, identity, and diagnostics.\n- Capability checks cover read-only, workspace-write, and unsupported-capability reporting.\n- A mutation fixture proves that a read-only adapter cannot receive a passing conformance result after changing the workspace.\n- Claude, OpenCode, raw-command, and fake adapters run through the same harness.\n- Results support human-readable and JSON output.\n- The harness makes no network call unless an explicit `--live` mode is selected.\n- The protocol version tested is printed in every result.\n- External adapter author documentation uses only public package artifacts."
     }
   ]
 }
