@@ -7,39 +7,39 @@ created: "2026-08-03T09:20:32.843Z"
 todos:
   - id: "task-bc67b4d4-c1"
     content: "Default `chalk next` prints at most one primary next action with an exact command."
-    status: pending
+    status: done
   - id: "task-bc67b4d4-c2"
     content: "Remaining blocked, needs-criteria, dependency, and human-input items are summarized by category."
-    status: pending
+    status: done
   - id: "task-bc67b4d4-c3"
     content: "A verbose flag reveals the full current listing without losing information."
-    status: pending
+    status: done
   - id: "task-bc67b4d4-c4"
     content: "A fixture matching Chalk own mixed blocked/duplicate/needs-criteria queue proves the useful action appears first."
-    status: pending
+    status: done
   - id: "task-bc67b4d4-c5"
     content: "`chalk doctor` groups output into blockers, warnings, and optional improvements in that order."
-    status: pending
+    status: done
   - id: "task-bc67b4d4-c6"
     content: "Agent readiness reports resolved role profiles, capabilities, independence state, and exact remediation commands."
-    status: pending
+    status: done
   - id: "task-bc67b4d4-c7"
     content: "Manual mode is presented as a valid path rather than a failed autonomous setup."
-    status: pending
+    status: done
   - id: "task-bc67b4d4-c8"
     content: "Neither command performs a live model call."
-    status: pending
+    status: done
   - id: "task-bc67b4d4-c9"
     content: "Existing JSON output remains stable or receives an explicit versioned migration."
-    status: pending
+    status: done
   - id: "task-bc67b4d4-c10"
     content: "Help and snapshots remain readable without ANSI color."
-    status: pending
+    status: done
 ---
 
 # ux: make chalk next and doctor concise, prioritized, and profile-aware
 
-> state: **in-progress** · phase: discovery
+> state: **done** · phase: discovery
 
 ## Objective
 

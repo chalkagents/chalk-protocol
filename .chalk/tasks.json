@@ -7587,7 +7587,7 @@
   {
     "id": "task-bc67b4d4",
     "title": "ux: make chalk next and doctor concise, prioritized, and profile-aware",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Default `chalk next` prints at most one primary next action with an exact command."
@@ -7644,6 +7644,7 @@
     },
     "createdAt": "2026-08-03T09:20:32.843Z",
     "reviews": [],
-    "startedAt": "2026-08-03T09:21:04.618Z"
+    "startedAt": "2026-08-03T09:21:04.618Z",
+    "doneAt": "2026-08-03T09:37:25.752Z"
   }
 ]
