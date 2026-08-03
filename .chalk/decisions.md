@@ -549,3 +549,8 @@
 
 - _when:_ 2026-08-03T07:20:25.624Z
 - _why:_ Role modules should only build prompts and parse normalized text; central execution preserves legacy behavior while making provider adapters replaceable without touching workflows.
+
+## Overrode review gate for "refactor: route every remaining agent-backed stage through Agent Runner"
+
+- _when:_ 2026-08-03T07:22:25.998Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; every migrated role is covered by one locked fake-agent seam and the repository-wide Chalk verify gate is GREEN.
