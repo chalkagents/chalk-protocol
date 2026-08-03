@@ -7454,5 +7454,61 @@
     "reviews": [],
     "startedAt": "2026-08-03T08:32:38.924Z",
     "doneAt": "2026-08-03T08:43:38.667Z"
+  },
+  {
+    "id": "task-0bf964ba",
+    "title": "feat: prove adapter portability with first-party Codex and Gemini CLI adapters",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Codex and Gemini adapters pass the same offline conformance suite as Claude and OpenCode."
+      },
+      {
+        "text": "Each adapter supports executor, planner, and reviewer roles where the underlying CLI exposes the required access/output capabilities."
+      },
+      {
+        "text": "Unsupported roles or capabilities are reported explicitly during readiness checks."
+      },
+      {
+        "text": "Authentication remains owned by the installed provider CLI; Chalk stores no provider credentials."
+      },
+      {
+        "text": "Model selection is optional opaque adapter configuration."
+      },
+      {
+        "text": "Prompt transport preserves multiline context verbatim without shell interpolation."
+      },
+      {
+        "text": "Structured reviewer output is normalized through the common role contract."
+      },
+      {
+        "text": "Usage and identity are normalized when exposed by the CLI and degrade honestly when unavailable."
+      },
+      {
+        "text": "Adding both adapters requires no provider-name branch in Chalk workflow modules."
+      },
+      {
+        "text": "Package and documentation tests prove shipped adapter assets are available after npm installation."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 235,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/235",
+      "body": "Parent roadmap: #226\nDepends on: #232, #233, #234\n\n## Problem\n\nThe adapter seam is only proven when materially different provider CLIs can integrate without changes to Chalk workflow modules or role semantics.\n\n## Scope\n\nImplement first-party Codex CLI and Gemini CLI adapters against Agent Adapter Protocol v1. Confirm current CLI behavior against official provider documentation during implementation; provider flags must remain adapter details.\n\n## Acceptance criteria\n\n- [ ] Codex and Gemini adapters pass the same offline conformance suite as Claude and OpenCode.\n- [ ] Each adapter supports executor, planner, and reviewer roles where the underlying CLI exposes the required access/output capabilities.\n- [ ] Unsupported roles or capabilities are reported explicitly during readiness checks.\n- [ ] Authentication remains owned by the installed provider CLI; Chalk stores no provider credentials.\n- [ ] Model selection is optional opaque adapter configuration.\n- [ ] Prompt transport preserves multiline context verbatim without shell interpolation.\n- [ ] Structured reviewer output is normalized through the common role contract.\n- [ ] Usage and identity are normalized when exposed by the CLI and degrade honestly when unavailable.\n- [ ] Adding both adapters requires no provider-name branch in Chalk workflow modules.\n- [ ] Package and documentation tests prove shipped adapter assets are available after npm installation.\n\n## Non-goals\n\n- Calling provider HTTP APIs directly.\n- Supporting every historical CLI version.\n- Claiming capability support the upstream CLI cannot enforce."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T08:44:45.523Z"
+    },
+    "createdAt": "2026-08-03T08:44:45.525Z",
+    "reviews": []
   }
 ]
