@@ -7646,5 +7646,61 @@
     "reviews": [],
     "startedAt": "2026-08-03T09:21:04.618Z",
     "doneAt": "2026-08-03T09:37:25.752Z"
+  },
+  {
+    "id": "task-9498ac31",
+    "title": "docs: publish the provider-neutral quickstart, migration guide, and adapter-author guide",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "The main quickstart uses `chalk init → chalk connect → chalk doctor → chalk run` as the autonomous happy path."
+      },
+      {
+        "text": "Manual mode remains a first-class no-model path."
+      },
+      {
+        "text": "Provider-specific pages for Claude, OpenCode, Codex, and Gemini are generated from or checked against adapter manifests where practical."
+      },
+      {
+        "text": "A capability matrix states which roles and permission modes each adapter supports."
+      },
+      {
+        "text": "A migration guide covers every legacy `protocol.*.command` field and existing `--executor` setup."
+      },
+      {
+        "text": "Existing projects can remain on raw commands without an immediate forced migration."
+      },
+      {
+        "text": "The adapter-author guide documents Protocol v1, the conformance command, packaging, diagnostics, identity, usage, and security expectations."
+      },
+      {
+        "text": "Configuration examples contain no provider as the implied canonical default."
+      },
+      {
+        "text": "README, QUICKSTART, CONFIG, help text, and relative links pass drift/dead-link tests."
+      },
+      {
+        "text": "Release notes identify compatibility behavior and any deprecation timeline without removing legacy support."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 238,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/238",
+      "body": "Parent roadmap: #226\nDepends on: #227 through #237\n\n## Problem\n\nCurrent onboarding leads with Claude Code and OpenCode wiring. The completed runtime needs documentation that begins with Chalk roles and contracts, then treats providers as interchangeable adapters.\n\n## Scope\n\nPublish the user and adapter-author documentation required to release the roadmap without stranding existing projects.\n\n## Acceptance criteria\n\n- [ ] The main quickstart uses `chalk init → chalk connect → chalk doctor → chalk run` as the autonomous happy path.\n- [ ] Manual mode remains a first-class no-model path.\n- [ ] Provider-specific pages for Claude, OpenCode, Codex, and Gemini are generated from or checked against adapter manifests where practical.\n- [ ] A capability matrix states which roles and permission modes each adapter supports.\n- [ ] A migration guide covers every legacy `protocol.*.command` field and existing `--executor` setup.\n- [ ] Existing projects can remain on raw commands without an immediate forced migration.\n- [ ] The adapter-author guide documents Protocol v1, the conformance command, packaging, diagnostics, identity, usage, and security expectations.\n- [ ] Configuration examples contain no provider as the implied canonical default.\n- [ ] README, QUICKSTART, CONFIG, help text, and relative links pass drift/dead-link tests.\n- [ ] Release notes identify compatibility behavior and any deprecation timeline without removing legacy support.\n\n## Non-goals\n\n- Marketing comparisons between model vendors.\n- Recommending a paid model.\n- Removing historical integration pages."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T09:38:47.981Z"
+    },
+    "createdAt": "2026-08-03T09:38:47.982Z",
+    "reviews": []
   }
 ]
