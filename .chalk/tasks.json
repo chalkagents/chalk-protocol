@@ -7209,5 +7209,58 @@
     "reviews": [],
     "startedAt": "2026-08-03T07:24:00.068Z",
     "doneAt": "2026-08-03T07:37:11.408Z"
+  },
+  {
+    "id": "task-2c947642",
+    "title": "feat: enforce agent role capabilities and structured-output contracts",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Every canonical role declares `read-only` or `workspace-write` access and text or structured output."
+      },
+      {
+        "text": "Adapters report which requested capabilities they can enforce."
+      },
+      {
+        "text": "Unsupported required capabilities fail readiness checks honestly rather than silently degrading."
+      },
+      {
+        "text": "Chalk detects worktree changes made by a read-only role and refuses to accept that role result."
+      },
+      {
+        "text": "The refusal identifies changed paths without automatically deleting user data."
+      },
+      {
+        "text": "Structured roles validate their normalized payload against one role-specific contract after adapter decoding."
+      },
+      {
+        "text": "Malformed, truncated, or schema-invalid output yields consistent diagnostics across providers."
+      },
+      {
+        "text": "Tests use malicious and incapable fake adapters to cover mutation and capability failures."
+      },
+      {
+        "text": "Executor write access remains unaffected."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 231,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/231",
+      "body": "Parent roadmap: #226\nDepends on: #227, #228, #229, #230\n\n## Problem\n\nProvider permission flags are advisory and inconsistent. A reviewer or discovery agent can be configured through a command that mutates the worktree, and structured roles currently recover JSON differently at individual call sites.\n\n## Scope\n\nMake access and output requirements first-class Agent Runner contracts. Adapters report supported capabilities; Chalk requests the role policy and independently checks important invariants.\n\n## Acceptance criteria\n\n- [ ] Every canonical role declares `read-only` or `workspace-write` access and text or structured output.\n- [ ] Adapters report which requested capabilities they can enforce.\n- [ ] Unsupported required capabilities fail readiness checks honestly rather than silently degrading.\n- [ ] Chalk detects worktree changes made by a read-only role and refuses to accept that role result.\n- [ ] The refusal identifies changed paths without automatically deleting user data.\n- [ ] Structured roles validate their normalized payload against one role-specific contract after adapter decoding.\n- [ ] Malformed, truncated, or schema-invalid output yields consistent diagnostics across providers.\n- [ ] Tests use malicious and incapable fake adapters to cover mutation and capability failures.\n- [ ] Executor write access remains unaffected.\n\n## Non-goals\n\n- Building a general OS sandbox.\n- Automatically reverting unauthorized changes.\n- Guaranteeing that a provider CLI permission mode is itself secure."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T07:38:25.822Z"
+    },
+    "createdAt": "2026-08-03T07:38:25.823Z",
+    "reviews": []
   }
 ]

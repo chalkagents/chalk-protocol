@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785742631408,
+  "updatedAt": 1785742705823,
   "order": 0,
   "cards": [
     {
@@ -1411,6 +1411,15 @@
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/230"
       }
+    },
+    {
+      "id": "task-2c947642",
+      "title": "feat: enforce agent role capabilities and structured-output contracts",
+      "column": "todo",
+      "createdAt": 1785742705823,
+      "updatedAt": 1785742705823,
+      "order": 85,
+      "description": "- Every canonical role declares `read-only` or `workspace-write` access and text or structured output.\n- Adapters report which requested capabilities they can enforce.\n- Unsupported required capabilities fail readiness checks honestly rather than silently degrading.\n- Chalk detects worktree changes made by a read-only role and refuses to accept that role result.\n- The refusal identifies changed paths without automatically deleting user data.\n- Structured roles validate their normalized payload against one role-specific contract after adapter decoding.\n- Malformed, truncated, or schema-invalid output yields consistent diagnostics across providers.\n- Tests use malicious and incapable fake adapters to cover mutation and capability failures.\n- Executor write access remains unaffected."
     }
   ]
 }
