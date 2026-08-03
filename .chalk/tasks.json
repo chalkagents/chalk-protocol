@@ -7521,7 +7521,7 @@
   {
     "id": "task-ffc05b83",
     "title": "feat: add chalk connect for guided agent setup and role assignment",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "`chalk connect` discovers supported installed CLIs through adapter-owned probes."
@@ -7581,6 +7581,7 @@
     },
     "createdAt": "2026-08-03T08:59:59.416Z",
     "reviews": [],
-    "startedAt": "2026-08-03T09:00:20.966Z"
+    "startedAt": "2026-08-03T09:00:20.966Z",
+    "doneAt": "2026-08-03T09:19:31.695Z"
   }
 ]

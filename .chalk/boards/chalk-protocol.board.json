@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785747620966,
+  "updatedAt": 1785748771695,
   "order": 0,
   "cards": [
     {
@@ -1505,13 +1505,18 @@
     {
       "id": "task-ffc05b83",
       "title": "feat: add chalk connect for guided agent setup and role assignment",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1785747599416,
-      "updatedAt": 1785747620966,
+      "updatedAt": 1785748771695,
       "order": 90,
       "description": "- `chalk connect` discovers supported installed CLIs through adapter-owned probes.\n- Interactive setup offers manual, assisted, and autonomous presets.\n- Users can assign different profiles to builder and reviewer roles.\n- The flow explains and checks reviewer independence without requiring provider-specific knowledge.\n- Setup writes provider-neutral profiles and role bindings instead of legacy command fields.\n- Existing projects can run `chalk connect` safely; user-edited legacy commands are preserved unless migration is explicitly accepted.\n- Non-interactive flags cover CI and scripted setup.\n- Default validation is offline and cannot incur model cost.\n- An explicit `chalk agent test <profile> --live` performs a real smoke call.\n- Missing binary, missing authentication, unsupported capability, and ambiguous detection messages include exact next actions.\n- Re-running connect is idempotent and never clobbers manually edited profile values.",
       "testArtifact": {
         "specPath": "test/connect.test.mjs",
+        "lastRun": {
+          "runId": "done-task-ffc05b83",
+          "status": "passed",
+          "at": 1785748771695
+        },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/236"
       }
     }

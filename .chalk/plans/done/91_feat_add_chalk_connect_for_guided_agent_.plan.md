@@ -7,42 +7,42 @@ created: "2026-08-03T08:59:59.416Z"
 todos:
   - id: "task-ffc05b83-c1"
     content: "`chalk connect` discovers supported installed CLIs through adapter-owned probes."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c2"
     content: "Interactive setup offers manual, assisted, and autonomous presets."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c3"
     content: "Users can assign different profiles to builder and reviewer roles."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c4"
     content: "The flow explains and checks reviewer independence without requiring provider-specific knowledge."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c5"
     content: "Setup writes provider-neutral profiles and role bindings instead of legacy command fields."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c6"
     content: "Existing projects can run `chalk connect` safely; user-edited legacy commands are preserved unless migration is explicitly accepted."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c7"
     content: "Non-interactive flags cover CI and scripted setup."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c8"
     content: "Default validation is offline and cannot incur model cost."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c9"
     content: "An explicit `chalk agent test <profile> --live` performs a real smoke call."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c10"
     content: "Missing binary, missing authentication, unsupported capability, and ambiguous detection messages include exact next actions."
-    status: pending
+    status: done
   - id: "task-ffc05b83-c11"
     content: "Re-running connect is idempotent and never clobbers manually edited profile values."
-    status: pending
+    status: done
 ---
 
 # feat: add chalk connect for guided agent setup and role assignment
 
-> state: **in-progress** · phase: discovery
+> state: **done** · phase: discovery
 
 ## Objective
 

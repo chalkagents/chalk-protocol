@@ -634,3 +634,8 @@
 
 - _when:_ 2026-08-03T09:13:55.694Z
 - _why:_ The connect module can validate and bind any manifest without provider branches, preserves existing profiles and legacy commands by default, and requires explicit flags for replacement, migration, or a live model call.
+
+## Overrode review gate for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-03T09:19:31.693Z
+- _why:_ Milestone owner explicitly authorized bypassing external model reviewers for this milestone; locked acceptance test and full verify are GREEN.
