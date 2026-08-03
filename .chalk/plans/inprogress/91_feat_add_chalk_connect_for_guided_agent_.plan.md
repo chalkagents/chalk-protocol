@@ -42,7 +42,7 @@ todos:
 
 # feat: add chalk connect for guided agent setup and role assignment
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -57,6 +57,10 @@ todos:
 - An explicit `chalk agent test <profile> --live` performs a real smoke call.
 - Missing binary, missing authentication, unsupported capability, and ambiguous detection messages include exact next actions.
 - Re-running connect is idempotent and never clobbers manually edited profile values.
+
+## Locked tests (read-only — P6)
+
+- `test/connect.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

@@ -11,7 +11,7 @@ import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RAN
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
-import { PRESETS, detectPreset, withRunner, reviewCadences, normGate, resolveAgentRole } from '../lib/config.mjs';
+import { PRESETS, detectPreset, withRunner, reviewCadences, normGate, resolveAgentRole, resolveAgentConfiguration } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, gitCommitPaths, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
@@ -39,12 +39,15 @@ import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
 import { runArchive } from '../lib/archive.mjs';
 import { conformanceAdapterCommand, renderConformanceReport, runAdapterConformance } from '../lib/adapter-conformance.mjs';
+import { adapterManifest } from '../lib/adapter-registry.mjs';
+import { CONNECT_PRESETS, configureConnections, connectionReadiness, discoverConnections, parseAssignments, promptConnection } from '../lib/connect.mjs';
 import { computeStats, publicStats, renderPublicMarkdown, renderBadge } from '../lib/stats.mjs';
 import { REVIEW_OVERRIDE_TITLE, AUDIT_TITLE } from '../lib/markers.mjs';
 import { portalModel } from '../lib/portal.mjs';
 import { basename, dirname, relative } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, readSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { createInterface } from 'node:readline/promises';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
 function parse(argv) {
@@ -108,6 +111,99 @@ const cmds = {
   demo({ flags }) {
     try { runDemo({ keep: flags.keep === true }); }
     catch (e) { die(String(e.message || e)); }
+  },
+
+  async connect({ flags = {} } = {}) {
+    const s = Store.open();
+    let binaries;
+    try { binaries = parseAssignments(flags.binary); } catch (error) { die(`${error.message}; use --binary codex=/absolute/path`); }
+    if (typeof flags['builder-binary'] === 'string' && typeof flags.builder === 'string') binaries[flags.builder] = flags['builder-binary'];
+    if (typeof flags['reviewer-binary'] === 'string' && typeof flags.reviewer === 'string') binaries[flags.reviewer] = flags['reviewer-binary'];
+    const discoveries = discoverConnections({ binaries, env: process.env });
+    if (flags.list === true) {
+      if (flags.json === true) console.log(JSON.stringify({ adapters: discoveries }, null, 2));
+      else for (const item of discoveries) console.log(`${item.installed ? C.g('●') : C.dim('○')} ${C.b(item.adapter)} · ${item.message}${item.nextAction ? C.dim(` · next: ${item.nextAction}`) : ''}`);
+      return;
+    }
+
+    let choices = {
+      preset: typeof flags.preset === 'string' ? flags.preset : 'assisted',
+      builder: typeof flags.builder === 'string' ? flags.builder : '',
+      reviewer: typeof flags.reviewer === 'string' ? flags.reviewer : '',
+    };
+    if (!choices.builder && process.stdin.isTTY && process.stdout.isTTY) {
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      try { choices = await promptConnection({ discoveries, ask: (question) => rl.question(question) }); }
+      finally { rl.close(); }
+    }
+    const installed = discoveries.filter((item) => item.installed).map((item) => item.adapter);
+    if (!choices.builder) {
+      if (installed.length === 1) choices.builder = installed[0];
+      else if (!installed.length) die(`no supported agent CLI detected. Install one, then run chalk connect --builder <${Object.keys(Object.fromEntries(discoveries.map((item) => [item.adapter, true]))).join('|')}>`);
+      else die(`multiple agent CLIs detected (${installed.join(', ')}). Select one explicitly: chalk connect --preset ${choices.preset} --builder <adapter> --reviewer <adapter>`);
+    }
+    if (!CONNECT_PRESETS.includes(choices.preset)) die(`unknown --preset ${choices.preset}; choose ${CONNECT_PRESETS.join('|')}`);
+    if (choices.preset !== 'manual' && !choices.reviewer) {
+      if (installed.length === 1) choices.reviewer = choices.builder;
+      else die(`reviewer selection is ambiguous. Choose explicitly: chalk connect --preset ${choices.preset} --builder ${choices.builder} --reviewer <adapter>`);
+    }
+
+    let planned;
+    try {
+      planned = configureConnections(s.meta(), {
+        ...choices,
+        builderProfile: typeof flags['builder-profile'] === 'string' ? flags['builder-profile'] : undefined,
+        reviewerProfile: typeof flags['reviewer-profile'] === 'string' ? flags['reviewer-profile'] : undefined,
+        builderModel: typeof flags['builder-model'] === 'string' ? flags['builder-model'] : undefined,
+        reviewerModel: typeof flags['reviewer-model'] === 'string' ? flags['reviewer-model'] : undefined,
+        binaries, replace: flags.replace === true, migrateLegacy: flags['migrate-legacy'] === true,
+      });
+    } catch (error) { die(error.message); }
+    const readiness = connectionReadiness(planned.meta.protocol, discoveries);
+    if (flags['dry-run'] !== true) s.saveMeta(planned.meta);
+    const report = { dryRun: flags['dry-run'] === true, ...planned, meta: undefined, readiness };
+    if (flags.json === true) console.log(JSON.stringify(report, null, 2));
+    else {
+      console.log(C.b('chalk connect') + C.dim(` · ${planned.preset}${flags['dry-run'] === true ? ' · dry run' : ''}`));
+      for (const item of planned.changes) console.log(`  ${C.g('✓')} ${item}`);
+      for (const item of planned.preserved) console.log(`  ${C.dim('=')} ${item} ${C.dim('(preserved)')}`);
+      for (const item of planned.warnings) console.log(`  ${C.y('!')} ${item}`);
+      console.log(C.b('readiness') + C.dim(' · offline; no model call'));
+      for (const check of readiness.checks) {
+        const mark = check.level === 'ok' ? C.g('✓') : check.level === 'warn' ? C.y('!') : C.r('✗');
+        console.log(`  ${mark} ${check.message}${check.nextAction ? `\n    ${C.dim(`next: ${check.nextAction}`)}` : ''}`);
+      }
+      if (readiness.ok) ok('agent profiles connected');
+    }
+    if (!readiness.ok) process.exitCode = 2;
+  },
+
+  agent({ _, flags = {} } = {}) {
+    if (_[0] !== 'test' || !_[1]) die('usage: chalk agent test <profile> [--live] [--json]');
+    const s = Store.open();
+    const name = String(_[1]);
+    const profile = resolveAgentConfiguration(s.protocol()).profiles[name];
+    if (!profile) die(`unknown agent profile ${name}; run chalk connect --list, then chalk connect`);
+    const manifest = adapterManifest(profile.adapter);
+    if (!manifest) die(`profile ${name} uses external adapter ${profile.adapter}; test it with chalk adapter conformance --command "${profile.command}"`);
+    const probe = manifest.probe({ binary: profile.options?.binary, env: process.env });
+    if (!probe.installed || probe.authentication === 'missing') {
+      const next = probe.authentication === 'missing' ? `${probe.nextAction}; then retry chalk agent test ${name} --live` : probe.nextAction;
+      if (flags.json === true) console.log(JSON.stringify({ ok: false, profile: name, probe, nextAction: next }, null, 2));
+      else console.error(`${C.r('✗')} ${probe.message}\n  ${C.dim(`next: ${next}`)}`);
+      process.exitCode = 2;
+      return;
+    }
+    const live = flags.live === true;
+    if (live && flags.json !== true) console.log(C.y('  explicit live smoke: this makes one real provider call and may incur model cost'));
+    const report = runAdapterConformance({ command: profile.command, adapter: profile.adapter, live, options: profile.options || {} });
+    if (flags.json === true) console.log(JSON.stringify({ profile: name, probe, ...report }, null, 2));
+    else {
+      console.log(renderConformanceReport(report));
+      if (!live) console.log(C.dim(`  offline only — run chalk agent test ${name} --live for one explicit real smoke call`));
+      if (!report.ok) console.error(C.y(`  next: ${manifest.authCommand}; then retry chalk agent test ${name} --live`));
+    }
+    if (!report.ok) process.exitCode = 1;
   },
 
   adapter({ _, flags }) {
@@ -2197,6 +2293,9 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
   chalk autopilot [--max N] [--min-severity med]   ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
   chalk loop [--max-rounds N] [--max N] [--min-severity med]   ${C.dim('bounded STANDING loop: pull→sweep→converge, self-terminating')}
+  chalk connect [--preset manual|assisted|autonomous] [--builder ADAPTER] [--reviewer ADAPTER] ${C.dim('discover CLIs + bind provider-neutral profiles; offline by default')}
+  chalk connect --list [--json] | --binary ADAPTER=/path | --builder-model MODEL | --reviewer-model MODEL | --replace | --migrate-legacy
+  chalk agent test <profile> [--live] ${C.dim('offline conformance by default; --live makes ONE explicit model call')}
   chalk smoke [--create|--issue N] --yes   ${C.dim('prove the pipeline on ONE throwaway issue (real; use a scratch repo)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]

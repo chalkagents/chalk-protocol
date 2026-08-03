@@ -205,6 +205,7 @@ have templates too. Contributions go through the same gates as our own work: see
 - **[docs/CONFIG.md](./docs/CONFIG.md)** — every `protocol.*` key: default, consumer, example.
 - **[docs/AGENT_ADAPTER_PROTOCOL.md](./docs/AGENT_ADAPTER_PROTOCOL.md)** — provider-neutral Agent Adapter Protocol v1 and canonical role contracts.
 - **[docs/ADAPTER_CONFORMANCE.md](./docs/ADAPTER_CONFORMANCE.md)** — offline conformance command and public fixtures for built-in or external adapters.
+- **[docs/CONNECT.md](./docs/CONNECT.md)** — guided offline CLI discovery, profile setup, role assignment, and explicit live smoke testing.
 - **[docs/integrations/codex.md](./docs/integrations/codex.md)** / **[Gemini CLI](./docs/integrations/gemini-cli.md)** — first-party Protocol v1 adapter wiring and permission mapping.
 - **[RESEARCH.md](./RESEARCH.md)** — the evidence each gate is built on.
 - **`chalk help`** — the full command surface.

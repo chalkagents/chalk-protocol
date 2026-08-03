@@ -629,3 +629,8 @@
 
 - _when:_ 2026-08-03T08:58:51.137Z
 - _why:_ Milestone owner explicitly authorized bypassing external model reviewers for this milestone; locked acceptance test and full verify are GREEN.
+
+## Keep guided setup provider-neutral by discovering adapter-owned manifests and applying idempotent connection presets
+
+- _when:_ 2026-08-03T09:13:55.694Z
+- _why:_ The connect module can validate and bind any manifest without provider branches, preserves existing profiles and legacy commands by default, and requires explicit flags for replacement, migration, or a live model call.
