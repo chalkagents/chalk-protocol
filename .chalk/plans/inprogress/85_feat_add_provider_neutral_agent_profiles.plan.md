@@ -36,7 +36,7 @@ todos:
 
 # feat: add provider-neutral agent profiles, role bindings, and explicit identity
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -49,6 +49,10 @@ todos:
 - Config drift tests and `docs/CONFIG.md` cover every new field.
 - `chalk doctor --json` reports resolved role bindings and identity without exposing credentials.
 - Tests cover shared profiles, distinct reviewer identity, unknown identity, and legacy configuration.
+
+## Locked tests (read-only — P6)
+
+- `test/agent-profiles.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

@@ -554,3 +554,13 @@
 
 - _when:_ 2026-08-03T07:22:25.998Z
 - _why:_ User explicitly directed bypassing external model review for this milestone; every migrated role is covered by one locked fake-agent seam and the repository-wide Chalk verify gate is GREEN.
+
+## Migrated spine 1.1 → 1.2
+
+- _when:_ 2026-08-03T07:30:04.019Z
+- _why:_ chalk migrate: add provider-neutral agent profiles and role bindings (backup: /Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol/.chalk/backups/2026-08-03T07-30-04-016Z)
+
+## Keep legacy command values live and synthesize compatibility profiles at resolution time instead of copying them during schema migration.
+
+- _when:_ 2026-08-03T07:34:57.878Z
+- _why:_ This makes migration additive and idempotent, preserves user edits indefinitely, and lets explicit named profiles take over role-by-role without a flag day.

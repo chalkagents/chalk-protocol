@@ -1,5 +1,5 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "project": {
     "name": "chalk-protocol",
     "description": "Layer-2 agent harness: a .chalk/ spine + CLI that holds AI coding agents to software-development fundamentals via enforceable gates"
@@ -63,9 +63,14 @@
       "enabled": false,
       "dir": "..",
       "setup": ""
+    },
+    "agents": {
+      "version": 1,
+      "profiles": {},
+      "roles": {}
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",
-  "updatedAt": "2026-07-08T18:27:17.321Z",
-  "writerVersion": "0.2.0"
+  "updatedAt": "2026-08-03T07:30:04.019Z",
+  "writerVersion": "0.3.0"
 }

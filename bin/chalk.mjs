@@ -11,7 +11,7 @@ import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RAN
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
-import { PRESETS, detectPreset, withRunner, reviewCadences, normGate } from '../lib/config.mjs';
+import { PRESETS, detectPreset, withRunner, reviewCadences, normGate, resolveAgentRole } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, gitCommitPaths, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
@@ -23,7 +23,7 @@ import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } fro
 import { runSpecs, isSpec } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline, runPipelineParallel } from '../lib/pipeline.mjs';
-import { runDoctor } from '../lib/doctor.mjs';
+import { runDoctor, doctorAgentSummary } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
@@ -357,7 +357,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       return;
     }
     if (r.degraded) {
-      console.log(C.y('  no executor configured (protocol.executor.command) — falling back to the manual loop:') + '\n');
+      console.log(C.y('  no executor role configured — falling back to the manual loop:') + '\n');
       cmds.next();
       return;
     }
@@ -567,9 +567,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const s = Store.open();
     const t = mustTask(s, _[0]);
     if (stageDone(t, 'planned')) return ok(`plan ${C.dim('(already done)')}`);
-    const cmd = s.protocol().planner?.command;
-    if (!cmd) die('no planner configured (protocol.planner.command).');
-    const agentResult = runAgent('planner', { command: cmd, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
+    const profile = resolveAgentRole(s.protocol(), 'planner');
+    if (!profile?.command) die('no planner configured (protocol.agents.roles.planner or protocol.planner.command).');
+    const agentResult = runAgent('planner', { profile, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
     const planOut = agentResult.text;
     const planText = planOut.trim();
     if (!planText) die('planner produced no plan.');
@@ -853,10 +853,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       t.state = 'in-progress'; t.startedAt = now(); s.upsertTask(t);
     }
     if (t.state !== 'in-progress') die(`task is [${t.state}], not workable.`);
-    const ex = s.protocol().executor?.command;
-    if (ex) {
+    const executorProfile = resolveAgentRole(s.protocol(), 'executor');
+    if (executorProfile?.command) {
       t.attempts = (t.attempts || 0) + 1; s.upsertTask(t);   // churn budget: each work run counts
-      runAgent('executor', { command: ex, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
+      runAgent('executor', { profile: executorProfile, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
     }
     // #211: the agent may have RAISED a fork mid-work (chalk raise writes it to the spine). Re-read and
     // pause for the director instead of proceeding to verify/done on a guessed choice. Exit 2 → the
@@ -1130,7 +1130,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const fails = results.filter((r) => r.level === 'fail').length;
     // --json: the bug-report format (issue templates ask for it) — stable, greppable, exit-coded.
     if (flags.json === true) {
-      console.log(JSON.stringify({ at: now(), node: process.version, platform: process.platform, results }, null, 2));
+      console.log(JSON.stringify({ at: now(), node: process.version, platform: process.platform, agents: doctorAgentSummary(s.protocol()), results }, null, 2));
       process.exit(fails ? 2 : 0);
     }
     console.log(C.b('chalk doctor') + C.dim(' · autonomous-run readiness') + '\n');
@@ -1651,9 +1651,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // changed locked test must be re-reviewed even though the stage is still 'reviewed'.
     if (stageDone(t, 'reviewed') && t.reviews.slice(-1)[0]?.verdict === 'pass') return ok(`review ${C.dim('(already passed)')}`);
 
-    if (!meta.protocol?.review?.command) {
+    if (!resolveAgentRole(meta.protocol, 'reviewer')?.command) {
       const note = flags.note || _.slice(1).join(' ');
-      if (!note) die('no reviewer configured. Set .chalk/chalk.json → protocol.review.command (e.g. "claude -p"),\n  or record a manual review:  chalk review <id> --note "..."');
+      if (!note) die('no reviewer configured. Bind protocol.agents.roles.reviewer or set protocol.review.command,\n  or record a manual review:  chalk review <id> --note "..."');
       const verdict = flags.block ? 'block' : 'pass';
       t.reviews.push({ at: now(), by: flags.by || 'human', verdict, findings: [], note: String(note), checklist: ['test-adequacy', 'design-intent', 'regressions'] });
       // Advance the pipeline stage only when the review happens in PIPELINE order (the PR exists).
@@ -1733,7 +1733,8 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       s.saveMeta(m);
       ok(`held-out regression locked: ${lock.path} ${C.dim('(hidden from the implementer)')}`);
     } else if (sub === 'gen') {
-      if (!reg.authorCommand) die('set .chalk/chalk.json → protocol.regression.authorCommand (a BYO test-author agent).');
+      const authorProfile = resolveAgentRole(m.protocol, 'regression-author');
+      if (!authorProfile?.command) die('bind protocol.agents.roles.regression-author or set protocol.regression.authorCommand (a BYO test-author agent).');
       console.log(C.dim('  running guard author (derives held-out tests from the spec, blind to the code)…'));
       const prompt = buildGuardPrompt(m, s.spec(), s.tasks().flatMap((t) => (t.acceptanceCriteria || []).map((c) => `- [${t.title}] ${c.text}`)).join('\n'));
       runRegressionAuthor(s, reg.authorCommand, prompt); // author may write files then exit nonzero
@@ -2048,15 +2049,19 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   harness() {
     const s = Store.open();
     const p = s.protocol();
+    const roleProfile = (role) => resolveAgentRole(p, role);
     const dot = (v) => (v ? C.g('●') : C.dim('○'));
     const cmd = (c) => (c ? C.g(c) : C.dim('(not wired)'));
+    const agentText = (profile) => !profile ? '' : profile.source === 'legacy' ? profile.command : `${profile.name} (${profile.adapter})`;
     console.log(C.b('Chalk harness') + C.dim(` — ${s.meta().project?.name || 'project'} · the kit assembled around your goal`));
 
     console.log('\n' + C.b('Agents') + C.dim(' — the doers (BYO models)'));
-    console.log(`  ${dot(p.executor?.command)} executor  ${cmd(p.executor?.command)}`);
-    console.log(`  ${dot(p.planner?.command)} planner   ${cmd(p.planner?.command)}`);
-    console.log(`  ${dot(p.review?.command)} reviewer  ${cmd(p.review?.command)}`);
-    console.log(`  ${dot(p.retro?.command)} retro     ${cmd(p.retro?.command)}`);
+    const executorAgent = roleProfile('executor'), plannerAgent = roleProfile('planner');
+    const reviewerAgent = roleProfile('reviewer'), retroAgent = roleProfile('retro');
+    console.log(`  ${dot(executorAgent)} executor  ${cmd(agentText(executorAgent))}`);
+    console.log(`  ${dot(plannerAgent)} planner   ${cmd(agentText(plannerAgent))}`);
+    console.log(`  ${dot(reviewerAgent)} reviewer  ${cmd(agentText(reviewerAgent))}`);
+    console.log(`  ${dot(retroAgent)} retro     ${cmd(agentText(retroAgent))}`);
 
     console.log('\n' + C.b('Skills') + C.dim(' — your project playbook, injected into every agent'));
     const skills = s.skills();
@@ -2065,11 +2070,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
     const v = p.verify || {};
     const verifyOn = ['test', 'typecheck', 'lint', 'build'].filter((k) => v[k]);
-    const anyCheck = verifyOn.length || p.review?.command || p.regression?.required || p.requireTest;
+    const anyCheck = verifyOn.length || reviewerAgent?.command || p.regression?.required || p.requireTest;
     // #217: the gates are ONE OPTIONAL part — the accept button, not the whole product.
     console.log('\n' + C.b('Checks') + C.dim(' — the gates (P1–P7): OPTIONAL, the accept button · one part of the kit'));
     console.log(`  ${dot(verifyOn.length)} verify    ${verifyOn.length ? C.g(verifyOn.join(', ')) : C.dim('(none configured — vacuous green)')}`);
-    console.log(`  ${dot(p.review?.command)} review    ${p.review?.command ? C.g(`adversarial (${(p.review.requiredAt || []).join(', ') || 'legacy'})`) : C.dim('off')}`);
+    console.log(`  ${dot(reviewerAgent?.command)} review    ${reviewerAgent?.command ? C.g(`adversarial (${(p.review.requiredAt || []).join(', ') || 'legacy'})`) : C.dim('off')}`);
     console.log(`  ${dot(p.regression?.required)} held-out  ${p.regression?.required ? C.g(`${(p.regression.tests || []).length} locked test(s)`) : C.dim('off')}`);
     console.log(`  ${dot(p.requireTest)} require-test ${p.requireTest ? C.g('on') : C.dim('off')}`);
     if (!anyCheck) console.log(C.dim('  (all optional — this project runs without gates; add them when you want the accept button)'));
