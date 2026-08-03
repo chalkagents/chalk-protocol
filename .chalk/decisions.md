@@ -614,3 +614,8 @@
 
 - _when:_ 2026-08-03T08:41:14.004Z
 - _why:_ Adapter authors can prove transport and failure semantics without credentials or paid model calls, while --live remains an explicit bounded smoke mode rather than an accidental network path.
+
+## Overrode review gate for "feat: ship an Agent Adapter Protocol conformance kit"
+
+- _when:_ 2026-08-03T08:43:38.665Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; the locked conformance test covers all fixtures, built-in and external adapters, mutation refusal, offline/live policy, both renderers, version reporting, docs, package assets, and full verify is GREEN.

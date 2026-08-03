@@ -7398,7 +7398,7 @@
   {
     "id": "task-f0880c0a",
     "title": "feat: ship an Agent Adapter Protocol conformance kit",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "A single command runs the adapter conformance suite against a configured adapter executable."
@@ -7452,6 +7452,7 @@
     },
     "createdAt": "2026-08-03T08:32:18.578Z",
     "reviews": [],
-    "startedAt": "2026-08-03T08:32:38.924Z"
+    "startedAt": "2026-08-03T08:32:38.924Z",
+    "doneAt": "2026-08-03T08:43:38.667Z"
   }
 ]
