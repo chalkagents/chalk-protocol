@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785740095874,
+  "updatedAt": 1785740162537,
   "order": 0,
   "cards": [
     {
@@ -1357,6 +1357,15 @@
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/227"
       }
+    },
+    {
+      "id": "task-16b28180",
+      "title": "refactor: introduce the Agent Runner seam and migrate executor + planner",
+      "column": "todo",
+      "createdAt": 1785740162537,
+      "updatedAt": 1785740162537,
+      "order": 82,
+      "description": "- Executor and planner invoke one `runAgent(role, request)` interface instead of calling child-process helpers directly.\n- The runner returns normalized status, text, structured output, usage, identity, and diagnostics as applicable.\n- Existing command-string configuration produces the same observable executor and planner behavior.\n- Executor terminal output remains visible and planner output remains storable as plain text.\n- Timeouts, non-zero exits, missing binaries, malformed envelopes, and usage capture are covered by fake-adapter tests.\n- Project `protocol.runner` is no longer prepended to agent commands; it remains scoped to project toolchain commands.\n- No Chalk workflow module branches on a provider name.\n- Cost-ledger behavior from #99 remains compatible."
     }
   ]
 }

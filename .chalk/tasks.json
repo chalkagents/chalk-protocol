@@ -7035,5 +7035,55 @@
       "seq": 1
     },
     "doneAt": "2026-08-03T06:54:55.874Z"
+  },
+  {
+    "id": "task-16b28180",
+    "title": "refactor: introduce the Agent Runner seam and migrate executor + planner",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Executor and planner invoke one `runAgent(role, request)` interface instead of calling child-process helpers directly."
+      },
+      {
+        "text": "The runner returns normalized status, text, structured output, usage, identity, and diagnostics as applicable."
+      },
+      {
+        "text": "Existing command-string configuration produces the same observable executor and planner behavior."
+      },
+      {
+        "text": "Executor terminal output remains visible and planner output remains storable as plain text."
+      },
+      {
+        "text": "Timeouts, non-zero exits, missing binaries, malformed envelopes, and usage capture are covered by fake-adapter tests."
+      },
+      {
+        "text": "Project `protocol.runner` is no longer prepended to agent commands; it remains scoped to project toolchain commands."
+      },
+      {
+        "text": "No Chalk workflow module branches on a provider name."
+      },
+      {
+        "text": "Cost-ledger behavior from #99 remains compatible."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 228,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/228",
+      "body": "Parent roadmap: #226\nDepends on: #227\n\n## Problem\n\nExecutor and planner invocation currently use direct shell execution plus provider-aware output helpers. There is no single module responsible for role execution, normalization, diagnostics, and cost capture.\n\n## Scope\n\nIntroduce one deep Agent Runner module following Agent Adapter Protocol v1. Start with the executor and planner paths, using a raw-command compatibility adapter so behavior remains unchanged for existing projects.\n\n## Acceptance criteria\n\n- [ ] Executor and planner invoke one `runAgent(role, request)` interface instead of calling child-process helpers directly.\n- [ ] The runner returns normalized status, text, structured output, usage, identity, and diagnostics as applicable.\n- [ ] Existing command-string configuration produces the same observable executor and planner behavior.\n- [ ] Executor terminal output remains visible and planner output remains storable as plain text.\n- [ ] Timeouts, non-zero exits, missing binaries, malformed envelopes, and usage capture are covered by fake-adapter tests.\n- [ ] Project `protocol.runner` is no longer prepended to agent commands; it remains scoped to project toolchain commands.\n- [ ] No Chalk workflow module branches on a provider name.\n- [ ] Cost-ledger behavior from #99 remains compatible.\n\n## Non-goals\n\n- Migrating reviewer or analysis roles.\n- Introducing the new profile configuration.\n- Adding a new provider."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T06:56:02.536Z"
+    },
+    "createdAt": "2026-08-03T06:56:02.537Z",
+    "reviews": []
   }
 ]
