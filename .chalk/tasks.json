@@ -7583,5 +7583,61 @@
     "reviews": [],
     "startedAt": "2026-08-03T09:00:20.966Z",
     "doneAt": "2026-08-03T09:19:31.695Z"
+  },
+  {
+    "id": "task-bc67b4d4",
+    "title": "ux: make chalk next and doctor concise, prioritized, and profile-aware",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Default `chalk next` prints at most one primary next action with an exact command."
+      },
+      {
+        "text": "Remaining blocked, needs-criteria, dependency, and human-input items are summarized by category."
+      },
+      {
+        "text": "A verbose flag reveals the full current listing without losing information."
+      },
+      {
+        "text": "A fixture matching Chalk own mixed blocked/duplicate/needs-criteria queue proves the useful action appears first."
+      },
+      {
+        "text": "`chalk doctor` groups output into blockers, warnings, and optional improvements in that order."
+      },
+      {
+        "text": "Agent readiness reports resolved role profiles, capabilities, independence state, and exact remediation commands."
+      },
+      {
+        "text": "Manual mode is presented as a valid path rather than a failed autonomous setup."
+      },
+      {
+        "text": "Neither command performs a live model call."
+      },
+      {
+        "text": "Existing JSON output remains stable or receives an explicit versioned migration."
+      },
+      {
+        "text": "Help and snapshots remain readable without ANSI color."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 237,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/237",
+      "body": "Parent roadmap: #226\nDepends on: #230, #236\n\n## Problem\n\nWhen no task is runnable, `chalk next` can print a wall of blocked or duplicate items before the useful action. `chalk doctor` reports many independent checks but does not present one clear path from current state to a runnable agent setup.\n\n## Scope\n\nTurn both commands into action-oriented interfaces while preserving complete detail through explicit flags and machine-readable output.\n\n## Acceptance criteria\n\n- [ ] Default `chalk next` prints at most one primary next action with an exact command.\n- [ ] Remaining blocked, needs-criteria, dependency, and human-input items are summarized by category.\n- [ ] A verbose flag reveals the full current listing without losing information.\n- [ ] A fixture matching Chalk own mixed blocked/duplicate/needs-criteria queue proves the useful action appears first.\n- [ ] `chalk doctor` groups output into blockers, warnings, and optional improvements in that order.\n- [ ] Agent readiness reports resolved role profiles, capabilities, independence state, and exact remediation commands.\n- [ ] Manual mode is presented as a valid path rather than a failed autonomous setup.\n- [ ] Neither command performs a live model call.\n- [ ] Existing JSON output remains stable or receives an explicit versioned migration.\n- [ ] Help and snapshots remain readable without ANSI color.\n\n## Non-goals\n\n- Automatically unblocking tasks.\n- Automatically closing duplicate GitHub issues.\n- Replacing `chalk backlog` or `chalk pending`."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T09:20:32.842Z"
+    },
+    "createdAt": "2026-08-03T09:20:32.843Z",
+    "reviews": []
   }
 ]
