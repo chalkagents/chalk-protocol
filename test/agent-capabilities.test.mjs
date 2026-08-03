@@ -14,7 +14,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FAKE = join(ROOT, 'examples', 'agent-runner', 'fake-raw-agent.mjs');
 const fake = (fixture) => `${JSON.stringify(process.execPath)} ${JSON.stringify(FAKE)} ${fixture}`;
 const scratch = () => mkdtempSync(join(tmpdir(), 'chalk-agent-capabilities-'));
-const profile = (fixture, over = {}) => ({ name: `fake-${fixture}`, adapter: 'fake-provider', command: fake(fixture), identity: null, capabilities: null, ...over });
+const profile = (fixture, over = {}) => ({ name: `fake-${fixture}`, adapter: 'raw-command', command: fake(fixture), identity: null, capabilities: null, ...over });
 
 test('every canonical role declares access and output', () => {
   assert.deepEqual(Object.keys(ROLE_CONTRACTS).sort(), ['discovery', 'executor', 'feedback', 'handoff', 'planner', 'pr-narrative', 'regression-author', 'retro', 'reviewer']);
@@ -64,11 +64,9 @@ test('structured roles decode once and return consistent malformed/schema diagno
   assert.equal(invalid.status, 'failed');
   assert.equal(invalid.diagnostics.find((x) => x.code === 'schema-invalid')?.code, 'schema-invalid');
 
-  for (const adapter of ['provider-a', 'provider-b']) {
-    const truncated = runAgent('reviewer', { profile: profile('truncated-json', { adapter }), cwd: scratch(), stderr: 'capture' });
-    assert.equal(truncated.status, 'failed');
-    assert.equal(truncated.diagnostics.find((x) => x.code === 'malformed-structured-output')?.code, 'malformed-structured-output');
-  }
+  const truncated = runAgent('reviewer', { profile: profile('truncated-json'), cwd: scratch(), stderr: 'capture' });
+  assert.equal(truncated.status, 'failed');
+  assert.equal(truncated.diagnostics.find((x) => x.code === 'malformed-structured-output')?.code, 'malformed-structured-output');
 });
 
 test('executor workspace-write behavior is unaffected', () => {

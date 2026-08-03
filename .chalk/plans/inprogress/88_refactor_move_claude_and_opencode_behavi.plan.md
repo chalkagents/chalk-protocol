@@ -36,7 +36,7 @@ todos:
 
 # refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -49,6 +49,10 @@ todos:
 - Same-reviewer warnings use adapter identity rather than command parsing.
 - Provider adapter failures retain raw diagnostics without leaking credentials.
 - Package tests prove all runtime adapter assets ship.
+
+## Locked tests (read-only — P6)
+
+- `test/provider-adapters.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

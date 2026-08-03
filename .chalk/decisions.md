@@ -599,3 +599,8 @@
 
 - _when:_ 2026-08-03T08:09:53.849Z
 - _why:_ User explicitly directed bypassing external model review for this milestone; all nine canonical roles, instruction/context separation, generated-asset drift, raise behavior, and decision-digest behavior are protected by locked tests and full verify is GREEN.
+
+## Treat raw-command versus Protocol v1 as the only Agent Runner transport seam; put each provider's flags, permissions, prompt mapping, output decoding, usage, identity, and redaction behind its adapter command.
+
+- _when:_ 2026-08-03T08:28:57.992Z
+- _why:_ This keeps the core interface small and provider-neutral while concentrating provider volatility in deep adapters that can be tested through the same request/response contract.
