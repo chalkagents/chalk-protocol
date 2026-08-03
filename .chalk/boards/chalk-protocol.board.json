@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785741746000,
+  "updatedAt": 1785741810051,
   "order": 0,
   "cards": [
     {
@@ -1393,6 +1393,15 @@
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/229"
       }
+    },
+    {
+      "id": "task-03b0db1c",
+      "title": "feat: add provider-neutral agent profiles, role bindings, and explicit identity",
+      "column": "todo",
+      "createdAt": 1785741810051,
+      "updatedAt": 1785741810051,
+      "order": 84,
+      "description": "- Configuration supports named profiles and a role-to-profile map.\n- One profile can serve multiple roles without duplicating its connection details.\n- Model values are opaque strings and never drive provider branches in Chalk core.\n- Reviewer independence compares explicit normalized identity or reports that independence is unverified.\n- Existing `protocol.*.command` values normalize into compatibility profiles without changing behavior.\n- A migration path is versioned, idempotent, and preserves user-edited commands.\n- Config drift tests and `docs/CONFIG.md` cover every new field.\n- `chalk doctor --json` reports resolved role bindings and identity without exposing credentials.\n- Tests cover shared profiles, distinct reviewer identity, unknown identity, and legacy configuration."
     }
   ]
 }

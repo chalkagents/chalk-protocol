@@ -7149,5 +7149,58 @@
     "reviews": [],
     "startedAt": "2026-08-03T07:13:27.073Z",
     "doneAt": "2026-08-03T07:22:26.000Z"
+  },
+  {
+    "id": "task-03b0db1c",
+    "title": "feat: add provider-neutral agent profiles, role bindings, and explicit identity",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Configuration supports named profiles and a role-to-profile map."
+      },
+      {
+        "text": "One profile can serve multiple roles without duplicating its connection details."
+      },
+      {
+        "text": "Model values are opaque strings and never drive provider branches in Chalk core."
+      },
+      {
+        "text": "Reviewer independence compares explicit normalized identity or reports that independence is unverified."
+      },
+      {
+        "text": "Existing `protocol.*.command` values normalize into compatibility profiles without changing behavior."
+      },
+      {
+        "text": "A migration path is versioned, idempotent, and preserves user-edited commands."
+      },
+      {
+        "text": "Config drift tests and `docs/CONFIG.md` cover every new field."
+      },
+      {
+        "text": "`chalk doctor --json` reports resolved role bindings and identity without exposing credentials."
+      },
+      {
+        "text": "Tests cover shared profiles, distinct reviewer identity, unknown identity, and legacy configuration."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 230,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/230",
+      "body": "Parent roadmap: #226\nDepends on: #227, #228, #229\n\n## Problem\n\nProvider and model identity are inferred from shell command tokens and special environment variables. Role configuration is duplicated across `executor.command`, `planner.command`, `review.command`, and other stage keys.\n\n## Scope\n\nAdd provider-neutral agent profiles and role bindings. A profile selects an adapter and carries optional opaque configuration such as model display text and reviewer-independence identity. Roles refer to profiles.\n\n## Acceptance criteria\n\n- [ ] Configuration supports named profiles and a role-to-profile map.\n- [ ] One profile can serve multiple roles without duplicating its connection details.\n- [ ] Model values are opaque strings and never drive provider branches in Chalk core.\n- [ ] Reviewer independence compares explicit normalized identity or reports that independence is unverified.\n- [ ] Existing `protocol.*.command` values normalize into compatibility profiles without changing behavior.\n- [ ] A migration path is versioned, idempotent, and preserves user-edited commands.\n- [ ] Config drift tests and `docs/CONFIG.md` cover every new field.\n- [ ] `chalk doctor --json` reports resolved role bindings and identity without exposing credentials.\n- [ ] Tests cover shared profiles, distinct reviewer identity, unknown identity, and legacy configuration.\n\n## Non-goals\n\n- Detecting installed CLIs.\n- Removing legacy command support.\n- Shipping provider-specific models as defaults."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T07:23:30.049Z"
+    },
+    "createdAt": "2026-08-03T07:23:30.051Z",
+    "reviews": []
   }
 ]
