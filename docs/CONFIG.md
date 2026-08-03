@@ -65,8 +65,8 @@ opaque display/configuration text and Chalk never parses it for routing.
 `independenceKey` is compared for reviewer independence. `options` is adapter-owned and may contain
 connection configuration; `chalk doctor --json` never emits it or `command`.
 
-`capabilities` optionally declares what an adapter can enforce: `{ "access": ["read-only",
-"workspace-write"], "output": ["text", "json", "none"] }`. When declared, a role binding whose
+`capabilities` optionally declares what an adapter can enforce: `{ "roles": ["executor", "planner"],
+"access": ["read-only", "workspace-write"], "output": ["text", "json", "none"] }`. When declared, a role binding whose
 required access/output is missing fails `chalk doctor` and Agent Runner with
 `unsupported-capability`. When omitted for a legacy/raw command, Chalk reports its own enforcement:
 read-only workspace diffing and structured decoding/validation.

@@ -39,7 +39,7 @@ todos:
 
 # feat: prove adapter portability with first-party Codex and Gemini CLI adapters
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -53,6 +53,10 @@ todos:
 - Usage and identity are normalized when exposed by the CLI and degrade honestly when unavailable.
 - Adding both adapters requires no provider-name branch in Chalk workflow modules.
 - Package and documentation tests prove shipped adapter assets are available after npm installation.
+
+## Locked tests (read-only — P6)
+
+- `test/codex-gemini-adapters.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

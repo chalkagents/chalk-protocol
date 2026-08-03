@@ -9,6 +9,8 @@ Run a built-in adapter with one command:
 ```sh
 chalk adapter conformance --adapter claude
 chalk adapter conformance --adapter opencode
+chalk adapter conformance --adapter codex
+chalk adapter conformance --adapter gemini
 chalk adapter conformance --adapter raw-command
 chalk adapter conformance --adapter fake
 ```
