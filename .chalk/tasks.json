@@ -6976,7 +6976,7 @@
   {
     "id": "task-4ee30eb2",
     "title": "design: specify Agent Adapter Protocol v1 and canonical role contracts",
-    "state": "specd",
+    "state": "in-progress",
     "acceptanceCriteria": [
       {
         "text": "A normative protocol document uses MUST/SHOULD/MAY language and carries an explicit version."
@@ -7003,7 +7003,12 @@
         "text": "The design explicitly identifies what remains inside Chalk core versus inside an adapter."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/agent-adapter-protocol.test.mjs",
+        "sha256": "b4975317ec48be39acab8517e54785a726663df11e3adb7be3fa67cd111c68cb"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -7021,6 +7026,13 @@
       "at": "2026-08-03T05:53:06.110Z"
     },
     "createdAt": "2026-08-03T05:53:06.115Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-08-03T05:53:59.131Z",
+    "handoff": {
+      "path": ".chalk/handoffs/task-4ee30eb-1.md",
+      "at": "2026-08-03T06:04:22.334Z",
+      "reason": "human-input",
+      "seq": 1
+    }
   }
 ]

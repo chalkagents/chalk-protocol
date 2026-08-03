@@ -33,7 +33,7 @@ todos:
 
 # design: specify Agent Adapter Protocol v1 and canonical role contracts
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -45,6 +45,10 @@ todos:
 - Compatibility behavior for current command strings is specified.
 - A fake-adapter fixture demonstrates that the contract is implementable without importing Chalk internals.
 - The design explicitly identifies what remains inside Chalk core versus inside an adapter.
+
+## Locked tests (read-only — P6)
+
+- `test/agent-adapter-protocol.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

@@ -203,5 +203,6 @@ have templates too. Contributions go through the same gates as our own work: see
 - **[PROTOCOL.md](./PROTOCOL.md)** — the seven primitives (P1–P7) and the full gate model.
 - **[RUNNING-AUTONOMOUSLY.md](./RUNNING-AUTONOMOUSLY.md)** — the unattended pipeline, end to end.
 - **[docs/CONFIG.md](./docs/CONFIG.md)** — every `protocol.*` key: default, consumer, example.
+- **[docs/AGENT_ADAPTER_PROTOCOL.md](./docs/AGENT_ADAPTER_PROTOCOL.md)** — provider-neutral Agent Adapter Protocol v1 and canonical role contracts.
 - **[RESEARCH.md](./RESEARCH.md)** — the evidence each gate is built on.
 - **`chalk help`** — the full command surface.
