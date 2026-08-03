@@ -1,13 +1,21 @@
 # Changelog
 
-## Unreleased — Provider-agnostic agent runtime
+## v0.4.0 — 2026-08-03
+
+### Features
+
+- Add the provider-neutral Agent Runner, named profiles, canonical role bindings, explicit
+  identities, capability enforcement, and Agent Adapter Protocol v1 without changing Chalk's task
+  or gate semantics.
+- Route executor, planner, reviewer, discovery, feedback, retro, handoff, PR narrative, and
+  regression-author stages through the same runner seam.
+- Ship first-party Claude Code, OpenCode, Codex CLI, and Gemini CLI adapters plus the shared offline
+  adapter conformance kit.
+- Add offline CLI discovery, guided `chalk connect`, capability-aware `chalk doctor`, concise
+  profile-aware `chalk next`, and provider-neutral onboarding, migration, and adapter-author guides.
 
 ### Compatibility
 
-- Add named agent profiles, canonical role bindings, and Agent Adapter Protocol v1 without changing
-  Chalk's task or gate semantics.
-- Ship first-party Claude Code, OpenCode, Codex CLI, and Gemini CLI adapters plus offline discovery,
-  guided `chalk connect`, capability-aware `chalk doctor`, and adapter conformance tooling.
 - Preserve every legacy `protocol.*.command` field through the raw-command compatibility adapter.
   Existing projects and `chalk init --executor claude|opencode|none` setup continue to work without
   a forced migration.
