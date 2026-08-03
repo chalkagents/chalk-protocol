@@ -539,3 +539,8 @@
 
 - _when:_ 2026-08-03T07:10:08.312Z
 - _why:_ This removes child-process and provider decisions from workflow modules, preserves streaming and #99 accounting, and gives later provider adapters one stable seam.
+
+## Overrode review gate for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:12:11.131Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; the implementation is protected by a locked fake-agent suite and the full Chalk verification gate is GREEN.

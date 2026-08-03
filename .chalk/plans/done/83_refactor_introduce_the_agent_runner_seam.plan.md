@@ -7,33 +7,33 @@ created: "2026-08-03T06:56:02.537Z"
 todos:
   - id: "task-16b28180-c1"
     content: "Executor and planner invoke one `runAgent(role, request)` interface instead of calling child-process helpers directly."
-    status: pending
+    status: done
   - id: "task-16b28180-c2"
     content: "The runner returns normalized status, text, structured output, usage, identity, and diagnostics as applicable."
-    status: pending
+    status: done
   - id: "task-16b28180-c3"
     content: "Existing command-string configuration produces the same observable executor and planner behavior."
-    status: pending
+    status: done
   - id: "task-16b28180-c4"
     content: "Executor terminal output remains visible and planner output remains storable as plain text."
-    status: pending
+    status: done
   - id: "task-16b28180-c5"
     content: "Timeouts, non-zero exits, missing binaries, malformed envelopes, and usage capture are covered by fake-adapter tests."
-    status: pending
+    status: done
   - id: "task-16b28180-c6"
     content: "Project `protocol.runner` is no longer prepended to agent commands; it remains scoped to project toolchain commands."
-    status: pending
+    status: done
   - id: "task-16b28180-c7"
     content: "No Chalk workflow module branches on a provider name."
-    status: pending
+    status: done
   - id: "task-16b28180-c8"
     content: "Cost-ledger behavior from #99 remains compatible."
-    status: pending
+    status: done
 ---
 
 # refactor: introduce the Agent Runner seam and migrate executor + planner
 
-> state: **in-progress** · phase: discovery
+> state: **done** · phase: discovery
 
 ## Objective
 
