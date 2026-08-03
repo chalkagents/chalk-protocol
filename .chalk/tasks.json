@@ -7281,7 +7281,7 @@
   {
     "id": "task-5c353a1f",
     "title": "refactor: make Chalk role instructions provider-neutral",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Canonical instructions exist for every agent-backed role named by Agent Adapter Protocol v1."
@@ -7332,6 +7332,7 @@
     },
     "createdAt": "2026-08-03T07:55:27.488Z",
     "reviews": [],
-    "startedAt": "2026-08-03T07:55:52.703Z"
+    "startedAt": "2026-08-03T07:55:52.703Z",
+    "doneAt": "2026-08-03T08:09:53.850Z"
   }
 ]

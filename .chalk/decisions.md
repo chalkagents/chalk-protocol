@@ -594,3 +594,8 @@
 
 - _when:_ 2026-08-03T08:07:18.086Z
 - _why:_ Adapters can map the two fields to native system/user prompt surfaces or combine them for raw CLIs, while generated conveniences cannot become runtime dependencies or drift.
+
+## Overrode review gate for "refactor: make Chalk role instructions provider-neutral"
+
+- _when:_ 2026-08-03T08:09:53.849Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; all nine canonical roles, instruction/context separation, generated-asset drift, raise behavior, and decision-digest behavior are protected by locked tests and full verify is GREEN.
