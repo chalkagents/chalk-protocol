@@ -33,7 +33,7 @@ todos:
 
 # refactor: introduce the Agent Runner seam and migrate executor + planner
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -45,6 +45,10 @@ todos:
 - Project `protocol.runner` is no longer prepended to agent commands; it remains scoped to project toolchain commands.
 - No Chalk workflow module branches on a provider name.
 - Cost-ledger behavior from #99 remains compatible.
+
+## Locked tests (read-only — P6)
+
+- `test/agent-runner.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

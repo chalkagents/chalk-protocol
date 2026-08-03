@@ -29,7 +29,8 @@ import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
 import { missingRequiredTest, untrackedLockedTests } from '../lib/testgate.mjs';
 import { runBreakit } from '../lib/breakit.mjs';
-import { withJsonOutput, unwrapAgentOutput, runExecutorCaptured } from '../lib/cost.mjs';
+import { withJsonOutput, unwrapAgentOutput } from '../lib/cost.mjs';
+import { runAgent, usageForLedger } from '../lib/agent-runner.mjs';
 import { runMutation } from '../lib/mutation.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
@@ -569,12 +570,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (stageDone(t, 'planned')) return ok(`plan ${C.dim('(already done)')}`);
     const cmd = s.protocol().planner?.command;
     if (!cmd) die('no planner configured (protocol.planner.command).');
-    let out = '';
     const t0 = Date.now();
-    try { out = execSync(withJsonOutput(withRunner(s.protocol().runner, cmd)), { cwd: workdir(s, t), input: buildContext(s, t), encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 10 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 }); }
-    catch (e) { out = `${e.stdout || ''}`; }
-    const { text: planOut, usage } = unwrapAgentOutput(out); // #99: envelope off before the plan is stored
-    s.logCost({ taskId: t.id, stage: 'plan', agent: 'planner', ms: Date.now() - t0, ...(usage || {}) });
+    const agentResult = runAgent('planner', { command: cmd, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' } });
+    s.logCost({ taskId: t.id, stage: 'plan', agent: 'planner', ms: Date.now() - t0, ...usageForLedger(agentResult.usage) });
+    const planOut = agentResult.text;
     const planText = planOut.trim();
     if (!planText) die('planner produced no plan.');
     t.plan = planText.slice(0, 8000);
@@ -861,8 +860,8 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (ex) {
       t.attempts = (t.attempts || 0) + 1; s.upsertTask(t);   // churn budget: each work run counts
       const t0 = Date.now();
-      const { usage } = runExecutorCaptured(withRunner(s.protocol().runner, ex), { cwd: workdir(s, t), input: buildContext(s, t) }); // #99: claude-shaped → usage captured; runner prefix like every sibling stage
-      s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0, ...(usage || {}) });
+      const agentResult = runAgent('executor', { command: ex, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' } });
+      s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0, ...usageForLedger(agentResult.usage) });
     }
     // #211: the agent may have RAISED a fork mid-work (chalk raise writes it to the spine). Re-read and
     // pause for the director instead of proceeding to verify/done on a guessed choice. Exit 2 → the

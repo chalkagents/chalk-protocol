@@ -7039,7 +7039,7 @@
   {
     "id": "task-16b28180",
     "title": "refactor: introduce the Agent Runner seam and migrate executor + planner",
-    "state": "specd",
+    "state": "in-progress",
     "acceptanceCriteria": [
       {
         "text": "Executor and planner invoke one `runAgent(role, request)` interface instead of calling child-process helpers directly."
@@ -7066,7 +7066,12 @@
         "text": "Cost-ledger behavior from #99 remains compatible."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/agent-runner.test.mjs",
+        "sha256": "e8b37fe2634b37d6484a1b31a60adcf4413b0d5cceeb50f5785f9930e6c9b511"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -7084,6 +7089,7 @@
       "at": "2026-08-03T06:56:02.536Z"
     },
     "createdAt": "2026-08-03T06:56:02.537Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-08-03T06:56:25.774Z"
   }
 ]

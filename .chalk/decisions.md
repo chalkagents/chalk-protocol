@@ -524,3 +524,18 @@
 
 - _when:_ 2026-08-03T06:54:55.872Z
 - _why:_ User explicitly directed bypassing external model review for now; configured Claude model is unavailable, and milestone #5 is replacing provider-specific review wiring with provider-agnostic adapters.
+
+## Amended acceptance test for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:07:53.975Z
+- _why:_ Move the fake executable outside Node's default test discovery tree; the original location caused the full suite to execute the fixture as a test and wait on stdin.
+
+## Amended acceptance test for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:08:13.669Z
+- _why:_ Update the test fixture path after moving the fake executable outside Node's default test discovery tree.
+
+## Route executor and planner through a single normalized Agent Runner result, while retaining legacy command strings as a compatibility transport.
+
+- _when:_ 2026-08-03T07:10:08.312Z
+- _why:_ This removes child-process and provider decisions from workflow modules, preserves streaming and #99 accounting, and gives later provider adapters one stable seam.
