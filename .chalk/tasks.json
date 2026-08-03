@@ -7092,5 +7092,55 @@
     "reviews": [],
     "startedAt": "2026-08-03T06:56:25.774Z",
     "doneAt": "2026-08-03T07:12:11.133Z"
+  },
+  {
+    "id": "task-d8fd5057",
+    "title": "refactor: route every remaining agent-backed stage through Agent Runner",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring all call the Agent Runner."
+      },
+      {
+        "text": "Existing role-specific parsers receive normalized runner output and preserve their current success/error behavior."
+      },
+      {
+        "text": "Non-zero commands that still return a valid reviewer verdict remain parseable."
+      },
+      {
+        "text": "Best-effort narrative roles retain their fallback behavior and useful diagnostics."
+      },
+      {
+        "text": "Usage and wall-clock logging follow one runner-owned policy across every role."
+      },
+      {
+        "text": "Duplicate provider-aware execution and envelope-unwrapping code is removed."
+      },
+      {
+        "text": "Tests exercise each migrated role through the same fake-adapter seam."
+      },
+      {
+        "text": "The deletion test holds: removing Agent Runner would force execution complexity back into every caller."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 229,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/229",
+      "body": "Parent roadmap: #226\nDepends on: #228\n\n## Problem\n\nA provider-neutral seam is not real while reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring still execute commands independently.\n\n## Scope\n\nMigrate all remaining agent-backed stages to the Agent Runner and delete the superseded execution paths instead of layering wrappers over them.\n\n## Acceptance criteria\n\n- [ ] Reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring all call the Agent Runner.\n- [ ] Existing role-specific parsers receive normalized runner output and preserve their current success/error behavior.\n- [ ] Non-zero commands that still return a valid reviewer verdict remain parseable.\n- [ ] Best-effort narrative roles retain their fallback behavior and useful diagnostics.\n- [ ] Usage and wall-clock logging follow one runner-owned policy across every role.\n- [ ] Duplicate provider-aware execution and envelope-unwrapping code is removed.\n- [ ] Tests exercise each migrated role through the same fake-adapter seam.\n- [ ] The deletion test holds: removing Agent Runner would force execution complexity back into every caller.\n\n## Non-goals\n\n- Changing role prompts or acceptance semantics.\n- Adding provider profiles.\n- Changing review cadence or gate policy."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T07:13:11.290Z"
+    },
+    "createdAt": "2026-08-03T07:13:11.291Z",
+    "reviews": []
   }
 ]
