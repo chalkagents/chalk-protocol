@@ -7458,7 +7458,7 @@
   {
     "id": "task-0bf964ba",
     "title": "feat: prove adapter portability with first-party Codex and Gemini CLI adapters",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Codex and Gemini adapters pass the same offline conformance suite as Claude and OpenCode."
@@ -7515,6 +7515,7 @@
     },
     "createdAt": "2026-08-03T08:44:45.525Z",
     "reviews": [],
-    "startedAt": "2026-08-03T08:45:04.926Z"
+    "startedAt": "2026-08-03T08:45:04.926Z",
+    "doneAt": "2026-08-03T08:58:51.138Z"
   }
 ]

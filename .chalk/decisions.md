@@ -619,3 +619,13 @@
 
 - _when:_ 2026-08-03T08:43:38.665Z
 - _why:_ User explicitly directed bypassing external model review for this milestone; the locked conformance test covers all fixtures, built-in and external adapters, mutation refusal, offline/live policy, both renderers, version reporting, docs, package assets, and full verify is GREEN.
+
+## Ship Codex and Gemini as Protocol v1 adapters with provider-native sandbox, structured-output, and telemetry mappings
+
+- _when:_ 2026-08-03T08:56:30.613Z
+- _why:_ The common adapter contract keeps workflow code provider-neutral while direct argv/stdin transport preserves prompts and leaves authentication with each installed CLI.
+
+## Overrode review gate for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-08-03T08:58:51.137Z
+- _why:_ Milestone owner explicitly authorized bypassing external model reviewers for this milestone; locked acceptance test and full verify are GREEN.
