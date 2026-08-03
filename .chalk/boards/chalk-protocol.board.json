@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785744593850,
+  "updatedAt": 1785744652717,
   "order": 0,
   "cards": [
     {
@@ -1447,6 +1447,15 @@
         },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/232"
       }
+    },
+    {
+      "id": "task-42ddf49a",
+      "title": "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1",
+      "column": "todo",
+      "createdAt": 1785744652717,
+      "updatedAt": 1785744652717,
+      "order": 87,
+      "description": "- Claude adapter owns CLI flags, canonical prompt mapping, output-envelope decoding, usage normalization, and permission mapping.\n- OpenCode adapter owns stdin-to-argument transport, JSON cleanup, usage/identity normalization where available, and permission mapping.\n- Both adapters support every role their current integration supports.\n- Existing `--executor claude` and `--executor opencode` behavior migrates compatibly or emits an exact migration command.\n- Core modules do not inspect Claude/OpenCode binary names, flags, script paths, or environment variables.\n- Existing cost ledger records remain readable and new adapter usage records use the normalized shape.\n- Same-reviewer warnings use adapter identity rather than command parsing.\n- Provider adapter failures retain raw diagnostics without leaking credentials.\n- Package tests prove all runtime adapter assets ship."
     }
   ]
 }

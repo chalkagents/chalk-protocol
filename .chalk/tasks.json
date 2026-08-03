@@ -7334,5 +7334,58 @@
     "reviews": [],
     "startedAt": "2026-08-03T07:55:52.703Z",
     "doneAt": "2026-08-03T08:09:53.850Z"
+  },
+  {
+    "id": "task-42ddf49a",
+    "title": "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Claude adapter owns CLI flags, canonical prompt mapping, output-envelope decoding, usage normalization, and permission mapping."
+      },
+      {
+        "text": "OpenCode adapter owns stdin-to-argument transport, JSON cleanup, usage/identity normalization where available, and permission mapping."
+      },
+      {
+        "text": "Both adapters support every role their current integration supports."
+      },
+      {
+        "text": "Existing `--executor claude` and `--executor opencode` behavior migrates compatibly or emits an exact migration command."
+      },
+      {
+        "text": "Core modules do not inspect Claude/OpenCode binary names, flags, script paths, or environment variables."
+      },
+      {
+        "text": "Existing cost ledger records remain readable and new adapter usage records use the normalized shape."
+      },
+      {
+        "text": "Same-reviewer warnings use adapter identity rather than command parsing."
+      },
+      {
+        "text": "Provider adapter failures retain raw diagnostics without leaking credentials."
+      },
+      {
+        "text": "Package tests prove all runtime adapter assets ship."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 233,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/233",
+      "body": "Parent roadmap: #226\nDepends on: #230, #231, #232\n\n## Problem\n\nClaude-specific envelope injection and OpenCode-specific bridge/model logic live in Chalk core or one-off scripts. This makes provider behavior part of the protocol implementation and encourages more special cases.\n\n## Scope\n\nImplement first-party Claude and OpenCode adapters that satisfy Agent Adapter Protocol v1, then remove provider-specific branching from core runner, config, cost, and doctor modules.\n\n## Acceptance criteria\n\n- [ ] Claude adapter owns CLI flags, canonical prompt mapping, output-envelope decoding, usage normalization, and permission mapping.\n- [ ] OpenCode adapter owns stdin-to-argument transport, JSON cleanup, usage/identity normalization where available, and permission mapping.\n- [ ] Both adapters support every role their current integration supports.\n- [ ] Existing `--executor claude` and `--executor opencode` behavior migrates compatibly or emits an exact migration command.\n- [ ] Core modules do not inspect Claude/OpenCode binary names, flags, script paths, or environment variables.\n- [ ] Existing cost ledger records remain readable and new adapter usage records use the normalized shape.\n- [ ] Same-reviewer warnings use adapter identity rather than command parsing.\n- [ ] Provider adapter failures retain raw diagnostics without leaking credentials.\n- [ ] Package tests prove all runtime adapter assets ship.\n\n## Non-goals\n\n- Codex or Gemini support.\n- Removing the raw-command compatibility adapter.\n- Requiring provider CLIs as npm dependencies."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T08:10:52.716Z"
+    },
+    "createdAt": "2026-08-03T08:10:52.717Z",
+    "reviews": []
   }
 ]
