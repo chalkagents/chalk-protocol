@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785748832843,
+  "updatedAt": 1785748864618,
   "order": 0,
   "cards": [
     {
@@ -1523,11 +1523,15 @@
     {
       "id": "task-bc67b4d4",
       "title": "ux: make chalk next and doctor concise, prioritized, and profile-aware",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1785748832843,
-      "updatedAt": 1785748832843,
+      "updatedAt": 1785748864618,
       "order": 91,
-      "description": "- Default `chalk next` prints at most one primary next action with an exact command.\n- Remaining blocked, needs-criteria, dependency, and human-input items are summarized by category.\n- A verbose flag reveals the full current listing without losing information.\n- A fixture matching Chalk own mixed blocked/duplicate/needs-criteria queue proves the useful action appears first.\n- `chalk doctor` groups output into blockers, warnings, and optional improvements in that order.\n- Agent readiness reports resolved role profiles, capabilities, independence state, and exact remediation commands.\n- Manual mode is presented as a valid path rather than a failed autonomous setup.\n- Neither command performs a live model call.\n- Existing JSON output remains stable or receives an explicit versioned migration.\n- Help and snapshots remain readable without ANSI color."
+      "description": "- Default `chalk next` prints at most one primary next action with an exact command.\n- Remaining blocked, needs-criteria, dependency, and human-input items are summarized by category.\n- A verbose flag reveals the full current listing without losing information.\n- A fixture matching Chalk own mixed blocked/duplicate/needs-criteria queue proves the useful action appears first.\n- `chalk doctor` groups output into blockers, warnings, and optional improvements in that order.\n- Agent readiness reports resolved role profiles, capabilities, independence state, and exact remediation commands.\n- Manual mode is presented as a valid path rather than a failed autonomous setup.\n- Neither command performs a live model call.\n- Existing JSON output remains stable or receives an explicit versioned migration.\n- Help and snapshots remain readable without ANSI color.",
+      "testArtifact": {
+        "specPath": "test/action-oriented-cli.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/237"
+      }
     }
   ]
 }

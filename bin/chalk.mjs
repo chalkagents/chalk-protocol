@@ -41,6 +41,7 @@ import { runArchive } from '../lib/archive.mjs';
 import { conformanceAdapterCommand, renderConformanceReport, runAdapterConformance } from '../lib/adapter-conformance.mjs';
 import { adapterManifest } from '../lib/adapter-registry.mjs';
 import { CONNECT_PRESETS, configureConnections, connectionReadiness, discoverConnections, parseAssignments, promptConnection } from '../lib/connect.mjs';
+import { doctorResultGroups, nextActionView } from '../lib/action-views.mjs';
 import { computeStats, publicStats, renderPublicMarkdown, renderBadge } from '../lib/stats.mjs';
 import { REVIEW_OVERRIDE_TITLE, AUDIT_TITLE } from '../lib/markers.mjs';
 import { portalModel } from '../lib/portal.mjs';
@@ -87,7 +88,9 @@ function clearReviewBlockOnPass(t) {
 }
 
 
-const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
+const colors = !Object.hasOwn(process.env, 'NO_COLOR') && process.env.TERM !== 'dumb';
+const paint = (code, value) => colors ? `\x1b[${code}m${value}\x1b[0m` : String(value);
+const C = { dim: (s) => paint(2, s), b: (s) => paint(1, s), g: (s) => paint(32, s), r: (s) => paint(31, s), y: (s) => paint(33, s) };
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
 const ok = (msg) => console.log(C.g('✓ ') + msg);
 
@@ -354,6 +357,22 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.log(JSON.stringify({ task: t || null, freshSession: true, handoff, action }));
       return;
     }
+    if (flags.verbose !== true) {
+      const view = nextActionView(tasks);
+      console.log(C.b('Chalk · next action'));
+      if (view.primary) {
+        console.log(`  ${C.g('NEXT')} ${view.primary.label} ${C.b(view.primary.command)}`);
+        for (const detail of view.primary.details || []) console.log(`       ${C.y('↻')} ${detail}`);
+      } else {
+        console.log(`  ${C.y('PAUSED')} no task action is currently available`);
+      }
+      const c = view.counts;
+      console.log('\n' + C.b('Queue summary'));
+      console.log(`  active ${c.inProgress} · runnable ${c.runnable} · needs criteria ${c.needsCriteria} · waiting on dependencies ${c.dependencies}${waiting[0] ? ` (first: ${waiting[0].title})` : ''}`);
+      console.log(`  blocked ${c.blocked} ${C.dim(`(human input ${c.humanInput} · review rework ${c.reviewBlocked})`)} · done ${c.done}`);
+      console.log(C.dim('  full details: chalk next --verbose'));
+      return;
+    }
     console.log(C.b('Chalk · next action'));
     const reg0 = s.protocol().regression;
     if (reg0?.required) {
@@ -396,7 +415,6 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         console.log(C.dim(`     when ready:  ${seq}`));
         console.log(C.dim(`     read first:  chalk context ${short}`));
       }
-      return;
     }
     if (ready.length || waiting.length) {
       if (ready.length) {
@@ -407,16 +425,19 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         const deps = (t.after || []).map((ref) => resolveRef(tasks, ref)).filter((d) => d && d.state !== 'done').map((d) => d.title);
         console.log(C.dim(`     ⧗ waiting: ${t.title} — on ${deps.join(', ') || 'unresolved deps'}`));
       }
-      if (ready.length) return; // only fall through to todo/done when nothing is startable
-      if (!todo.length) { console.log(C.dim('  (all remaining work is waiting on deps or blocked)')); return; }
+      if (!ready.length && !todo.length) console.log(C.dim('  (all remaining work is waiting on deps or blocked)'));
     }
     if (todo.length) {
       console.log(`  ${C.dim('○')} ${todo.length} task(s) need acceptance criteria before they can start (GATE P1):`);
       for (const t of todo) console.log(C.dim(`     chalk spec ${t.id.slice(0, 12)} --criterion "..."   `) + `(${t.title})`);
-      return;
+    }
+    const completed = tasks.filter((task) => task.state === 'done');
+    if (completed.length) {
+      console.log(`  ${C.g('✓')} ${completed.length} completed task(s):`);
+      for (const task of completed) console.log(C.dim(`     ${task.id.slice(0, 12)}   `) + task.title);
     }
     if (!tasks.length) { console.log(C.dim('  no tasks yet →  chalk task add "<title>"')); return; }
-    console.log(`  ${C.g('✓')} all tasks done. Add the next one ${C.dim('(chalk task add)')} or advance phase ${C.dim('(chalk phase ...)')}.`);
+    if (tasks.every((task) => task.state === 'done')) console.log(`  ${C.g('✓')} all tasks done. Add the next one ${C.dim('(chalk task add)')} or advance phase ${C.dim('(chalk phase ...)')}.`);
   },
 
   // The ordered backlog/DAG — work grouped by milestone, with dependency edges + runnability.
@@ -1234,20 +1255,43 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   doctor({ flags = {} } = {}) {
     const s = Store.open();
     const results = runDoctor(s);
+    const agents = doctorAgentSummary(s.protocol());
     const fails = results.filter((r) => r.level === 'fail').length;
     // --json: the bug-report format (issue templates ask for it) — stable, greppable, exit-coded.
     if (flags.json === true) {
-      console.log(JSON.stringify({ at: now(), node: process.version, platform: process.platform, agents: doctorAgentSummary(s.protocol()), results }, null, 2));
+      console.log(JSON.stringify({ at: now(), node: process.version, platform: process.platform, agents, results }, null, 2));
       process.exit(fails ? 2 : 0);
     }
     console.log(C.b('chalk doctor') + C.dim(' · autonomous-run readiness') + '\n');
     const icon = { ok: C.g('✓'), warn: C.y('⚠'), fail: C.r('✗'), info: C.dim('·') };
-    for (const area of [...new Set(results.map((r) => r.area))]) {
-      console.log(C.b(area));
-      for (const r of results.filter((x) => x.area === area)) console.log(`  ${icon[r.level]} ${r.level === 'info' ? C.dim(r.msg) : r.msg}`);
+    for (const group of doctorResultGroups(results)) {
+      console.log(C.b(group.title));
+      if (!group.items.length) console.log(C.dim('  (none)'));
+      for (const r of group.items) console.log(`  ${icon[r.level]} ${C.dim(`[${r.area}]`)} ${r.level === 'info' ? C.dim(r.msg) : r.msg}`);
+      console.log('');
     }
+    if (flags.verbose === true) {
+      console.log(C.b('Passing checks'));
+      for (const r of results.filter((item) => item.level === 'ok')) console.log(`  ${icon.ok} ${C.dim(`[${r.area}]`)} ${r.msg}`);
+      console.log('');
+    } else {
+      console.log(C.dim(`Passing checks: ${results.filter((item) => item.level === 'ok').length} · full details: chalk doctor --verbose`));
+    }
+    console.log('\n' + C.b('Agent readiness'));
+    console.log(`  mode: ${agents.mode === 'manual' ? C.g('manual (valid; no model required)') : C.g('autonomous-capable')}`);
+    const roleEntries = Object.entries(agents.roles);
+    if (!roleEntries.length) console.log(`  ${C.dim('no roles bound')} · autonomous setup: chalk connect --preset autonomous --builder <adapter> --reviewer <adapter>`);
+    for (const [role, profile] of roleEntries) {
+      const caps = profile.capabilities || {};
+      console.log(`  ${role} → ${profile.profile} (${profile.adapter}) · access ${JSON.stringify(caps.access || caps.accessEnforced)} · output ${JSON.stringify(caps.output || caps.structuredOutput)}`);
+    }
+    if (agents.roles.executor && agents.roles.reviewer) console.log(`  reviewer independence: ${agents.independence.status}${agents.independence.nextAction ? ` · next: ${agents.independence.nextAction}` : ''}`);
     const warns = results.filter((r) => r.level === 'warn').length;
-    console.log('\n' + (fails ? C.r(`● NOT READY — ${fails} blocker(s)${warns ? `, ${warns} warning(s)` : ''}`) : warns ? C.y(`● READY with ${warns} warning(s)`) : C.g('● READY')));
+    const manual = !agents.roles.executor;
+    const verdict = fails
+      ? `${manual ? C.g('● MANUAL MODE READY') + C.r(' · ') : C.r('● ')}${C.r(`NOT READY for unattended runs — ${fails} blocker(s)${warns ? `, ${warns} warning(s)` : ''}`)}`
+      : warns ? C.y(`● READY with ${warns} warning(s)`) : C.g('● READY');
+    console.log('\n' + verdict);
     if (fails) console.log(C.dim('  NOT READY concerns UNATTENDED runs (chalk run/pipeline) — the manual loop works regardless: chalk next'));
     process.exit(fails ? 2 : 0);
   },
@@ -2269,7 +2313,7 @@ ${C.b('setup')}
   chalk telemetry [--show]             ${C.dim('opt-in anonymous usage telemetry — show exactly what would be sent (off by default)')}
   chalk status
   chalk harness                        ${C.dim('the kit assembled around your goal: agents · skills · checks · flows')}
-  chalk next                           ${C.dim('the agent entrypoint: what to do next')}
+  chalk next [--verbose]               ${C.dim('one primary command + queue counts; --verbose shows every item')}
   chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
 
 ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental is met)')}
@@ -2285,7 +2329,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk merge <id>                     ${C.dim('GATED squash-merge + cleanup + done')}
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
-  chalk doctor [--json]                ${C.dim('preflight readiness check for autonomous runs (read-only); --json for bug reports')}
+  chalk doctor [--verbose|--json]       ${C.dim('prioritized readiness blockers/warnings/improvements; --json stays machine-stable')}
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
   chalk stats [--since D] [--json] [--public|--badge]   ${C.dim('gate-efficacy report; --public: PII-free shareable markdown, --badge: shields.io JSON')}
   chalk archive [--dry-run]            ${C.dim('compact the spine: move done+released tasks (+their events) to .chalk/archive/')}

@@ -39,7 +39,7 @@ todos:
 
 # ux: make chalk next and doctor concise, prioritized, and profile-aware
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -53,6 +53,10 @@ todos:
 - Neither command performs a live model call.
 - Existing JSON output remains stable or receives an explicit versioned migration.
 - Help and snapshots remain readable without ANSI color.
+
+## Locked tests (read-only — P6)
+
+- `test/action-oriented-cli.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

@@ -639,3 +639,8 @@
 
 - _when:_ 2026-08-03T09:19:31.693Z
 - _why:_ Milestone owner explicitly authorized bypassing external model reviewers for this milestone; locked acceptance test and full verify are GREEN.
+
+## Prioritize one exact next command while retaining full queue detail behind verbose and stable JSON
+
+- _when:_ 2026-08-03T09:35:01.414Z
+- _why:_ The default human view should guide action rather than front-load blocked history; category counts preserve orientation, verbose preserves every item, and machine consumers keep their existing shape.
