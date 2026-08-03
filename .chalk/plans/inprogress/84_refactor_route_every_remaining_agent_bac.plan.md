@@ -33,7 +33,7 @@ todos:
 
 # refactor: route every remaining agent-backed stage through Agent Runner
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -45,6 +45,10 @@ todos:
 - Duplicate provider-aware execution and envelope-unwrapping code is removed.
 - Tests exercise each migrated role through the same fake-adapter seam.
 - The deletion test holds: removing Agent Runner would force execution complexity back into every caller.
+
+## Locked tests (read-only — P6)
+
+- `test/agent-runner-roles.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

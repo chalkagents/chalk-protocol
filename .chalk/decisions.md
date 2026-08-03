@@ -544,3 +544,8 @@
 
 - _when:_ 2026-08-03T07:12:11.131Z
 - _why:_ User explicitly directed bypassing external model review for this milestone; the implementation is protected by a locked fake-agent suite and the full Chalk verification gate is GREEN.
+
+## Make Agent Runner the sole owner of subprocess normalization and cost-ledger timing for every agent-backed role.
+
+- _when:_ 2026-08-03T07:20:25.624Z
+- _why:_ Role modules should only build prompts and parse normalized text; central execution preserves legacy behavior while making provider adapters replaceable without touching workflows.

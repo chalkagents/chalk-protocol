@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785741191291,
+  "updatedAt": 1785741207073,
   "order": 0,
   "cards": [
     {
@@ -1379,11 +1379,15 @@
     {
       "id": "task-d8fd5057",
       "title": "refactor: route every remaining agent-backed stage through Agent Runner",
-      "column": "todo",
+      "column": "in_progress",
       "createdAt": 1785741191291,
-      "updatedAt": 1785741191291,
+      "updatedAt": 1785741207073,
       "order": 83,
-      "description": "- Reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring all call the Agent Runner.\n- Existing role-specific parsers receive normalized runner output and preserve their current success/error behavior.\n- Non-zero commands that still return a valid reviewer verdict remain parseable.\n- Best-effort narrative roles retain their fallback behavior and useful diagnostics.\n- Usage and wall-clock logging follow one runner-owned policy across every role.\n- Duplicate provider-aware execution and envelope-unwrapping code is removed.\n- Tests exercise each migrated role through the same fake-adapter seam.\n- The deletion test holds: removing Agent Runner would force execution complexity back into every caller."
+      "description": "- Reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring all call the Agent Runner.\n- Existing role-specific parsers receive normalized runner output and preserve their current success/error behavior.\n- Non-zero commands that still return a valid reviewer verdict remain parseable.\n- Best-effort narrative roles retain their fallback behavior and useful diagnostics.\n- Usage and wall-clock logging follow one runner-owned policy across every role.\n- Duplicate provider-aware execution and envelope-unwrapping code is removed.\n- Tests exercise each migrated role through the same fake-adapter seam.\n- The deletion test holds: removing Agent Runner would force execution complexity back into every caller.",
+      "testArtifact": {
+        "specPath": "test/agent-runner-roles.test.mjs",
+        "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/229"
+      }
     }
   ]
 }

@@ -8,7 +8,7 @@ import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
-import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
+import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences, normGate } from '../lib/config.mjs';
@@ -29,8 +29,7 @@ import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
 import { missingRequiredTest, untrackedLockedTests } from '../lib/testgate.mjs';
 import { runBreakit } from '../lib/breakit.mjs';
-import { withJsonOutput, unwrapAgentOutput } from '../lib/cost.mjs';
-import { runAgent, usageForLedger } from '../lib/agent-runner.mjs';
+import { runAgent } from '../lib/agent-runner.mjs';
 import { runMutation } from '../lib/mutation.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
@@ -570,9 +569,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (stageDone(t, 'planned')) return ok(`plan ${C.dim('(already done)')}`);
     const cmd = s.protocol().planner?.command;
     if (!cmd) die('no planner configured (protocol.planner.command).');
-    const t0 = Date.now();
-    const agentResult = runAgent('planner', { command: cmd, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' } });
-    s.logCost({ taskId: t.id, stage: 'plan', agent: 'planner', ms: Date.now() - t0, ...usageForLedger(agentResult.usage) });
+    const agentResult = runAgent('planner', { command: cmd, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
     const planOut = agentResult.text;
     const planText = planOut.trim();
     if (!planText) die('planner produced no plan.');
@@ -859,9 +856,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const ex = s.protocol().executor?.command;
     if (ex) {
       t.attempts = (t.attempts || 0) + 1; s.upsertTask(t);   // churn budget: each work run counts
-      const t0 = Date.now();
-      const agentResult = runAgent('executor', { command: ex, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' } });
-      s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0, ...usageForLedger(agentResult.usage) });
+      runAgent('executor', { command: ex, cwd: workdir(s, t), input: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
     }
     // #211: the agent may have RAISED a fork mid-work (chalk raise writes it to the spine). Re-read and
     // pause for the director instead of proceeding to verify/done on a guessed choice. Exit 2 → the
@@ -1741,8 +1736,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (!reg.authorCommand) die('set .chalk/chalk.json → protocol.regression.authorCommand (a BYO test-author agent).');
       console.log(C.dim('  running guard author (derives held-out tests from the spec, blind to the code)…'));
       const prompt = buildGuardPrompt(m, s.spec(), s.tasks().flatMap((t) => (t.acceptanceCriteria || []).map((c) => `- [${t.title}] ${c.text}`)).join('\n'));
-      try { execSync(withRunner(m.protocol?.runner, reg.authorCommand), { cwd: s.root, input: prompt, stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); }
-      catch { /* author may write files then exit nonzero */ }
+      runRegressionAuthor(s, reg.authorCommand, prompt); // author may write files then exit nonzero
       let n = 0;
       for (const f of listDirFiles(s.root, reg.dir)) { if (/readme/i.test(f)) continue; lockInto(f); n++; }
       s.saveMeta(m);
