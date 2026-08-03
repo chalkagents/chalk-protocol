@@ -584,3 +584,8 @@
 
 - _when:_ 2026-08-03T07:51:45.314Z
 - _why:_ Adapter claims alone cannot protect the workspace; Chalk can independently refuse mutated results, preserve user data, and give every provider the same role-schema diagnostics.
+
+## Overrode review gate for "feat: enforce agent role capabilities and structured-output contracts"
+
+- _when:_ 2026-08-03T07:54:13.722Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; capability enforcement, malicious read-only mutation refusal, structured schemas, diagnostics, and executor access are protected by locked tests and full verify is GREEN.
