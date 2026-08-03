@@ -7398,7 +7398,7 @@
   {
     "id": "task-f0880c0a",
     "title": "feat: ship an Agent Adapter Protocol conformance kit",
-    "state": "specd",
+    "state": "in-progress",
     "acceptanceCriteria": [
       {
         "text": "A single command runs the adapter conformance suite against a configured adapter executable."
@@ -7428,7 +7428,12 @@
         "text": "External adapter author documentation uses only public package artifacts."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/adapter-conformance.test.mjs",
+        "sha256": "e8e0c48529d4d047bda90f3a66c8597f1bc71ca79397668ff9ef6555195e8f43"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -7446,6 +7451,7 @@
       "at": "2026-08-03T08:32:18.576Z"
     },
     "createdAt": "2026-08-03T08:32:18.578Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-08-03T08:32:38.924Z"
   }
 ]

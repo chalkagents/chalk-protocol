@@ -36,7 +36,7 @@ todos:
 
 # feat: ship an Agent Adapter Protocol conformance kit
 
-> state: **specd** · phase: discovery
+> state: **in-progress** · phase: discovery
 
 ## Objective
 
@@ -49,6 +49,10 @@ todos:
 - The harness makes no network call unless an explicit `--live` mode is selected.
 - The protocol version tested is printed in every result.
 - External adapter author documentation uses only public package artifacts.
+
+## Locked tests (read-only — P6)
+
+- `test/adapter-conformance.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

@@ -38,6 +38,7 @@ import { runDiscovery } from '../lib/discovery.mjs';
 import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
 import { runArchive } from '../lib/archive.mjs';
+import { conformanceAdapterCommand, renderConformanceReport, runAdapterConformance } from '../lib/adapter-conformance.mjs';
 import { computeStats, publicStats, renderPublicMarkdown, renderBadge } from '../lib/stats.mjs';
 import { REVIEW_OVERRIDE_TITLE, AUDIT_TITLE } from '../lib/markers.mjs';
 import { portalModel } from '../lib/portal.mjs';
@@ -107,6 +108,16 @@ const cmds = {
   demo({ flags }) {
     try { runDemo({ keep: flags.keep === true }); }
     catch (e) { die(String(e.message || e)); }
+  },
+
+  adapter({ _, flags }) {
+    if (_[0] !== 'conformance') die('usage: chalk adapter conformance --adapter <claude|opencode|raw-command|fake> | --command "<adapter executable>" [--json] [--live]');
+    const adapter = typeof flags.adapter === 'string' ? flags.adapter : flags.command ? 'external' : 'fake';
+    const command = typeof flags.command === 'string' ? flags.command : conformanceAdapterCommand(adapter);
+    if (!command) die(`unknown built-in adapter: ${adapter} (choose claude|opencode|raw-command|fake, or pass --command)`);
+    const report = runAdapterConformance({ command, adapter, live: flags.live === true });
+    console.log(flags.json === true ? JSON.stringify(report, null, 2) : renderConformanceReport(report));
+    if (!report.ok) process.exitCode = 1;
   },
 
   async init({ flags }) {
@@ -2152,6 +2163,8 @@ function printHelp() {
 
 ${C.b('setup')}
   chalk demo [--keep]                  ${C.dim('watch the whole gated loop on a throwaway project (~1 min, no LLM needed)')}
+  chalk adapter conformance --adapter <claude|opencode|raw-command|fake> | --command "<cmd>" [--json] [--live]
+                                       ${C.dim('offline Agent Adapter Protocol v1 contract suite; --live alone permits provider/network calls')}
   chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--verify-test "cmd"] [--bare] [--runner fvm] [--executor claude|opencode|none]
                                        ${C.dim('auto-detects the stack preset (verify/regression/break-it); --executor claude ships the agent files')}
   chalk agents [--claude]              ${C.dim('(re)install the agent contract; --claude adds the Claude Code agent definitions')}

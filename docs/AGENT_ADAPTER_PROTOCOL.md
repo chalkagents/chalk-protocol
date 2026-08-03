@@ -316,3 +316,6 @@ criteria are satisfied. Chalk core MUST NOT inspect provider names or flags to r
 The standalone [fake Protocol v1 adapter](../examples/agent-adapter-v1/fake-adapter.mjs) implements
 this transport using only Node built-ins. It is an executable fixture, not an Agent Runner or a real
 provider integration.
+
+Adapter authors can validate an executable with the published offline
+[conformance kit](./ADAPTER_CONFORMANCE.md).

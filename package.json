@@ -38,6 +38,7 @@
     "bin",
     "lib",
     "share",
+    "docs",
     "PROTOCOL.md",
     "RESEARCH.md",
     "QUICKSTART.md"

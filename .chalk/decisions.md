@@ -609,3 +609,8 @@
 
 - _when:_ 2026-08-03T08:31:15.926Z
 - _why:_ User explicitly directed bypassing external model review for this milestone; the locked adapter test covers provider ownership, compatibility, normalized identity/usage, redaction, core neutrality, and package assets, and full verify is GREEN.
+
+## Use one public offline fixture convention and one conformance harness for built-in, raw-command, fake, and external Protocol v1 adapters.
+
+- _when:_ 2026-08-03T08:41:14.004Z
+- _why:_ Adapter authors can prove transport and failure semantics without credentials or paid model calls, while --live remains an explicit bounded smoke mode rather than an accidental network path.
