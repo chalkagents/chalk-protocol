@@ -12,8 +12,8 @@ they cheat ~half the time; and mid-task they silently resolve the judgment calls
 to make. So Chalk makes "done" rest on an **external check, never the agent's word** — and makes
 the agent's judgment calls **yours to accept or redirect**.
 
-> **BYO agent.** The agent is a pluggable executor (`claude -p`, `opencode run`, any stdin/stdout
-> command); you direct — Chalk carries your judgment into the work. **The agent never
+> **BYO agent.** Connect Claude Code, OpenCode, Codex CLI, Gemini CLI, or any Protocol v1/raw-command
+> adapter; you direct — Chalk carries your judgment into the work. **The agent never
 > self-declares success — the gate decides.** *You can't direct what you can't verify.*
 
 **Website:** [protocol.chalkagents.com](https://protocol.chalkagents.com) — the protocol in one page.
@@ -36,8 +36,8 @@ moments that make chalk chalk:
 2. a "sneaky agent" edits a **locked** acceptance test → `chalk verify` goes RED with
    `test-integrity VIOLATED (P6)` — the tamper is caught, on screen.
 
-~1 minute, cleans up after itself (`--keep` to poke around). Swap the stubs for `claude -p` in
-`.chalk/chalk.json` and the same loop runs for real.
+~1 minute, cleans up after itself (`--keep` to poke around). Run `chalk connect` to replace the
+stubs with an installed agent CLI and use the same loop for real.
 
 ---
 
@@ -60,19 +60,23 @@ the no-LLM manual mode):
 ```sh
 chalk init --name myapp --goal "what we're building"
 #   auto-detects your stack (node/flutter/dart/python/go) and fills the verify commands;
-#   add --executor claude to wire the full Claude Code agent suite (ships with chalk)
+#   no provider or model is selected by default
+
+chalk connect --preset autonomous
+#   discovers installed CLIs offline and binds provider-neutral profiles and roles
+
+chalk doctor
+#   preflights verification, agent capabilities, permissions, and reviewer independence
 
 chalk task add "implement X"
 chalk spec <id> --criterion "X does Y" --test test/x.test.ts   # criteria + LOCK the test (P2)
-chalk start <id>          # GATE P1: refuses without criteria
-# ...you or your agent write code...
-chalk verify              # external toolchain + locked-test integrity — loop until GREEN
-chalk done <id>           # GATE: refuses unless verify is green, locks intact, (review passed)
+chalk run                 # executor → verify → review → done for each runnable task
 ```
 
 `chalk init` also writes the protocol contract into `AGENTS.md`/`CLAUDE.md` so agent CLIs auto-load
 it and drive themselves via `chalk next`. Lost at any point? `chalk next` names the one next action.
-`chalk doctor` preflights an autonomous run (per-OS install hints, `--json` for bug reports).
+The [manual quickstart](./QUICKSTART.md#2-manual-mode--no-model-required) uses the same gates with no
+model or agent CLI.
 
 ## The gates (why it's more than a notepad)
 
@@ -114,6 +118,9 @@ Run it yourself, offline, in ~2 minutes: `bash docs/demo/director-harness-demo.s
 ## Autonomous mode
 
 ```sh
+chalk init                # initialize the protocol spine and verification commands
+chalk connect             # discover and bind agent profiles; offline by default
+chalk doctor              # resolve blockers before unattended work
 chalk run                 # unattended: executor → verify → (review) → done, per runnable task
 chalk issue pull          # import GitHub issues as tasks (BYO gh)
 chalk pipeline            # per task: branch → plan → work → commit → PR → review-on-PR → LGTM → merge
@@ -157,18 +164,23 @@ reviewer self-preference, held-out gaps growing with code size — is collected 
 
 ## Configuration
 
-Everything lives in `.chalk/chalk.json` under `protocol`; every agent is a BYO command reading
-stdin → writing stdout, and **an empty command turns that stage off**. `chalk init` fills the
-essentials from your stack; the full key-by-key reference is **[docs/CONFIG.md](./docs/CONFIG.md)**,
-integrations: **[Claude Code](./docs/integrations/claude-code.md)** ·
-**[opencode](./docs/integrations/opencode.md)**.
+Everything lives in `.chalk/chalk.json` under `protocol`. Named profiles use Protocol v1 adapters;
+legacy BYO commands remain supported through the raw-command compatibility path. `chalk init` fills
+the verification essentials without choosing a provider. See **[docs/CONFIG.md](./docs/CONFIG.md)**,
+the **[capability matrix](./docs/PROVIDER_MATRIX.md)**, and the
+**[migration guide](./docs/MIGRATING_TO_AGENT_PROFILES.md)**.
 
 ```jsonc
 { "protocol": {
-    "verify":   { "test": "npm test" },                                   // the one required gate
-    "executor": { "command": "claude -p --agent chalk-executor --permission-mode acceptEdits --max-turns 40" },
-    "review":   { "command": "claude -p --agent chalk-reviewer --max-turns 20", "requiredAt": ["per-task"] },
-    "breakTest": "node --test {test}"                                     // prove tests fail without the change
+    "agents": {
+      "version": 1,
+      "profiles": {
+        "builder": { "adapter": "raw-command", "command": "my-agent --write", "options": {} }
+      },
+      "roles": { "executor": "builder" }
+    },
+    "verify": { "test": "npm test" },
+    "breakTest": "node --test {test}"
 } }
 ```
 
@@ -198,7 +210,7 @@ have templates too. Contributions go through the same gates as our own work: see
 
 ## Going deeper
 
-- **[QUICKSTART.md](./QUICKSTART.md)** — zero → first gated task, manual and Claude Code modes.
+- **[QUICKSTART.md](./QUICKSTART.md)** — provider-neutral autonomous setup and the no-model manual path.
 - **[docs/harness.md](./docs/harness.md)** — the director's harness: the kit (agents · skills · checks · flows) and why the gates are one part, not the product.
 - **[PROTOCOL.md](./PROTOCOL.md)** — the seven primitives (P1–P7) and the full gate model.
 - **[RUNNING-AUTONOMOUSLY.md](./RUNNING-AUTONOMOUSLY.md)** — the unattended pipeline, end to end.
@@ -206,6 +218,9 @@ have templates too. Contributions go through the same gates as our own work: see
 - **[docs/AGENT_ADAPTER_PROTOCOL.md](./docs/AGENT_ADAPTER_PROTOCOL.md)** — provider-neutral Agent Adapter Protocol v1 and canonical role contracts.
 - **[docs/ADAPTER_CONFORMANCE.md](./docs/ADAPTER_CONFORMANCE.md)** — offline conformance command and public fixtures for built-in or external adapters.
 - **[docs/CONNECT.md](./docs/CONNECT.md)** — guided offline CLI discovery, profile setup, role assignment, and explicit live smoke testing.
-- **[docs/integrations/codex.md](./docs/integrations/codex.md)** / **[Gemini CLI](./docs/integrations/gemini-cli.md)** — first-party Protocol v1 adapter wiring and permission mapping.
+- **[docs/PROVIDER_MATRIX.md](./docs/PROVIDER_MATRIX.md)** — roles, access modes, and output capabilities for every first-party adapter.
+- **[docs/MIGRATING_TO_AGENT_PROFILES.md](./docs/MIGRATING_TO_AGENT_PROFILES.md)** — optional migration from every legacy command field and `--executor` setup.
+- **[docs/ADAPTER_AUTHOR_GUIDE.md](./docs/ADAPTER_AUTHOR_GUIDE.md)** — Protocol v1 packaging, conformance, identity, usage, diagnostics, and security.
+- First-party adapters: **[Claude Code](./docs/integrations/claude-code.md)** · **[OpenCode](./docs/integrations/opencode.md)** · **[Codex CLI](./docs/integrations/codex.md)** · **[Gemini CLI](./docs/integrations/gemini-cli.md)**.
 - **[RESEARCH.md](./RESEARCH.md)** — the evidence each gate is built on.
 - **`chalk help`** — the full command surface.

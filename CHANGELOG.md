@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased — Provider-agnostic agent runtime
+
+### Compatibility
+
+- Add named agent profiles, canonical role bindings, and Agent Adapter Protocol v1 without changing
+  Chalk's task or gate semantics.
+- Ship first-party Claude Code, OpenCode, Codex CLI, and Gemini CLI adapters plus offline discovery,
+  guided `chalk connect`, capability-aware `chalk doctor`, and adapter conformance tooling.
+- Preserve every legacy `protocol.*.command` field through the raw-command compatibility adapter.
+  Existing projects and `chalk init --executor claude|opencode|none` setup continue to work without
+  a forced migration.
+
+### Deprecation timeline
+
+No legacy command field or `--executor` option is removed or scheduled for removal. Any future
+deprecation will be announced in a separate release with an explicit timeline and verified
+migration path before compatibility changes.
+
 ## v0.3.0 — 2026-07-17
 
 ### Features

@@ -4,6 +4,10 @@ Everything chalk does is configured here. Two rules cover most of it: **every ag
 named profile or a legacy BYO shell command** (input on stdin, result on stdout), and
 **gate commands are your real toolchain** (chalk never fakes a check it can't run).
 
+For setup use [`chalk connect`](./CONNECT.md); compare built-in roles and permission modes in the
+[provider matrix](./PROVIDER_MATRIX.md). Existing command fields remain supported and migration is
+optional; the [migration guide](./MIGRATING_TO_AGENT_PROFILES.md) maps every legacy field.
+
 A test (`test/docs.test.mjs`) pins this file to `initSpine()` down to the NESTED keys: every key
 below exists in the default config, every default-config key has a section below, and each
 section's `{ … }` key list names exactly the nested keys the default config carries — the

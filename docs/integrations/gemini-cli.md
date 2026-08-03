@@ -1,10 +1,22 @@
 # Gemini CLI adapter
 
+<!-- adapter-manifest gemini roles=executor,planner,reviewer access=read-only,workspace-write output=text,json -->
+
 The first-party Gemini adapter implements `chalk-agent-adapter/1` for `executor`, `planner`, and
 `reviewer`. Install and authenticate Gemini CLI separately; Chalk stores no API key, OAuth token,
 or provider credential.
 
-Configure a named profile:
+Configure a named profile with offline discovery:
+
+```sh
+npm install -g @google/gemini-cli
+gemini
+chalk connect --preset assisted --builder gemini --reviewer gemini
+chalk agent test gemini
+```
+
+The capabilities in the manifest comment above are checked against the exported adapter manifest
+by the documentation tests. Equivalent manual profile wiring is:
 
 ```json
 {
@@ -35,3 +47,6 @@ Verify the installed package without a model call:
 ```sh
 chalk adapter conformance --adapter gemini
 ```
+
+See the [capability matrix](../PROVIDER_MATRIX.md), [Connect guide](../CONNECT.md), and
+[migration guide](../MIGRATING_TO_AGENT_PROFILES.md).

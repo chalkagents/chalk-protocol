@@ -2306,7 +2306,7 @@ ${C.b('setup')}
   chalk adapter conformance --adapter <claude|opencode|codex|gemini|raw-command|fake> | --command "<cmd>" [--json] [--live]
                                        ${C.dim('offline Agent Adapter Protocol v1 contract suite; --live alone permits provider/network calls')}
   chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--verify-test "cmd"] [--bare] [--runner fvm] [--executor claude|opencode|none]
-                                       ${C.dim('auto-detects the stack preset (verify/regression/break-it); --executor claude ships the agent files')}
+                                       ${C.dim('auto-detects verify commands; use chalk connect for provider-neutral agents (--executor is compatibility setup)')}
   chalk agents [--claude]              ${C.dim('(re)install the agent contract; --claude adds the Claude Code agent definitions')}
   chalk --version | -v                 ${C.dim('print the installed package version (+ protocol tag)')}
   chalk upgrade [--dry-run]            ${C.dim('update to the latest published chalk-protocol (global npm)')}

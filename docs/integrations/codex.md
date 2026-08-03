@@ -1,10 +1,22 @@
 # Codex CLI adapter
 
+<!-- adapter-manifest codex roles=executor,planner,reviewer access=read-only,workspace-write output=text,json -->
+
 The first-party Codex adapter implements `chalk-agent-adapter/1` for `executor`, `planner`, and
 `reviewer`. Install and authenticate Codex CLI separately; Chalk never reads, copies, or stores its
 credentials. The adapter reuses the CLI's existing login exactly as `codex exec` does.
 
-Configure a named profile (the upcoming `chalk connect` command can generate this wiring):
+Configure a named profile with `chalk connect`, which discovers the CLI offline:
+
+```sh
+npm install -g @openai/codex
+codex login
+chalk connect --preset assisted --builder codex --reviewer codex
+chalk agent test codex
+```
+
+The capabilities in the manifest comment above are checked against the exported adapter manifest
+by the documentation tests. Equivalent manual profile wiring is:
 
 ```json
 {
@@ -34,3 +46,6 @@ Verify the installed package without a model call:
 ```sh
 chalk adapter conformance --adapter codex
 ```
+
+See the [capability matrix](../PROVIDER_MATRIX.md), [Connect guide](../CONNECT.md), and
+[migration guide](../MIGRATING_TO_AGENT_PROFILES.md).
