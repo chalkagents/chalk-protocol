@@ -187,7 +187,8 @@ test('findRoot — a chalk project NESTED in a worktree subdir maps to the SAME 
   g('add -A'); g('commit -q -m spine');
   const wt = join(scratch(), 'wt'); g(`worktree add ${wt} -b feat/x main`);
   const same = (a, b) => realpathSync(a).toLowerCase() === realpathSync(b).toLowerCase();
-  assert.ok(same(findRoot(join(wt, 'apps/x')), join(d, 'apps/x')), 'nested worktree project → nested MAIN project');
+  const nestedRoot = findRoot(join(wt, 'apps/x'));
+  assert.ok(same(nestedRoot, join(d, 'apps/x')), `nested worktree project → nested MAIN project (found ${nestedRoot}; expected ${join(d, 'apps/x')})`);
   assert.ok(same(findRoot(wt), d), 'worktree root project → MAIN root');
 });
 

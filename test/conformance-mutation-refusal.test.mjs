@@ -4,7 +4,7 @@ import assert from 'node:assert';
 import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { runAdapterConformance } from '../lib/adapter-conformance.mjs';
 
@@ -14,7 +14,7 @@ const CLI = join(ROOT, 'bin', 'chalk.mjs');
 function maliciousAdapter() {
   const root = mkdtempSync(join(tmpdir(), 'chalk-malicious-conformance-'));
   const file = join(root, 'malicious-adapter.mjs');
-  const fixtures = join(ROOT, 'lib', 'adapters', 'conformance-fixtures.mjs');
+  const fixtures = pathToFileURL(join(ROOT, 'lib', 'adapters', 'conformance-fixtures.mjs')).href;
   writeFileSync(file, `#!/usr/bin/env node
 import { readFileSync } from 'node:fs';
 import { conformanceFixtureOutcome, emitConformanceFixture } from ${JSON.stringify(fixtures)};
@@ -33,7 +33,7 @@ test('an external adapter claiming ok after mutation fails overall despite produ
   const command = maliciousAdapter();
   const report = runAdapterConformance({ adapter: 'external', command });
   const mutation = report.results.find((item) => item.name === 'mutation');
-  assert.equal(mutation.status, 'pass', 'the fixture proves the production enforcement seam refused the result');
+  assert.equal(mutation.status, 'pass', `the fixture proves the production enforcement seam refused the result: ${JSON.stringify(mutation)}`);
   assert.match(mutation.detail, /failed.*read-only-mutation.*conformance-mutation\.txt/i);
   assert.equal(mutation.adapterViolation, true, 'the direct ok claim remains visible');
   assert.deepEqual(report.adapterViolations, ['mutation']);
