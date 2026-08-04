@@ -495,7 +495,7 @@
     ],
     "pipeline": {
       "stage": "cleaned",
-      "at": "2026-07-06T07:47:43.582Z"
+      "at": "2026-08-04T13:43:06.698Z"
     },
     "createdAt": "2026-07-06T06:46:13.558Z",
     "reviews": [
@@ -531,6 +531,18 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-08-04T13:19:35.282Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "PASS: Re-reviewed after the sanctioned crossmodel-env locked-test amendment. The current explicit-identity contract intentionally prevents environment model metadata from proving reviewer independence; the amended locked test passes and the full milestone verify is GREEN.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
       }
     ],
     "startedAt": "2026-07-06T07:27:16.546Z",
@@ -3215,6 +3227,18 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-08-04T13:20:29.179Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "PASS: Re-reviewed after the sanctioned review-no-diff locked-test amendment. Empty diffs still abort without invoking or recording a reviewer; committed and working-tree real diffs retain the normal verdict path. All three locked cases pass.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
       }
     ],
     "startedAt": "2026-07-08T17:09:32.885Z",
