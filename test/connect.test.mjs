@@ -47,8 +47,8 @@ console.log('{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":
 test('all first-party manifests own an offline probe and discovery never sends a prompt', () => {
   assert.deepEqual(Object.keys(ADAPTER_MANIFESTS).sort(), ['claude', 'codex', 'gemini', 'opencode']);
   const calls = [];
-  const spawn = (binary, args) => {
-    calls.push({ binary, args });
+  const spawn = (binary, args, options) => {
+    calls.push({ binary, args, options });
     return { status: 0, stdout: `${binary} 1.0\n`, stderr: '' };
   };
   const found = discoverConnections({ spawn });
@@ -56,6 +56,7 @@ test('all first-party manifests own an offline probe and discovery never sends a
   assert.ok(found.every((item) => ['ready', 'warning'].includes(item.status)));
   assert.ok(calls.every((item) => item.args.includes('--version') || item.args.join(' ') === 'auth status' || item.args.join(' ') === 'login status'));
   assert.ok(calls.every((item) => !item.args.includes('exec') && !item.args.includes('--prompt')), 'offline discovery cannot invoke a model prompt');
+  assert.ok(calls.every((item) => item.options.timeout === 10_000 && item.options.shell === false), 'offline probes retain a bounded timeout that tolerates saturated CI hosts');
 });
 
 test('interactive setup offers manual, assisted, and autonomous presets', async () => {
