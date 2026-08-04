@@ -479,7 +479,7 @@
     "tests": [
       {
         "path": "test/crossmodel-env.test.mjs",
-        "sha256": "508f1c3685d4cfffec978cf509a88825d3a4c94bae25ca05c6329b30e7fd17c9"
+        "sha256": "2c06e39a2ba6db28ba54bc69acfcbf1f1603fad88e6293e3e3868d4b1d5989fa"
       }
     ],
     "heldOut": [],
@@ -495,7 +495,7 @@
     ],
     "pipeline": {
       "stage": "cleaned",
-      "at": "2026-07-06T07:47:43.582Z"
+      "at": "2026-08-04T13:43:06.698Z"
     },
     "createdAt": "2026-07-06T06:46:13.558Z",
     "reviews": [
@@ -524,6 +524,24 @@
             "area": "test-adequacy",
             "note": "Coverage is genuinely adequate: reverting the lib/config.mjs change fails the locked unit tests (env-var resolution, --model precedence, non-opencode conservatism) AND the e2e doctor test proves the warning fires through the real process.env path via lib/doctor.mjs line 68. The env param is optional with a process.env default, so existing callers (doctor) and the prior locked crossmodel.test.mjs are unaffected — no regression found."
           }
+        ]
+      },
+      {
+        "at": "2026-08-04T12:59:00.887Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-08-04T13:19:35.282Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "PASS: Re-reviewed after the sanctioned crossmodel-env locked-test amendment. The current explicit-identity contract intentionally prevents environment model metadata from proving reviewer independence; the amended locked test passes and the full milestone verify is GREEN.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
         ]
       }
     ],
@@ -3180,7 +3198,7 @@
     "tests": [
       {
         "path": "test/review-no-diff.test.mjs",
-        "sha256": "40afb275d097b7e884200592240b366f359775d92d077f4507d97b3abaa65407"
+        "sha256": "37213b36195d3775b19e0a6bef909ec7de18cebffba916cb685ac4ed55b80d60"
       }
     ],
     "heldOut": [],
@@ -3202,6 +3220,24 @@
             "area": "test-adequacy",
             "note": "Criterion 1's no-diff abort is exercised only via the unborn-HEAD path (nothing committed). There is no locked test for an empty base-delta on a branch that already has committed content, but test 2 deliberately locks that case as 'review, not abort', so the coverage is consistent with intended behavior rather than a gap."
           }
+        ]
+      },
+      {
+        "at": "2026-08-04T12:59:00.941Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-08-04T13:20:29.179Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "PASS: Re-reviewed after the sanctioned review-no-diff locked-test amendment. Empty diffs still abort without invoking or recording a reviewer; committed and working-tree real diffs retain the normal verdict path. All three locked cases pass.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
         ]
       }
     ],
@@ -6972,5 +7008,1044 @@
     "startedAt": "2026-07-17T12:26:34.741Z",
     "doneAt": "2026-07-17T12:41:47.004Z",
     "released": "0.3.0"
+  },
+  {
+    "id": "task-4ee30eb2",
+    "title": "design: specify Agent Adapter Protocol v1 and canonical role contracts",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "A normative protocol document uses MUST/SHOULD/MAY language and carries an explicit version."
+      },
+      {
+        "text": "Request and response examples cover text output, structured JSON output, failure, and usage reporting."
+      },
+      {
+        "text": "Every existing agent-backed Chalk stage maps to a named role and output contract."
+      },
+      {
+        "text": "Access requests distinguish at least `read-only` and `workspace-write`."
+      },
+      {
+        "text": "Identity includes an opaque reviewer-independence key; Chalk does not infer it from provider names."
+      },
+      {
+        "text": "Compatibility behavior for current command strings is specified."
+      },
+      {
+        "text": "A fake-adapter fixture demonstrates that the contract is implementable without importing Chalk internals."
+      },
+      {
+        "text": "The design explicitly identifies what remains inside Chalk core versus inside an adapter."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/agent-adapter-protocol.test.mjs",
+        "sha256": "b4975317ec48be39acab8517e54785a726663df11e3adb7be3fa67cd111c68cb"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 227,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/227",
+      "body": "Parent roadmap: #226\n\n## Problem\n\nChalk describes agents as BYO commands, but the actual contract is implicit and varies by call site. Provider-specific prompt transport, output recovery, permissions, usage capture, and identity cannot move behind adapters until the seam is specified.\n\n## Deliverable\n\nWrite a versioned Agent Adapter Protocol v1 describing:\n\n- the request envelope: protocol version, role, canonical instructions, task context, requested access, expected output contract, timeout, and working-directory semantics;\n- the response envelope: status, text, optional structured payload, normalized usage, opaque identity metadata, and diagnostics;\n- lifecycle and error behavior: exit codes, malformed output, timeouts, partial output, unknown fields, and forward compatibility;\n- canonical role contracts for executor, planner, reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring;\n- the raw-command compatibility behavior for existing `protocol.*.command` users.\n\nThe contract should separate provider-neutral role semantics from provider-native prompt or agent-file formats.\n\n## Acceptance criteria\n\n- [ ] A normative protocol document uses MUST/SHOULD/MAY language and carries an explicit version.\n- [ ] Request and response examples cover text output, structured JSON output, failure, and usage reporting.\n- [ ] Every existing agent-backed Chalk stage maps to a named role and output contract.\n- [ ] Access requests distinguish at least `read-only` and `workspace-write`.\n- [ ] Identity includes an opaque reviewer-independence key; Chalk does not infer it from provider names.\n- [ ] Compatibility behavior for current command strings is specified.\n- [ ] A fake-adapter fixture demonstrates that the contract is implementable without importing Chalk internals.\n- [ ] The design explicitly identifies what remains inside Chalk core versus inside an adapter.\n\n## Non-goals\n\n- Implementing the Agent Runner.\n- Implementing any real provider adapter.\n- Choosing model names or provider-specific flags."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T05:53:06.110Z"
+    },
+    "createdAt": "2026-08-03T05:53:06.115Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T05:53:59.131Z",
+    "handoff": {
+      "path": ".chalk/handoffs/task-4ee30eb-1.md",
+      "at": "2026-08-03T06:04:22.334Z",
+      "reason": "human-input",
+      "seq": 1
+    },
+    "doneAt": "2026-08-03T06:54:55.874Z"
+  },
+  {
+    "id": "task-16b28180",
+    "title": "refactor: introduce the Agent Runner seam and migrate executor + planner",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Executor and planner invoke one `runAgent(role, request)` interface instead of calling child-process helpers directly."
+      },
+      {
+        "text": "The runner returns normalized status, text, structured output, usage, identity, and diagnostics as applicable."
+      },
+      {
+        "text": "Existing command-string configuration produces the same observable executor and planner behavior."
+      },
+      {
+        "text": "Executor terminal output remains visible and planner output remains storable as plain text."
+      },
+      {
+        "text": "Timeouts, non-zero exits, missing binaries, malformed envelopes, and usage capture are covered by fake-adapter tests."
+      },
+      {
+        "text": "Project `protocol.runner` is no longer prepended to agent commands; it remains scoped to project toolchain commands."
+      },
+      {
+        "text": "No Chalk workflow module branches on a provider name."
+      },
+      {
+        "text": "Cost-ledger behavior from #99 remains compatible."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/agent-runner.test.mjs",
+        "sha256": "8eab762bde8bace02aed06d681910df202b921cad5efb329f9d34fb2f586d976"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 228,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/228",
+      "body": "Parent roadmap: #226\nDepends on: #227\n\n## Problem\n\nExecutor and planner invocation currently use direct shell execution plus provider-aware output helpers. There is no single module responsible for role execution, normalization, diagnostics, and cost capture.\n\n## Scope\n\nIntroduce one deep Agent Runner module following Agent Adapter Protocol v1. Start with the executor and planner paths, using a raw-command compatibility adapter so behavior remains unchanged for existing projects.\n\n## Acceptance criteria\n\n- [ ] Executor and planner invoke one `runAgent(role, request)` interface instead of calling child-process helpers directly.\n- [ ] The runner returns normalized status, text, structured output, usage, identity, and diagnostics as applicable.\n- [ ] Existing command-string configuration produces the same observable executor and planner behavior.\n- [ ] Executor terminal output remains visible and planner output remains storable as plain text.\n- [ ] Timeouts, non-zero exits, missing binaries, malformed envelopes, and usage capture are covered by fake-adapter tests.\n- [ ] Project `protocol.runner` is no longer prepended to agent commands; it remains scoped to project toolchain commands.\n- [ ] No Chalk workflow module branches on a provider name.\n- [ ] Cost-ledger behavior from #99 remains compatible.\n\n## Non-goals\n\n- Migrating reviewer or analysis roles.\n- Introducing the new profile configuration.\n- Adding a new provider."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T06:56:02.536Z"
+    },
+    "createdAt": "2026-08-03T06:56:02.537Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T06:56:25.774Z",
+    "doneAt": "2026-08-03T07:12:11.133Z"
+  },
+  {
+    "id": "task-d8fd5057",
+    "title": "refactor: route every remaining agent-backed stage through Agent Runner",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring all call the Agent Runner."
+      },
+      {
+        "text": "Existing role-specific parsers receive normalized runner output and preserve their current success/error behavior."
+      },
+      {
+        "text": "Non-zero commands that still return a valid reviewer verdict remain parseable."
+      },
+      {
+        "text": "Best-effort narrative roles retain their fallback behavior and useful diagnostics."
+      },
+      {
+        "text": "Usage and wall-clock logging follow one runner-owned policy across every role."
+      },
+      {
+        "text": "Duplicate provider-aware execution and envelope-unwrapping code is removed."
+      },
+      {
+        "text": "Tests exercise each migrated role through the same fake-adapter seam."
+      },
+      {
+        "text": "The deletion test holds: removing Agent Runner would force execution complexity back into every caller."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/agent-runner-roles.test.mjs",
+        "sha256": "f2351d9ad3b4970ae612109299bcd91a4e5caa4b5c46905cc0b646830db6883f"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 229,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/229",
+      "body": "Parent roadmap: #226\nDepends on: #228\n\n## Problem\n\nA provider-neutral seam is not real while reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring still execute commands independently.\n\n## Scope\n\nMigrate all remaining agent-backed stages to the Agent Runner and delete the superseded execution paths instead of layering wrappers over them.\n\n## Acceptance criteria\n\n- [ ] Reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring all call the Agent Runner.\n- [ ] Existing role-specific parsers receive normalized runner output and preserve their current success/error behavior.\n- [ ] Non-zero commands that still return a valid reviewer verdict remain parseable.\n- [ ] Best-effort narrative roles retain their fallback behavior and useful diagnostics.\n- [ ] Usage and wall-clock logging follow one runner-owned policy across every role.\n- [ ] Duplicate provider-aware execution and envelope-unwrapping code is removed.\n- [ ] Tests exercise each migrated role through the same fake-adapter seam.\n- [ ] The deletion test holds: removing Agent Runner would force execution complexity back into every caller.\n\n## Non-goals\n\n- Changing role prompts or acceptance semantics.\n- Adding provider profiles.\n- Changing review cadence or gate policy."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T07:13:11.290Z"
+    },
+    "createdAt": "2026-08-03T07:13:11.291Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T07:13:27.073Z",
+    "doneAt": "2026-08-03T07:22:26.000Z"
+  },
+  {
+    "id": "task-03b0db1c",
+    "title": "feat: add provider-neutral agent profiles, role bindings, and explicit identity",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Configuration supports named profiles and a role-to-profile map."
+      },
+      {
+        "text": "One profile can serve multiple roles without duplicating its connection details."
+      },
+      {
+        "text": "Model values are opaque strings and never drive provider branches in Chalk core."
+      },
+      {
+        "text": "Reviewer independence compares explicit normalized identity or reports that independence is unverified."
+      },
+      {
+        "text": "Existing `protocol.*.command` values normalize into compatibility profiles without changing behavior."
+      },
+      {
+        "text": "A migration path is versioned, idempotent, and preserves user-edited commands."
+      },
+      {
+        "text": "Config drift tests and `docs/CONFIG.md` cover every new field."
+      },
+      {
+        "text": "`chalk doctor --json` reports resolved role bindings and identity without exposing credentials."
+      },
+      {
+        "text": "Tests cover shared profiles, distinct reviewer identity, unknown identity, and legacy configuration."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/agent-profiles.test.mjs",
+        "sha256": "0ab7857a2953bda2f50bb6855fd9429a9ba5904ca6c2a22a2d45dbfdd06170a6"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 230,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/230",
+      "body": "Parent roadmap: #226\nDepends on: #227, #228, #229\n\n## Problem\n\nProvider and model identity are inferred from shell command tokens and special environment variables. Role configuration is duplicated across `executor.command`, `planner.command`, `review.command`, and other stage keys.\n\n## Scope\n\nAdd provider-neutral agent profiles and role bindings. A profile selects an adapter and carries optional opaque configuration such as model display text and reviewer-independence identity. Roles refer to profiles.\n\n## Acceptance criteria\n\n- [ ] Configuration supports named profiles and a role-to-profile map.\n- [ ] One profile can serve multiple roles without duplicating its connection details.\n- [ ] Model values are opaque strings and never drive provider branches in Chalk core.\n- [ ] Reviewer independence compares explicit normalized identity or reports that independence is unverified.\n- [ ] Existing `protocol.*.command` values normalize into compatibility profiles without changing behavior.\n- [ ] A migration path is versioned, idempotent, and preserves user-edited commands.\n- [ ] Config drift tests and `docs/CONFIG.md` cover every new field.\n- [ ] `chalk doctor --json` reports resolved role bindings and identity without exposing credentials.\n- [ ] Tests cover shared profiles, distinct reviewer identity, unknown identity, and legacy configuration.\n\n## Non-goals\n\n- Detecting installed CLIs.\n- Removing legacy command support.\n- Shipping provider-specific models as defaults."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T07:23:30.049Z"
+    },
+    "createdAt": "2026-08-03T07:23:30.051Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T07:24:00.068Z",
+    "doneAt": "2026-08-03T07:37:11.408Z"
+  },
+  {
+    "id": "task-2c947642",
+    "title": "feat: enforce agent role capabilities and structured-output contracts",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Every canonical role declares `read-only` or `workspace-write` access and text or structured output."
+      },
+      {
+        "text": "Adapters report which requested capabilities they can enforce."
+      },
+      {
+        "text": "Unsupported required capabilities fail readiness checks honestly rather than silently degrading."
+      },
+      {
+        "text": "Chalk detects worktree changes made by a read-only role and refuses to accept that role result."
+      },
+      {
+        "text": "The refusal identifies changed paths without automatically deleting user data."
+      },
+      {
+        "text": "Structured roles validate their normalized payload against one role-specific contract after adapter decoding."
+      },
+      {
+        "text": "Malformed, truncated, or schema-invalid output yields consistent diagnostics across providers."
+      },
+      {
+        "text": "Tests use malicious and incapable fake adapters to cover mutation and capability failures."
+      },
+      {
+        "text": "Executor write access remains unaffected."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/agent-capabilities.test.mjs",
+        "sha256": "0ccfc24973f43793ed0a3160ccffc456965363ff201fafd8d33779eb6cc2950e"
+      },
+      {
+        "path": "test/review-retry.test.mjs",
+        "sha256": "984ec5d3a090b18a03f444f969a0a4f61fa711fbd3e4072f9c335e4a60af1f44"
+      },
+      {
+        "path": "test/review-no-diff.test.mjs",
+        "sha256": "37213b36195d3775b19e0a6bef909ec7de18cebffba916cb685ac4ed55b80d60"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 231,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/231",
+      "body": "Parent roadmap: #226\nDepends on: #227, #228, #229, #230\n\n## Problem\n\nProvider permission flags are advisory and inconsistent. A reviewer or discovery agent can be configured through a command that mutates the worktree, and structured roles currently recover JSON differently at individual call sites.\n\n## Scope\n\nMake access and output requirements first-class Agent Runner contracts. Adapters report supported capabilities; Chalk requests the role policy and independently checks important invariants.\n\n## Acceptance criteria\n\n- [ ] Every canonical role declares `read-only` or `workspace-write` access and text or structured output.\n- [ ] Adapters report which requested capabilities they can enforce.\n- [ ] Unsupported required capabilities fail readiness checks honestly rather than silently degrading.\n- [ ] Chalk detects worktree changes made by a read-only role and refuses to accept that role result.\n- [ ] The refusal identifies changed paths without automatically deleting user data.\n- [ ] Structured roles validate their normalized payload against one role-specific contract after adapter decoding.\n- [ ] Malformed, truncated, or schema-invalid output yields consistent diagnostics across providers.\n- [ ] Tests use malicious and incapable fake adapters to cover mutation and capability failures.\n- [ ] Executor write access remains unaffected.\n\n## Non-goals\n\n- Building a general OS sandbox.\n- Automatically reverting unauthorized changes.\n- Guaranteeing that a provider CLI permission mode is itself secure."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T07:38:25.822Z"
+    },
+    "createdAt": "2026-08-03T07:38:25.823Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T07:38:49.549Z",
+    "doneAt": "2026-08-03T07:54:13.723Z"
+  },
+  {
+    "id": "task-5c353a1f",
+    "title": "refactor: make Chalk role instructions provider-neutral",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Canonical instructions exist for every agent-backed role named by Agent Adapter Protocol v1."
+      },
+      {
+        "text": "Canonical content contains no provider command, model name, native tool list, or provider frontmatter."
+      },
+      {
+        "text": "Agent Runner supplies canonical instructions separately from task/run context."
+      },
+      {
+        "text": "Adapters can combine the fields when their CLI has no system-prompt concept."
+      },
+      {
+        "text": "Existing Claude agent files, if retained, are generated or checked from the canonical source instead of serving as the source of truth."
+      },
+      {
+        "text": "Provider-native generated assets are optional conveniences, not runtime requirements."
+      },
+      {
+        "text": "Drift tests prove generated/native assets cannot silently diverge from canonical instructions."
+      },
+      {
+        "text": "Executor raise behavior and reviewer decision-digest behavior remain present."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/role-instructions.test.mjs",
+        "sha256": "6afb01152106413e7a41f4fc745326d9f882d13bdce3b97ee0a9b2aaf9aedf93"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 232,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/232",
+      "body": "Parent roadmap: #226\nDepends on: #227, #228, #229\n\n## Problem\n\nThe canonical executor, planner, reviewer, and retro instructions are packaged as Claude-native agent Markdown with Claude-specific frontmatter and wiring examples. Other providers either miss those instructions or require bespoke copies.\n\n## Scope\n\nMake Chalk own canonical provider-neutral role instructions. Agent Runner requests carry instructions and context as separate fields; adapters decide how to map them onto system/user prompts or a single combined prompt.\n\n## Acceptance criteria\n\n- [ ] Canonical instructions exist for every agent-backed role named by Agent Adapter Protocol v1.\n- [ ] Canonical content contains no provider command, model name, native tool list, or provider frontmatter.\n- [ ] Agent Runner supplies canonical instructions separately from task/run context.\n- [ ] Adapters can combine the fields when their CLI has no system-prompt concept.\n- [ ] Existing Claude agent files, if retained, are generated or checked from the canonical source instead of serving as the source of truth.\n- [ ] Provider-native generated assets are optional conveniences, not runtime requirements.\n- [ ] Drift tests prove generated/native assets cannot silently diverge from canonical instructions.\n- [ ] Executor raise behavior and reviewer decision-digest behavior remain present.\n\n## Non-goals\n\n- Rewriting the behavioral intent of existing roles.\n- Choosing provider-specific tools or permissions.\n- Adding a prompt templating language."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T07:55:27.487Z"
+    },
+    "createdAt": "2026-08-03T07:55:27.488Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T07:55:52.703Z",
+    "doneAt": "2026-08-03T08:09:53.850Z"
+  },
+  {
+    "id": "task-42ddf49a",
+    "title": "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Claude adapter owns CLI flags, canonical prompt mapping, output-envelope decoding, usage normalization, and permission mapping."
+      },
+      {
+        "text": "OpenCode adapter owns stdin-to-argument transport, JSON cleanup, usage/identity normalization where available, and permission mapping."
+      },
+      {
+        "text": "Both adapters support every role their current integration supports."
+      },
+      {
+        "text": "Existing `--executor claude` and `--executor opencode` behavior migrates compatibly or emits an exact migration command."
+      },
+      {
+        "text": "Core modules do not inspect Claude/OpenCode binary names, flags, script paths, or environment variables."
+      },
+      {
+        "text": "Existing cost ledger records remain readable and new adapter usage records use the normalized shape."
+      },
+      {
+        "text": "Same-reviewer warnings use adapter identity rather than command parsing."
+      },
+      {
+        "text": "Provider adapter failures retain raw diagnostics without leaking credentials."
+      },
+      {
+        "text": "Package tests prove all runtime adapter assets ship."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/provider-adapters.test.mjs",
+        "sha256": "1c8ea028231cc1ddb9f4be9976d91b6f4743ebd36a2439f02aa0b60ee1462554"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 233,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/233",
+      "body": "Parent roadmap: #226\nDepends on: #230, #231, #232\n\n## Problem\n\nClaude-specific envelope injection and OpenCode-specific bridge/model logic live in Chalk core or one-off scripts. This makes provider behavior part of the protocol implementation and encourages more special cases.\n\n## Scope\n\nImplement first-party Claude and OpenCode adapters that satisfy Agent Adapter Protocol v1, then remove provider-specific branching from core runner, config, cost, and doctor modules.\n\n## Acceptance criteria\n\n- [ ] Claude adapter owns CLI flags, canonical prompt mapping, output-envelope decoding, usage normalization, and permission mapping.\n- [ ] OpenCode adapter owns stdin-to-argument transport, JSON cleanup, usage/identity normalization where available, and permission mapping.\n- [ ] Both adapters support every role their current integration supports.\n- [ ] Existing `--executor claude` and `--executor opencode` behavior migrates compatibly or emits an exact migration command.\n- [ ] Core modules do not inspect Claude/OpenCode binary names, flags, script paths, or environment variables.\n- [ ] Existing cost ledger records remain readable and new adapter usage records use the normalized shape.\n- [ ] Same-reviewer warnings use adapter identity rather than command parsing.\n- [ ] Provider adapter failures retain raw diagnostics without leaking credentials.\n- [ ] Package tests prove all runtime adapter assets ship.\n\n## Non-goals\n\n- Codex or Gemini support.\n- Removing the raw-command compatibility adapter.\n- Requiring provider CLIs as npm dependencies."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T08:10:52.716Z"
+    },
+    "createdAt": "2026-08-03T08:10:52.717Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T08:11:16.736Z",
+    "doneAt": "2026-08-03T08:31:15.927Z"
+  },
+  {
+    "id": "task-f0880c0a",
+    "title": "feat: ship an Agent Adapter Protocol conformance kit",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "A single command runs the adapter conformance suite against a configured adapter executable."
+      },
+      {
+        "text": "Fixtures cover verbatim multiline input, text output, structured output, noisy output, malformed output, non-zero exit, timeout, missing usage, reported usage, identity, and diagnostics."
+      },
+      {
+        "text": "Capability checks cover read-only, workspace-write, and unsupported-capability reporting."
+      },
+      {
+        "text": "A mutation fixture proves that a read-only adapter cannot receive a passing conformance result after changing the workspace."
+      },
+      {
+        "text": "Claude, OpenCode, raw-command, and fake adapters run through the same harness."
+      },
+      {
+        "text": "Results support human-readable and JSON output."
+      },
+      {
+        "text": "The harness makes no network call unless an explicit `--live` mode is selected."
+      },
+      {
+        "text": "The protocol version tested is printed in every result."
+      },
+      {
+        "text": "External adapter author documentation uses only public package artifacts."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/adapter-conformance.test.mjs",
+        "sha256": "9589d986612783b41d576f07104d5027bc9d8f39f9bd5828c6040b83892336cb"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 234,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/234",
+      "body": "Parent roadmap: #226\nDepends on: #227, #231, #233\n\n## Problem\n\nA documented adapter contract is insufficient if adapter authors cannot prove that prompt transport, permissions, structured output, failures, and usage normalization behave consistently.\n\n## Scope\n\nShip an offline conformance harness and fixtures that any built-in or external adapter can run without making a model call.\n\n## Acceptance criteria\n\n- [ ] A single command runs the adapter conformance suite against a configured adapter executable.\n- [ ] Fixtures cover verbatim multiline input, text output, structured output, noisy output, malformed output, non-zero exit, timeout, missing usage, reported usage, identity, and diagnostics.\n- [ ] Capability checks cover read-only, workspace-write, and unsupported-capability reporting.\n- [ ] A mutation fixture proves that a read-only adapter cannot receive a passing conformance result after changing the workspace.\n- [ ] Claude, OpenCode, raw-command, and fake adapters run through the same harness.\n- [ ] Results support human-readable and JSON output.\n- [ ] The harness makes no network call unless an explicit `--live` mode is selected.\n- [ ] The protocol version tested is printed in every result.\n- [ ] External adapter author documentation uses only public package artifacts.\n\n## Non-goals\n\n- Certifying model quality.\n- Testing provider authentication.\n- Making paid model calls in the default suite."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T08:32:18.576Z"
+    },
+    "createdAt": "2026-08-03T08:32:18.578Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T08:32:38.924Z",
+    "doneAt": "2026-08-03T08:43:38.667Z"
+  },
+  {
+    "id": "task-0bf964ba",
+    "title": "feat: prove adapter portability with first-party Codex and Gemini CLI adapters",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Codex and Gemini adapters pass the same offline conformance suite as Claude and OpenCode."
+      },
+      {
+        "text": "Each adapter supports executor, planner, and reviewer roles where the underlying CLI exposes the required access/output capabilities."
+      },
+      {
+        "text": "Unsupported roles or capabilities are reported explicitly during readiness checks."
+      },
+      {
+        "text": "Authentication remains owned by the installed provider CLI; Chalk stores no provider credentials."
+      },
+      {
+        "text": "Model selection is optional opaque adapter configuration."
+      },
+      {
+        "text": "Prompt transport preserves multiline context verbatim without shell interpolation."
+      },
+      {
+        "text": "Structured reviewer output is normalized through the common role contract."
+      },
+      {
+        "text": "Usage and identity are normalized when exposed by the CLI and degrade honestly when unavailable."
+      },
+      {
+        "text": "Adding both adapters requires no provider-name branch in Chalk workflow modules."
+      },
+      {
+        "text": "Package and documentation tests prove shipped adapter assets are available after npm installation."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/codex-gemini-adapters.test.mjs",
+        "sha256": "49247e02b8b0b795a905eabfb17860fc10ecbba904329769d988e83df21417c8"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 235,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/235",
+      "body": "Parent roadmap: #226\nDepends on: #232, #233, #234\n\n## Problem\n\nThe adapter seam is only proven when materially different provider CLIs can integrate without changes to Chalk workflow modules or role semantics.\n\n## Scope\n\nImplement first-party Codex CLI and Gemini CLI adapters against Agent Adapter Protocol v1. Confirm current CLI behavior against official provider documentation during implementation; provider flags must remain adapter details.\n\n## Acceptance criteria\n\n- [ ] Codex and Gemini adapters pass the same offline conformance suite as Claude and OpenCode.\n- [ ] Each adapter supports executor, planner, and reviewer roles where the underlying CLI exposes the required access/output capabilities.\n- [ ] Unsupported roles or capabilities are reported explicitly during readiness checks.\n- [ ] Authentication remains owned by the installed provider CLI; Chalk stores no provider credentials.\n- [ ] Model selection is optional opaque adapter configuration.\n- [ ] Prompt transport preserves multiline context verbatim without shell interpolation.\n- [ ] Structured reviewer output is normalized through the common role contract.\n- [ ] Usage and identity are normalized when exposed by the CLI and degrade honestly when unavailable.\n- [ ] Adding both adapters requires no provider-name branch in Chalk workflow modules.\n- [ ] Package and documentation tests prove shipped adapter assets are available after npm installation.\n\n## Non-goals\n\n- Calling provider HTTP APIs directly.\n- Supporting every historical CLI version.\n- Claiming capability support the upstream CLI cannot enforce."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T08:44:45.523Z"
+    },
+    "createdAt": "2026-08-03T08:44:45.525Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T08:45:04.926Z",
+    "doneAt": "2026-08-03T08:58:51.138Z"
+  },
+  {
+    "id": "task-ffc05b83",
+    "title": "feat: add chalk connect for guided agent setup and role assignment",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk connect` discovers supported installed CLIs through adapter-owned probes."
+      },
+      {
+        "text": "Interactive setup offers manual, assisted, and autonomous presets."
+      },
+      {
+        "text": "Users can assign different profiles to builder and reviewer roles."
+      },
+      {
+        "text": "The flow explains and checks reviewer independence without requiring provider-specific knowledge."
+      },
+      {
+        "text": "Setup writes provider-neutral profiles and role bindings instead of legacy command fields."
+      },
+      {
+        "text": "Existing projects can run `chalk connect` safely; user-edited legacy commands are preserved unless migration is explicitly accepted."
+      },
+      {
+        "text": "Non-interactive flags cover CI and scripted setup."
+      },
+      {
+        "text": "Default validation is offline and cannot incur model cost."
+      },
+      {
+        "text": "An explicit `chalk agent test <profile> --live` performs a real smoke call."
+      },
+      {
+        "text": "Missing binary, missing authentication, unsupported capability, and ambiguous detection messages include exact next actions."
+      },
+      {
+        "text": "Re-running connect is idempotent and never clobbers manually edited profile values."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/connect.test.mjs",
+        "sha256": "1720f879dbbb67dfd29d94c30a0acd1afba404581e0e1ddd7343334ec4785d46"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 236,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/236",
+      "body": "Parent roadmap: #226\nDepends on: #230, #231, #233, #234, #235\n\n## Problem\n\nUsers currently choose from a fixed `--executor` list or manually edit several command fields. Retrofitting planner, reviewer, retro, model identity, and permissions requires provider-specific documentation.\n\n## Scope\n\nAdd a guided `chalk connect` workflow that discovers adapter manifests and installed CLIs, creates profiles, binds roles, and validates readiness without making an unexpected model call.\n\n## Acceptance criteria\n\n- [ ] `chalk connect` discovers supported installed CLIs through adapter-owned probes.\n- [ ] Interactive setup offers manual, assisted, and autonomous presets.\n- [ ] Users can assign different profiles to builder and reviewer roles.\n- [ ] The flow explains and checks reviewer independence without requiring provider-specific knowledge.\n- [ ] Setup writes provider-neutral profiles and role bindings instead of legacy command fields.\n- [ ] Existing projects can run `chalk connect` safely; user-edited legacy commands are preserved unless migration is explicitly accepted.\n- [ ] Non-interactive flags cover CI and scripted setup.\n- [ ] Default validation is offline and cannot incur model cost.\n- [ ] An explicit `chalk agent test <profile> --live` performs a real smoke call.\n- [ ] Missing binary, missing authentication, unsupported capability, and ambiguous detection messages include exact next actions.\n- [ ] Re-running connect is idempotent and never clobbers manually edited profile values.\n\n## Non-goals\n\n- Logging into provider accounts.\n- Selecting the best commercial model for the user.\n- Removing `chalk init --executor` in the first release."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T08:59:59.414Z"
+    },
+    "createdAt": "2026-08-03T08:59:59.416Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T09:00:20.966Z",
+    "doneAt": "2026-08-03T09:19:31.695Z"
+  },
+  {
+    "id": "task-bc67b4d4",
+    "title": "ux: make chalk next and doctor concise, prioritized, and profile-aware",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Default `chalk next` prints at most one primary next action with an exact command."
+      },
+      {
+        "text": "Remaining blocked, needs-criteria, dependency, and human-input items are summarized by category."
+      },
+      {
+        "text": "A verbose flag reveals the full current listing without losing information."
+      },
+      {
+        "text": "A fixture matching Chalk own mixed blocked/duplicate/needs-criteria queue proves the useful action appears first."
+      },
+      {
+        "text": "`chalk doctor` groups output into blockers, warnings, and optional improvements in that order."
+      },
+      {
+        "text": "Agent readiness reports resolved role profiles, capabilities, independence state, and exact remediation commands."
+      },
+      {
+        "text": "Manual mode is presented as a valid path rather than a failed autonomous setup."
+      },
+      {
+        "text": "Neither command performs a live model call."
+      },
+      {
+        "text": "Existing JSON output remains stable or receives an explicit versioned migration."
+      },
+      {
+        "text": "Help and snapshots remain readable without ANSI color."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/action-oriented-cli.test.mjs",
+        "sha256": "97d8e20db5ad03173608afcc001f12280493fe85cc7a93cbdc131c3f791ac42e"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 237,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/237",
+      "body": "Parent roadmap: #226\nDepends on: #230, #236\n\n## Problem\n\nWhen no task is runnable, `chalk next` can print a wall of blocked or duplicate items before the useful action. `chalk doctor` reports many independent checks but does not present one clear path from current state to a runnable agent setup.\n\n## Scope\n\nTurn both commands into action-oriented interfaces while preserving complete detail through explicit flags and machine-readable output.\n\n## Acceptance criteria\n\n- [ ] Default `chalk next` prints at most one primary next action with an exact command.\n- [ ] Remaining blocked, needs-criteria, dependency, and human-input items are summarized by category.\n- [ ] A verbose flag reveals the full current listing without losing information.\n- [ ] A fixture matching Chalk own mixed blocked/duplicate/needs-criteria queue proves the useful action appears first.\n- [ ] `chalk doctor` groups output into blockers, warnings, and optional improvements in that order.\n- [ ] Agent readiness reports resolved role profiles, capabilities, independence state, and exact remediation commands.\n- [ ] Manual mode is presented as a valid path rather than a failed autonomous setup.\n- [ ] Neither command performs a live model call.\n- [ ] Existing JSON output remains stable or receives an explicit versioned migration.\n- [ ] Help and snapshots remain readable without ANSI color.\n\n## Non-goals\n\n- Automatically unblocking tasks.\n- Automatically closing duplicate GitHub issues.\n- Replacing `chalk backlog` or `chalk pending`."
+    },
+    "branchType": "feat",
+    "labels": [
+      "enhancement",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T09:20:32.842Z"
+    },
+    "createdAt": "2026-08-03T09:20:32.843Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T09:21:04.618Z",
+    "doneAt": "2026-08-03T09:37:25.752Z"
+  },
+  {
+    "id": "task-9498ac31",
+    "title": "docs: publish the provider-neutral quickstart, migration guide, and adapter-author guide",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "The main quickstart uses `chalk init → chalk connect → chalk doctor → chalk run` as the autonomous happy path."
+      },
+      {
+        "text": "Manual mode remains a first-class no-model path."
+      },
+      {
+        "text": "Provider-specific pages for Claude, OpenCode, Codex, and Gemini are generated from or checked against adapter manifests where practical."
+      },
+      {
+        "text": "A capability matrix states which roles and permission modes each adapter supports."
+      },
+      {
+        "text": "A migration guide covers every legacy `protocol.*.command` field and existing `--executor` setup."
+      },
+      {
+        "text": "Existing projects can remain on raw commands without an immediate forced migration."
+      },
+      {
+        "text": "The adapter-author guide documents Protocol v1, the conformance command, packaging, diagnostics, identity, usage, and security expectations."
+      },
+      {
+        "text": "Configuration examples contain no provider as the implied canonical default."
+      },
+      {
+        "text": "README, QUICKSTART, CONFIG, help text, and relative links pass drift/dead-link tests."
+      },
+      {
+        "text": "Release notes identify compatibility behavior and any deprecation timeline without removing legacy support."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/provider-neutral-docs.test.mjs",
+        "sha256": "70bccc9420d9c489f4774b69ca52033c5b8996e001ce281b8c444fe39c138cb7"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 238,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/238",
+      "body": "Parent roadmap: #226\nDepends on: #227 through #237\n\n## Problem\n\nCurrent onboarding leads with Claude Code and OpenCode wiring. The completed runtime needs documentation that begins with Chalk roles and contracts, then treats providers as interchangeable adapters.\n\n## Scope\n\nPublish the user and adapter-author documentation required to release the roadmap without stranding existing projects.\n\n## Acceptance criteria\n\n- [ ] The main quickstart uses `chalk init → chalk connect → chalk doctor → chalk run` as the autonomous happy path.\n- [ ] Manual mode remains a first-class no-model path.\n- [ ] Provider-specific pages for Claude, OpenCode, Codex, and Gemini are generated from or checked against adapter manifests where practical.\n- [ ] A capability matrix states which roles and permission modes each adapter supports.\n- [ ] A migration guide covers every legacy `protocol.*.command` field and existing `--executor` setup.\n- [ ] Existing projects can remain on raw commands without an immediate forced migration.\n- [ ] The adapter-author guide documents Protocol v1, the conformance command, packaging, diagnostics, identity, usage, and security expectations.\n- [ ] Configuration examples contain no provider as the implied canonical default.\n- [ ] README, QUICKSTART, CONFIG, help text, and relative links pass drift/dead-link tests.\n- [ ] Release notes identify compatibility behavior and any deprecation timeline without removing legacy support.\n\n## Non-goals\n\n- Marketing comparisons between model vendors.\n- Recommending a paid model.\n- Removing historical integration pages."
+    },
+    "branchType": "docs",
+    "labels": [
+      "documentation",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-03T09:38:47.981Z"
+    },
+    "createdAt": "2026-08-03T09:38:47.982Z",
+    "reviews": [],
+    "startedAt": "2026-08-03T09:39:06.813Z",
+    "doneAt": "2026-08-03T09:53:09.077Z"
+  },
+  {
+    "id": "task-7b3a22b6",
+    "title": "fix(conformance): refuse adapters that mutate read-only workspaces",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "An adapter returning `ok` after a read-only mutation cannot receive an overall passing conformance report."
+      },
+      {
+        "text": "The mutation fixture passes only when the production enforcement seam returns a failed/refused normalized result with the changed path."
+      },
+      {
+        "text": "Built-in and external adapter commands use the same assessment logic."
+      },
+      {
+        "text": "Offline conformance makes no provider/network call; `--live` remains the only opt-in model call."
+      },
+      {
+        "text": "Conformance still covers multiline transport, structured output, failures, usage, identity, diagnostics, timeouts, access, and unsupported capabilities."
+      },
+      {
+        "text": "Tests include a malicious external adapter and prove a direct `ok`+mutation response fails conformance."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/conformance-mutation-refusal.test.mjs",
+        "sha256": "4d5f36c7b0921ba00199332d518045e6b29f7e484294f55fcccb3997613386f1"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 243,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/243",
+      "body": "Parent roadmap: #226\nPromotion review: #239\nDepends on: #242\n\n## Problem\n\nThe mutation fixture currently reports conformance PASS when an adapter returns `status: ok` after changing a read-only workspace. Its success condition proves that mutation happened, not that the result was refused.\n\n## Scope\n\nMake the conformance harness execute read-only fixtures through the same enforcement seam used in production, and require the normalized result to be failed/refused with a mutation diagnostic. Keep offline fixtures provider-inert while ensuring each adapter entrypoint actually satisfies the public Protocol v1 interface.\n\n## Acceptance criteria\n\n- [ ] An adapter returning `ok` after a read-only mutation cannot receive an overall passing conformance report.\n- [ ] The mutation fixture passes only when the production enforcement seam returns a failed/refused normalized result with the changed path.\n- [ ] Built-in and external adapter commands use the same assessment logic.\n- [ ] Offline conformance makes no provider/network call; `--live` remains the only opt-in model call.\n- [ ] Conformance still covers multiline transport, structured output, failures, usage, identity, diagnostics, timeouts, access, and unsupported capabilities.\n- [ ] Tests include a malicious external adapter and prove a direct `ok`+mutation response fails conformance.\n\n## Non-goals\n\n- Certifying model quality.\n- Contacting provider CLIs during offline CI.\n"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-08-04T12:56:17.584Z"
+    },
+    "createdAt": "2026-08-04T11:41:45.597Z",
+    "reviews": [
+      {
+        "at": "2026-08-04T12:54:31.042Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Codex manual review: Agent Runner and conformance share one read-only refusal seam; the mutation fixture passes only on a normalized failed result naming changed paths; direct ok+mutation is retained as an adapter violation that fails the overall report; built-in/external commands share assessment; offline/network and all legacy fixtures remain covered; full Chalk verify passes.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
+      }
+    ],
+    "handoff": {
+      "path": ".chalk/handoffs/task-7b3a22b-1.md",
+      "at": "2026-08-04T11:43:47.668Z",
+      "reason": "upstream",
+      "seq": 1
+    },
+    "startedAt": "2026-08-04T12:40:18.246Z",
+    "branch": "fix/243-fix-conformance-refuse-adapters-that",
+    "pr": {
+      "number": 247,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/247",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-08-04T12:56:17.583Z"
+  },
+  {
+    "id": "task-86837934",
+    "title": "fix(agent-runner): detect ignored-file mutations in read-only roles",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "A read-only role that edits an existing ignored file is refused and the changed path is reported."
+      },
+      {
+        "text": "Creating or deleting an ignored file is also detected."
+      },
+      {
+        "text": "Clean tracked, dirty tracked, and ordinary untracked mutation detection remains green."
+      },
+      {
+        "text": "`.git`, `node_modules`, and `.chalk/held-out/` are never traversed or reported."
+      },
+      {
+        "text": "Symlinks are hashed without following targets outside the workspace."
+      },
+      {
+        "text": "Workspace-write roles remain unaffected."
+      },
+      {
+        "text": "Tests exercise the public workspace-snapshot/Agent Runner seam, including ignored files."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/workspace-snapshot-ignored.test.mjs",
+        "sha256": "156bc200dd2d8e08b6b0afea78ad3cb7517b7c61fc651ab956d105255fb31790"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 242,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/242",
+      "body": "Parent roadmap: #226\nPromotion review: #239\nDepends on: #241\n\n## Problem\n\nRead-only mutation detection snapshots dirty tracked files plus non-ignored untracked files. Existing ignored workspace files—such as local configuration—are invisible, so a read-only role can mutate them and still have its result accepted.\n\n## Scope\n\nDeepen the workspace-snapshot module so one interface detects net mutations across tracked, untracked, and ignored workspace files while continuing to exclude `.git`, dependency trees, and `.chalk/held-out/` by construction.\n\n## Acceptance criteria\n\n- [ ] A read-only role that edits an existing ignored file is refused and the changed path is reported.\n- [ ] Creating or deleting an ignored file is also detected.\n- [ ] Clean tracked, dirty tracked, and ordinary untracked mutation detection remains green.\n- [ ] `.git`, `node_modules`, and `.chalk/held-out/` are never traversed or reported.\n- [ ] Symlinks are hashed without following targets outside the workspace.\n- [ ] Workspace-write roles remain unaffected.\n- [ ] Tests exercise the public workspace-snapshot/Agent Runner seam, including ignored files.\n\n## Non-goals\n\n- Restoring files mutated by an agent.\n- Inspecting held-out test contents.\n"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-08-04T12:39:17.678Z"
+    },
+    "createdAt": "2026-08-04T11:41:45.604Z",
+    "reviews": [
+      {
+        "at": "2026-08-04T12:29:10.031Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Codex manual review: Git inventories cover tracked, untracked, and ignored files; exclusion pathspecs and filters protect .git/node_modules/held-out; lstat hashes symlinks without following targets; the locked Agent Runner regression covers ignored edit/create/delete and workspace-write behavior; full Chalk verify passes.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
+      }
+    ],
+    "handoff": {
+      "path": ".chalk/handoffs/task-8683793-1.md",
+      "at": "2026-08-04T11:43:47.525Z",
+      "reason": "upstream",
+      "seq": 1
+    },
+    "startedAt": "2026-08-04T12:21:24.761Z",
+    "branch": "fix/242-fix-agent-runner-detect-ignored",
+    "pr": {
+      "number": 246,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/246",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-08-04T12:39:17.677Z"
+  },
+  {
+    "id": "task-1b86dfb4",
+    "title": "fix(agents): keep reviewer independence unverified unless explicit",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk connect` does not synthesize `independenceKey` from adapter or model values."
+      },
+      {
+        "text": "Distinct providers without explicit keys report reviewer independence as `unverified`, not `distinct`."
+      },
+      {
+        "text": "Equal and different explicit keys still report `same` and `distinct` respectively."
+      },
+      {
+        "text": "Adapter-reported identity remains opaque to Chalk and may replace missing profile display metadata without being parsed for routing."
+      },
+      {
+        "text": "Doctor/connect remediation explains how to configure explicit identity or accept an unverified reviewer without falsely promising that changing providers proves independence."
+      },
+      {
+        "text": "Tests cover same, distinct, and unknown identity through the real `chalk connect` path."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/connect-identity.test.mjs",
+        "sha256": "265c409b71846446e84d8c1cf8c5a523bb88a2078bdea5fd63398d54fbe9fefa"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 241,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/241",
+      "body": "Parent roadmap: #226\nPromotion review: #239\nDepends on: #240\n\n## Problem\n\n`chalk connect` manufactures `independenceKey` values from adapter ids and optional model strings. This can certify two profiles as independent without explicit identity evidence, contradicting Protocol v1's opaque-identity rule.\n\n## Scope\n\nMake unknown identity remain unknown. Chalk may compare an explicit configured or adapter-reported key, but core connection and readiness code must never derive one from provider, adapter, model, binary, flags, or environment conventions.\n\n## Acceptance criteria\n\n- [ ] `chalk connect` does not synthesize `independenceKey` from adapter or model values.\n- [ ] Distinct providers without explicit keys report reviewer independence as `unverified`, not `distinct`.\n- [ ] Equal and different explicit keys still report `same` and `distinct` respectively.\n- [ ] Adapter-reported identity remains opaque to Chalk and may replace missing profile display metadata without being parsed for routing.\n- [ ] Doctor/connect remediation explains how to configure explicit identity or accept an unverified reviewer without falsely promising that changing providers proves independence.\n- [ ] Tests cover same, distinct, and unknown identity through the real `chalk connect` path.\n\n## Non-goals\n\n- Inferring model families.\n- Recommending a provider or commercial model.\n"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-08-04T12:21:16.458Z"
+    },
+    "createdAt": "2026-08-04T11:41:45.608Z",
+    "reviews": [
+      {
+        "at": "2026-08-04T12:19:49.316Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Codex manual review: the locked real-connect test proves provider/model labels remain unverified, explicit equal/different keys remain same/distinct, adapter metadata merges without overwriting explicit identity, first-party presets/adapters no longer infer keys, remediation is accurate, and full Chalk verify passes.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
+      }
+    ],
+    "handoff": {
+      "path": ".chalk/handoffs/task-1b86dfb-1.md",
+      "at": "2026-08-04T11:43:47.389Z",
+      "reason": "upstream",
+      "seq": 1
+    },
+    "startedAt": "2026-08-04T12:07:50.805Z",
+    "branch": "fix/241-fix-agents-keep-reviewer-independence",
+    "pr": {
+      "number": 245,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/245",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-08-04T12:21:16.457Z"
+  },
+  {
+    "id": "task-2dfad5a4",
+    "title": "fix(agent-runner): preserve exact raw-command stage prompts",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Every legacy `protocol.*.command` role receives byte-for-byte the same stdin it received before Agent Runner."
+      },
+      {
+        "text": "Protocol v1 profiles still receive separate canonical `instructions` and task `context` fields."
+      },
+      {
+        "text": "Executor streaming, structured-role decoding, timeouts, and cost capture remain compatible."
+      },
+      {
+        "text": "Tests call the same production `context` path used by executor, planner, reviewer, and analysis roles rather than bypassing it with test-only `input` calls."
+      },
+      {
+        "text": "No workflow module branches on provider or adapter names."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/raw-command-prompt-compat.test.mjs",
+        "sha256": "43036807276ea0ab7bf7d2b7597f37686bb39134a05a55aa1d50a386740464e0"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 240,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/240",
+      "body": "Parent roadmap: #226\nPromotion review: #239\n\n## Problem\n\nAgent Runner's raw-command compatibility path now prepends canonical role instructions whenever a production caller supplies `context`. Existing `protocol.*.command` integrations therefore receive different stdin bytes from the pre-runner behavior.\n\n## Scope\n\nKeep canonical instructions and context separate for Protocol v1 adapters while preserving the exact historical stage prompt for `raw-command` profiles. Put this compatibility decision behind the Agent Runner seam so workflow callers do not branch on transport.\n\n## Acceptance criteria\n\n- [ ] Every legacy `protocol.*.command` role receives byte-for-byte the same stdin it received before Agent Runner.\n- [ ] Protocol v1 profiles still receive separate canonical `instructions` and task `context` fields.\n- [ ] Executor streaming, structured-role decoding, timeouts, and cost capture remain compatible.\n- [ ] Tests call the same production `context` path used by executor, planner, reviewer, and analysis roles rather than bypassing it with test-only `input` calls.\n- [ ] No workflow module branches on provider or adapter names.\n\n## Non-goals\n\n- Changing canonical role instructions.\n- Removing the raw-command compatibility adapter.\n"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "cleaned",
+      "at": "2026-08-04T12:07:38.339Z"
+    },
+    "createdAt": "2026-08-04T11:41:45.612Z",
+    "reviews": [
+      {
+        "at": "2026-08-04T12:06:30.633Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Codex manual review: regression fails on the pre-change behavior; all nine raw-command roles preserve exact context bytes; Protocol v1 still transports instructions and context separately; focused tests and full Chalk verify pass; no unrelated product files changed.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
+      }
+    ],
+    "startedAt": "2026-08-04T11:44:22.751Z",
+    "branch": "fix/240-fix-agent-runner-preserve-exact",
+    "pr": {
+      "number": 244,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/244",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-08-04T12:07:38.338Z"
   }
 ]

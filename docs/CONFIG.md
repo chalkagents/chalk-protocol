@@ -1,8 +1,12 @@
 # `.chalk/chalk.json` — the full `protocol.*` reference
 
-Everything chalk does is configured here. Two rules cover most of it: **every agent is a BYO shell
-command** (reads its input on stdin, prints its result on stdout; empty command = stage OFF), and
+Everything chalk does is configured here. Two rules cover most of it: **every agent role binds to a
+named profile or a legacy BYO shell command** (input on stdin, result on stdout), and
 **gate commands are your real toolchain** (chalk never fakes a check it can't run).
+
+For setup use [`chalk connect`](./CONNECT.md); compare built-in roles and permission modes in the
+[provider matrix](./PROVIDER_MATRIX.md). Existing command fields remain supported and migration is
+optional; the [migration guide](./MIGRATING_TO_AGENT_PROFILES.md) maps every legacy field.
 
 A test (`test/docs.test.mjs`) pins this file to `initSpine()` down to the NESTED keys: every key
 below exists in the default config, every default-config key has a section below, and each
@@ -27,6 +31,57 @@ Project status marker (`active`). Informational.
 Optional SDK prefix prepended to every gate command (e.g. `"fvm"` → `fvm flutter test`).
 Idempotent — a command already starting with it isn't double-prefixed. Default `""`.
 
+### `agents`
+
+Provider-neutral agent configuration, `{ version, profiles, roles }` (format version `1`).
+`profiles` is a map of reusable connection names; `roles` maps canonical roles to those names. One
+profile may serve any number of roles, so connection details are written once:
+
+```json
+{
+  "agents": {
+    "version": 1,
+    "profiles": {
+      "builder": {
+        "adapter": "raw-command",
+        "command": "my-agent --mode write",
+        "model": "opaque/model-display-value",
+        "identity": {
+          "displayName": "Primary builder",
+          "independenceKey": "builder-family"
+        },
+        "options": {}
+      }
+    },
+    "roles": {
+      "executor": "builder",
+      "planner": "builder"
+    }
+  }
+}
+```
+
+Profile fields are `adapter`, `command`, `model`, `identity`, `capabilities`, and `options`. `adapter`
+names the implementation (`raw-command` is the compatibility transport); `command` launches that
+adapter, and Protocol v1 adapters exchange one JSON request/response over standard I/O. `model` is
+opaque display/configuration text and Chalk never parses it for routing.
+`identity` may contain `displayName`, `model`, and `independenceKey`; only the explicit, opaque
+`independenceKey` is compared for reviewer independence. `options` is adapter-owned and may contain
+connection configuration; `chalk doctor --json` never emits it or `command`.
+
+`capabilities` optionally declares what an adapter can enforce: `{ "roles": ["executor", "planner"],
+"access": ["read-only", "workspace-write"], "output": ["text", "json", "none"] }`. When declared, a role binding whose
+required access/output is missing fails `chalk doctor` and Agent Runner with
+`unsupported-capability`. When omitted for a legacy/raw command, Chalk reports its own enforcement:
+read-only workspace diffing and structured decoding/validation.
+
+Canonical role keys are `executor`, `planner`, `reviewer`, `discovery`, `feedback`, `retro`,
+`handoff`, `pr-narrative`, and `regression-author`. An explicitly bound unknown profile is a doctor
+error. An unbound role continues to resolve its existing `protocol.*.command` as a generated
+`legacy/<role>` compatibility profile, so current setups behave unchanged. Schema migration `1.1 →
+1.2` adds the empty container without copying commands; it is idempotent and preserves later user
+edits to every legacy command.
+
 ### `verify`
 
 The P4 toolchain gates, `{ test, typecheck, lint, build }` — each a command string or
@@ -41,7 +96,8 @@ P5, the adversarial reviewer. `{ command, requiredAt }` — `command` reads the 
 (criteria + diff + stat) on stdin and prints `{"verdict":"pass"|"block","findings":[...]}`;
 `requiredAt` is any of `per-task | milestone-boundary | phase-advance` (legacy `required: true`
 = per-task). A blocking verdict stops `done`; override only via `--force-review --why` (logged).
-Run it on a **different model family** than the executor — `chalk doctor` warns when they match.
+Bind it to an explicit `identity.independenceKey` distinct from the executor's. Without both keys,
+`chalk doctor` reports reviewer independence as unverified instead of inventing an identity.
 
 ### `regression`
 

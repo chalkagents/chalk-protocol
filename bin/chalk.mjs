@@ -8,10 +8,10 @@ import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
 import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
-import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt } from '../lib/regression.mjs';
+import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
-import { PRESETS, detectPreset, withRunner, reviewCadences, normGate } from '../lib/config.mjs';
+import { PRESETS, detectPreset, withRunner, reviewCadences, normGate, resolveAgentRole, resolveAgentConfiguration } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, gitCommitPaths, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
@@ -23,13 +23,13 @@ import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } fro
 import { runSpecs, isSpec } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
 import { runPipeline, runPipelineParallel } from '../lib/pipeline.mjs';
-import { runDoctor } from '../lib/doctor.mjs';
+import { runDoctor, doctorAgentSummary } from '../lib/doctor.mjs';
 import { runSmoke } from '../lib/smoke.mjs';
 import { runAutopilot } from '../lib/autopilot.mjs';
 import { runLoop } from '../lib/loop.mjs';
 import { missingRequiredTest, untrackedLockedTests } from '../lib/testgate.mjs';
 import { runBreakit } from '../lib/breakit.mjs';
-import { withJsonOutput, unwrapAgentOutput, runExecutorCaptured } from '../lib/cost.mjs';
+import { runAgent } from '../lib/agent-runner.mjs';
 import { runMutation } from '../lib/mutation.mjs';
 import { writeHandoff, overAttemptBudget } from '../lib/handoff.mjs';
 import { runRetro, titlesSimilar } from '../lib/retro.mjs';
@@ -38,12 +38,17 @@ import { runDiscovery } from '../lib/discovery.mjs';
 import { runDemo } from '../lib/demo.mjs';
 import { installClaudeAgents, manualLoopText } from '../lib/onboard.mjs';
 import { runArchive } from '../lib/archive.mjs';
+import { conformanceAdapterCommand, renderConformanceReport, runAdapterConformance } from '../lib/adapter-conformance.mjs';
+import { adapterManifest } from '../lib/adapter-registry.mjs';
+import { CONNECT_PRESETS, configureConnections, connectionReadiness, discoverConnections, parseAssignments, promptConnection } from '../lib/connect.mjs';
+import { doctorResultGroups, nextActionView } from '../lib/action-views.mjs';
 import { computeStats, publicStats, renderPublicMarkdown, renderBadge } from '../lib/stats.mjs';
 import { REVIEW_OVERRIDE_TITLE, AUDIT_TITLE } from '../lib/markers.mjs';
 import { portalModel } from '../lib/portal.mjs';
 import { basename, dirname, relative } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, readSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { createInterface } from 'node:readline/promises';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
 function parse(argv) {
@@ -83,7 +88,9 @@ function clearReviewBlockOnPass(t) {
 }
 
 
-const C = { dim: (s) => `\x1b[2m${s}\x1b[0m`, b: (s) => `\x1b[1m${s}\x1b[0m`, g: (s) => `\x1b[32m${s}\x1b[0m`, r: (s) => `\x1b[31m${s}\x1b[0m`, y: (s) => `\x1b[33m${s}\x1b[0m` };
+const colors = !Object.hasOwn(process.env, 'NO_COLOR') && process.env.TERM !== 'dumb';
+const paint = (code, value) => colors ? `\x1b[${code}m${value}\x1b[0m` : String(value);
+const C = { dim: (s) => paint(2, s), b: (s) => paint(1, s), g: (s) => paint(32, s), r: (s) => paint(31, s), y: (s) => paint(33, s) };
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
 const ok = (msg) => console.log(C.g('✓ ') + msg);
 
@@ -107,6 +114,109 @@ const cmds = {
   demo({ flags }) {
     try { runDemo({ keep: flags.keep === true }); }
     catch (e) { die(String(e.message || e)); }
+  },
+
+  async connect({ flags = {} } = {}) {
+    const s = Store.open();
+    let binaries;
+    try { binaries = parseAssignments(flags.binary); } catch (error) { die(`${error.message}; use --binary codex=/absolute/path`); }
+    if (typeof flags['builder-binary'] === 'string' && typeof flags.builder === 'string') binaries[flags.builder] = flags['builder-binary'];
+    if (typeof flags['reviewer-binary'] === 'string' && typeof flags.reviewer === 'string') binaries[flags.reviewer] = flags['reviewer-binary'];
+    const discoveries = discoverConnections({ binaries, env: process.env });
+    if (flags.list === true) {
+      if (flags.json === true) console.log(JSON.stringify({ adapters: discoveries }, null, 2));
+      else for (const item of discoveries) console.log(`${item.installed ? C.g('●') : C.dim('○')} ${C.b(item.adapter)} · ${item.message}${item.nextAction ? C.dim(` · next: ${item.nextAction}`) : ''}`);
+      return;
+    }
+
+    let choices = {
+      preset: typeof flags.preset === 'string' ? flags.preset : 'assisted',
+      builder: typeof flags.builder === 'string' ? flags.builder : '',
+      reviewer: typeof flags.reviewer === 'string' ? flags.reviewer : '',
+    };
+    if (!choices.builder && process.stdin.isTTY && process.stdout.isTTY) {
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      try { choices = await promptConnection({ discoveries, ask: (question) => rl.question(question) }); }
+      finally { rl.close(); }
+    }
+    const installed = discoveries.filter((item) => item.installed).map((item) => item.adapter);
+    if (!choices.builder) {
+      if (installed.length === 1) choices.builder = installed[0];
+      else if (!installed.length) die(`no supported agent CLI detected. Install one, then run chalk connect --builder <${Object.keys(Object.fromEntries(discoveries.map((item) => [item.adapter, true]))).join('|')}>`);
+      else die(`multiple agent CLIs detected (${installed.join(', ')}). Select one explicitly: chalk connect --preset ${choices.preset} --builder <adapter> --reviewer <adapter>`);
+    }
+    if (!CONNECT_PRESETS.includes(choices.preset)) die(`unknown --preset ${choices.preset}; choose ${CONNECT_PRESETS.join('|')}`);
+    if (choices.preset !== 'manual' && !choices.reviewer) {
+      if (installed.length === 1) choices.reviewer = choices.builder;
+      else die(`reviewer selection is ambiguous. Choose explicitly: chalk connect --preset ${choices.preset} --builder ${choices.builder} --reviewer <adapter>`);
+    }
+
+    let planned;
+    try {
+      planned = configureConnections(s.meta(), {
+        ...choices,
+        builderProfile: typeof flags['builder-profile'] === 'string' ? flags['builder-profile'] : undefined,
+        reviewerProfile: typeof flags['reviewer-profile'] === 'string' ? flags['reviewer-profile'] : undefined,
+        builderModel: typeof flags['builder-model'] === 'string' ? flags['builder-model'] : undefined,
+        reviewerModel: typeof flags['reviewer-model'] === 'string' ? flags['reviewer-model'] : undefined,
+        binaries, replace: flags.replace === true, migrateLegacy: flags['migrate-legacy'] === true,
+      });
+    } catch (error) { die(error.message); }
+    const readiness = connectionReadiness(planned.meta.protocol, discoveries);
+    if (flags['dry-run'] !== true) s.saveMeta(planned.meta);
+    const report = { dryRun: flags['dry-run'] === true, ...planned, meta: undefined, readiness };
+    if (flags.json === true) console.log(JSON.stringify(report, null, 2));
+    else {
+      console.log(C.b('chalk connect') + C.dim(` · ${planned.preset}${flags['dry-run'] === true ? ' · dry run' : ''}`));
+      for (const item of planned.changes) console.log(`  ${C.g('✓')} ${item}`);
+      for (const item of planned.preserved) console.log(`  ${C.dim('=')} ${item} ${C.dim('(preserved)')}`);
+      for (const item of planned.warnings) console.log(`  ${C.y('!')} ${item}`);
+      console.log(C.b('readiness') + C.dim(' · offline; no model call'));
+      for (const check of readiness.checks) {
+        const mark = check.level === 'ok' ? C.g('✓') : check.level === 'warn' ? C.y('!') : C.r('✗');
+        console.log(`  ${mark} ${check.message}${check.nextAction ? `\n    ${C.dim(`next: ${check.nextAction}`)}` : ''}`);
+      }
+      if (readiness.ok) ok('agent profiles connected');
+    }
+    if (!readiness.ok) process.exitCode = 2;
+  },
+
+  agent({ _, flags = {} } = {}) {
+    if (_[0] !== 'test' || !_[1]) die('usage: chalk agent test <profile> [--live] [--json]');
+    const s = Store.open();
+    const name = String(_[1]);
+    const profile = resolveAgentConfiguration(s.protocol()).profiles[name];
+    if (!profile) die(`unknown agent profile ${name}; run chalk connect --list, then chalk connect`);
+    const manifest = adapterManifest(profile.adapter);
+    if (!manifest) die(`profile ${name} uses external adapter ${profile.adapter}; test it with chalk adapter conformance --command "${profile.command}"`);
+    const probe = manifest.probe({ binary: profile.options?.binary, env: process.env });
+    if (!probe.installed || probe.authentication === 'missing') {
+      const next = probe.authentication === 'missing' ? `${probe.nextAction}; then retry chalk agent test ${name} --live` : probe.nextAction;
+      if (flags.json === true) console.log(JSON.stringify({ ok: false, profile: name, probe, nextAction: next }, null, 2));
+      else console.error(`${C.r('✗')} ${probe.message}\n  ${C.dim(`next: ${next}`)}`);
+      process.exitCode = 2;
+      return;
+    }
+    const live = flags.live === true;
+    if (live && flags.json !== true) console.log(C.y('  explicit live smoke: this makes one real provider call and may incur model cost'));
+    const report = runAdapterConformance({ command: profile.command, adapter: profile.adapter, live, options: profile.options || {} });
+    if (flags.json === true) console.log(JSON.stringify({ profile: name, probe, ...report }, null, 2));
+    else {
+      console.log(renderConformanceReport(report));
+      if (!live) console.log(C.dim(`  offline only — run chalk agent test ${name} --live for one explicit real smoke call`));
+      if (!report.ok) console.error(C.y(`  next: ${manifest.authCommand}; then retry chalk agent test ${name} --live`));
+    }
+    if (!report.ok) process.exitCode = 1;
+  },
+
+  adapter({ _, flags }) {
+    if (_[0] !== 'conformance') die('usage: chalk adapter conformance --adapter <claude|opencode|codex|gemini|raw-command|fake> | --command "<adapter executable>" [--json] [--live]');
+    const adapter = typeof flags.adapter === 'string' ? flags.adapter : flags.command ? 'external' : 'fake';
+    const command = typeof flags.command === 'string' ? flags.command : conformanceAdapterCommand(adapter);
+    if (!command) die(`unknown built-in adapter: ${adapter} (choose claude|opencode|codex|gemini|raw-command|fake, or pass --command)`);
+    const report = runAdapterConformance({ command, adapter, live: flags.live === true });
+    console.log(flags.json === true ? JSON.stringify(report, null, 2) : renderConformanceReport(report));
+    if (!report.ok) process.exitCode = 1;
   },
 
   async init({ flags }) {
@@ -247,6 +357,22 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.log(JSON.stringify({ task: t || null, freshSession: true, handoff, action }));
       return;
     }
+    if (flags.verbose !== true) {
+      const view = nextActionView(tasks);
+      console.log(C.b('Chalk · next action'));
+      if (view.primary) {
+        console.log(`  ${C.g('NEXT')} ${view.primary.label} ${C.b(view.primary.command)}`);
+        for (const detail of view.primary.details || []) console.log(`       ${C.y('↻')} ${detail}`);
+      } else {
+        console.log(`  ${C.y('PAUSED')} no task action is currently available`);
+      }
+      const c = view.counts;
+      console.log('\n' + C.b('Queue summary'));
+      console.log(`  active ${c.inProgress} · runnable ${c.runnable} · needs criteria ${c.needsCriteria} · waiting on dependencies ${c.dependencies}${waiting[0] ? ` (first: ${waiting[0].title})` : ''}`);
+      console.log(`  blocked ${c.blocked} ${C.dim(`(human input ${c.humanInput} · review rework ${c.reviewBlocked})`)} · done ${c.done}`);
+      console.log(C.dim('  full details: chalk next --verbose'));
+      return;
+    }
     console.log(C.b('Chalk · next action'));
     const reg0 = s.protocol().regression;
     if (reg0?.required) {
@@ -289,7 +415,6 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         console.log(C.dim(`     when ready:  ${seq}`));
         console.log(C.dim(`     read first:  chalk context ${short}`));
       }
-      return;
     }
     if (ready.length || waiting.length) {
       if (ready.length) {
@@ -300,16 +425,19 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         const deps = (t.after || []).map((ref) => resolveRef(tasks, ref)).filter((d) => d && d.state !== 'done').map((d) => d.title);
         console.log(C.dim(`     ⧗ waiting: ${t.title} — on ${deps.join(', ') || 'unresolved deps'}`));
       }
-      if (ready.length) return; // only fall through to todo/done when nothing is startable
-      if (!todo.length) { console.log(C.dim('  (all remaining work is waiting on deps or blocked)')); return; }
+      if (!ready.length && !todo.length) console.log(C.dim('  (all remaining work is waiting on deps or blocked)'));
     }
     if (todo.length) {
       console.log(`  ${C.dim('○')} ${todo.length} task(s) need acceptance criteria before they can start (GATE P1):`);
       for (const t of todo) console.log(C.dim(`     chalk spec ${t.id.slice(0, 12)} --criterion "..."   `) + `(${t.title})`);
-      return;
+    }
+    const completed = tasks.filter((task) => task.state === 'done');
+    if (completed.length) {
+      console.log(`  ${C.g('✓')} ${completed.length} completed task(s):`);
+      for (const task of completed) console.log(C.dim(`     ${task.id.slice(0, 12)}   `) + task.title);
     }
     if (!tasks.length) { console.log(C.dim('  no tasks yet →  chalk task add "<title>"')); return; }
-    console.log(`  ${C.g('✓')} all tasks done. Add the next one ${C.dim('(chalk task add)')} or advance phase ${C.dim('(chalk phase ...)')}.`);
+    if (tasks.every((task) => task.state === 'done')) console.log(`  ${C.g('✓')} all tasks done. Add the next one ${C.dim('(chalk task add)')} or advance phase ${C.dim('(chalk phase ...)')}.`);
   },
 
   // The ordered backlog/DAG — work grouped by milestone, with dependency edges + runnability.
@@ -357,7 +485,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       return;
     }
     if (r.degraded) {
-      console.log(C.y('  no executor configured (protocol.executor.command) — falling back to the manual loop:') + '\n');
+      console.log(C.y('  no executor role configured — falling back to the manual loop:') + '\n');
       cmds.next();
       return;
     }
@@ -567,14 +695,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const s = Store.open();
     const t = mustTask(s, _[0]);
     if (stageDone(t, 'planned')) return ok(`plan ${C.dim('(already done)')}`);
-    const cmd = s.protocol().planner?.command;
-    if (!cmd) die('no planner configured (protocol.planner.command).');
-    let out = '';
-    const t0 = Date.now();
-    try { out = execSync(withJsonOutput(withRunner(s.protocol().runner, cmd)), { cwd: workdir(s, t), input: buildContext(s, t), encoding: 'utf8', stdio: ['pipe', 'pipe', 'inherit'], timeout: 10 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 }); }
-    catch (e) { out = `${e.stdout || ''}`; }
-    const { text: planOut, usage } = unwrapAgentOutput(out); // #99: envelope off before the plan is stored
-    s.logCost({ taskId: t.id, stage: 'plan', agent: 'planner', ms: Date.now() - t0, ...(usage || {}) });
+    const profile = resolveAgentRole(s.protocol(), 'planner');
+    if (!profile?.command) die('no planner configured (protocol.agents.roles.planner or protocol.planner.command).');
+    const agentResult = runAgent('planner', { profile, cwd: workdir(s, t), context: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
+    const planOut = agentResult.text;
     const planText = planOut.trim();
     if (!planText) die('planner produced no plan.');
     t.plan = planText.slice(0, 8000);
@@ -857,12 +981,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       t.state = 'in-progress'; t.startedAt = now(); s.upsertTask(t);
     }
     if (t.state !== 'in-progress') die(`task is [${t.state}], not workable.`);
-    const ex = s.protocol().executor?.command;
-    if (ex) {
+    const executorProfile = resolveAgentRole(s.protocol(), 'executor');
+    if (executorProfile?.command) {
       t.attempts = (t.attempts || 0) + 1; s.upsertTask(t);   // churn budget: each work run counts
-      const t0 = Date.now();
-      const { usage } = runExecutorCaptured(withRunner(s.protocol().runner, ex), { cwd: workdir(s, t), input: buildContext(s, t) }); // #99: claude-shaped → usage captured; runner prefix like every sibling stage
-      s.logCost({ taskId: t.id, stage: 'work', agent: 'executor', ms: Date.now() - t0, ...(usage || {}) });
+      runAgent('executor', { profile: executorProfile, cwd: workdir(s, t), context: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
     }
     // #211: the agent may have RAISED a fork mid-work (chalk raise writes it to the spine). Re-read and
     // pause for the director instead of proceeding to verify/done on a guessed choice. Exit 2 → the
@@ -1133,20 +1255,43 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   doctor({ flags = {} } = {}) {
     const s = Store.open();
     const results = runDoctor(s);
+    const agents = doctorAgentSummary(s.protocol());
     const fails = results.filter((r) => r.level === 'fail').length;
     // --json: the bug-report format (issue templates ask for it) — stable, greppable, exit-coded.
     if (flags.json === true) {
-      console.log(JSON.stringify({ at: now(), node: process.version, platform: process.platform, results }, null, 2));
+      console.log(JSON.stringify({ at: now(), node: process.version, platform: process.platform, agents, results }, null, 2));
       process.exit(fails ? 2 : 0);
     }
     console.log(C.b('chalk doctor') + C.dim(' · autonomous-run readiness') + '\n');
     const icon = { ok: C.g('✓'), warn: C.y('⚠'), fail: C.r('✗'), info: C.dim('·') };
-    for (const area of [...new Set(results.map((r) => r.area))]) {
-      console.log(C.b(area));
-      for (const r of results.filter((x) => x.area === area)) console.log(`  ${icon[r.level]} ${r.level === 'info' ? C.dim(r.msg) : r.msg}`);
+    for (const group of doctorResultGroups(results)) {
+      console.log(C.b(group.title));
+      if (!group.items.length) console.log(C.dim('  (none)'));
+      for (const r of group.items) console.log(`  ${icon[r.level]} ${C.dim(`[${r.area}]`)} ${r.level === 'info' ? C.dim(r.msg) : r.msg}`);
+      console.log('');
     }
+    if (flags.verbose === true) {
+      console.log(C.b('Passing checks'));
+      for (const r of results.filter((item) => item.level === 'ok')) console.log(`  ${icon.ok} ${C.dim(`[${r.area}]`)} ${r.msg}`);
+      console.log('');
+    } else {
+      console.log(C.dim(`Passing checks: ${results.filter((item) => item.level === 'ok').length} · full details: chalk doctor --verbose`));
+    }
+    console.log('\n' + C.b('Agent readiness'));
+    console.log(`  mode: ${agents.mode === 'manual' ? C.g('manual (valid; no model required)') : C.g('autonomous-capable')}`);
+    const roleEntries = Object.entries(agents.roles);
+    if (!roleEntries.length) console.log(`  ${C.dim('no roles bound')} · autonomous setup: chalk connect --preset autonomous --builder <adapter> --reviewer <adapter>`);
+    for (const [role, profile] of roleEntries) {
+      const caps = profile.capabilities || {};
+      console.log(`  ${role} → ${profile.profile} (${profile.adapter}) · access ${JSON.stringify(caps.access || caps.accessEnforced)} · output ${JSON.stringify(caps.output || caps.structuredOutput)}`);
+    }
+    if (agents.roles.executor && agents.roles.reviewer) console.log(`  reviewer independence: ${agents.independence.status}${agents.independence.nextAction ? ` · next: ${agents.independence.nextAction}` : ''}`);
     const warns = results.filter((r) => r.level === 'warn').length;
-    console.log('\n' + (fails ? C.r(`● NOT READY — ${fails} blocker(s)${warns ? `, ${warns} warning(s)` : ''}`) : warns ? C.y(`● READY with ${warns} warning(s)`) : C.g('● READY')));
+    const manual = !agents.roles.executor;
+    const verdict = fails
+      ? `${manual ? C.g('● MANUAL MODE READY') + C.r(' · ') : C.r('● ')}${C.r(`NOT READY for unattended runs — ${fails} blocker(s)${warns ? `, ${warns} warning(s)` : ''}`)}`
+      : warns ? C.y(`● READY with ${warns} warning(s)`) : C.g('● READY');
+    console.log('\n' + verdict);
     if (fails) console.log(C.dim('  NOT READY concerns UNATTENDED runs (chalk run/pipeline) — the manual loop works regardless: chalk next'));
     process.exit(fails ? 2 : 0);
   },
@@ -1657,9 +1802,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // changed locked test must be re-reviewed even though the stage is still 'reviewed'.
     if (stageDone(t, 'reviewed') && t.reviews.slice(-1)[0]?.verdict === 'pass') return ok(`review ${C.dim('(already passed)')}`);
 
-    if (!meta.protocol?.review?.command) {
+    if (!resolveAgentRole(meta.protocol, 'reviewer')?.command) {
       const note = flags.note || _.slice(1).join(' ');
-      if (!note) die('no reviewer configured. Set .chalk/chalk.json → protocol.review.command (e.g. "claude -p"),\n  or record a manual review:  chalk review <id> --note "..."');
+      if (!note) die('no reviewer configured. Bind protocol.agents.roles.reviewer or set protocol.review.command,\n  or record a manual review:  chalk review <id> --note "..."');
       const verdict = flags.block ? 'block' : 'pass';
       t.reviews.push({ at: now(), by: flags.by || 'human', verdict, findings: [], note: String(note), checklist: ['test-adequacy', 'design-intent', 'regressions'] });
       // Advance the pipeline stage only when the review happens in PIPELINE order (the PR exists).
@@ -1739,11 +1884,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       s.saveMeta(m);
       ok(`held-out regression locked: ${lock.path} ${C.dim('(hidden from the implementer)')}`);
     } else if (sub === 'gen') {
-      if (!reg.authorCommand) die('set .chalk/chalk.json → protocol.regression.authorCommand (a BYO test-author agent).');
+      const authorProfile = resolveAgentRole(m.protocol, 'regression-author');
+      if (!authorProfile?.command) die('bind protocol.agents.roles.regression-author or set protocol.regression.authorCommand (a BYO test-author agent).');
       console.log(C.dim('  running guard author (derives held-out tests from the spec, blind to the code)…'));
       const prompt = buildGuardPrompt(m, s.spec(), s.tasks().flatMap((t) => (t.acceptanceCriteria || []).map((c) => `- [${t.title}] ${c.text}`)).join('\n'));
-      try { execSync(withRunner(m.protocol?.runner, reg.authorCommand), { cwd: s.root, input: prompt, stdio: ['pipe', 'inherit', 'inherit'], timeout: 10 * 60 * 1000 }); }
-      catch { /* author may write files then exit nonzero */ }
+      runRegressionAuthor(s, reg.authorCommand, prompt); // author may write files then exit nonzero
       let n = 0;
       for (const f of listDirFiles(s.root, reg.dir)) { if (/readme/i.test(f)) continue; lockInto(f); n++; }
       s.saveMeta(m);
@@ -2055,15 +2200,19 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   harness() {
     const s = Store.open();
     const p = s.protocol();
+    const roleProfile = (role) => resolveAgentRole(p, role);
     const dot = (v) => (v ? C.g('●') : C.dim('○'));
     const cmd = (c) => (c ? C.g(c) : C.dim('(not wired)'));
+    const agentText = (profile) => !profile ? '' : profile.source === 'legacy' ? profile.command : `${profile.name} (${profile.adapter})`;
     console.log(C.b('Chalk harness') + C.dim(` — ${s.meta().project?.name || 'project'} · the kit assembled around your goal`));
 
     console.log('\n' + C.b('Agents') + C.dim(' — the doers (BYO models)'));
-    console.log(`  ${dot(p.executor?.command)} executor  ${cmd(p.executor?.command)}`);
-    console.log(`  ${dot(p.planner?.command)} planner   ${cmd(p.planner?.command)}`);
-    console.log(`  ${dot(p.review?.command)} reviewer  ${cmd(p.review?.command)}`);
-    console.log(`  ${dot(p.retro?.command)} retro     ${cmd(p.retro?.command)}`);
+    const executorAgent = roleProfile('executor'), plannerAgent = roleProfile('planner');
+    const reviewerAgent = roleProfile('reviewer'), retroAgent = roleProfile('retro');
+    console.log(`  ${dot(executorAgent)} executor  ${cmd(agentText(executorAgent))}`);
+    console.log(`  ${dot(plannerAgent)} planner   ${cmd(agentText(plannerAgent))}`);
+    console.log(`  ${dot(reviewerAgent)} reviewer  ${cmd(agentText(reviewerAgent))}`);
+    console.log(`  ${dot(retroAgent)} retro     ${cmd(agentText(retroAgent))}`);
 
     console.log('\n' + C.b('Skills') + C.dim(' — your project playbook, injected into every agent'));
     const skills = s.skills();
@@ -2072,11 +2221,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
     const v = p.verify || {};
     const verifyOn = ['test', 'typecheck', 'lint', 'build'].filter((k) => v[k]);
-    const anyCheck = verifyOn.length || p.review?.command || p.regression?.required || p.requireTest;
+    const anyCheck = verifyOn.length || reviewerAgent?.command || p.regression?.required || p.requireTest;
     // #217: the gates are ONE OPTIONAL part — the accept button, not the whole product.
     console.log('\n' + C.b('Checks') + C.dim(' — the gates (P1–P7): OPTIONAL, the accept button · one part of the kit'));
     console.log(`  ${dot(verifyOn.length)} verify    ${verifyOn.length ? C.g(verifyOn.join(', ')) : C.dim('(none configured — vacuous green)')}`);
-    console.log(`  ${dot(p.review?.command)} review    ${p.review?.command ? C.g(`adversarial (${(p.review.requiredAt || []).join(', ') || 'legacy'})`) : C.dim('off')}`);
+    console.log(`  ${dot(reviewerAgent?.command)} review    ${reviewerAgent?.command ? C.g(`adversarial (${(p.review.requiredAt || []).join(', ') || 'legacy'})`) : C.dim('off')}`);
     console.log(`  ${dot(p.regression?.required)} held-out  ${p.regression?.required ? C.g(`${(p.regression.tests || []).length} locked test(s)`) : C.dim('off')}`);
     console.log(`  ${dot(p.requireTest)} require-test ${p.requireTest ? C.g('on') : C.dim('off')}`);
     if (!anyCheck) console.log(C.dim('  (all optional — this project runs without gates; add them when you want the accept button)'));
@@ -2154,15 +2303,17 @@ function printHelp() {
 
 ${C.b('setup')}
   chalk demo [--keep]                  ${C.dim('watch the whole gated loop on a throwaway project (~1 min, no LLM needed)')}
+  chalk adapter conformance --adapter <claude|opencode|codex|gemini|raw-command|fake> | --command "<cmd>" [--json] [--live]
+                                       ${C.dim('offline Agent Adapter Protocol v1 contract suite; --live alone permits provider/network calls')}
   chalk init [--name N] [--goal G] [--preset flutter|node|dart|python|go] [--verify-test "cmd"] [--bare] [--runner fvm] [--executor claude|opencode|none]
-                                       ${C.dim('auto-detects the stack preset (verify/regression/break-it); --executor claude ships the agent files')}
+                                       ${C.dim('auto-detects verify commands; use chalk connect for provider-neutral agents (--executor is compatibility setup)')}
   chalk agents [--claude]              ${C.dim('(re)install the agent contract; --claude adds the Claude Code agent definitions')}
   chalk --version | -v                 ${C.dim('print the installed package version (+ protocol tag)')}
   chalk upgrade [--dry-run]            ${C.dim('update to the latest published chalk-protocol (global npm)')}
   chalk telemetry [--show]             ${C.dim('opt-in anonymous usage telemetry — show exactly what would be sent (off by default)')}
   chalk status
   chalk harness                        ${C.dim('the kit assembled around your goal: agents · skills · checks · flows')}
-  chalk next                           ${C.dim('the agent entrypoint: what to do next')}
+  chalk next [--verbose]               ${C.dim('one primary command + queue counts; --verbose shows every item')}
   chalk context [<id>]                 ${C.dim('agent read blob (P3 test-impact map)')}
 
 ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental is met)')}
@@ -2178,7 +2329,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk merge <id>                     ${C.dim('GATED squash-merge + cleanup + done')}
   chalk cleanup <id>                   ${C.dim('remove the task worktree + delete its local branch')}
   chalk pipeline [--max N] [--dry-run] ${C.dim('UNATTENDED: drive every issue-backed task issue→merge')}
-  chalk doctor [--json]                ${C.dim('preflight readiness check for autonomous runs (read-only); --json for bug reports')}
+  chalk doctor [--verbose|--json]       ${C.dim('prioritized readiness blockers/warnings/improvements; --json stays machine-stable')}
   chalk cost                           ${C.dim('summarize the agent-call ledger (calls + wall-clock per agent)')}
   chalk stats [--since D] [--json] [--public|--badge]   ${C.dim('gate-efficacy report; --public: PII-free shareable markdown, --badge: shields.io JSON')}
   chalk archive [--dry-run]            ${C.dim('compact the spine: move done+released tasks (+their events) to .chalk/archive/')}
@@ -2186,6 +2337,9 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk retro [--dry-run] [--max-issues N]   ${C.dim('self-heal: distill lessons + file improvement issues (BYO retro agent)')}
   chalk autopilot [--max N] [--min-severity med]   ${C.dim('scheduled-run unit: locked + doctor-gated pipeline sweep (for cron//loop)')}
   chalk loop [--max-rounds N] [--max N] [--min-severity med]   ${C.dim('bounded STANDING loop: pull→sweep→converge, self-terminating')}
+  chalk connect [--preset manual|assisted|autonomous] [--builder ADAPTER] [--reviewer ADAPTER] ${C.dim('discover CLIs + bind provider-neutral profiles; offline by default')}
+  chalk connect --list [--json] | --binary ADAPTER=/path | --builder-model MODEL | --reviewer-model MODEL | --replace | --migrate-legacy
+  chalk agent test <profile> [--live] ${C.dim('offline conformance by default; --live makes ONE explicit model call')}
   chalk smoke [--create|--issue N] --yes   ${C.dim('prove the pipeline on ONE throwaway issue (real; use a scratch repo)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]

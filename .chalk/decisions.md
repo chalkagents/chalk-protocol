@@ -519,3 +519,248 @@
 
 - _when:_ 2026-07-17T13:25:43.013Z
 - _why:_ 66 change(s); promoted dev→main (PR already merged); tagged v0.3.0 on main
+
+## Overrode review gate for "design: specify Agent Adapter Protocol v1 and canonical role contracts"
+
+- _when:_ 2026-08-03T06:54:55.872Z
+- _why:_ User explicitly directed bypassing external model review for now; configured Claude model is unavailable, and milestone #5 is replacing provider-specific review wiring with provider-agnostic adapters.
+
+## Amended acceptance test for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:07:53.975Z
+- _why:_ Move the fake executable outside Node's default test discovery tree; the original location caused the full suite to execute the fixture as a test and wait on stdin.
+
+## Amended acceptance test for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:08:13.669Z
+- _why:_ Update the test fixture path after moving the fake executable outside Node's default test discovery tree.
+
+## Route executor and planner through a single normalized Agent Runner result, while retaining legacy command strings as a compatibility transport.
+
+- _when:_ 2026-08-03T07:10:08.312Z
+- _why:_ This removes child-process and provider decisions from workflow modules, preserves streaming and #99 accounting, and gives later provider adapters one stable seam.
+
+## Overrode review gate for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:12:11.131Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; the implementation is protected by a locked fake-agent suite and the full Chalk verification gate is GREEN.
+
+## Make Agent Runner the sole owner of subprocess normalization and cost-ledger timing for every agent-backed role.
+
+- _when:_ 2026-08-03T07:20:25.624Z
+- _why:_ Role modules should only build prompts and parse normalized text; central execution preserves legacy behavior while making provider adapters replaceable without touching workflows.
+
+## Overrode review gate for "refactor: route every remaining agent-backed stage through Agent Runner"
+
+- _when:_ 2026-08-03T07:22:25.998Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; every migrated role is covered by one locked fake-agent seam and the repository-wide Chalk verify gate is GREEN.
+
+## Migrated spine 1.1 → 1.2
+
+- _when:_ 2026-08-03T07:30:04.019Z
+- _why:_ chalk migrate: add provider-neutral agent profiles and role bindings (backup: /Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol/.chalk/backups/2026-08-03T07-30-04-016Z)
+
+## Keep legacy command values live and synthesize compatibility profiles at resolution time instead of copying them during schema migration.
+
+- _when:_ 2026-08-03T07:34:57.878Z
+- _why:_ This makes migration additive and idempotent, preserves user edits indefinitely, and lets explicit named profiles take over role-by-role without a flag day.
+
+## Overrode review gate for "feat: add provider-neutral agent profiles, role bindings, and explicit identity"
+
+- _when:_ 2026-08-03T07:37:11.406Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; profiles, migration, identity, legacy compatibility, config drift, and credential-safe doctor output are locked by tests and full verify is GREEN.
+
+## Amended acceptance test for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:40:44.383Z
+- _why:_ Protocol capability enforcement extends the normalized Agent Runner result with a capabilities field; update the earlier seam contract without weakening its existing assertions.
+
+## Amended acceptance test for "refactor: introduce the Agent Runner seam and migrate executor + planner"
+
+- _when:_ 2026-08-03T07:40:55.966Z
+- _why:_ Lock the evolved Agent Runner result contract after adding the capabilities field required by Protocol v1.
+
+## Enforce read-only roles with net workspace content snapshots and centralize structured decoding in Agent Runner.
+
+- _when:_ 2026-08-03T07:51:45.314Z
+- _why:_ Adapter claims alone cannot protect the workspace; Chalk can independently refuse mutated results, preserve user data, and give every provider the same role-schema diagnostics.
+
+## Overrode review gate for "feat: enforce agent role capabilities and structured-output contracts"
+
+- _when:_ 2026-08-03T07:54:13.722Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; capability enforcement, malicious read-only mutation refusal, structured schemas, diagnostics, and executor access are protected by locked tests and full verify is GREEN.
+
+## Keep provider-neutral canonical role instructions separate from run context and generate native assets from that source.
+
+- _when:_ 2026-08-03T08:07:18.086Z
+- _why:_ Adapters can map the two fields to native system/user prompt surfaces or combine them for raw CLIs, while generated conveniences cannot become runtime dependencies or drift.
+
+## Overrode review gate for "refactor: make Chalk role instructions provider-neutral"
+
+- _when:_ 2026-08-03T08:09:53.849Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; all nine canonical roles, instruction/context separation, generated-asset drift, raise behavior, and decision-digest behavior are protected by locked tests and full verify is GREEN.
+
+## Treat raw-command versus Protocol v1 as the only Agent Runner transport seam; put each provider's flags, permissions, prompt mapping, output decoding, usage, identity, and redaction behind its adapter command.
+
+- _when:_ 2026-08-03T08:28:57.992Z
+- _why:_ This keeps the core interface small and provider-neutral while concentrating provider volatility in deep adapters that can be tested through the same request/response contract.
+
+## Overrode review gate for "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1"
+
+- _when:_ 2026-08-03T08:31:15.926Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; the locked adapter test covers provider ownership, compatibility, normalized identity/usage, redaction, core neutrality, and package assets, and full verify is GREEN.
+
+## Use one public offline fixture convention and one conformance harness for built-in, raw-command, fake, and external Protocol v1 adapters.
+
+- _when:_ 2026-08-03T08:41:14.004Z
+- _why:_ Adapter authors can prove transport and failure semantics without credentials or paid model calls, while --live remains an explicit bounded smoke mode rather than an accidental network path.
+
+## Overrode review gate for "feat: ship an Agent Adapter Protocol conformance kit"
+
+- _when:_ 2026-08-03T08:43:38.665Z
+- _why:_ User explicitly directed bypassing external model review for this milestone; the locked conformance test covers all fixtures, built-in and external adapters, mutation refusal, offline/live policy, both renderers, version reporting, docs, package assets, and full verify is GREEN.
+
+## Ship Codex and Gemini as Protocol v1 adapters with provider-native sandbox, structured-output, and telemetry mappings
+
+- _when:_ 2026-08-03T08:56:30.613Z
+- _why:_ The common adapter contract keeps workflow code provider-neutral while direct argv/stdin transport preserves prompts and leaves authentication with each installed CLI.
+
+## Overrode review gate for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-08-03T08:58:51.137Z
+- _why:_ Milestone owner explicitly authorized bypassing external model reviewers for this milestone; locked acceptance test and full verify are GREEN.
+
+## Keep guided setup provider-neutral by discovering adapter-owned manifests and applying idempotent connection presets
+
+- _when:_ 2026-08-03T09:13:55.694Z
+- _why:_ The connect module can validate and bind any manifest without provider branches, preserves existing profiles and legacy commands by default, and requires explicit flags for replacement, migration, or a live model call.
+
+## Overrode review gate for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-03T09:19:31.693Z
+- _why:_ Milestone owner explicitly authorized bypassing external model reviewers for this milestone; locked acceptance test and full verify are GREEN.
+
+## Prioritize one exact next command while retaining full queue detail behind verbose and stable JSON
+
+- _when:_ 2026-08-03T09:35:01.414Z
+- _why:_ The default human view should guide action rather than front-load blocked history; category counts preserve orientation, verbose preserves every item, and machine consumers keep their existing shape.
+
+## Overrode review gate for "ux: make chalk next and doctor concise, prioritized, and profile-aware"
+
+- _when:_ 2026-08-03T09:37:25.751Z
+- _why:_ Milestone owner explicitly authorized bypassing external model reviewers for this milestone; locked acceptance test and full verify are GREEN.
+
+## Overrode review gate for "docs: publish the provider-neutral quickstart, migration guide, and adapter-author guide"
+
+- _when:_ 2026-08-03T09:53:09.076Z
+- _why:_ Director explicitly authorized bypassing external model review for this milestone; locked acceptance test and full chalk verify are GREEN.
+
+## Published provider-neutral onboarding and adapter documentation
+
+- _when:_ 2026-08-03T09:53:16.960Z
+- _why:_ Make init → connect → doctor → run the default autonomous path while preserving manual and raw-command compatibility.
+
+## Amended acceptance test for "refactor: make Chalk role instructions provider-neutral"
+
+- _when:_ 2026-08-04T11:59:43.768Z
+- _why:_ Issue #240 clarifies the compatibility boundary: Protocol v1 adapters receive separate instructions and context, while legacy raw commands must receive the caller context byte-for-byte without a Chalk-owned prompt prefix.
+
+## Amended acceptance test for "refactor: make Chalk role instructions provider-neutral"
+
+- _when:_ 2026-08-04T12:00:03.153Z
+- _why:_ Relock the amended regression: legacy raw commands receive only the exact caller context; Protocol v1 remains the separate instructions/context interface.
+
+## Keep legacy raw-command stdin byte-compatible and reserve canonical instruction delivery for Protocol v1 adapters
+
+- _when:_ 2026-08-04T12:04:38.788Z
+- _why:_ Raw commands are an existing public compatibility surface with arbitrary prompt contracts; prepending Chalk text changes behavior and can corrupt structured inputs.
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-04T12:12:38.241Z
+- _why:_ Issue #241 tightens connect's independence contract: different providers/models are not proof without explicit opaque keys.
+
+## Amended acceptance test for "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1"
+
+- _when:_ 2026-08-04T12:12:38.295Z
+- _why:_ Issue #241 forbids first-party adapters from deriving independenceKey from provider/model values while retaining opaque model metadata.
+
+## Amended acceptance test for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-08-04T12:12:38.348Z
+- _why:_ Issue #241 requires Codex and Gemini identity tests to reject inferred independence keys while preserving reported/configured model metadata.
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-04T12:14:08.210Z
+- _why:_ Relock connect coverage for explicit-only reviewer independence and accurate remediation.
+
+## Amended acceptance test for "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1"
+
+- _when:_ 2026-08-04T12:14:08.264Z
+- _why:_ Relock Claude/OpenCode adapter identity coverage after removing provider/model-derived independence keys.
+
+## Amended acceptance test for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-08-04T12:14:08.318Z
+- _why:_ Relock Codex/Gemini identity coverage after preserving opaque model metadata without inferred independence.
+
+## Treat reviewer independence as an explicit attestation, never an inference from provider or model labels
+
+- _when:_ 2026-08-04T12:18:31.663Z
+- _why:_ Provider and model strings do not prove separate failure modes, accounts, deployments, or model families; only opaque independently verified keys support a same/distinct claim.
+
+## Amended acceptance test for "fix(agent-runner): detect ignored-file mutations in read-only roles"
+
+- _when:_ 2026-08-04T12:24:11.719Z
+- _why:_ Strengthen #242 coverage to distinguish clean tracked mutation from mutation of a file already dirty before the read-only agent starts.
+
+## Amended acceptance test for "fix(agent-runner): detect ignored-file mutations in read-only roles"
+
+- _when:_ 2026-08-04T12:25:00.665Z
+- _why:_ Relock the complete snapshot contract covering clean tracked, pre-dirty tracked, ordinary untracked, and ignored paths.
+
+## Index workspace snapshots through Git while hashing path contents with lstat
+
+- _when:_ 2026-08-04T12:28:22.549Z
+- _why:_ Three Git inventories cover tracked, ordinary untracked, and ignored files without a general recursive scan; exclusion pathspecs protect .git, node_modules, and held-out tests, while lstat hashes symlinks without following external targets.
+
+## Amended acceptance test for "feat: ship an Agent Adapter Protocol conformance kit"
+
+- _when:_ 2026-08-04T12:44:08.127Z
+- _why:_ Issue #243 separates production-refusal proof from adapter compliance: the mutation fixture passes on the shared enforcement result, while a direct ok claim is an overall adapter violation.
+
+## Amended acceptance test for "feat: ship an Agent Adapter Protocol conformance kit"
+
+- _when:_ 2026-08-04T12:45:46.838Z
+- _why:_ Relock conformance coverage for the shared production refusal seam and explicit adapter-violation reporting.
+
+## Separate enforcement-fixture success from adapter conformance success
+
+- _when:_ 2026-08-04T12:53:06.491Z
+- _why:_ Chalk must prove its production refusal catches mutations, but that proof cannot certify an adapter that falsely returned ok; a separate adapterViolation signal preserves both truths.
+
+## Amended acceptance test for "feat: enforce agent role capabilities and structured-output contracts"
+
+- _when:_ 2026-08-04T12:59:00.768Z
+- _why:_ Provider-neutral adapter transport changed the malicious fixture invocation while preserving the locked capability/refusal contract; record and relock the shipped milestone test.
+
+## Amended acceptance test for "feat: enforce agent role capabilities and structured-output contracts"
+
+- _when:_ 2026-08-04T12:59:00.837Z
+- _why:_ Read-only reviewer enforcement requires capture instrumentation outside the reviewed workspace; record the already-shipped test adjustment without weakening no-diff behavior.
+
+## Amended acceptance test for "fix: sameModelFamily can't see env-var models (CHALK_OPENCODE_MODEL) — cross-model warning inert for opencode"
+
+- _when:_ 2026-08-04T12:59:00.891Z
+- _why:_ Protocol v1 supersedes environment-derived model-family inference: environment model strings must not become reviewer independence identity.
+
+## Amended acceptance test for "fix: review diff-capture silently passes on no diff — abort loudly instead of a vacuous verdict (#151)"
+
+- _when:_ 2026-08-04T12:59:00.945Z
+- _why:_ Relock the no-diff regression after moving fake reviewer instrumentation outside the read-only workspace; assertions remain equivalent.
+
+## Preserve #227-#238 as honestly hand-landed instead of falsifying retroactive pipeline stages
+
+- _when:_ 2026-08-04T12:59:00.991Z
+- _why:_ Those completed tasks were committed before the GitHub pipeline was used. The four promotion blockers #240-#243 were subsequently landed through scoped PRs with CI and recorded review; historical stage metadata remains truthful.
