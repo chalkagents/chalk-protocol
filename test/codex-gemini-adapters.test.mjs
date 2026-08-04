@@ -77,7 +77,7 @@ test('Codex maps all three roles, preserves stdin, normalizes reviewer JSON, usa
   assert.equal(reviewer.status, 'ok', JSON.stringify(reviewer.diagnostics));
   assert.deepEqual(reviewer.structured, { verdict: 'pass', findings: [], decisions: [] });
   assert.deepEqual(reviewer.usage, { inputTokens: 22, outputTokens: 7, cacheReadTokens: 4, turns: 1 });
-  assert.deepEqual(reviewer.identity, { displayName: 'Codex CLI', model, independenceKey: `codex:${model}` });
+  assert.deepEqual(reviewer.identity, { displayName: 'Codex CLI', model });
 
   const captured = JSON.parse(readFileSync(call.capture, 'utf8'));
   assert.equal(captured.stdin, context, 'multiline run context is verbatim stdin');
@@ -112,7 +112,7 @@ test('Gemini maps all three roles, preserves stdin, normalizes reviewer JSON, us
   assert.equal(reviewer.status, 'ok', JSON.stringify(reviewer.diagnostics));
   assert.deepEqual(reviewer.structured, { verdict: 'pass', findings: [], decisions: [] });
   assert.deepEqual(reviewer.usage, { inputTokens: 30, outputTokens: 9, cacheReadTokens: 5, turns: 2 });
-  assert.deepEqual(reviewer.identity, { displayName: 'Gemini CLI', model, independenceKey: `gemini:${model}` });
+  assert.deepEqual(reviewer.identity, { displayName: 'Gemini CLI', model });
 
   const captured = JSON.parse(readFileSync(call.capture, 'utf8'));
   assert.equal(captured.stdin, context, 'multiline run context is verbatim stdin');

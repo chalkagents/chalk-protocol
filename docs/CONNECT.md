@@ -43,9 +43,10 @@ chalk connect --preset assisted --builder codex --reviewer gemini --dry-run
 chalk connect --preset assisted --builder codex --reviewer gemini --replace --migrate-legacy
 ```
 
-Reviewer independence is explained in provider-neutral terms. Distinct configured identities pass;
-the same or unknown identity produces a warning with the exact command shape for choosing a separate
-reviewer profile.
+Reviewer independence is explained in provider-neutral terms. Only distinct, explicit
+`identity.independenceKey` values pass. Provider names and model values are never treated as proof;
+the same or missing keys produce guidance to configure independently verified opaque keys or accept
+that reviewer independence remains unverified.
 
 ## Validation and live smoke test
 
