@@ -20,8 +20,9 @@ roles request one JSON object, and the adapter normalizes fenced or conversation
 returning the Protocol v1 response. Optional `options.model` and `options.attach` values are
 forwarded without Chalk interpreting them.
 
-For an independent reviewer, bind a profile with a different explicit `independenceKey` or a
-separate adapter. Chalk warns—not guesses—when independence is unknown.
+For an independent reviewer, configure a different, independently verified explicit
+`independenceKey`. A separate adapter or model alone is not proof. Chalk warns—not guesses—when
+independence is unknown.
 
 Existing raw OpenCode commands remain supported and do not require migration. See the
 [migration guide](../MIGRATING_TO_AGENT_PROFILES.md), [capability matrix](../PROVIDER_MATRIX.md),

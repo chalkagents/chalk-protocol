@@ -33,8 +33,9 @@ by the documentation tests. Equivalent manual profile wiring is:
 ```
 
 `options.model` is optional opaque configuration. When present, the adapter forwards it unchanged
-to `codex exec --model` and uses it as the explicit independence identity. No default model is
-invented when the CLI does not report one.
+to `codex exec --model` and reports it only as display metadata. It never derives reviewer
+independence from that value; configure an explicit profile `identity.independenceKey` only when the
+identity has been independently verified.
 
 The adapter passes canonical instructions as the `codex exec` prompt and multiline run context on
 stdin. It maps access to `--sandbox read-only|workspace-write`, disables interactive approval

@@ -66,7 +66,7 @@ test('Claude adapter owns system prompt, permissions, envelope decoding, usage, 
   assert.equal(result.status, 'ok', JSON.stringify(result.diagnostics));
   assert.deepEqual(result.structured, { verdict: 'pass', findings: [], decisions: [] });
   assert.deepEqual(result.usage, { inputTokens: 21, outputTokens: 8, cacheReadTokens: 5, cacheWriteTokens: 2, costUsd: 0.06, turns: 2 });
-  assert.equal(result.identity.independenceKey, 'claude:opaque-claude-model');
+  assert.deepEqual(result.identity, { displayName: 'Claude Code', model: 'opaque-claude-model' });
   assert.deepEqual(costs[0].tokens, { in: 21, out: 8, cacheRead: 5, cacheWrite: 2 }, 'new normalized usage persists in the readable v0 ledger shape');
 
   const invocation = JSON.parse(readFileSync(capture, 'utf8'));
@@ -88,7 +88,7 @@ test('OpenCode adapter owns argv prompt transport, JSON cleanup, permissions, an
     env: { ...process.env, FAKE_CAPTURE: capture, FAKE_RESULT: '```json\n{"verdict":"pass","findings":[],"decisions":[]}\n```' },
   });
   assert.equal(reviewer.status, 'ok', JSON.stringify(reviewer.diagnostics));
-  assert.equal(reviewer.identity.independenceKey, 'opencode:opaque-opencode-model');
+  assert.deepEqual(reviewer.identity, { displayName: 'OpenCode', model: 'opaque-opencode-model' });
   const readOnly = JSON.parse(readFileSync(capture, 'utf8'));
   assert.ok(!readOnly.args.includes('--auto'), 'read-only role never receives write permission');
   assert.match(readOnly.args.at(-1), /# Role instructions[\s\S]+# Run context[\s\S]+\$VARS/, 'stdin fields map to one verbatim argv prompt');

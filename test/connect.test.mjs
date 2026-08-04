@@ -70,7 +70,7 @@ test('interactive setup offers manual, assisted, and autonomous presets', async 
   }
 });
 
-test('presets write provider-neutral profiles, allow distinct builder/reviewer, and explain independence', () => {
+test('presets write provider-neutral profiles and keep independence unverified without explicit keys', () => {
   const planned = configureConnections(baseMeta(), {
     preset: 'assisted', builder: 'codex', reviewer: 'gemini',
     builderProfile: 'primary-builder', reviewerProfile: 'independent-reviewer',
@@ -89,12 +89,13 @@ test('presets write provider-neutral profiles, allow distinct builder/reviewer, 
     { adapter: 'gemini', status: 'ready', message: 'Gemini ready' },
   ]);
   assert.equal(readiness.ok, true);
-  assert.match(readiness.checks.map((item) => item.message).join('\n'), /distinct configured identities/);
+  assert.match(readiness.checks.map((item) => item.message).join('\n'), /independence cannot be verified/);
+  assert.match(readiness.checks.map((item) => item.nextAction).join('\n'), /identity\.independenceKey/);
 
   const same = configureConnections(baseMeta(), { preset: 'assisted', builder: 'codex', reviewer: 'codex' });
   const sameReadiness = connectionReadiness(same.meta.protocol, [{ adapter: 'codex', status: 'ready', message: 'ready' }]);
-  const warning = sameReadiness.checks.find((item) => /same configured identity/.test(item.message));
-  assert.match(warning.nextAction, /--reviewer <different-adapter>/);
+  const warning = sameReadiness.checks.find((item) => /independence cannot be verified/.test(item.message));
+  assert.match(warning.nextAction, /changing providers or models alone does not prove independence/);
 });
 
 test('retrofit preserves legacy/manual values, reruns idempotently, and migrates only by explicit opt-in', () => {
