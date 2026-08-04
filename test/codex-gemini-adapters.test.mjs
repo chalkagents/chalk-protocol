@@ -11,6 +11,7 @@ import { runAdapterConformance, conformanceAdapterCommand, CONFORMANCE_FIXTURES 
 import { runAgent } from '../lib/agent-runner.mjs';
 import { checkRoleCapabilities } from '../lib/agent-contracts.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
+import { launchCommand } from '../lib/process.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ASSETS = {
@@ -188,7 +189,7 @@ test('provider auth stays CLI-owned and workflow modules have no Codex or Gemini
 
 test('installed package includes both public adapters, implementation modules, and integration docs', () => {
   const cache = scratch('chalk-portability-npm-cache-');
-  const packed = spawnSync('npm', ['pack', '--dry-run', '--json'], {
+  const packed = launchCommand('npm', ['pack', '--dry-run', '--json'], {
     cwd: ROOT, encoding: 'utf8', timeout: 120_000, env: { ...process.env, npm_config_cache: cache },
   });
   assert.equal(packed.status, 0, packed.stderr);

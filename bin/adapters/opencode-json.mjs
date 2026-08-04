@@ -3,7 +3,7 @@
 // prompt from STDIN, appends a strict "JSON only" instruction, runs opencode, and prints PURE JSON.
 // On parse success: clean JSON on stdout, exit 0. On failure: raw stdout passed through, exit 1.
 // Config via env: CHALK_OPENCODE_BIN (default "opencode"), CHALK_OPENCODE_MODEL, CHALK_OPENCODE_ATTACH.
-import { spawnSync } from 'node:child_process';
+import { launchCommand } from '../../lib/process.mjs';
 import { readFileSync } from 'node:fs';
 import { buildRunArgs, extractJson } from '../../lib/opencode.mjs';
 
@@ -18,7 +18,7 @@ const attach = process.env.CHALK_OPENCODE_ATTACH;
 // JSON-contract roles (review/discovery/feedback) are READ-ONLY judges: no `--auto`, so opencode can't
 // edit the code it's reviewing or execute a prompt-injected diff's commands.
 const args = buildRunArgs(wrappedPrompt, { model, attach, auto: false });
-const res = spawnSync(bin, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
+const res = launchCommand(bin, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
 if (res.error) console.error(`opencode-json: could not run '${bin}': ${res.error.message}`); // surface ENOENT etc.
 
 const stdout = res.stdout || '';

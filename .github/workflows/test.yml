@@ -18,6 +18,9 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      # Keep repository artifacts byte-stable on Windows; contracts and generated assets are LF.
+      - name: Configure LF checkout
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:

@@ -11,6 +11,7 @@ import { AGENT_ROLES } from '../lib/config.mjs';
 import { CLAUDE_SUPPORTED_ROLES } from '../lib/adapters/claude.mjs';
 import { OPENCODE_SUPPORTED_ROLES } from '../lib/adapters/opencode.mjs';
 import { initSpine } from '../lib/store.mjs';
+import { launchCommand } from '../lib/process.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CLAUDE = join(ROOT, 'bin', 'adapters', 'claude.mjs');
@@ -147,7 +148,7 @@ test('core runner, config, cost, and doctor contain no provider command inspecti
 
 test('all first-party runtime adapter assets ship in the npm package', () => {
   const cache = scratch('chalk-npm-cache-');
-  const packed = spawnSync('npm', ['pack', '--dry-run', '--json'], {
+  const packed = launchCommand('npm', ['pack', '--dry-run', '--json'], {
     cwd: ROOT, encoding: 'utf8', timeout: 120_000, env: { ...process.env, npm_config_cache: cache },
   });
   assert.equal(packed.status, 0, packed.stderr);

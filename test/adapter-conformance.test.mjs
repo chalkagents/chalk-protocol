@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CONFORMANCE_FIXTURES, conformanceAdapterCommand, renderConformanceReport, runAdapterConformance,
 } from '../lib/adapter-conformance.mjs';
+import { launchCommand } from '../lib/process.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = join(ROOT, 'bin', 'chalk.mjs');
@@ -86,7 +87,7 @@ test('external author docs use published package interfaces and all kit assets s
   assert.doesNotMatch(docs, /\.\.\/examples|\.chalk\//, 'external instructions do not depend on repository-only artifacts');
 
   const cache = mkdtempSync(join(tmpdir(), 'chalk-conformance-pack-'));
-  const packed = spawnSync('npm', ['pack', '--dry-run', '--json'], {
+  const packed = launchCommand('npm', ['pack', '--dry-run', '--json'], {
     cwd: ROOT, encoding: 'utf8', timeout: 120_000, env: { ...process.env, npm_config_cache: cache },
   });
   assert.equal(packed.status, 0, packed.stderr);
