@@ -30,5 +30,9 @@ todos:
 - Any test that cannot meaningfully execute on Windows is skipped only through an explicit process.platform guard whose reason cites a tracked follow-up issue; the rest of the suite remains enabled.
 - A locked test protects the Windows CI matrix, full-suite command, supported Node version, and absence of untracked unconditional Windows exclusions; user-facing documentation states the verified platform support level.
 
+## Locked tests (read-only — P6)
+
+- `test/windows-ci.test.mjs`
+
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

@@ -765,3 +765,4 @@
 {"id":"evt-1e41b5bd","at":"2026-08-04T15:25:37.134Z","type":"work-item-accepted","title":"Released v0.4.0 (18 change(s))","description":"","phase":"discovery","actorRole":"agent"}
 {"id":"evt-37e6fb51","at":"2026-08-04T15:39:57.353Z","type":"work-item-started","title":"Started: ci: add a windows-latest lane and fix what breaks","description":"","phase":"discovery","actorRole":"agent","taskId":"task-056bac99"}
 {"id":"evt-a3539607","at":"2026-08-04T15:39:57.431Z","type":"progress-update","title":"Branched: feat/84-ci-add-a-windows-latest","description":"","phase":"discovery","actorRole":"agent","taskId":"task-056bac99"}
+{"id":"evt-5cf73a9f","at":"2026-08-04T15:50:51.130Z","type":"work-item-submitted","title":"Committed: feat: add a windows-latest lane and fix what breaks","description":"","phase":"discovery","actorRole":"agent","taskId":"task-056bac99"}
