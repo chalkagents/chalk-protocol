@@ -7709,5 +7709,181 @@
     "reviews": [],
     "startedAt": "2026-08-03T09:39:06.813Z",
     "doneAt": "2026-08-03T09:53:09.077Z"
+  },
+  {
+    "id": "task-7b3a22b6",
+    "title": "fix(conformance): refuse adapters that mutate read-only workspaces",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "An adapter returning `ok` after a read-only mutation cannot receive an overall passing conformance report."
+      },
+      {
+        "text": "The mutation fixture passes only when the production enforcement seam returns a failed/refused normalized result with the changed path."
+      },
+      {
+        "text": "Built-in and external adapter commands use the same assessment logic."
+      },
+      {
+        "text": "Offline conformance makes no provider/network call; `--live` remains the only opt-in model call."
+      },
+      {
+        "text": "Conformance still covers multiline transport, structured output, failures, usage, identity, diagnostics, timeouts, access, and unsupported capabilities."
+      },
+      {
+        "text": "Tests include a malicious external adapter and prove a direct `ok`+mutation response fails conformance."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 243,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/243",
+      "body": "Parent roadmap: #226\nPromotion review: #239\nDepends on: #242\n\n## Problem\n\nThe mutation fixture currently reports conformance PASS when an adapter returns `status: ok` after changing a read-only workspace. Its success condition proves that mutation happened, not that the result was refused.\n\n## Scope\n\nMake the conformance harness execute read-only fixtures through the same enforcement seam used in production, and require the normalized result to be failed/refused with a mutation diagnostic. Keep offline fixtures provider-inert while ensuring each adapter entrypoint actually satisfies the public Protocol v1 interface.\n\n## Acceptance criteria\n\n- [ ] An adapter returning `ok` after a read-only mutation cannot receive an overall passing conformance report.\n- [ ] The mutation fixture passes only when the production enforcement seam returns a failed/refused normalized result with the changed path.\n- [ ] Built-in and external adapter commands use the same assessment logic.\n- [ ] Offline conformance makes no provider/network call; `--live` remains the only opt-in model call.\n- [ ] Conformance still covers multiline transport, structured output, failures, usage, identity, diagnostics, timeouts, access, and unsupported capabilities.\n- [ ] Tests include a malicious external adapter and prove a direct `ok`+mutation response fails conformance.\n\n## Non-goals\n\n- Certifying model quality.\n- Contacting provider CLIs during offline CI.\n"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-04T11:41:45.593Z"
+    },
+    "createdAt": "2026-08-04T11:41:45.597Z",
+    "reviews": []
+  },
+  {
+    "id": "task-86837934",
+    "title": "fix(agent-runner): detect ignored-file mutations in read-only roles",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "A read-only role that edits an existing ignored file is refused and the changed path is reported."
+      },
+      {
+        "text": "Creating or deleting an ignored file is also detected."
+      },
+      {
+        "text": "Clean tracked, dirty tracked, and ordinary untracked mutation detection remains green."
+      },
+      {
+        "text": "`.git`, `node_modules`, and `.chalk/held-out/` are never traversed or reported."
+      },
+      {
+        "text": "Symlinks are hashed without following targets outside the workspace."
+      },
+      {
+        "text": "Workspace-write roles remain unaffected."
+      },
+      {
+        "text": "Tests exercise the public workspace-snapshot/Agent Runner seam, including ignored files."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 242,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/242",
+      "body": "Parent roadmap: #226\nPromotion review: #239\nDepends on: #241\n\n## Problem\n\nRead-only mutation detection snapshots dirty tracked files plus non-ignored untracked files. Existing ignored workspace files—such as local configuration—are invisible, so a read-only role can mutate them and still have its result accepted.\n\n## Scope\n\nDeepen the workspace-snapshot module so one interface detects net mutations across tracked, untracked, and ignored workspace files while continuing to exclude `.git`, dependency trees, and `.chalk/held-out/` by construction.\n\n## Acceptance criteria\n\n- [ ] A read-only role that edits an existing ignored file is refused and the changed path is reported.\n- [ ] Creating or deleting an ignored file is also detected.\n- [ ] Clean tracked, dirty tracked, and ordinary untracked mutation detection remains green.\n- [ ] `.git`, `node_modules`, and `.chalk/held-out/` are never traversed or reported.\n- [ ] Symlinks are hashed without following targets outside the workspace.\n- [ ] Workspace-write roles remain unaffected.\n- [ ] Tests exercise the public workspace-snapshot/Agent Runner seam, including ignored files.\n\n## Non-goals\n\n- Restoring files mutated by an agent.\n- Inspecting held-out test contents.\n"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-04T11:41:45.604Z"
+    },
+    "createdAt": "2026-08-04T11:41:45.604Z",
+    "reviews": []
+  },
+  {
+    "id": "task-1b86dfb4",
+    "title": "fix(agents): keep reviewer independence unverified unless explicit",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "`chalk connect` does not synthesize `independenceKey` from adapter or model values."
+      },
+      {
+        "text": "Distinct providers without explicit keys report reviewer independence as `unverified`, not `distinct`."
+      },
+      {
+        "text": "Equal and different explicit keys still report `same` and `distinct` respectively."
+      },
+      {
+        "text": "Adapter-reported identity remains opaque to Chalk and may replace missing profile display metadata without being parsed for routing."
+      },
+      {
+        "text": "Doctor/connect remediation explains how to configure explicit identity or accept an unverified reviewer without falsely promising that changing providers proves independence."
+      },
+      {
+        "text": "Tests cover same, distinct, and unknown identity through the real `chalk connect` path."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 241,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/241",
+      "body": "Parent roadmap: #226\nPromotion review: #239\nDepends on: #240\n\n## Problem\n\n`chalk connect` manufactures `independenceKey` values from adapter ids and optional model strings. This can certify two profiles as independent without explicit identity evidence, contradicting Protocol v1's opaque-identity rule.\n\n## Scope\n\nMake unknown identity remain unknown. Chalk may compare an explicit configured or adapter-reported key, but core connection and readiness code must never derive one from provider, adapter, model, binary, flags, or environment conventions.\n\n## Acceptance criteria\n\n- [ ] `chalk connect` does not synthesize `independenceKey` from adapter or model values.\n- [ ] Distinct providers without explicit keys report reviewer independence as `unverified`, not `distinct`.\n- [ ] Equal and different explicit keys still report `same` and `distinct` respectively.\n- [ ] Adapter-reported identity remains opaque to Chalk and may replace missing profile display metadata without being parsed for routing.\n- [ ] Doctor/connect remediation explains how to configure explicit identity or accept an unverified reviewer without falsely promising that changing providers proves independence.\n- [ ] Tests cover same, distinct, and unknown identity through the real `chalk connect` path.\n\n## Non-goals\n\n- Inferring model families.\n- Recommending a provider or commercial model.\n"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-04T11:41:45.608Z"
+    },
+    "createdAt": "2026-08-04T11:41:45.608Z",
+    "reviews": []
+  },
+  {
+    "id": "task-2dfad5a4",
+    "title": "fix(agent-runner): preserve exact raw-command stage prompts",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "text": "Every legacy `protocol.*.command` role receives byte-for-byte the same stdin it received before Agent Runner."
+      },
+      {
+        "text": "Protocol v1 profiles still receive separate canonical `instructions` and task `context` fields."
+      },
+      {
+        "text": "Executor streaming, structured-role decoding, timeouts, and cost capture remain compatible."
+      },
+      {
+        "text": "Tests call the same production `context` path used by executor, planner, reviewer, and analysis roles rather than bypassing it with test-only `input` calls."
+      },
+      {
+        "text": "No workflow module branches on provider or adapter names."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "after": [],
+    "issue": {
+      "number": 240,
+      "url": "https://github.com/chalkagents/chalk-protocol/issues/240",
+      "body": "Parent roadmap: #226\nPromotion review: #239\n\n## Problem\n\nAgent Runner's raw-command compatibility path now prepends canonical role instructions whenever a production caller supplies `context`. Existing `protocol.*.command` integrations therefore receive different stdin bytes from the pre-runner behavior.\n\n## Scope\n\nKeep canonical instructions and context separate for Protocol v1 adapters while preserving the exact historical stage prompt for `raw-command` profiles. Put this compatibility decision behind the Agent Runner seam so workflow callers do not branch on transport.\n\n## Acceptance criteria\n\n- [ ] Every legacy `protocol.*.command` role receives byte-for-byte the same stdin it received before Agent Runner.\n- [ ] Protocol v1 profiles still receive separate canonical `instructions` and task `context` fields.\n- [ ] Executor streaming, structured-role decoding, timeouts, and cost capture remain compatible.\n- [ ] Tests call the same production `context` path used by executor, planner, reviewer, and analysis roles rather than bypassing it with test-only `input` calls.\n- [ ] No workflow module branches on provider or adapter names.\n\n## Non-goals\n\n- Changing canonical role instructions.\n- Removing the raw-command compatibility adapter.\n"
+    },
+    "branchType": "fix",
+    "labels": [
+      "bug",
+      "chalk-ready"
+    ],
+    "pipeline": {
+      "stage": "selected",
+      "at": "2026-08-04T11:41:45.612Z"
+    },
+    "createdAt": "2026-08-04T11:41:45.612Z",
+    "reviews": []
   }
 ]
