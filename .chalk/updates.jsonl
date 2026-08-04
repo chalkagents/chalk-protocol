@@ -763,3 +763,5 @@
 {"id":"evt-043d0e7d","at":"2026-08-04T15:17:46.451Z","type":"progress-update","title":"Diagnosed PR #248 merge-message shadowing in release recovery; recording a fresh exact v0.4.0 marker on dev before promotion.","description":"","phase":"discovery","actorRole":"agent"}
 {"id":"evt-14b3c942","at":"2026-08-04T15:25:37.134Z","type":"decision-logged","title":"Decision: Released v0.4.0","description":"18 change(s); promoted dev→main via PR #249; tagged v0.4.0 on main","phase":"discovery","actorRole":"agent"}
 {"id":"evt-1e41b5bd","at":"2026-08-04T15:25:37.134Z","type":"work-item-accepted","title":"Released v0.4.0 (18 change(s))","description":"","phase":"discovery","actorRole":"agent"}
+{"id":"evt-37e6fb51","at":"2026-08-04T15:39:57.353Z","type":"work-item-started","title":"Started: ci: add a windows-latest lane and fix what breaks","description":"","phase":"discovery","actorRole":"agent","taskId":"task-056bac99"}
+{"id":"evt-a3539607","at":"2026-08-04T15:39:57.431Z","type":"progress-update","title":"Branched: feat/84-ci-add-a-windows-latest","description":"","phase":"discovery","actorRole":"agent","taskId":"task-056bac99"}

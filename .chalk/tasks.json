@@ -1419,8 +1419,21 @@
   {
     "id": "task-056bac99",
     "title": "ci: add a windows-latest lane and fix what breaks",
-    "state": "todo",
-    "acceptanceCriteria": [],
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "The pull-request and dev/main test workflow runs the complete zero-dependency node --test suite on both ubuntu-latest and windows-latest using the supported Node version; concurrency cancellation behavior remains unchanged."
+      },
+      {
+        "text": "Chalk's executable discovery, subprocess execution, git workflows, temporary paths, and path normalization pass on Windows without relying on POSIX-only command -v, /bin/sh, executable bits, or shell quoting."
+      },
+      {
+        "text": "Any test that cannot meaningfully execute on Windows is skipped only through an explicit process.platform guard whose reason cites a tracked follow-up issue; the rest of the suite remains enabled."
+      },
+      {
+        "text": "A locked test protects the Windows CI matrix, full-suite command, supported Node version, and absence of untracked unconditional Windows exclusions; user-facing documentation states the verified platform support level."
+      }
+    ],
     "tests": [],
     "heldOut": [],
     "after": [],
@@ -1434,11 +1447,14 @@
       "help wanted"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-07-06T10:05:49.982Z"
+      "stage": "branched",
+      "at": "2026-08-04T15:39:57.407Z"
     },
     "createdAt": "2026-07-06T10:05:49.982Z",
-    "reviews": []
+    "reviews": [],
+    "startedAt": "2026-08-04T15:39:57.312Z",
+    "branch": "feat/84-ci-add-a-windows-latest",
+    "worktree": "/private/tmp/chalk-promotion-hardening-20260804"
   },
   {
     "id": "task-b9b5128a",
