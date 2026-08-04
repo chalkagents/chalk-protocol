@@ -779,3 +779,8 @@
 
 - _when:_ 2026-08-04T15:17:46.398Z
 - _why:_ The merge commit body matched release recovery grep before the preserved marker, while its subject was not a release marker; a fresh exact marker on dev makes the documented resume path deterministic without rewriting package or changelog artifacts.
+
+## Released v0.4.0
+
+- _when:_ 2026-08-04T15:25:37.133Z
+- _why:_ 18 change(s); promoted dev→main via PR #249; tagged v0.4.0 on main
