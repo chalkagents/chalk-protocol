@@ -774,3 +774,8 @@
 
 - _when:_ 2026-08-03T12:34:37.472Z
 - _why:_ Director requested local-only v0.4.0 release preparation with no model calls; versioned offline pack/install, installed CLI smoke, 75 conformance cases, and full repository verify are GREEN.
+
+## Restore the canonical v0.4.0 resume marker after PR #248
+
+- _when:_ 2026-08-04T15:17:46.398Z
+- _why:_ The merge commit body matched release recovery grep before the preserved marker, while its subject was not a release marker; a fresh exact marker on dev makes the documented resume path deterministic without rewriting package or changelog artifacts.
