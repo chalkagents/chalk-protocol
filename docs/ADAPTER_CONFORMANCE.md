@@ -42,10 +42,12 @@ if (!emitConformanceFixture(conformanceFixtureOutcome(rawRequest, 'my-adapter'))
 }
 ```
 
-The mutation fixture intentionally writes inside its isolated temporary workspace while claiming a
-successful read-only result. Passing conformance requires the harness to detect and refuse that
-result. Fault fixtures likewise pass only when noisy/malformed output, timeouts, and capability
-refusals are handled according to `chalk-agent-adapter/1`.
+The mutation fixture intentionally writes inside its isolated temporary workspace and must return a
+failed response. Passing that fixture requires Chalk's same production enforcement seam to return a
+normalized `failed` result whose `read-only-mutation` diagnostic names the changed path. If an
+adapter instead claims `ok`, the enforcement fixture still proves Chalk refused the result, but the
+overall conformance report fails with an adapter violation. Fault fixtures likewise pass only when
+noisy/malformed output, timeouts, and capability refusals follow `chalk-agent-adapter/1`.
 
 `--live` disables fixture injection and explicitly allows the configured adapter to contact its
 provider. It runs a small text smoke check; authentication, model quality, and paid usage remain
