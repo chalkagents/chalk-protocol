@@ -29,13 +29,16 @@ const chalk = (cwd, args, env = process.env) => {
 
 function shellCli(root, name, { auth = true, modelMarker = '' } = {}) {
   const file = join(root, name);
-  writeFileSync(file, `#!/bin/sh
-if [ "$1" = "--version" ]; then echo "${name} test-version"; exit 0; fi
-if [ "$1" = "login" ] && [ "$2" = "status" ]; then ${auth ? 'echo authenticated; exit 0' : 'echo "not logged in" >&2; exit 1'}; fi
-if [ "$1" = "auth" ] && [ "$2" = "status" ]; then ${auth ? 'echo authenticated; exit 0' : 'echo "not logged in" >&2; exit 1'}; fi
-${modelMarker ? `printf model-called > "${modelMarker}"` : ':'}
-printf '%s\\n' '{"type":"item.completed","item":{"type":"agent_message","text":"live result"}}'
-printf '%s\\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}'
+  writeFileSync(file, `#!/usr/bin/env node
+import { writeFileSync } from 'node:fs';
+const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log(${JSON.stringify(`${name} test-version`)}); process.exit(0); }
+if ((args[0] === 'login' || args[0] === 'auth') && args[1] === 'status') {
+  ${auth ? "console.log('authenticated'); process.exit(0);" : "console.error('not logged in'); process.exit(1);"}
+}
+${modelMarker ? `writeFileSync(${JSON.stringify(modelMarker)}, 'model-called');` : ''}
+console.log('{"type":"item.completed","item":{"type":"agent_message","text":"live result"}}');
+console.log('{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}');
 `);
   chmodSync(file, 0o755);
   return file;

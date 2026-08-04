@@ -186,7 +186,7 @@ test('findRoot — a chalk project NESTED in a worktree subdir maps to the SAME 
   mkdirSync(join(d, 'apps/x/.chalk'), { recursive: true }); writeFileSync(join(d, 'apps/x/.chalk/chalk.json'), '{"version":"1.0"}');
   g('add -A'); g('commit -q -m spine');
   const wt = join(scratch(), 'wt'); g(`worktree add ${wt} -b feat/x main`);
-  const same = (a, b) => realpathSync(a) === realpathSync(b);
+  const same = (a, b) => realpathSync(a).toLowerCase() === realpathSync(b).toLowerCase();
   assert.ok(same(findRoot(join(wt, 'apps/x')), join(d, 'apps/x')), 'nested worktree project → nested MAIN project');
   assert.ok(same(findRoot(wt), d), 'worktree root project → MAIN root');
 });

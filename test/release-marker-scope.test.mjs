@@ -9,15 +9,16 @@
 // Locked contract for the task tracking issue #125.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { spawnSync, execSync } from 'node:child_process';
+import { spawnSync, execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { commandWords } from '../lib/process.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
 const chalk = (cwd, ...args) => { const r = spawnSync('node', [CLI, ...args], { cwd, encoding: 'utf8' }); return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` }; };
-const git = (cwd, args) => execSync(`git ${args}`, { cwd, stdio: 'pipe', encoding: 'utf8' }).trim();
+const git = (cwd, args) => execFileSync('git', commandWords(args), { cwd, stdio: 'pipe', encoding: 'utf8' }).trim();
 const taskOf = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'))[0];
 const releaseCommits = (d) => git(d, 'log --format=%s').split('\n').filter((s) => /^chore\(release\):/.test(s));
 
