@@ -77,7 +77,8 @@ never use it in offline conformance CI. See the [conformance reference](./ADAPTE
 - **Security and permissions:** reject an unsupported role, access mode, or output kind before any
   model call. Map read-only/workspace-write to native controls, but expect Chalk to verify that a
   read-only call did not mutate the workspace. Never write outside the supplied workspace or edit
-  Chalk state, locked tests, or gates on the adapter's own authority.
+  Chalk state, locked tests, or gates on the adapter's own authority. Returning `ok` after a
+  read-only mutation is an adapter conformance violation even though Chalk also refuses the result.
 - **Output:** stdout contains one response object only. Provider logs belong on bounded stderr.
   `status: ok` reports adapter completion, never that the task or acceptance criteria passed.
 

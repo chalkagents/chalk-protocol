@@ -25,6 +25,7 @@ test('one harness covers every required offline fixture and all four adapter imp
     const report = runAdapterConformance({ adapter, command: conformanceAdapterCommand(adapter) });
     assert.equal(report.ok, true, `${adapter}: ${JSON.stringify(report.results.filter((item) => item.status === 'fail'))}`);
     assert.equal(report.passed, CONFORMANCE_FIXTURES.length);
+    assert.deepEqual(report.adapterViolations, []);
     assert.equal(report.mode, 'offline');
     assert.equal(report.networkAllowed, false);
     assert.ok(report.results.every((item) => item.protocolVersion === VERSION), `${adapter} versions every result`);
@@ -35,7 +36,8 @@ test('read-only mutation and unsupported capability receive passing conformance 
   const report = runAdapterConformance({ adapter: 'fake', command: conformanceAdapterCommand('fake') });
   const mutation = report.results.find((item) => item.name === 'mutation');
   assert.equal(mutation.status, 'pass');
-  assert.match(mutation.detail, /read-only passing response refused after mutation: conformance-mutation\.txt/);
+  assert.match(mutation.detail, /production result failed with read-only-mutation: conformance-mutation\.txt/);
+  assert.equal(mutation.adapterViolation, undefined, 'the fixture reports failure instead of claiming the mutation succeeded');
   const unsupported = report.results.find((item) => item.name === 'unsupported');
   assert.equal(unsupported.status, 'pass');
   assert.match(unsupported.detail, /unsupported capability reported/);
