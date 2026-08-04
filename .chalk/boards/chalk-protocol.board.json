@@ -1635,6 +1635,38 @@
         "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/244",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/240"
       }
+    },
+    {
+      "id": "task-4667fb58",
+      "title": "test: validate the provider-neutral release candidate locally",
+      "column": "done",
+      "createdAt": 1785756592378,
+      "updatedAt": 1785757118430,
+      "order": 97,
+      "description": "- npm pack succeeds from the exact dev tree and includes the provider-neutral guides plus all first-party adapter entrypoints\n- the packed tarball installs into a clean temporary project without fetching runtime dependencies\n- the installed CLI completes chalk init, chalk connect dry-run, chalk doctor diagnostics, and a manual task start-verify-done lifecycle\n- Claude, OpenCode, Codex, Gemini, and raw-command adapters pass the installed package offline conformance suite without model or network calls\n- the repository remains clean apart from Chalk task evidence and the full Chalk verify gate is GREEN",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-4667fb58",
+          "status": "passed",
+          "at": 1785757118430
+        }
+      }
+    },
+    {
+      "id": "task-2b356654",
+      "title": "release: prepare v0.4.0 locally",
+      "column": "done",
+      "createdAt": 1785760080212,
+      "updatedAt": 1785760477473,
+      "order": 98,
+      "description": "- package metadata consistently reports version 0.4.0\n- the changelog promotes the provider-agnostic runtime notes from Unreleased to v0.4.0 dated 2026-08-03 and preserves compatibility and deprecation guidance\n- npm pack produces chalk-protocol-0.4.0.tgz containing the provider-neutral guides and all first-party adapter entrypoints\n- the v0.4.0 tarball installs offline in a clean temporary project and the installed CLI reports 0.4.0, initializes a project, and passes offline adapter conformance\n- the full Chalk verify gate is GREEN and release preparation creates no tag, push, GitHub Action, or external model call",
+      "testArtifact": {
+        "lastRun": {
+          "runId": "done-task-2b356654",
+          "status": "passed",
+          "at": 1785760477473
+        }
+      }
     }
   ]
 }

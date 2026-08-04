@@ -764,3 +764,18 @@
 
 - _when:_ 2026-08-04T12:59:00.991Z
 - _why:_ Those completed tasks were committed before the GitHub pipeline was used. The four promotion blockers #240-#243 were subsequently landed through scoped PRs with CI and recorded review; historical stage metadata remains truthful.
+
+## Overrode review gate for "test: validate the provider-neutral release candidate locally"
+
+- _when:_ 2026-08-03T11:38:38.428Z
+- _why:_ Director requested an offline release-candidate smoke with no model calls; npm pack/install, 75 offline conformance cases, installed manual lifecycle, and full repository verify are GREEN.
+
+## Overrode review gate for "release: prepare v0.4.0 locally"
+
+- _when:_ 2026-08-03T12:34:37.472Z
+- _why:_ Director requested local-only v0.4.0 release preparation with no model calls; versioned offline pack/install, installed CLI smoke, 75 conformance cases, and full repository verify are GREEN.
+
+## Restore the canonical v0.4.0 resume marker after PR #248
+
+- _when:_ 2026-08-04T15:17:46.398Z
+- _why:_ The merge commit body matched release recovery grep before the preserved marker, while its subject was not a release marker; a fresh exact marker on dev makes the documented resume path deterministic without rewriting package or changelog artifacts.
