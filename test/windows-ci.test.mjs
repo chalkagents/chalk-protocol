@@ -81,7 +81,7 @@ test('Windows test exclusions must cite a tracked follow-up issue', () => {
     mkdirSync(join(fixture, 'nested'), { recursive: true });
     writeFileSync(join(fixture, 'top.test.mjs'), '');
     writeFileSync(join(fixture, 'nested', 'deep.test.mjs'), '');
-    assert.deepEqual(testFiles(fixture).map((path) => relative(fixture, path)).sort(), ['nested/deep.test.mjs', 'top.test.mjs']);
+    assert.deepEqual(testFiles(fixture).map((path) => relative(fixture, path).split('\\').join('/')).sort(), ['nested/deep.test.mjs', 'top.test.mjs']);
   } finally {
     rmSync(fixture, { recursive: true, force: true });
   }
