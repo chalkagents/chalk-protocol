@@ -22,13 +22,13 @@ test('canonical provider-neutral instructions cover every Protocol v1 role', () 
   assert.match(ROLE_INSTRUCTIONS.reviewer, /decision digest/i, 'reviewer decision digest remains canonical');
 });
 
-test('Agent Runner keeps instructions and context separate, and raw commands combine them', () => {
+test('Agent Runner keeps Protocol v1 fields separate and preserves raw-command context', () => {
   const result = runAgent('planner', {
     profile: { name: 'raw', command, identity: null }, cwd: mkdtempSync(join(tmpdir(), 'chalk-role-input-')),
     instructions: 'CUSTOM ROLE INSTRUCTION', context: 'CUSTOM RUN CONTEXT',
   });
   assert.equal(result.status, 'ok');
-  assert.match(result.text, /# Role instructions[\s\S]*CUSTOM ROLE INSTRUCTION[\s\S]*# Run context[\s\S]*CUSTOM RUN CONTEXT/);
+  assert.equal(result.text, 'fake output: CUSTOM RUN CONTEXT');
 });
 
 test('native agent assets are generated conveniences and cannot drift from canonical content', () => {
