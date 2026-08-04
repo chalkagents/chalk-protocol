@@ -28,11 +28,39 @@ test('doctor executable discovery uses Node lookup rather than POSIX shell built
 test('Windows test exclusions must cite a tracked follow-up issue', () => {
   const tests = readdirSync(join(ROOT, 'test')).filter((name) => name.endsWith('.test.mjs'));
   const issue = /https:\/\/github\.com\/chalkagents\/chalk-protocol\/issues\/\d+/;
-  const windowsGuard = /process\.platform\s*(?:===|==)\s*['"]win32['"]/;
+  const exclusions = (source) => {
+    const lines = source.split('\n');
+    const aliases = [...source.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*process\.platform/g)].map((match) => match[1]);
+    const aliasUse = aliases.length ? new RegExp(`\\b(?:${aliases.join('|')})\\b`) : /$a/;
+    const matches = [];
+    for (let index = 0; index < lines.length; index++) {
+      const neighborhood = lines.slice(Math.max(0, index - 1), index + 4).join('\n');
+      const line = lines[index];
+      const skip = /\b(?:test|it|describe)\.skip\s*\(|\bskip\s*:/.test(line);
+      const guardedReturn = /\bif\s*\(/.test(line) && /\breturn\b/.test(neighborhood)
+        && (/process\.platform/.test(neighborhood) || aliasUse.test(neighborhood));
+      const platformGatedTest = /\bif\s*\(/.test(line) && /\b(?:test|it|describe)\s*\(/.test(neighborhood)
+        && (/process\.platform/.test(neighborhood) || aliasUse.test(neighborhood));
+      if (skip || guardedReturn || platformGatedTest) matches.push({ index, neighborhood });
+    }
+    return matches;
+  };
+
+  const platform = 'process' + '.platform';
+  const skipOption = 'sk' + 'ip:';
+  const skippedTest = 'test' + '.skip';
+  for (const bypass of [
+    `test('x', { ${skipOption} ${platform} === 'win32' }, () => {});`,
+    `if (${platform} !== 'linux') return;`,
+    `const isWindows = ${platform} === 'win32';\nif (isWindows) return;`,
+    `${skippedTest}('x', () => {});`,
+  ]) assert.ok(exclusions(bypass).length, `contract missed exclusion form: ${bypass}`);
+
   for (const name of tests) {
     const source = read(`test/${name}`);
-    if (windowsGuard.test(source)) {
-      assert.match(source, issue, `${name} skips Windows without a tracked follow-up issue`);
+    for (const exclusion of exclusions(source)) {
+      assert.match(exclusion.neighborhood, /process\.platform/, `${name}:${exclusion.index + 1} exclusion lacks an explicit process.platform guard`);
+      assert.match(exclusion.neighborhood, issue, `${name}:${exclusion.index + 1} exclusion lacks an adjacent tracked follow-up issue`);
     }
   }
 });
