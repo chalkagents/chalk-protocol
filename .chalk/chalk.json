@@ -27,11 +27,11 @@
       "required": false,
       "tests": [],
       "lastAudit": {
-        "at": "2026-08-03T09:55:30.740Z",
+        "at": "2026-08-04T13:05:49.175Z",
         "green": true,
         "size": {
-          "loc": 19801,
-          "files": 182
+          "loc": 20202,
+          "files": 187
         },
         "count": 0
       }
@@ -71,6 +71,6 @@
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",
-  "updatedAt": "2026-08-03T09:55:30.741Z",
+  "updatedAt": "2026-08-04T13:05:49.176Z",
   "writerVersion": "0.3.0"
 }

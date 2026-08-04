@@ -479,7 +479,7 @@
     "tests": [
       {
         "path": "test/crossmodel-env.test.mjs",
-        "sha256": "508f1c3685d4cfffec978cf509a88825d3a4c94bae25ca05c6329b30e7fd17c9"
+        "sha256": "2c06e39a2ba6db28ba54bc69acfcbf1f1603fad88e6293e3e3868d4b1d5989fa"
       }
     ],
     "heldOut": [],
@@ -525,6 +525,12 @@
             "note": "Coverage is genuinely adequate: reverting the lib/config.mjs change fails the locked unit tests (env-var resolution, --model precedence, non-opencode conservatism) AND the e2e doctor test proves the warning fires through the real process.env path via lib/doctor.mjs line 68. The env param is optional with a process.env default, so existing callers (doctor) and the prior locked crossmodel.test.mjs are unaffected — no regression found."
           }
         ]
+      },
+      {
+        "at": "2026-08-04T12:59:00.887Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-06T07:27:16.546Z",
@@ -3180,7 +3186,7 @@
     "tests": [
       {
         "path": "test/review-no-diff.test.mjs",
-        "sha256": "40afb275d097b7e884200592240b366f359775d92d077f4507d97b3abaa65407"
+        "sha256": "37213b36195d3775b19e0a6bef909ec7de18cebffba916cb685ac4ed55b80d60"
       }
     ],
     "heldOut": [],
@@ -3203,6 +3209,12 @@
             "note": "Criterion 1's no-diff abort is exercised only via the unborn-HEAD path (nothing committed). There is no locked test for an empty base-delta on a branch that already has committed content, but test 2 deliberately locks that case as 'review, not abort', so the coverage is consistent with intended behavior rather than a gap."
           }
         ]
+      },
+      {
+        "at": "2026-08-04T12:59:00.941Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-08T17:09:32.885Z",
@@ -7246,7 +7258,7 @@
     "tests": [
       {
         "path": "test/agent-capabilities.test.mjs",
-        "sha256": "d0b55040d2db5b74d9cccb33926303e522fa940d8116e2b078c43422475a1731"
+        "sha256": "0ccfc24973f43793ed0a3160ccffc456965363ff201fafd8d33779eb6cc2950e"
       },
       {
         "path": "test/review-retry.test.mjs",
@@ -7311,7 +7323,7 @@
     "tests": [
       {
         "path": "test/role-instructions.test.mjs",
-        "sha256": "b399fe834ba1fbe3fb970fa025f014960929fc916242c7990461f52e772348d8"
+        "sha256": "6afb01152106413e7a41f4fc745326d9f882d13bdce3b97ee0a9b2aaf9aedf93"
       }
     ],
     "heldOut": [],
@@ -7371,7 +7383,7 @@
     "tests": [
       {
         "path": "test/provider-adapters.test.mjs",
-        "sha256": "5d0b57a24fbda5138888a5fec137dacfb8ef62450ba439a68fd41c7103648173"
+        "sha256": "1c8ea028231cc1ddb9f4be9976d91b6f4743ebd36a2439f02aa0b60ee1462554"
       }
     ],
     "heldOut": [],
@@ -7431,7 +7443,7 @@
     "tests": [
       {
         "path": "test/adapter-conformance.test.mjs",
-        "sha256": "e8e0c48529d4d047bda90f3a66c8597f1bc71ca79397668ff9ef6555195e8f43"
+        "sha256": "9589d986612783b41d576f07104d5027bc9d8f39f9bd5828c6040b83892336cb"
       }
     ],
     "heldOut": [],
@@ -7494,7 +7506,7 @@
     "tests": [
       {
         "path": "test/codex-gemini-adapters.test.mjs",
-        "sha256": "1cf40130839658ecf618eb75ee2d1e18ad5869436f002a54e1ed440e407c0aa3"
+        "sha256": "49247e02b8b0b795a905eabfb17860fc10ecbba904329769d988e83df21417c8"
       }
     ],
     "heldOut": [],
@@ -7560,7 +7572,7 @@
     "tests": [
       {
         "path": "test/connect.test.mjs",
-        "sha256": "d02fe03b9a35ba9d14e7de10a2bf9dbe5c66a15a761885659a26f5b3bf0a1ff6"
+        "sha256": "1720f879dbbb67dfd29d94c30a0acd1afba404581e0e1ddd7343334ec4785d46"
       }
     ],
     "heldOut": [],
@@ -7713,7 +7725,7 @@
   {
     "id": "task-7b3a22b6",
     "title": "fix(conformance): refuse adapters that mutate read-only workspaces",
-    "state": "specd",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "An adapter returning `ok` after a read-only mutation cannot receive an overall passing conformance report."
@@ -7734,7 +7746,12 @@
         "text": "Tests include a malicious external adapter and prove a direct `ok`+mutation response fails conformance."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/conformance-mutation-refusal.test.mjs",
+        "sha256": "4d5f36c7b0921ba00199332d518045e6b29f7e484294f55fcccb3997613386f1"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -7748,16 +7765,44 @@
       "chalk-ready"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-08-04T11:41:45.593Z"
+      "stage": "cleaned",
+      "at": "2026-08-04T12:56:17.584Z"
     },
     "createdAt": "2026-08-04T11:41:45.597Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-08-04T12:54:31.042Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Codex manual review: Agent Runner and conformance share one read-only refusal seam; the mutation fixture passes only on a normalized failed result naming changed paths; direct ok+mutation is retained as an adapter violation that fails the overall report; built-in/external commands share assessment; offline/network and all legacy fixtures remain covered; full Chalk verify passes.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
+      }
+    ],
+    "handoff": {
+      "path": ".chalk/handoffs/task-7b3a22b-1.md",
+      "at": "2026-08-04T11:43:47.668Z",
+      "reason": "upstream",
+      "seq": 1
+    },
+    "startedAt": "2026-08-04T12:40:18.246Z",
+    "branch": "fix/243-fix-conformance-refuse-adapters-that",
+    "pr": {
+      "number": 247,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/247",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-08-04T12:56:17.583Z"
   },
   {
     "id": "task-86837934",
     "title": "fix(agent-runner): detect ignored-file mutations in read-only roles",
-    "state": "specd",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "A read-only role that edits an existing ignored file is refused and the changed path is reported."
@@ -7781,7 +7826,12 @@
         "text": "Tests exercise the public workspace-snapshot/Agent Runner seam, including ignored files."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/workspace-snapshot-ignored.test.mjs",
+        "sha256": "156bc200dd2d8e08b6b0afea78ad3cb7517b7c61fc651ab956d105255fb31790"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -7795,16 +7845,44 @@
       "chalk-ready"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-08-04T11:41:45.604Z"
+      "stage": "cleaned",
+      "at": "2026-08-04T12:39:17.678Z"
     },
     "createdAt": "2026-08-04T11:41:45.604Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-08-04T12:29:10.031Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Codex manual review: Git inventories cover tracked, untracked, and ignored files; exclusion pathspecs and filters protect .git/node_modules/held-out; lstat hashes symlinks without following targets; the locked Agent Runner regression covers ignored edit/create/delete and workspace-write behavior; full Chalk verify passes.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
+      }
+    ],
+    "handoff": {
+      "path": ".chalk/handoffs/task-8683793-1.md",
+      "at": "2026-08-04T11:43:47.525Z",
+      "reason": "upstream",
+      "seq": 1
+    },
+    "startedAt": "2026-08-04T12:21:24.761Z",
+    "branch": "fix/242-fix-agent-runner-detect-ignored",
+    "pr": {
+      "number": 246,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/246",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-08-04T12:39:17.677Z"
   },
   {
     "id": "task-1b86dfb4",
     "title": "fix(agents): keep reviewer independence unverified unless explicit",
-    "state": "specd",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "`chalk connect` does not synthesize `independenceKey` from adapter or model values."
@@ -7825,7 +7903,12 @@
         "text": "Tests cover same, distinct, and unknown identity through the real `chalk connect` path."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/connect-identity.test.mjs",
+        "sha256": "265c409b71846446e84d8c1cf8c5a523bb88a2078bdea5fd63398d54fbe9fefa"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -7839,16 +7922,44 @@
       "chalk-ready"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-08-04T11:41:45.608Z"
+      "stage": "cleaned",
+      "at": "2026-08-04T12:21:16.458Z"
     },
     "createdAt": "2026-08-04T11:41:45.608Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-08-04T12:19:49.316Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Codex manual review: the locked real-connect test proves provider/model labels remain unverified, explicit equal/different keys remain same/distinct, adapter metadata merges without overwriting explicit identity, first-party presets/adapters no longer infer keys, remediation is accurate, and full Chalk verify passes.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
+      }
+    ],
+    "handoff": {
+      "path": ".chalk/handoffs/task-1b86dfb-1.md",
+      "at": "2026-08-04T11:43:47.389Z",
+      "reason": "upstream",
+      "seq": 1
+    },
+    "startedAt": "2026-08-04T12:07:50.805Z",
+    "branch": "fix/241-fix-agents-keep-reviewer-independence",
+    "pr": {
+      "number": 245,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/245",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-08-04T12:21:16.457Z"
   },
   {
     "id": "task-2dfad5a4",
     "title": "fix(agent-runner): preserve exact raw-command stage prompts",
-    "state": "specd",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Every legacy `protocol.*.command` role receives byte-for-byte the same stdin it received before Agent Runner."
@@ -7866,7 +7977,12 @@
         "text": "No workflow module branches on provider or adapter names."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/raw-command-prompt-compat.test.mjs",
+        "sha256": "43036807276ea0ab7bf7d2b7597f37686bb39134a05a55aa1d50a386740464e0"
+      }
+    ],
     "heldOut": [],
     "after": [],
     "issue": {
@@ -7880,10 +7996,32 @@
       "chalk-ready"
     ],
     "pipeline": {
-      "stage": "selected",
-      "at": "2026-08-04T11:41:45.612Z"
+      "stage": "cleaned",
+      "at": "2026-08-04T12:07:38.339Z"
     },
     "createdAt": "2026-08-04T11:41:45.612Z",
-    "reviews": []
+    "reviews": [
+      {
+        "at": "2026-08-04T12:06:30.633Z",
+        "by": "codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Codex manual review: regression fails on the pre-change behavior; all nine raw-command roles preserve exact context bytes; Protocol v1 still transports instructions and context separately; focused tests and full Chalk verify pass; no unrelated product files changed.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
+      }
+    ],
+    "startedAt": "2026-08-04T11:44:22.751Z",
+    "branch": "fix/240-fix-agent-runner-preserve-exact",
+    "pr": {
+      "number": 244,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/244",
+      "recorded": true,
+      "lgtm": true
+    },
+    "doneAt": "2026-08-04T12:07:38.338Z"
   }
 ]

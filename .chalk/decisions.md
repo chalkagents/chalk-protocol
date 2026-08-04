@@ -659,3 +659,108 @@
 
 - _when:_ 2026-08-03T09:53:16.960Z
 - _why:_ Make init → connect → doctor → run the default autonomous path while preserving manual and raw-command compatibility.
+
+## Amended acceptance test for "refactor: make Chalk role instructions provider-neutral"
+
+- _when:_ 2026-08-04T11:59:43.768Z
+- _why:_ Issue #240 clarifies the compatibility boundary: Protocol v1 adapters receive separate instructions and context, while legacy raw commands must receive the caller context byte-for-byte without a Chalk-owned prompt prefix.
+
+## Amended acceptance test for "refactor: make Chalk role instructions provider-neutral"
+
+- _when:_ 2026-08-04T12:00:03.153Z
+- _why:_ Relock the amended regression: legacy raw commands receive only the exact caller context; Protocol v1 remains the separate instructions/context interface.
+
+## Keep legacy raw-command stdin byte-compatible and reserve canonical instruction delivery for Protocol v1 adapters
+
+- _when:_ 2026-08-04T12:04:38.788Z
+- _why:_ Raw commands are an existing public compatibility surface with arbitrary prompt contracts; prepending Chalk text changes behavior and can corrupt structured inputs.
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-04T12:12:38.241Z
+- _why:_ Issue #241 tightens connect's independence contract: different providers/models are not proof without explicit opaque keys.
+
+## Amended acceptance test for "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1"
+
+- _when:_ 2026-08-04T12:12:38.295Z
+- _why:_ Issue #241 forbids first-party adapters from deriving independenceKey from provider/model values while retaining opaque model metadata.
+
+## Amended acceptance test for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-08-04T12:12:38.348Z
+- _why:_ Issue #241 requires Codex and Gemini identity tests to reject inferred independence keys while preserving reported/configured model metadata.
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-04T12:14:08.210Z
+- _why:_ Relock connect coverage for explicit-only reviewer independence and accurate remediation.
+
+## Amended acceptance test for "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1"
+
+- _when:_ 2026-08-04T12:14:08.264Z
+- _why:_ Relock Claude/OpenCode adapter identity coverage after removing provider/model-derived independence keys.
+
+## Amended acceptance test for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-08-04T12:14:08.318Z
+- _why:_ Relock Codex/Gemini identity coverage after preserving opaque model metadata without inferred independence.
+
+## Treat reviewer independence as an explicit attestation, never an inference from provider or model labels
+
+- _when:_ 2026-08-04T12:18:31.663Z
+- _why:_ Provider and model strings do not prove separate failure modes, accounts, deployments, or model families; only opaque independently verified keys support a same/distinct claim.
+
+## Amended acceptance test for "fix(agent-runner): detect ignored-file mutations in read-only roles"
+
+- _when:_ 2026-08-04T12:24:11.719Z
+- _why:_ Strengthen #242 coverage to distinguish clean tracked mutation from mutation of a file already dirty before the read-only agent starts.
+
+## Amended acceptance test for "fix(agent-runner): detect ignored-file mutations in read-only roles"
+
+- _when:_ 2026-08-04T12:25:00.665Z
+- _why:_ Relock the complete snapshot contract covering clean tracked, pre-dirty tracked, ordinary untracked, and ignored paths.
+
+## Index workspace snapshots through Git while hashing path contents with lstat
+
+- _when:_ 2026-08-04T12:28:22.549Z
+- _why:_ Three Git inventories cover tracked, ordinary untracked, and ignored files without a general recursive scan; exclusion pathspecs protect .git, node_modules, and held-out tests, while lstat hashes symlinks without following external targets.
+
+## Amended acceptance test for "feat: ship an Agent Adapter Protocol conformance kit"
+
+- _when:_ 2026-08-04T12:44:08.127Z
+- _why:_ Issue #243 separates production-refusal proof from adapter compliance: the mutation fixture passes on the shared enforcement result, while a direct ok claim is an overall adapter violation.
+
+## Amended acceptance test for "feat: ship an Agent Adapter Protocol conformance kit"
+
+- _when:_ 2026-08-04T12:45:46.838Z
+- _why:_ Relock conformance coverage for the shared production refusal seam and explicit adapter-violation reporting.
+
+## Separate enforcement-fixture success from adapter conformance success
+
+- _when:_ 2026-08-04T12:53:06.491Z
+- _why:_ Chalk must prove its production refusal catches mutations, but that proof cannot certify an adapter that falsely returned ok; a separate adapterViolation signal preserves both truths.
+
+## Amended acceptance test for "feat: enforce agent role capabilities and structured-output contracts"
+
+- _when:_ 2026-08-04T12:59:00.768Z
+- _why:_ Provider-neutral adapter transport changed the malicious fixture invocation while preserving the locked capability/refusal contract; record and relock the shipped milestone test.
+
+## Amended acceptance test for "feat: enforce agent role capabilities and structured-output contracts"
+
+- _when:_ 2026-08-04T12:59:00.837Z
+- _why:_ Read-only reviewer enforcement requires capture instrumentation outside the reviewed workspace; record the already-shipped test adjustment without weakening no-diff behavior.
+
+## Amended acceptance test for "fix: sameModelFamily can't see env-var models (CHALK_OPENCODE_MODEL) — cross-model warning inert for opencode"
+
+- _when:_ 2026-08-04T12:59:00.891Z
+- _why:_ Protocol v1 supersedes environment-derived model-family inference: environment model strings must not become reviewer independence identity.
+
+## Amended acceptance test for "fix: review diff-capture silently passes on no diff — abort loudly instead of a vacuous verdict (#151)"
+
+- _when:_ 2026-08-04T12:59:00.945Z
+- _why:_ Relock the no-diff regression after moving fake reviewer instrumentation outside the read-only workspace; assertions remain equivalent.
+
+## Preserve #227-#238 as honestly hand-landed instead of falsifying retroactive pipeline stages
+
+- _when:_ 2026-08-04T12:59:00.991Z
+- _why:_ Those completed tasks were committed before the GitHub pipeline was used. The four promotion blockers #240-#243 were subsequently landed through scoped PRs with CI and recorded review; historical stage metadata remains truthful.
