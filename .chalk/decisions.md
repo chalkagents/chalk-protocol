@@ -984,3 +984,53 @@
 
 - _when:_ 2026-08-05T00:23:11.956Z
 - _why:_ Windows CI lost one of 16 concurrent task additions under the prior file-descriptor lock. Atomic directory creation provides a portable create-if-absent mutex; unique owner markers prevent a stale holder from deleting a replacement lock, and timeout now fails closed instead of writing unlocked.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T00:29:41.708Z
+- _why:_ Re-lock after adding deterministic ABA coverage for serialized stale takeover and owner cleanup against a fresh replacement lock.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T00:43:35.841Z
+- _why:_ Re-lock after replacing the crash-wedging transition claim with persistent generation tombstones and pinning delayed-actor ABA protection.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T01:53:21.751Z
+- _why:_ Re-lock after pinning ownerless crash recovery, hard-link retirement ABA safety, and saturated-host acquisition timing.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T02:02:01.493Z
+- _why:_ Re-lock after making persistent generation tombstones self-ignored in every freshly initialized Chalk spine.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T02:17:20.532Z
+- _why:_ Re-lock after replacing pathname unlink with non-empty directory retirement and pinning the delayed-retirer ABA interleaving plus upgrade-safe runtime ignores.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T02:21:15.952Z
+- _why:_ Re-lock after isolating retirement guards from unrelated .chalk/local runtime state while preserving upgrade-safe self-ignore behavior.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T02:31:32.192Z
+- _why:_ Re-lock after pinning recovery from interrupted zero-byte owner and self-ignore writes.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T02:39:10.846Z
+- _why:_ Re-lock after making owner observation race-free and zero-byte recovery bounded against synchronous spin regressions.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T02:44:26.985Z
+- _why:_ Re-lock after polling the complete owner token rather than its pre-write directory entry.
+
+## Spine lock generations retire by non-empty directory tombstone
+
+- _when:_ 2026-08-05T02:48:11.383Z
+- _why:_ Atomic rename to a persistent token-specific tombstone prevents delayed owners or stale waiters from deleting a replacement generation; ownerless and interrupted-write states recover fail-closed, and self-ignored guards keep upgraded repositories clean.

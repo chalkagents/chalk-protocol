@@ -2945,7 +2945,7 @@
     "tests": [
       {
         "path": "test/spine-concurrent-writes.test.mjs",
-        "sha256": "441f0fd52b0fb20313c6ca3a7b1e9da5368228e282e4adaf1c6774388b2a3a0f"
+        "sha256": "e1aae163d173a03d8f5ee87d1e41a69bfac23928534336265146820bd3ec039c"
       }
     ],
     "heldOut": [],
@@ -3050,6 +3050,18 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-08-05T02:48:33.401Z",
+        "by": "local-codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Independent local Codex specification and repository-standards reviews passed after adversarial ABA, crash-state, upgrade-ignore, and Windows reliability fixes; full Chalk verify GREEN.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
       }
     ],
     "startedAt": "2026-07-08T16:08:54.347Z",
