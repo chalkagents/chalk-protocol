@@ -784,3 +784,188 @@
 
 - _when:_ 2026-08-04T15:25:37.133Z
 - _why:_ 18 change(s); promoted dev→main via PR #249; tagged v0.4.0 on main
+
+## Amended acceptance test for "feat: ship an Agent Adapter Protocol conformance kit"
+
+- _when:_ 2026-08-04T21:27:02.515Z
+- _why:_ Use the shared cross-platform launcher so npm package checks execute on Windows
+
+## Amended acceptance test for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-08-04T21:27:02.629Z
+- _why:_ Use the shared cross-platform launcher so npm package checks execute on Windows
+
+## Amended acceptance test for "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)"
+
+- _when:_ 2026-08-04T21:27:02.739Z
+- _why:_ Use the shared cross-platform launcher so npm package checks execute on Windows
+
+## Amended acceptance test for "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1"
+
+- _when:_ 2026-08-04T21:27:02.854Z
+- _why:_ Use the shared cross-platform launcher so npm package checks execute on Windows
+
+## Amended acceptance test for "feat: ship an Agent Adapter Protocol conformance kit"
+
+- _when:_ 2026-08-04T21:27:46.363Z
+- _why:_ Use the shared cross-platform launcher so npm package checks execute on Windows
+
+## Amended acceptance test for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-08-04T21:27:46.419Z
+- _why:_ Use the shared cross-platform launcher so npm package checks execute on Windows
+
+## Amended acceptance test for "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)"
+
+- _when:_ 2026-08-04T21:27:46.474Z
+- _why:_ Use the shared cross-platform launcher so npm package checks execute on Windows
+
+## Amended acceptance test for "refactor: move Claude and OpenCode behavior behind Agent Adapter Protocol v1"
+
+- _when:_ 2026-08-04T21:27:46.532Z
+- _why:_ Use the shared cross-platform launcher so npm package checks execute on Windows
+
+## Amended acceptance test for "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)"
+
+- _when:_ 2026-08-04T21:30:37.037Z
+- _why:_ Give npm packing an isolated writable cache and use the cross-platform launcher
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-08-04T21:56:22.734Z
+- _why:_ Use the platform PATH delimiter for the portable fake provider
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-04T21:56:22.785Z
+- _why:_ Replace the POSIX shell fake CLI with a portable Node fixture
+
+## Amended acceptance test for "fix(agents): keep reviewer independence unverified unless explicit"
+
+- _when:_ 2026-08-04T21:56:22.838Z
+- _why:_ Replace the POSIX shell fake CLI with a portable Node fixture
+
+## Amended acceptance test for "feat: chalk release --promote — protected-main release flow (promotion PR + tag on main's tip)"
+
+- _when:_ 2026-08-04T21:56:22.890Z
+- _why:_ Replace shell-parsed Git and bash merge setup with argv-based Node fixtures
+
+## Amended acceptance test for "fix: release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips"
+
+- _when:_ 2026-08-04T21:56:22.942Z
+- _why:_ Run Git revision assertions through argv so cmd.exe cannot consume caret syntax
+
+## Amended acceptance test for "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)"
+
+- _when:_ 2026-08-04T21:56:22.995Z
+- _why:_ Run Git revision assertions through argv so cmd.exe cannot consume caret syntax
+
+## Amended acceptance test for "fix: release --commit/--promote orphan recovery keys on an un-namespaced "Released vX" substring over decisions.md"
+
+- _when:_ 2026-08-04T21:56:23.045Z
+- _why:_ Run Git revision assertions through argv so cmd.exe cannot consume caret syntax
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-08-04T21:58:21.350Z
+- _why:_ Use the platform PATH delimiter for the portable fake provider
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-04T21:58:21.411Z
+- _why:_ Replace the POSIX shell fake CLI with a portable Node fixture
+
+## Amended acceptance test for "fix(agents): keep reviewer independence unverified unless explicit"
+
+- _when:_ 2026-08-04T21:58:21.470Z
+- _why:_ Replace the POSIX shell fake CLI with a portable Node fixture
+
+## Amended acceptance test for "feat: chalk release --promote — protected-main release flow (promotion PR + tag on main's tip)"
+
+- _when:_ 2026-08-04T21:58:21.524Z
+- _why:_ Replace shell-parsed Git and bash merge setup with argv-based Node fixtures
+
+## Amended acceptance test for "fix: release --commit partial-failure recovery — a post-commit tag failure leaves an untagged release commit, and a re-run version-skips"
+
+- _when:_ 2026-08-04T21:58:21.577Z
+- _why:_ Run Git revision assertions through argv so cmd.exe cannot consume caret syntax
+
+## Amended acceptance test for "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)"
+
+- _when:_ 2026-08-04T21:58:21.630Z
+- _why:_ Run Git revision assertions through argv so cmd.exe cannot consume caret syntax
+
+## Amended acceptance test for "fix: release --commit/--promote orphan recovery keys on an un-namespaced "Released vX" substring over decisions.md"
+
+- _when:_ 2026-08-04T21:58:21.685Z
+- _why:_ Run Git revision assertions through argv so cmd.exe cannot consume caret syntax
+
+## Amended acceptance test for "ci: add a windows-latest lane and fix what breaks"
+
+- _when:_ 2026-08-04T22:28:12.005Z
+- _why:_ Adversarial review found the Windows exclusion contract could be bypassed by aliases, inverse guards, or conditional test.skip without an adjacent tracked issue reason; strengthen the locked contract without adding any skips
+
+## Amended acceptance test for "ci: add a windows-latest lane and fix what breaks"
+
+- _when:_ 2026-08-04T22:32:37.492Z
+- _why:_ Re-lock the strengthened adversarial-review contract after adding bypass detection for aliases, inverse platform guards, conditional skip options, and unconditional skipped tests
+
+## Amended acceptance test for "fix(conformance): refuse adapters that mutate read-only workspaces"
+
+- _when:_ 2026-08-04T22:47:57.027Z
+- _why:_ Windows CI still reports the mutation-refusal fixture as failing without surfacing the conformance result detail; include the observed detail in the assertion so the portable production seam can be diagnosed from CI evidence
+
+## Amended acceptance test for "fix(conformance): refuse adapters that mutate read-only workspaces"
+
+- _when:_ 2026-08-04T22:48:41.438Z
+- _why:_ Re-lock the mutation-refusal test after adding its result detail to the assertion message for Windows CI diagnostics
+
+## Amended acceptance test for "fix(conformance): refuse adapters that mutate read-only workspaces"
+
+- _when:_ 2026-08-04T22:50:44.889Z
+- _why:_ Windows diagnosis identifies the generated ESM fixture importing a native drive path; convert the fixture import to a file URL so the production refusal seam is actually exercised on Windows
+
+## Amended acceptance test for "fix(conformance): refuse adapters that mutate read-only workspaces"
+
+- _when:_ 2026-08-04T22:50:58.136Z
+- _why:_ Re-lock the mutation-refusal test after making its generated module import a Windows-safe file URL
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-04T23:33:58.942Z
+- _why:_ Windows full-suite saturation exposed that the adapter probe timeout is a correctness boundary; pin the bounded 10-second spawn option so reverting to the flaky 2-second window fails deterministically.
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-08-04T23:34:25.113Z
+- _why:_ Re-lock the sanctioned adapter probe contract after adding the deterministic 10-second timeout assertion required by final standards review.
+
+## Amended acceptance test for "ci: add a windows-latest lane and fix what breaks"
+
+- _when:_ 2026-08-04T23:35:11.551Z
+- _why:_ Final adversarial review found the Windows exclusion guard missed nested test files, shorthand skip options, and t.skip calls; strengthen the locked contract with explicit self-tests for those bypasses.
+
+## Amended acceptance test for "ci: add a windows-latest lane and fix what breaks"
+
+- _when:_ 2026-08-04T23:36:55.874Z
+- _why:_ Re-lock the Windows CI contract after adding recursive scan coverage and deterministic bypass fixtures for shorthand skip options and platform-gated test-context skips.
+
+## Amended acceptance test for "ci: add a windows-latest lane and fix what breaks"
+
+- _when:_ 2026-08-04T23:41:56.291Z
+- _why:_ Spec re-review found the recursion fixture compared native Windows separators to a protocol-style forward-slash expectation; normalize its relative paths before assertion.
+
+## Amended acceptance test for "ci: add a windows-latest lane and fix what breaks"
+
+- _when:_ 2026-08-04T23:42:10.161Z
+- _why:_ Re-lock the sanctioned Windows exclusion contract after normalizing recursive fixture paths to forward slashes.
+
+## Overrode review gate for "ci: add a windows-latest lane and fix what breaks"
+
+- _when:_ 2026-08-05T00:05:31.984Z
+- _why:_ The configured reviewer invokes Claude, which this handover explicitly prohibits. Two independent local Codex reviews covered documented standards and the locked Issue #84/task spec; every blocking finding was fixed, re-reviewed, and the exact final SHA passed complete Ubuntu and Windows CI.
+
+## Native Windows support uses one argv-first process seam and forward-slash protocol paths
+
+- _when:_ 2026-08-05T00:05:41.296Z
+- _why:_ Structured Git, GitHub, npm, and agent calls must avoid shell quoting; Node scripts launch through process.execPath, Windows cmd/bat shims resolve explicitly, free-form hooks alone use the native shell, and persisted paths normalize to forward slashes while filesystem I/O remains native.

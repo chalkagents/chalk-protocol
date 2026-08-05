@@ -149,11 +149,11 @@
     "tests": [
       {
         "path": "test/package.test.mjs",
-        "sha256": "83c30a2c2982dcd1be1b630632326e068060ba120629b731723bb54c56f0dc5b"
+        "sha256": "af207254f76e260b42eab9684e41b2aee3aedab932c4cfb0ecffde8130815beb"
       },
       {
         "path": "test/release-commit.test.mjs",
-        "sha256": "526ff248659bb61969c0568ac8f91db947243251d71c540311440f6deff162e3"
+        "sha256": "effc5fbb84d812dcdf87b46d813cfd3c0d3fc20e20193fbad2b37c2f1e248828"
       }
     ],
     "heldOut": [],
@@ -225,6 +225,12 @@
             "note": "test/package.test.mjs (locked) was modified, but via two sanctioned amend-spec entries logged in .chalk/decisions.md (flip the workflow assertion to forbid the normalization step; sweep the stale header prose the prior review flagged), the sha256 is re-pinned in tasks.json, and this re-review covers the post-amendment state — the legitimate path was followed."
           }
         ]
+      },
+      {
+        "at": "2026-08-04T21:27:02.734Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-06T06:46:13.619Z",
@@ -577,7 +583,7 @@
     "tests": [
       {
         "path": "test/release-promote.test.mjs",
-        "sha256": "16fb0eb3a0ff41e12f0dd9e72053c4d41c2bf4856196dcf2203a16ffa5f1cb0c"
+        "sha256": "2d93642a14d45cfd7051fd05b82b72ea41c2aba122e884b5e51fff687cfc1eb7"
       }
     ],
     "heldOut": [],
@@ -708,6 +714,12 @@
             "note": "Non-promote paths verified unchanged: `wantTag` only adds `!promote`, and the #91 resume gate `(promote || !tagLocal)` preserves the tag-absent requirement for --commit; release-recovery's locked contract is untouched. Both prior blocking reviews' findings are demonstrably fixed and now pinned by the amended locked test: post-merge tag-push failure resumes past the leftover local tag (test 4, ONE `pr create`, 'already merged'), the merged-PR re-run skips choreography via fetch-first `merge-base --is-ancestor`, the fresh collision probe fails before any write (test 5), pending-CI exhaustion aborts (test 6), the pre-merge re-run FINDS the open PR (test 3 `creates.length===1`), late arrivals are deferred on resume (test 3), and the stub's real commit-tree merge makes 'tag the deploy TIP' distinguishable from 'tag local HEAD' (test 1)."
           }
         ]
+      },
+      {
+        "at": "2026-08-04T21:56:22.886Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-06T08:31:24.320Z",
@@ -789,7 +801,7 @@
     "tests": [
       {
         "path": "test/release-recovery.test.mjs",
-        "sha256": "cf95ca1bb156c91210a523c2eb13574b40bdb2250eb7379aa555fb6f50ee4619"
+        "sha256": "0916edf2adc506e29a9a40ce300ab073fc196e50e9e75367aac2bf6baa10ab05"
       }
     ],
     "heldOut": [],
@@ -910,6 +922,12 @@
             "note": "The diff bundles unrelated spine changes (new `protocol.worktree` config block, imported tasks #98/#92, board entries) against the 'keep diffs small and scoped' rule — noise, not a gate. The amend-spec path was used correctly (two amendment decisions logged, sha256 updated in tasks.json), and each previously blocking finding — decision-marker discriminator, intentional --no-tag non-orphan, buried orphan, late-arrival deferral, dry-run resume preview — is now pinned by a dedicated locked test that fails if the corresponding behavior is reverted. All three acceptance criteria are substantively satisfied."
           }
         ]
+      },
+      {
+        "at": "2026-08-04T21:56:22.938Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-06T08:14:39.294Z",
@@ -1201,7 +1219,7 @@
     "tests": [
       {
         "path": "test/cost-ledger.test.mjs",
-        "sha256": "7616e231580f87e2fff59c33b5691631802f2b8145ce37a0fbc06190ec5819cd"
+        "sha256": "3a3c0b8a0888c6c0478c753a16758494665845736dfbb6272791b47c9d4e3fea"
       }
     ],
     "heldOut": [],
@@ -1321,6 +1339,12 @@
             "note": "unwrapAgentOutput opportunistically unwraps ANY agent stdout that parses as a type:'result' envelope, including non-claude runners — intentional and tested, but a non-claude agent whose legitimate payload happens to be claude-envelope-shaped would be silently rewritten to its .result string. The type+result-string guard makes collision unlikely. Also, the diff again bundles unrelated queue metadata (task-10382dc9 spec, board rows) into .chalk/tasks.json — inert intake artifacts, slightly outside the 'diffs scoped to the current task' rule."
           }
         ]
+      },
+      {
+        "at": "2026-08-04T21:56:22.727Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-06T09:26:40.228Z",
@@ -1419,7 +1443,7 @@
   {
     "id": "task-056bac99",
     "title": "ci: add a windows-latest lane and fix what breaks",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "The pull-request and dev/main test workflow runs the complete zero-dependency node --test suite on both ubuntu-latest and windows-latest using the supported Node version; concurrency cancellation behavior remains unchanged."
@@ -1437,7 +1461,7 @@
     "tests": [
       {
         "path": "test/windows-ci.test.mjs",
-        "sha256": "f814c1aa8319b50601ecaea26f979fb48d4af77d34b766963d48dfbbca88b45b"
+        "sha256": "d9fd9890e85a99d8a7e592f2a3406dd00828d88276c2c6d17ffc224856032975"
       }
     ],
     "heldOut": [],
@@ -1452,14 +1476,20 @@
       "help wanted"
     ],
     "pipeline": {
-      "stage": "committed",
-      "at": "2026-08-04T15:50:51.094Z"
+      "stage": "pr-open",
+      "at": "2026-08-04T15:51:53.191Z"
     },
     "createdAt": "2026-07-06T10:05:49.982Z",
     "reviews": [],
     "startedAt": "2026-08-04T15:39:57.312Z",
     "branch": "feat/84-ci-add-a-windows-latest",
-    "worktree": "/private/tmp/chalk-promotion-hardening-20260804"
+    "worktree": "/private/tmp/chalk-promotion-hardening-20260804",
+    "pr": {
+      "number": 250,
+      "url": "https://github.com/chalkagents/chalk-protocol/pull/250",
+      "recorded": true
+    },
+    "doneAt": "2026-08-05T00:05:31.986Z"
   },
   {
     "id": "task-b9b5128a",
@@ -2206,7 +2236,7 @@
     "tests": [
       {
         "path": "test/release-marker-scope.test.mjs",
-        "sha256": "3cb0a2de664b9010aa08f6e5cc5e3f56a7711b29d8289ce73571adf1c4eaaca3"
+        "sha256": "4429694d5fb1963393e53da9ceb0b5d355b84df64c6e1b9ddbebf351d0de5cbf"
       }
     ],
     "heldOut": [],
@@ -2269,6 +2299,12 @@
             "note": "Test 2 (real heading suppresses) is not fully isolating: after a normal `release --commit` the tag v0.1.0 exists, so the `!tagLocal` guard alone suppresses the resume even if the heading match were broken. The heading's unique role (suppressing a completed --no-tag release with no tag) is, however, covered by the existing release-recovery.test.mjs (--no-tag case), so the change is not vacuously passing overall."
           }
         ]
+      },
+      {
+        "at": "2026-08-04T21:56:23.041Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-07T10:46:45.844Z",
@@ -7434,7 +7470,7 @@
     "tests": [
       {
         "path": "test/provider-adapters.test.mjs",
-        "sha256": "1c8ea028231cc1ddb9f4be9976d91b6f4743ebd36a2439f02aa0b60ee1462554"
+        "sha256": "b77f27d2fcaf18b2d6e6c4fb216ec60721811a23d823997f9a0b2b271243ee95"
       }
     ],
     "heldOut": [],
@@ -7495,7 +7531,7 @@
     "tests": [
       {
         "path": "test/adapter-conformance.test.mjs",
-        "sha256": "9589d986612783b41d576f07104d5027bc9d8f39f9bd5828c6040b83892336cb"
+        "sha256": "6026d911e85a68c12335e8417e6f279ed59b42a5f0906d540e47cf28a7fc3b28"
       }
     ],
     "heldOut": [],
@@ -7559,7 +7595,7 @@
     "tests": [
       {
         "path": "test/codex-gemini-adapters.test.mjs",
-        "sha256": "49247e02b8b0b795a905eabfb17860fc10ecbba904329769d988e83df21417c8"
+        "sha256": "555edb1bdc6a77a9e53f13fbadf3088301d8c52bd8269a3381607c3c99bd189e"
       }
     ],
     "heldOut": [],
@@ -7626,7 +7662,7 @@
     "tests": [
       {
         "path": "test/connect.test.mjs",
-        "sha256": "1720f879dbbb67dfd29d94c30a0acd1afba404581e0e1ddd7343334ec4785d46"
+        "sha256": "e89b1ccd41aff21467e9d5a10b0a4a5395f03c5654a64bae9851a1945722e8b5"
       }
     ],
     "heldOut": [],
@@ -7806,7 +7842,7 @@
     "tests": [
       {
         "path": "test/conformance-mutation-refusal.test.mjs",
-        "sha256": "4d5f36c7b0921ba00199332d518045e6b29f7e484294f55fcccb3997613386f1"
+        "sha256": "2b128305b0d92e2fe60c5edb17124d4d27c59f69f1081581ca8c85bd20818867"
       }
     ],
     "heldOut": [],
@@ -7838,6 +7874,12 @@
           "design-intent",
           "regressions"
         ]
+      },
+      {
+        "at": "2026-08-04T22:47:57.021Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "handoff": {
@@ -7965,7 +8007,7 @@
     "tests": [
       {
         "path": "test/connect-identity.test.mjs",
-        "sha256": "265c409b71846446e84d8c1cf8c5a523bb88a2078bdea5fd63398d54fbe9fefa"
+        "sha256": "116a2ef0e627ef8f0533b405e4910382ea6622fb5f7860a3dcc8151b81cf3c90"
       }
     ],
     "heldOut": [],
@@ -7997,6 +8039,12 @@
           "design-intent",
           "regressions"
         ]
+      },
+      {
+        "at": "2026-08-04T21:56:22.834Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "handoff": {

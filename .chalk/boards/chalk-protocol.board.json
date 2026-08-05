@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785857997312,
+  "updatedAt": 1785888331986,
   "order": 0,
   "cards": [
     {
@@ -248,13 +248,20 @@
     {
       "id": "task-056bac99",
       "title": "ci: add a windows-latest lane and fix what breaks",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1783332349982,
-      "updatedAt": 1785857997312,
+      "updatedAt": 1785888331986,
       "order": 13,
       "description": "- The pull-request and dev/main test workflow runs the complete zero-dependency node --test suite on both ubuntu-latest and windows-latest using the supported Node version; concurrency cancellation behavior remains unchanged.\n- Chalk's executable discovery, subprocess execution, git workflows, temporary paths, and path normalization pass on Windows without relying on POSIX-only command -v, /bin/sh, executable bits, or shell quoting.\n- Any test that cannot meaningfully execute on Windows is skipped only through an explicit process.platform guard whose reason cites a tracked follow-up issue; the rest of the suite remains enabled.\n- A locked test protects the Windows CI matrix, full-suite command, supported Node version, and absence of untracked unconditional Windows exclusions; user-facing documentation states the verified platform support level.",
       "testArtifact": {
         "specPath": "test/windows-ci.test.mjs",
+        "lastRun": {
+          "runId": "done-task-056bac99",
+          "status": "passed",
+          "at": 1785888331986
+        },
+        "prNumber": 250,
+        "prUrl": "https://github.com/chalkagents/chalk-protocol/pull/250",
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/84"
       }
     },
