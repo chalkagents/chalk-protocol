@@ -11,7 +11,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { retireLockGeneration, Store } from '../lib/store.mjs';
+import { replaceFileSync, retireLockGeneration, Store } from '../lib/store.mjs';
 import { runArchive } from '../lib/archive.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
@@ -113,6 +113,46 @@ test('atomic writes leave no .tmp residue and the spine stays valid JSON', async
   assert.doesNotThrow(() => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8')), 'tasks.json is always complete, valid JSON');
 });
 
+test('atomic replacement retries only Windows sharing violations without deleting the destination', () => {
+  const d = repo();
+  const target = join(d, 'target.json');
+  const pending = join(d, 'pending.json');
+  writeFileSync(target, 'old'); writeFileSync(pending, 'new');
+  let attempts = 0, sleeps = 0;
+  replaceFileSync(pending, target, {
+    platform: 'win32', nowMs: () => 0, sleep: () => { sleeps++; },
+    rename: (from, to) => {
+      attempts++;
+      assert.equal(readFileSync(to, 'utf8'), 'old', 'a retry never deletes the existing destination');
+      if (attempts < 3) throw Object.assign(new Error('sharing violation'), { code: 'EPERM' });
+      renameSync(from, to);
+    },
+  });
+  assert.equal(attempts, 3, 'transient Windows sharing violations are retried through success');
+  assert.equal(sleeps, 2, 'each transient failure waits before retrying');
+  assert.equal(readFileSync(target, 'utf8'), 'new', 'the successful atomic replace publishes the complete new file');
+
+  const rejected = join(d, 'rejected.json');
+  writeFileSync(rejected, 'rejected');
+  let nonRetryAttempts = 0;
+  assert.throws(() => replaceFileSync(rejected, target, {
+    platform: 'win32', nowMs: () => 0, sleep: () => { throw new Error('must not sleep'); },
+    rename: () => { nonRetryAttempts++; throw Object.assign(new Error('invalid path'), { code: 'EINVAL' }); },
+  }), /invalid path/, 'non-sharing errors rethrow immediately');
+  assert.equal(nonRetryAttempts, 1, 'non-retryable errors get one attempt');
+  assert.equal(readFileSync(target, 'utf8'), 'new', 'a rejected replace preserves the existing destination');
+  assert.equal(readFileSync(rejected, 'utf8'), 'rejected', 'a rejected replace preserves its pending source for diagnosis');
+
+  let clockReads = 0, expiredAttempts = 0;
+  assert.throws(() => replaceFileSync(rejected, target, {
+    platform: 'win32', timeoutMs: 2000, nowMs: () => clockReads++ === 0 ? 0 : 2000,
+    sleep: () => { throw new Error('expired retries must not sleep'); },
+    rename: () => { expiredAttempts++; throw Object.assign(new Error('still busy'), { code: 'EBUSY' }); },
+  }), /still busy/, 'a sharing violation rethrows once the retry deadline expires');
+  assert.equal(expiredAttempts, 1, 'an already-expired retry budget does not loop');
+  assert.equal(readFileSync(target, 'utf8'), 'new', 'deadline expiry still preserves the destination');
+});
+
 test('a concurrent reader NEVER sees a torn tasks.json mid-write (atomic temp+rename)', async () => {
   const d = repo();
   // A big payload makes each write span several write() syscalls, WIDENING the truncate-then-write
@@ -125,9 +165,10 @@ test('a concurrent reader NEVER sees a torn tasks.json mid-write (atomic temp+re
     const big = Array.from({ length: 800 }, (_, i) => ({ id: 'task-' + i, title: 'x'.repeat(400), state: 'todo', acceptanceCriteria: [], tests: [], reviews: [] }));
     for (let k = 0; k < 150; k++) s.saveTasks(big);
   `;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', writer], { cwd: d, stdio: 'ignore' });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', writer], { cwd: d, stdio: ['ignore', 'ignore', 'pipe'] });
   const tasksPath = join(d, '.chalk/tasks.json');
-  let reads = 0, torn = 0, done = false, writerCode = null;
+  let reads = 0, torn = 0, done = false, writerCode = null, writerStderr = '';
+  child.stderr.on('data', (chunk) => { writerStderr += chunk; });
   child.on('close', (code) => { writerCode = code; done = true; });
   await new Promise((res) => {
     const loop = () => {
@@ -136,7 +177,7 @@ test('a concurrent reader NEVER sees a torn tasks.json mid-write (atomic temp+re
     };
     loop();
   });
-  assert.equal(writerCode, 0, 'the concurrent writer fixture must execute successfully');
+  assert.equal(writerCode, 0, `the concurrent writer fixture must execute successfully: ${writerStderr}`);
   assert.ok(reads > 200, `the reader must actually race the writer (did ${reads} reads)`);
   assert.equal(torn, 0, `a concurrent reader must never see a torn/partial file, saw ${torn}/${reads} torn reads`);
 });
