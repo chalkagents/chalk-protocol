@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { launchCommand } from '../lib/process.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = join(ROOT, 'bin', 'chalk.mjs');
@@ -34,7 +35,10 @@ test('drift gate — shipped template ≡ dogfood agent minus ONLY the skills li
 test('the templates actually SHIP — share/ is in the npm files array and lands in the packed tarball', () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   assert.ok(pkg.files.includes('share'), 'package.json files[] must include share/ or installClaudeAgents ENOENTs for npm users');
-  const r = spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: ROOT, encoding: 'utf8', timeout: 120000 });
+  const r = launchCommand('npm', ['pack', '--dry-run', '--json'], {
+    cwd: ROOT, encoding: 'utf8', timeout: 120000,
+    env: { ...process.env, npm_config_cache: scratch() },
+  });
   assert.equal(r.status, 0, `npm pack --dry-run failed: ${r.stderr}`);
   const packed = JSON.parse(r.stdout)[0].files.map((f) => f.path);
   for (const name of AGENTS) {

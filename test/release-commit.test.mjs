@@ -5,18 +5,19 @@
 // written, committed, or marked released. Locked contract for task-021f498.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { spawnSync, execSync } from 'node:child_process';
+import { spawnSync, execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { commandWords } from '../lib/process.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
 const chalk = (cwd, ...args) => {
   const r = spawnSync('node', [CLI, ...args], { cwd, encoding: 'utf8' });
   return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` };
 };
-const git = (cwd, args) => execSync(`git ${args}`, { cwd, stdio: 'pipe', encoding: 'utf8' }).trim();
+const git = (cwd, args) => execFileSync('git', commandWords(args), { cwd, stdio: 'pipe', encoding: 'utf8' }).trim();
 
 // A git repo with one done, unreleased FEATURE task and package.json 0.0.0 → the release computes v0.1.0.
 function repo() {

@@ -45,6 +45,7 @@ todos:
 ## Reviews
 
 - **pass** · 2026-08-04T12:19 · codex
+- **stale** · 2026-08-04T21:56 · amend-spec
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

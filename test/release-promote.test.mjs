@@ -7,15 +7,16 @@
 // release commit via the #91 orphan detection. Locked contract for task-2563a7a0.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { spawnSync, execSync } from 'node:child_process';
+import { spawnSync, execSync, execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { commandWords } from '../lib/process.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
 const chalk = (cwd, ...args) => { const r = spawnSync('node', [CLI, ...args], { cwd, encoding: 'utf8' }); return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` }; };
-const git = (cwd, args) => execSync(`git ${args}`, { cwd, stdio: 'pipe', encoding: 'utf8' }).trim();
+const git = (cwd, args) => execFileSync('git', commandWords(args), { cwd, stdio: 'pipe', encoding: 'utf8' }).trim();
 const scratch = () => mkdtempSync(join(tmpdir(), 'chalk-promote-'));
 const taskOf = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'))[0];
 const ghLog = (d) => (existsSync(join(d, 'gh.log')) ? readFileSync(join(d, 'gh.log'), 'utf8') : '');
@@ -35,8 +36,8 @@ function promoteRepo({ ci = '[{"bucket":"pass"}]' } = {}) {
   chalk(d, 'init', '--name', 'demo');
   writeFileSync(join(d, 'ci.json'), ci);
   writeFileSync(join(d, 'gh-stub.mjs'), [
-    "import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'node:fs';",
-    "import { execSync } from 'node:child_process';",
+    "import { appendFileSync, readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';",
+    "import { execFileSync } from 'node:child_process';",
     "const args = process.argv.slice(2).join(' ');",
     `const D = ${JSON.stringify(d)}, MARKER = ${JSON.stringify(join(d, 'pr-open.marker'))};`,
     `appendFileSync(${JSON.stringify(join(d, 'gh.log'))}, args + '\\n');`,
@@ -44,8 +45,11 @@ function promoteRepo({ ci = '[{"bucket":"pass"}]' } = {}) {
     "else if (args.startsWith('pr create')) { writeFileSync(MARKER, '7'); console.log('https://github.com/x/y/pull/7'); }",
     `else if (args.startsWith('pr checks')) console.log(readFileSync(${JSON.stringify(join(d, 'ci.json'))}, 'utf8'));`,
     "else if (args.startsWith('pr merge')) {",
-    "  execSync(`M=$(git commit-tree -p $(git rev-parse origin/main) -p $(git rev-parse dev) -m 'Merge dev into main' $(git rev-parse 'dev^{tree}')) && git push -q origin $M:main`, { cwd: D, stdio: 'pipe', shell: '/bin/bash' });",
-    "  try { execSync('rm -f ' + MARKER); } catch {}",
+    "  const run = (...argv) => execFileSync('git', argv, { cwd: D, encoding: 'utf8', stdio: 'pipe' }).trim();",
+    "  const main = run('rev-parse', 'origin/main'), dev = run('rev-parse', 'dev'), tree = run('rev-parse', 'dev^{tree}');",
+    "  const merge = run('commit-tree', tree, '-p', main, '-p', dev, '-m', 'Merge dev into main');",
+    "  run('push', '-q', 'origin', merge + ':main');",
+    "  try { unlinkSync(MARKER); } catch {}",
     "}",
   ].join('\n'));
   const cf = join(d, '.chalk/chalk.json');

@@ -9,16 +9,21 @@
 // Locked contract for task-76eda7a.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { launchCommand } from '../lib/process.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 
 test('the packed tarball carries the runtime-resolved and onboarding files', () => {
-  const r = spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: ROOT, encoding: 'utf8', timeout: 120000 });
+  const cache = mkdtempSync(join(tmpdir(), 'chalk-package-npm-cache-'));
+  const r = launchCommand('npm', ['pack', '--dry-run', '--json'], {
+    cwd: ROOT, encoding: 'utf8', timeout: 120000,
+    env: { ...process.env, npm_config_cache: cache },
+  });
   assert.equal(r.status, 0, `npm pack --dry-run failed: ${r.stderr}`);
   const files = JSON.parse(r.stdout)[0].files.map((f) => f.path);
   for (const must of [

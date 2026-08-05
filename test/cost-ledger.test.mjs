@@ -13,7 +13,7 @@ import assert from 'node:assert';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { delimiter, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isClaudeShaped, withJsonOutput, parseEnvelope, unwrapAgentOutput } from '../lib/cost.mjs';
 
@@ -45,7 +45,7 @@ function repoWithFakeClaude(innerResult, { extraJs = '' } = {}) {
     extraJs,
   ].join('\n'));
   chmodSync(join(bin, 'claude'), 0o755);
-  const env = { PATH: `${bin}:${process.env.PATH}` };
+  const env = { PATH: `${bin}${delimiter}${process.env.PATH}` };
   const conf = (fn) => { const f = join(d, '.chalk/chalk.json'); const o = JSON.parse(readFileSync(f, 'utf8')); fn(o.protocol); writeFileSync(f, JSON.stringify(o, null, 2)); };
   const seedTask = (extra = {}) => writeFileSync(join(d, '.chalk/tasks.json'), JSON.stringify([{ id: 'task-aaaaaaaa', title: 'feat: a', state: 'in-progress', acceptanceCriteria: [{ text: 'x' }], tests: [], reviews: [], pipeline: { stage: 'pr-open', at: '2026-01-01T00:00:00Z' }, pr: { number: 1, recorded: true }, ...extra }]));
   return { d, env, conf, seedTask };

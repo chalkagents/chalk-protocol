@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { collectSignals, runFeedback } from '../lib/feedback.mjs';
 
 function project() {
@@ -29,7 +29,7 @@ test('collectSignals — gathers .md/.txt/.json under .chalk/feedback, excludes 
   assert.match(digest, /ship dark mode/, 'inline input included');
   assert.doesNotMatch(digest, /already processed/, 'archive/ excluded');
   assert.doesNotMatch(digest, /binary-ish/, 'non-signal extension excluded');
-  assert.deepEqual(files.map((f) => f.split('/').pop()).sort(), ['errors.json', 'users.md'], 'source files reported for archiving');
+  assert.deepEqual(files.map((file) => basename(file)).sort(), ['errors.json', 'users.md'], 'source files reported for archiving');
 });
 
 test('collectSignals — empty digest and no files when there are no signals', () => {

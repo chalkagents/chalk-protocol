@@ -19,10 +19,11 @@ const chalk = (cwd, args) => {
 
 function fakeCli(root, name) {
   const file = join(root, name);
-  writeFileSync(file, `#!/bin/sh
-if [ "$1" = "--version" ]; then echo "${name} test-version"; exit 0; fi
-if [ "$1" = "login" ] && [ "$2" = "status" ]; then echo authenticated; exit 0; fi
-printf '%s\\n' '{"response":"ok","stats":{"models":{}}}'
+  writeFileSync(file, `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log(${JSON.stringify(`${name} test-version`)}); process.exit(0); }
+if (args[0] === 'login' && args[1] === 'status') { console.log('authenticated'); process.exit(0); }
+console.log('{"response":"ok","stats":{"models":{}}}');
 `);
   chmodSync(file, 0o755);
   return file;

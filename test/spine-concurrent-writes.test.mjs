@@ -7,15 +7,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { spawn, execSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync, existsSync, utimesSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync, existsSync, statSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { Store } from '../lib/store.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { replaceFileSync, retireLockGeneration, Store } from '../lib/store.mjs';
 import { runArchive } from '../lib/archive.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const STORE_URL = pathToFileURL(join(REPO_ROOT, 'lib/store.mjs')).href;
 function repo() {
   const d = mkdtempSync(join(tmpdir(), 'chalk-conc-'));
   execSync('git init -q', { cwd: d });
@@ -25,24 +26,83 @@ function repo() {
 // Drop a lock file whose mtime is `ageMs` in the past — a crashed holder the live lock must reclaim.
 function staleLock(root, ageMs) {
   const p = join(root, '.chalk', '.lock');
-  writeFileSync(p, '99999 crashed-holder');
+  mkdirSync(p); writeFileSync(join(p, 'owner'), '99999 crashed-holder');
   const when = (Date.now() - ageMs) / 1000;
   utimesSync(p, when, when);
   return p;
 }
 // Run N `chalk task add` processes truly concurrently (spawn, not spawnSync) and resolve when all exit.
 const addAll = (d, n) => Promise.all(Array.from({ length: n }, (_, i) =>
-  new Promise((res) => spawn('node', [CLI, 'task', 'add', `feat: concurrent-${i}`], { cwd: d, stdio: 'ignore' }).on('close', res)),
+  new Promise((res) => {
+    const child = spawn(process.execPath, [CLI, 'task', 'add', `feat: concurrent-${i}`], { cwd: d, stdio: ['ignore', 'ignore', 'pipe'] });
+    let stderr = '';
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('close', (code, signal) => res({ code, signal, stderr }));
+  }),
 ));
-
 test('N concurrent task adds all land — no lost update (spine lock)', async () => {
   const d = repo();
   const N = 16;
-  await addAll(d, N);
+  const results = await addAll(d, N);
+  assert.ok(results.every((result) => result.code === 0), `every concurrent writer must exit cleanly: ${JSON.stringify(results.filter((result) => result.code !== 0))}`);
   const tasks = JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'));
   assert.equal(tasks.length, N, `all ${N} concurrent adds must survive the read-modify-write race, got ${tasks.length}`);
   const titles = new Set(tasks.map((t) => t.title));
   assert.equal(titles.size, N, 'every added task is distinct and present');
+});
+
+test('the cross-process lock claims a directory owner and removes only its own live name', async () => {
+  const d = repo();
+  const lock = join(d, '.chalk', '.lock');
+  const holder = `
+    import { readFileSync } from 'node:fs';
+    import { Store } from ${JSON.stringify(STORE_URL)};
+    new Store(${JSON.stringify(d)}).withLock(() => readFileSync(0, 'utf8'));
+  `;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', holder], { cwd: d, stdio: ['pipe', 'ignore', 'pipe'] });
+  let stderr = '';
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  let childDone = false, holderTimedOut = false;
+  const closed = new Promise((resolve) => child.on('close', (code) => { childDone = true; resolve(code); }));
+  const killTimer = setTimeout(() => { holderTimedOut = true; child.kill(); }, 35_000);
+  const deadline = Date.now() + 30_000;
+  const owner = join(lock, 'owner');
+  let observedOwner = '';
+  while (!/^\d+-[0-9a-f-]+ /.test(observedOwner) && !childDone && Date.now() < deadline) {
+    try { observedOwner = readFileSync(owner, 'utf8'); } catch { observedOwner = ''; }
+    if (!/^\d+-[0-9a-f-]+ /.test(observedOwner)) await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  const lockWasDirectory = existsSync(lock) && statSync(lock).isDirectory();
+  child.stdin.end();
+  const childCode = await closed;
+  clearTimeout(killTimer);
+  assert.equal(holderTimedOut, false, `holder must not spin past its deadline: ${stderr}`);
+  assert.match(observedOwner, /^\d+-[0-9a-f-]+ /, `holder exposes a complete owner claim while its critical section runs: ${stderr}`);
+  assert.equal(lockWasDirectory, true, 'the portable lock primitive starts with atomic directory creation');
+  assert.equal(childCode, 0, stderr);
+  assert.equal(existsSync(lock), false, 'the owner removes the live lock name on release');
+  assert.equal(readdirSync(join(d, '.chalk', '.locks')).filter((name) => name !== '.gitignore').length, 1, 'normal release keeps its generation tombstone as an ABA guard');
+});
+
+test('stale takeover retires one generation and a delayed actor cannot rename its replacement', () => {
+  const d = repo();
+  const lock = join(d, '.chalk', '.lock');
+  const oldToken = '111-old-generation';
+  mkdirSync(lock); writeFileSync(join(lock, 'owner'), oldToken);
+  const old = (Date.now() - 60_000) / 1000;
+  utimesSync(lock, old, old);
+  assert.equal(retireLockGeneration(lock, oldToken, { requireStale: true }), true, 'one stale actor retires the observed generation');
+  const retiredDir = join(d, '.chalk', '.locks');
+  const tombstone = join(retiredDir, readdirSync(retiredDir).find((name) => name !== '.gitignore'));
+  assert.equal(readFileSync(join(tombstone, 'owner'), 'utf8'), oldToken, 'the non-empty generation tombstone remains as the ABA guard');
+
+  const freshToken = '222-fresh-replacement';
+  mkdirSync(lock); writeFileSync(join(lock, 'owner'), freshToken);
+  assert.throws(() => renameSync(lock, tombstone), 'a T actor paused before rename cannot replace T+1 with the existing non-empty T tombstone');
+  assert.equal(retireLockGeneration(lock, oldToken), false, 'a delayed old actor loses against its existing tombstone');
+  assert.equal(readFileSync(join(lock, 'owner'), 'utf8'), freshToken, 'the fresh replacement remains live');
+  assert.equal(retireLockGeneration(lock, freshToken, { requireStale: true }), false, 'fresh generations are never retired as stale');
+  rmSync(lock, { recursive: true, force: true });
 });
 
 test('atomic writes leave no .tmp residue and the spine stays valid JSON', async () => {
@@ -53,6 +113,46 @@ test('atomic writes leave no .tmp residue and the spine stays valid JSON', async
   assert.doesNotThrow(() => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8')), 'tasks.json is always complete, valid JSON');
 });
 
+test('atomic replacement retries only Windows sharing violations without deleting the destination', () => {
+  const d = repo();
+  const target = join(d, 'target.json');
+  const pending = join(d, 'pending.json');
+  writeFileSync(target, 'old'); writeFileSync(pending, 'new');
+  let attempts = 0, sleeps = 0;
+  replaceFileSync(pending, target, {
+    platform: 'win32', nowMs: () => 0, sleep: () => { sleeps++; },
+    rename: (from, to) => {
+      attempts++;
+      assert.equal(readFileSync(to, 'utf8'), 'old', 'a retry never deletes the existing destination');
+      if (attempts < 3) throw Object.assign(new Error('sharing violation'), { code: 'EPERM' });
+      renameSync(from, to);
+    },
+  });
+  assert.equal(attempts, 3, 'transient Windows sharing violations are retried through success');
+  assert.equal(sleeps, 2, 'each transient failure waits before retrying');
+  assert.equal(readFileSync(target, 'utf8'), 'new', 'the successful atomic replace publishes the complete new file');
+
+  const rejected = join(d, 'rejected.json');
+  writeFileSync(rejected, 'rejected');
+  let nonRetryAttempts = 0;
+  assert.throws(() => replaceFileSync(rejected, target, {
+    platform: 'win32', nowMs: () => 0, sleep: () => { throw new Error('must not sleep'); },
+    rename: () => { nonRetryAttempts++; throw Object.assign(new Error('invalid path'), { code: 'EINVAL' }); },
+  }), /invalid path/, 'non-sharing errors rethrow immediately');
+  assert.equal(nonRetryAttempts, 1, 'non-retryable errors get one attempt');
+  assert.equal(readFileSync(target, 'utf8'), 'new', 'a rejected replace preserves the existing destination');
+  assert.equal(readFileSync(rejected, 'utf8'), 'rejected', 'a rejected replace preserves its pending source for diagnosis');
+
+  let clockReads = 0, expiredAttempts = 0;
+  assert.throws(() => replaceFileSync(rejected, target, {
+    platform: 'win32', timeoutMs: 2000, nowMs: () => clockReads++ === 0 ? 0 : 2000,
+    sleep: () => { throw new Error('expired retries must not sleep'); },
+    rename: () => { expiredAttempts++; throw Object.assign(new Error('still busy'), { code: 'EBUSY' }); },
+  }), /still busy/, 'a sharing violation rethrows once the retry deadline expires');
+  assert.equal(expiredAttempts, 1, 'an already-expired retry budget does not loop');
+  assert.equal(readFileSync(target, 'utf8'), 'new', 'deadline expiry still preserves the destination');
+});
+
 test('a concurrent reader NEVER sees a torn tasks.json mid-write (atomic temp+rename)', async () => {
   const d = repo();
   // A big payload makes each write span several write() syscalls, WIDENING the truncate-then-write
@@ -60,15 +160,16 @@ test('a concurrent reader NEVER sees a torn tasks.json mid-write (atomic temp+re
   // -write property (independent of the upsert lock): the reader takes no lock and would catch a
   // partial file. With temp+rename it only ever sees the old or new COMPLETE file.
   const writer = `
-    import { Store } from ${JSON.stringify(join(REPO_ROOT, 'lib/store.mjs'))};
+    import { Store } from ${JSON.stringify(STORE_URL)};
     const s = new Store(${JSON.stringify(d)});
     const big = Array.from({ length: 800 }, (_, i) => ({ id: 'task-' + i, title: 'x'.repeat(400), state: 'todo', acceptanceCriteria: [], tests: [], reviews: [] }));
     for (let k = 0; k < 150; k++) s.saveTasks(big);
   `;
-  const child = spawn('node', ['--input-type=module', '-e', writer], { cwd: d, stdio: 'ignore' });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', writer], { cwd: d, stdio: ['ignore', 'ignore', 'pipe'] });
   const tasksPath = join(d, '.chalk/tasks.json');
-  let reads = 0, torn = 0, done = false;
-  child.on('close', () => { done = true; });
+  let reads = 0, torn = 0, done = false, writerCode = null, writerStderr = '';
+  child.stderr.on('data', (chunk) => { writerStderr += chunk; });
+  child.on('close', (code) => { writerCode = code; done = true; });
   await new Promise((res) => {
     const loop = () => {
       for (let i = 0; i < 40; i++) { reads++; try { JSON.parse(readFileSync(tasksPath, 'utf8')); } catch { torn++; } }
@@ -76,6 +177,7 @@ test('a concurrent reader NEVER sees a torn tasks.json mid-write (atomic temp+re
     };
     loop();
   });
+  assert.equal(writerCode, 0, `the concurrent writer fixture must execute successfully: ${writerStderr}`);
   assert.ok(reads > 200, `the reader must actually race the writer (did ${reads} reads)`);
   assert.equal(torn, 0, `a concurrent reader must never see a torn/partial file, saw ${torn}/${reads} torn reads`);
 });
@@ -90,6 +192,44 @@ test('a stale lock (crashed holder) is stolen so the spine is not wedged forever
   assert.equal(existsSync(lock), false, 'the stale lock is reclaimed and released, not left behind');
 });
 
+test('an ownerless directory left by an older crashed holder is reclaimed once stale', () => {
+  const d = repo();
+  const lock = join(d, '.chalk', '.lock');
+  mkdirSync(lock);
+  const old = (Date.now() - 60_000) / 1000;
+  utimesSync(lock, old, old);
+  const store = new Store(d);
+  store.upsertTask({ id: 'task-bbbbbbbb', title: 'feat: after-ownerless-crash', state: 'todo', acceptanceCriteria: [], tests: [], reviews: [] });
+  const tasks = JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'));
+  assert.ok(tasks.some((t) => t.id === 'task-bbbbbbbb'), 'the mutation succeeds after retiring an ownerless stale directory');
+  assert.equal(existsSync(lock), false, 'the ownerless stale generation is reclaimed and the replacement releases cleanly');
+  const retired = readdirSync(join(d, '.chalk', '.locks')).filter((name) => name !== '.gitignore');
+  assert.equal(retired.length, 2, 'ownerless recovery and its replacement each leave one stable generation tombstone');
+});
+
+test('a zero-byte owner file interrupted during creation is reclaimed without spinning', async () => {
+  const d = repo();
+  const lock = join(d, '.chalk', '.lock');
+  mkdirSync(lock); writeFileSync(join(lock, 'owner'), '');
+  const old = (Date.now() - 60_000) / 1000;
+  utimesSync(lock, old, old);
+  const recover = `
+    import { Store } from ${JSON.stringify(STORE_URL)};
+    new Store(${JSON.stringify(d)}).upsertTask({ id: 'task-eeeeeeee', title: 'feat: after-empty-owner-crash', state: 'todo', acceptanceCriteria: [], tests: [], reviews: [] });
+  `;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', recover], { cwd: d, stdio: ['ignore', 'ignore', 'pipe'] });
+  let stderr = '', timedOut = false;
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  const timer = setTimeout(() => { timedOut = true; child.kill(); }, 10_000);
+  const result = await new Promise((resolve) => child.on('close', (code, signal) => resolve({ code, signal })));
+  clearTimeout(timer);
+  assert.equal(timedOut, false, `recovery must not spin past its deadline: ${JSON.stringify({ result, stderr })}`);
+  assert.equal(result.code, 0, stderr);
+  const tasks = JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'));
+  assert.ok(tasks.some((t) => t.id === 'task-eeeeeeee'), 'the mutation succeeds after retiring the interrupted owner claim');
+  assert.equal(existsSync(lock), false, 'the zero-byte owner generation is reclaimed and released');
+});
+
 test('archive routes its read-modify-write through the spine lock (steals a stale lock)', () => {
   const d = repo();
   const store = new Store(d);
@@ -102,8 +242,14 @@ test('archive routes its read-modify-write through the spine lock (steals a stal
 });
 
 test('the lock file and atomic-write temp files are gitignored (never committed)', () => {
-  // check-ignore against the REAL project .gitignore (the temp repos are bare `git init`s).
-  const ignored = (rel) => spawnSync('git', ['check-ignore', '-q', rel], { cwd: REPO_ROOT }).status === 0;
-  assert.ok(ignored('.chalk/.lock'), '.chalk/.lock must be gitignored');
-  assert.ok(ignored('.chalk/tasks.json.12345.tmp'), 'the atomic-write temp pattern (.chalk/*.tmp) must be gitignored');
+  const d = repo();
+  mkdirSync(join(d, '.chalk', '.locks')); writeFileSync(join(d, '.chalk', '.locks', '.gitignore'), '');
+  new Store(d).upsertTask({ id: 'task-cccccccc', title: 'feat: create-runtime-guards', state: 'todo', acceptanceCriteria: [], tests: [], reviews: [] });
+  const ignored = (cwd, rel) => spawnSync('git', ['check-ignore', '-q', rel], { cwd }).status === 0;
+  assert.ok(ignored(REPO_ROOT, '.chalk/.lock'), 'upgraded projects keep the root-level lock ignore');
+  assert.ok(ignored(d, '.chalk/.locks/fake-generation'), 'every spine self-ignores persistent generation tombstones at runtime');
+  assert.ok(ignored(d, '.chalk/.locks/.gitignore'), 'the local ignore file does not dirty upgraded repositories');
+  assert.equal(readFileSync(join(d, '.chalk', '.locks', '.gitignore'), 'utf8'), '*\n', 'an interrupted empty ignore file is atomically repaired');
+  assert.equal(execSync('git status --porcelain .chalk/.locks', { cwd: d, encoding: 'utf8' }).trim(), '', 'runtime guards stay invisible in an upgraded repo with no root ignore rules');
+  assert.ok(ignored(REPO_ROOT, '.chalk/tasks.json.12345.tmp'), 'upgraded projects keep the atomic-write temp ignore');
 });

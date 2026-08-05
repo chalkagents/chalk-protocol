@@ -49,6 +49,7 @@ import { basename, dirname, relative } from 'node:path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, readSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
+import { launchShellCommand } from '../lib/process.mjs';
 
 // ---- tiny arg parser: positionals in _, repeated --flag accumulate into arrays ----
 function parse(argv) {
@@ -591,8 +592,8 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       // reason rather than a confusing verify failure later. (Finding 2)
       if (wt.setup) {
         console.log(C.dim(`  worktree setup: ${wt.setup}`));
-        try { execSync(withRunner(s.protocol().runner, wt.setup), { cwd: dir, stdio: ['ignore', 'inherit', 'inherit'], timeout: 15 * 60 * 1000 }); }
-        catch (e) { die(`worktree setup failed (\`${wt.setup}\`): ${String(e.message).split('\n').slice(-2).join(' ')}`); }
+        const setup = launchShellCommand(withRunner(s.protocol().runner, wt.setup), { cwd: dir, stdio: ['ignore', 'inherit', 'inherit'], timeout: 15 * 60 * 1000 });
+        if (setup.error || setup.status !== 0) die(`worktree setup failed (\`${wt.setup}\`): ${String(setup.error?.message || `exit ${setup.status}`).split('\n').slice(-2).join(' ')}`);
       }
     } else {
       t.worktree = s.root; // no isolation — work in the primary tree
@@ -1649,7 +1650,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // Archive the processed signals so a re-run doesn't re-analyze them (idempotency).
     if (!dry && files.length) {
       const arch = join(feedbackDir(s), 'archive'); mkdirSync(arch, { recursive: true });
-      for (const f of files) { try { renameSync(f, join(arch, f.split('/').pop())); } catch { /* leave it */ } }
+      for (const f of files) { try { renameSync(f, join(arch, basename(f))); } catch { /* leave it */ } }
     }
     if (!dry) syncBrowser(s);
     ok(`feedback: ${C.b(String(filed))} issue(s) ${dry ? 'would file' : 'filed'}${deferred ? `, ${C.b(String(deferred))} deferred` : ''}${!dry && files.length ? `, ${files.length} signal(s) archived` : ''}`);

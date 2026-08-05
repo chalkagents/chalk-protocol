@@ -29,13 +29,16 @@ const chalk = (cwd, args, env = process.env) => {
 
 function shellCli(root, name, { auth = true, modelMarker = '' } = {}) {
   const file = join(root, name);
-  writeFileSync(file, `#!/bin/sh
-if [ "$1" = "--version" ]; then echo "${name} test-version"; exit 0; fi
-if [ "$1" = "login" ] && [ "$2" = "status" ]; then ${auth ? 'echo authenticated; exit 0' : 'echo "not logged in" >&2; exit 1'}; fi
-if [ "$1" = "auth" ] && [ "$2" = "status" ]; then ${auth ? 'echo authenticated; exit 0' : 'echo "not logged in" >&2; exit 1'}; fi
-${modelMarker ? `printf model-called > "${modelMarker}"` : ':'}
-printf '%s\\n' '{"type":"item.completed","item":{"type":"agent_message","text":"live result"}}'
-printf '%s\\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}'
+  writeFileSync(file, `#!/usr/bin/env node
+import { writeFileSync } from 'node:fs';
+const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log(${JSON.stringify(`${name} test-version`)}); process.exit(0); }
+if ((args[0] === 'login' || args[0] === 'auth') && args[1] === 'status') {
+  ${auth ? "console.log('authenticated'); process.exit(0);" : "console.error('not logged in'); process.exit(1);"}
+}
+${modelMarker ? `writeFileSync(${JSON.stringify(modelMarker)}, 'model-called');` : ''}
+console.log('{"type":"item.completed","item":{"type":"agent_message","text":"live result"}}');
+console.log('{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}');
 `);
   chmodSync(file, 0o755);
   return file;
@@ -44,8 +47,8 @@ printf '%s\\n' '{"type":"turn.completed","usage":{"input_tokens":1,"output_token
 test('all first-party manifests own an offline probe and discovery never sends a prompt', () => {
   assert.deepEqual(Object.keys(ADAPTER_MANIFESTS).sort(), ['claude', 'codex', 'gemini', 'opencode']);
   const calls = [];
-  const spawn = (binary, args) => {
-    calls.push({ binary, args });
+  const spawn = (binary, args, options) => {
+    calls.push({ binary, args, options });
     return { status: 0, stdout: `${binary} 1.0\n`, stderr: '' };
   };
   const found = discoverConnections({ spawn });
@@ -53,6 +56,7 @@ test('all first-party manifests own an offline probe and discovery never sends a
   assert.ok(found.every((item) => ['ready', 'warning'].includes(item.status)));
   assert.ok(calls.every((item) => item.args.includes('--version') || item.args.join(' ') === 'auth status' || item.args.join(' ') === 'login status'));
   assert.ok(calls.every((item) => !item.args.includes('exec') && !item.args.includes('--prompt')), 'offline discovery cannot invoke a model prompt');
+  assert.ok(calls.every((item) => item.options.timeout === 10_000 && item.options.shell === false), 'offline probes retain a bounded timeout that tolerates saturated CI hosts');
 });
 
 test('interactive setup offers manual, assisted, and autonomous presets', async () => {

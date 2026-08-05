@@ -186,9 +186,14 @@ test('findRoot — a chalk project NESTED in a worktree subdir maps to the SAME 
   mkdirSync(join(d, 'apps/x/.chalk'), { recursive: true }); writeFileSync(join(d, 'apps/x/.chalk/chalk.json'), '{"version":"1.0"}');
   g('add -A'); g('commit -q -m spine');
   const wt = join(scratch(), 'wt'); g(`worktree add ${wt} -b feat/x main`);
-  const same = (a, b) => realpathSync(a) === realpathSync(b);
-  assert.ok(same(findRoot(join(wt, 'apps/x')), join(d, 'apps/x')), 'nested worktree project → nested MAIN project');
-  assert.ok(same(findRoot(wt), d), 'worktree root project → MAIN root');
+  // Write markers only after the worktree checkout so they prove which physical spine findRoot
+  // selected. Windows may spell the same temp directory with either its long name or an 8.3 alias,
+  // so string-comparing realpaths is not a portable identity check.
+  writeFileSync(join(d, '.chalk/main-only'), 'outer');
+  writeFileSync(join(d, 'apps/x/.chalk/main-only'), 'nested');
+  const nestedRoot = findRoot(join(wt, 'apps/x'));
+  assert.equal(readFileSync(join(nestedRoot, '.chalk/main-only'), 'utf8'), 'nested', `nested worktree project → nested MAIN project (found ${nestedRoot}; expected ${join(d, 'apps/x')})`);
+  assert.equal(readFileSync(join(findRoot(wt), '.chalk/main-only'), 'utf8'), 'outer', 'worktree root project → MAIN root');
 });
 
 test('findRoot — no redirect when the main checkout lacks a spine at that path (uses the worktree-local copy)', () => {
