@@ -1034,3 +1034,13 @@
 
 - _when:_ 2026-08-05T02:48:11.383Z
 - _why:_ Atomic rename to a persistent token-specific tombstone prevents delayed owners or stale waiters from deleting a replacement generation; ownerless and interrupted-write states recover fail-closed, and self-ignored guards keep upgraded repositories clean.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T03:00:19.483Z
+- _why:_ Re-lock after converting inline ESM fixtures to portable file URLs, asserting writer execution, and handshaking the held lock.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T03:05:43.348Z
+- _why:_ Re-lock after bounding and killing a holder that regresses into pre-handshake acquisition spin.
