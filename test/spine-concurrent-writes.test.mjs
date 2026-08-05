@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { spawn, execSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync, existsSync, utimesSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync, existsSync, statSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,17 +32,42 @@ function staleLock(root, ageMs) {
 }
 // Run N `chalk task add` processes truly concurrently (spawn, not spawnSync) and resolve when all exit.
 const addAll = (d, n) => Promise.all(Array.from({ length: n }, (_, i) =>
-  new Promise((res) => spawn('node', [CLI, 'task', 'add', `feat: concurrent-${i}`], { cwd: d, stdio: 'ignore' }).on('close', res)),
+  new Promise((res) => {
+    const child = spawn(process.execPath, [CLI, 'task', 'add', `feat: concurrent-${i}`], { cwd: d, stdio: ['ignore', 'ignore', 'pipe'] });
+    let stderr = '';
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('close', (code, signal) => res({ code, signal, stderr }));
+  }),
 ));
 
 test('N concurrent task adds all land — no lost update (spine lock)', async () => {
   const d = repo();
   const N = 16;
-  await addAll(d, N);
+  const results = await addAll(d, N);
+  assert.ok(results.every((result) => result.code === 0), `every concurrent writer must exit cleanly: ${JSON.stringify(results.filter((result) => result.code !== 0))}`);
   const tasks = JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'));
   assert.equal(tasks.length, N, `all ${N} concurrent adds must survive the read-modify-write race, got ${tasks.length}`);
   const titles = new Set(tasks.map((t) => t.title));
   assert.equal(titles.size, N, 'every added task is distinct and present');
+});
+
+test('the cross-process lock uses atomic directory creation and removes only its own artifact', async () => {
+  const d = repo();
+  const lock = join(d, '.chalk', '.lock');
+  const holder = `
+    import { Store } from ${JSON.stringify(join(REPO_ROOT, 'lib/store.mjs'))};
+    new Store(${JSON.stringify(d)}).withLock(() => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000));
+  `;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', holder], { cwd: d, stdio: ['ignore', 'ignore', 'pipe'] });
+  let stderr = '';
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  const closed = new Promise((resolve) => child.on('close', (code) => resolve(code)));
+  const deadline = Date.now() + 750;
+  while (!existsSync(lock) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.ok(existsSync(lock), 'holder exposes a lock artifact while its critical section runs');
+  assert.equal(statSync(lock).isDirectory(), true, 'the portable lock primitive is an atomically-created directory');
+  assert.equal(await closed, 0, stderr);
+  assert.equal(existsSync(lock), false, 'the owner removes its lock directory on release');
 });
 
 test('atomic writes leave no .tmp residue and the spine stays valid JSON', async () => {
