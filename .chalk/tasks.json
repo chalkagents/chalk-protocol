@@ -2945,7 +2945,7 @@
     "tests": [
       {
         "path": "test/spine-concurrent-writes.test.mjs",
-        "sha256": "ad9efdcd0f2015278eb79407050f9d55b3adf715bc605b72ad4aaa1ef09b24cd"
+        "sha256": "28ab25a0d00b6b3b6887555ddcc837c0dcb1cd3087948d9fb9f9a258edaf7484"
       }
     ],
     "heldOut": [],
@@ -3075,6 +3075,24 @@
         "verdict": "pass",
         "findings": [],
         "note": "Independent local Codex specification and repository-standards reviews passed the native-Windows fixture fixes; focused tests and full Chalk verify GREEN.",
+        "checklist": [
+          "test-adequacy",
+          "design-intent",
+          "regressions"
+        ]
+      },
+      {
+        "at": "2026-08-05T03:20:28.871Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
+      },
+      {
+        "at": "2026-08-05T03:32:21.001Z",
+        "by": "local-codex",
+        "verdict": "pass",
+        "findings": [],
+        "note": "Independent local Codex spec and standards reviews passed the bounded Windows atomic-replace retry and deterministic no-delete/deadline contract; full Chalk verify GREEN.",
         "checklist": [
           "test-adequacy",
           "design-intent",

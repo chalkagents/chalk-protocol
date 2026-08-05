@@ -1044,3 +1044,13 @@
 
 - _when:_ 2026-08-05T03:05:43.348Z
 - _why:_ Re-lock after bounding and killing a holder that regresses into pre-handshake acquisition spin.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T03:20:28.878Z
+- _why:_ Re-lock after capturing atomic-writer diagnostics and pinning successful execution under concurrent readers.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T03:27:06.706Z
+- _why:_ Re-lock after deterministically pinning Windows sharing retries, deadline expiry, immediate non-retryable failure, and no-delete atomicity.

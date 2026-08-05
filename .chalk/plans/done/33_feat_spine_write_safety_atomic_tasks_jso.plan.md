@@ -39,6 +39,8 @@ todos:
 - **pass** · 2026-08-05T02:48 · local-codex
 - **stale** · 2026-08-05T03:00 · amend-spec
 - **pass** · 2026-08-05T03:09 · local-codex
+- **stale** · 2026-08-05T03:20 · amend-spec
+- **pass** · 2026-08-05T03:32 · local-codex
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._
