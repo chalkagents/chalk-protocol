@@ -10,12 +10,13 @@ import { spawn, execSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync, existsSync, statSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { retireLockGeneration, Store } from '../lib/store.mjs';
 import { runArchive } from '../lib/archive.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const STORE_URL = pathToFileURL(join(REPO_ROOT, 'lib/store.mjs')).href;
 function repo() {
   const d = mkdtempSync(join(tmpdir(), 'chalk-conc-'));
   execSync('git init -q', { cwd: d });
@@ -54,23 +55,31 @@ test('the cross-process lock claims a directory owner and removes only its own l
   const d = repo();
   const lock = join(d, '.chalk', '.lock');
   const holder = `
-    import { Store } from ${JSON.stringify(join(REPO_ROOT, 'lib/store.mjs'))};
-    new Store(${JSON.stringify(d)}).withLock(() => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000));
+    import { readFileSync } from 'node:fs';
+    import { Store } from ${JSON.stringify(STORE_URL)};
+    new Store(${JSON.stringify(d)}).withLock(() => readFileSync(0, 'utf8'));
   `;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', holder], { cwd: d, stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', holder], { cwd: d, stdio: ['pipe', 'ignore', 'pipe'] });
   let stderr = '';
   child.stderr.on('data', (chunk) => { stderr += chunk; });
-  const closed = new Promise((resolve) => child.on('close', (code) => resolve(code)));
-  const deadline = Date.now() + 10_000;
+  let childDone = false, holderTimedOut = false;
+  const closed = new Promise((resolve) => child.on('close', (code) => { childDone = true; resolve(code); }));
+  const killTimer = setTimeout(() => { holderTimedOut = true; child.kill(); }, 35_000);
+  const deadline = Date.now() + 30_000;
   const owner = join(lock, 'owner');
   let observedOwner = '';
-  while (!/^\d+-[0-9a-f-]+ /.test(observedOwner) && Date.now() < deadline) {
+  while (!/^\d+-[0-9a-f-]+ /.test(observedOwner) && !childDone && Date.now() < deadline) {
     try { observedOwner = readFileSync(owner, 'utf8'); } catch { observedOwner = ''; }
     if (!/^\d+-[0-9a-f-]+ /.test(observedOwner)) await new Promise((resolve) => setTimeout(resolve, 10));
   }
-  assert.match(observedOwner, /^\d+-[0-9a-f-]+ /, 'holder exposes a complete owner claim while its critical section runs');
-  assert.equal(statSync(lock).isDirectory(), true, 'the portable lock primitive starts with atomic directory creation');
-  assert.equal(await closed, 0, stderr);
+  const lockWasDirectory = existsSync(lock) && statSync(lock).isDirectory();
+  child.stdin.end();
+  const childCode = await closed;
+  clearTimeout(killTimer);
+  assert.equal(holderTimedOut, false, `holder must not spin past its deadline: ${stderr}`);
+  assert.match(observedOwner, /^\d+-[0-9a-f-]+ /, `holder exposes a complete owner claim while its critical section runs: ${stderr}`);
+  assert.equal(lockWasDirectory, true, 'the portable lock primitive starts with atomic directory creation');
+  assert.equal(childCode, 0, stderr);
   assert.equal(existsSync(lock), false, 'the owner removes the live lock name on release');
   assert.equal(readdirSync(join(d, '.chalk', '.locks')).filter((name) => name !== '.gitignore').length, 1, 'normal release keeps its generation tombstone as an ABA guard');
 });
@@ -111,15 +120,15 @@ test('a concurrent reader NEVER sees a torn tasks.json mid-write (atomic temp+re
   // -write property (independent of the upsert lock): the reader takes no lock and would catch a
   // partial file. With temp+rename it only ever sees the old or new COMPLETE file.
   const writer = `
-    import { Store } from ${JSON.stringify(join(REPO_ROOT, 'lib/store.mjs'))};
+    import { Store } from ${JSON.stringify(STORE_URL)};
     const s = new Store(${JSON.stringify(d)});
     const big = Array.from({ length: 800 }, (_, i) => ({ id: 'task-' + i, title: 'x'.repeat(400), state: 'todo', acceptanceCriteria: [], tests: [], reviews: [] }));
     for (let k = 0; k < 150; k++) s.saveTasks(big);
   `;
-  const child = spawn('node', ['--input-type=module', '-e', writer], { cwd: d, stdio: 'ignore' });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', writer], { cwd: d, stdio: 'ignore' });
   const tasksPath = join(d, '.chalk/tasks.json');
-  let reads = 0, torn = 0, done = false;
-  child.on('close', () => { done = true; });
+  let reads = 0, torn = 0, done = false, writerCode = null;
+  child.on('close', (code) => { writerCode = code; done = true; });
   await new Promise((res) => {
     const loop = () => {
       for (let i = 0; i < 40; i++) { reads++; try { JSON.parse(readFileSync(tasksPath, 'utf8')); } catch { torn++; } }
@@ -127,6 +136,7 @@ test('a concurrent reader NEVER sees a torn tasks.json mid-write (atomic temp+re
     };
     loop();
   });
+  assert.equal(writerCode, 0, 'the concurrent writer fixture must execute successfully');
   assert.ok(reads > 200, `the reader must actually race the writer (did ${reads} reads)`);
   assert.equal(torn, 0, `a concurrent reader must never see a torn/partial file, saw ${torn}/${reads} torn reads`);
 });
@@ -163,7 +173,7 @@ test('a zero-byte owner file interrupted during creation is reclaimed without sp
   const old = (Date.now() - 60_000) / 1000;
   utimesSync(lock, old, old);
   const recover = `
-    import { Store } from ${JSON.stringify(join(REPO_ROOT, 'lib/store.mjs'))};
+    import { Store } from ${JSON.stringify(STORE_URL)};
     new Store(${JSON.stringify(d)}).upsertTask({ id: 'task-eeeeeeee', title: 'feat: after-empty-owner-crash', state: 'todo', acceptanceCriteria: [], tests: [], reviews: [] });
   `;
   const child = spawn(process.execPath, ['--input-type=module', '-e', recover], { cwd: d, stdio: ['ignore', 'ignore', 'pipe'] });
