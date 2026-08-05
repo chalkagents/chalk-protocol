@@ -969,3 +969,18 @@
 
 - _when:_ 2026-08-05T00:05:41.296Z
 - _why:_ Structured Git, GitHub, npm, and agent calls must avoid shell quoting; Node scripts launch through process.execPath, Windows cmd/bat shims resolve explicitly, free-form hooks alone use the native shell, and persisted paths normalize to forward slashes while filesystem I/O remains native.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T00:16:31.110Z
+- _why:_ Native Windows CI exposed an intermittent lost update under 16 concurrent task writers; pin the portable atomic-directory lock representation and child exit success so the concurrency guarantee is deterministic.
+
+## Amended acceptance test for "feat: spine write safety — atomic tasks.json writes + append-only event log so concurrent chalk processes don't clobber the spine (#110 slice 2)"
+
+- _when:_ 2026-08-05T00:19:26.794Z
+- _why:_ Re-lock the sanctioned concurrency contract after adding deterministic child-exit diagnostics and the atomic-directory lock assertion.
+
+## Cross-process spine writes use an atomic directory lock with owner tokens
+
+- _when:_ 2026-08-05T00:23:11.956Z
+- _why:_ Windows CI lost one of 16 concurrent task additions under the prior file-descriptor lock. Atomic directory creation provides a portable create-if-absent mutex; unique owner markers prevent a stale holder from deleting a replacement lock, and timeout now fails closed instead of writing unlocked.

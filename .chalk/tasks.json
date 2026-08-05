@@ -2945,7 +2945,7 @@
     "tests": [
       {
         "path": "test/spine-concurrent-writes.test.mjs",
-        "sha256": "88e9b20edcee6f9f1bacaf2195d110c3b43ecebfa94762a79f068a07a279fa3b"
+        "sha256": "441f0fd52b0fb20313c6ca3a7b1e9da5368228e282e4adaf1c6774388b2a3a0f"
       }
     ],
     "heldOut": [],
@@ -3044,6 +3044,12 @@
             "note": "Tests genuinely exercise the change and are non-vacuous (reverting the lock/atomic-write would fail the concurrent-adds and torn-read tests; reverting the archive routing would leave the stale lock, failing the archive test). All three criteria have direct assertions. Adequate."
           }
         ]
+      },
+      {
+        "at": "2026-08-05T00:16:31.092Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "locked test amended after review — re-review required"
       }
     ],
     "startedAt": "2026-07-08T16:08:54.347Z",
