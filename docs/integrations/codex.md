@@ -42,6 +42,16 @@ stdin. It maps access to `--sandbox read-only|workspace-write`, disables interac
 prompts, consumes JSONL events, normalizes reported usage, and uses Codex's output schema option for
 the reviewer contract. See the official [Codex non-interactive mode documentation](https://developers.openai.com/codex/noninteractive).
 
+Approval policy is a global CLI option: the adapter invokes `codex --ask-for-approval never exec`
+and places sandbox/output options after `exec`. The reviewer schema specifies every finding and
+decision field, with closed object shapes and typed array items. A separate Codex review remains
+a required review; using the same provider does not establish model independence.
+
+When replacing a previous provider, use `--replace --migrate-legacy` with `chalk connect`. Only
+successfully rebound roles have their legacy commands cleared. Codex currently supports executor,
+planner, and reviewer; clear unwanted optional legacy commands (such as `retro.command` and
+`regression.authorCommand`) separately so they cannot invoke the previous provider.
+
 Verify the installed package without a model call:
 
 ```sh
