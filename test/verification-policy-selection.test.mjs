@@ -1,0 +1,33 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { Store } from '../lib/store.mjs';
+import { verify } from '../lib/verify.mjs';
+
+test('restoring a branch selector cannot hide transient conditional ignore policy', t => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'chalk-policy-selection-')));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  git(['init', '-q']);
+  execFileSync(process.execPath, [resolve('bin/chalk.mjs'), 'init', '--bare'], { cwd: root });
+  const original = git(['symbolic-ref', 'HEAD']);
+  const head = resolve(root, git(['rev-parse', '--git-path', 'HEAD']));
+  const config = join(root, 'conditional.config'), ignore = join(root, 'ignore.rules');
+  writeFileSync(ignore, '/ephemeral.js\n');
+  writeFileSync(config, `[core]\nexcludesFile = ${JSON.stringify(ignore.replaceAll('\\', '/'))}\n`);
+  git(['config', 'includeIf.onbranch:chalk-hidden.path', config]);
+  writeFileSync(join(root, 'check.cjs'), `const fs=require("fs"),{execFileSync:git}=require("child_process");git("git",["symbolic-ref","HEAD","refs/heads/chalk-hidden"]);fs.writeFileSync("ephemeral.js","used");git("git",["check-ignore","ephemeral.js"]);console.log(fs.readFileSync("ephemeral.js","utf8"));fs.unlinkSync("ephemeral.js");setTimeout(()=>git("git",["symbolic-ref","HEAD",${JSON.stringify(original)}]),500);`);
+  const store = new Store(root), meta = store.meta();
+  meta.protocol.verify = { test: 'node check.cjs' }; store.saveMeta(meta);
+  const result = verify(store), command = result.toolchain.find(g => g.gate === 'test');
+  assert.equal(result.toolchainGreen, true, JSON.stringify(command));
+  assert.equal(result.green, false); assert.equal(result.freshness, 'stale');
+  assert.equal(git(['symbolic-ref', 'HEAD']), original);
+  assert.match(readFileSync(command.stdoutPath, 'utf8'), /used/);
+  const receipt = JSON.parse(readFileSync(result.evidence.path, 'utf8'));
+  assert.ok(Object.hasOwn(receipt.before.source.policyInputs, head));
+  assert.notEqual(receipt.before.source.policyInputs[head], receipt.after.source.policyInputs[head]);
+});
