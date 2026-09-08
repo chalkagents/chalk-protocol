@@ -162,8 +162,40 @@ supervision is covered on the development POSIX host; equivalent Windows behavio
 has not been independently validated.
 
 This slice records Node/platform identity but does not yet identify every external
-SDK, dependency installation or relevant environment input. Automatic review
-attachment, reviewer toolchain preflight and safe reuse by `done` are subsequent
+SDK, dependency installation or relevant environment input. Reviewer toolchain
+preflight and safe reuse by `done` are subsequent
 work. `done` continues to run verification. Within a run, changes to task/config
 authority files conservatively invalidate the result, including unrelated concurrent
 bookkeeping; later reuse must compare the relevant semantic inputs instead.
+
+## Review attachment
+
+`chalk review` automatically supplies a bounded summary of the newest local receipt
+matching the review's canonical worktree and task. It compares current source,
+that task's criteria and visible locked files, and effective gate configuration.
+Review history and unrelated protocol bookkeeping do not change those comparisons.
+No configured verification command runs just to construct the attachment.
+
+The summary labels missing, malformed, stale, unknown or incomplete evidence. A
+newer unreadable receipt makes selection uncertain; Chalk does not silently choose
+an older successful result. A run directory with no readable receipt metadata has
+unknown age and keeps selection uncertain. Linked or wrong-type run entries are
+also uncertain; their targets are never followed to select a receipt.
+Completed receipts must contain the
+configured gate outcomes and expected browser executions, with command timing,
+exit status, stream metadata and log references; missing execution metadata is
+malformed evidence. A current receipt can describe failed verification:
+`recordedGreen` and command outcomes remain separate from input freshness.
+Other tasks' and worktrees' receipts are never presented as current evidence.
+
+Reviewers receive command outcomes, timestamps, recorded Node/platform identity,
+and local stdout/stderr references. The attachment checks archive availability,
+not retained byte integrity. It never embeds raw logs or protected regression
+output. Receipt files have a 16 MiB read limit; the prompt section has a 16,000
+character limit and shows at most eight commands, disclosing omitted commands.
+Untrusted strings are JSON-encoded and cannot terminate the section's code fence.
+
+This is supplied host evidence, not independently executed reviewer testing or an
+attestation. The reviewer still examines the full contract and reruns checks where
+possible. Source/spec/config freshness does not establish complete SDK/environment
+identity. This attachment changes no completion gate, and `done` still verifies.
