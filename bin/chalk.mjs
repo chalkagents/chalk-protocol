@@ -7,6 +7,7 @@ import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
+import { verificationCoverage, auditCoverage } from '../lib/verification-coverage.mjs';
 import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
@@ -92,6 +93,7 @@ function clearReviewBlockOnPass(t) {
 const colors = !Object.hasOwn(process.env, 'NO_COLOR') && process.env.TERM !== 'dumb';
 const paint = (code, value) => colors ? `\x1b[${code}m${value}\x1b[0m` : String(value);
 const C = { dim: (s) => paint(2, s), b: (s) => paint(1, s), g: (s) => paint(32, s), r: (s) => paint(31, s), y: (s) => paint(33, s) };
+const checkTag = status => status === 'passed' ? C.g(status) : status === 'failed' ? C.r(status) : ['stale', 'unknown', 'deferred'].includes(status) ? C.y(status) : C.dim(status);
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
 const ok = (msg) => console.log(C.g('✓ ') + msg);
 
@@ -1234,7 +1236,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (st.landing.overridden) console.log(`  overridden ${pct(st.landing.overridden, st.landing.done)} ${C.y('review gate overridden (--force-review)')}`);
     if (st.landing.unreviewed) console.log(`  unreviewed ${pct(st.landing.unreviewed, st.landing.done)} ${C.y('done without the review gate weighing in')}`);
     console.log(`  pipeline   ${pct(st.landing.pipelineLanded, st.landing.done)} ${C.dim('landed via PR + gated merge (rest hand-landed)')}`);
-    if (st.audit.green + st.audit.red) console.log(C.b('\n  held-out audit') + ` (P7)  ${st.audit.green} green / ${st.audit.red} red`);
+    if (st.audit.green + st.audit.red) console.log(C.b('\n  audits (configured checks)') + `  ${st.audit.green} green / ${st.audit.red} red`);
   },
 
   // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
@@ -1688,26 +1690,32 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const s = Store.open();
     const wip = s.tasks().find((t) => t.state === 'in-progress');
     const v = runVerify(s, { cwd: workdir(s, wip) });
+    const coverage = verificationCoverage(v);
+    s.emitUpdate({ title: `Verification ${v.green ? 'green' : 'red'} (task)`, taskId: wip?.id, verification: coverage });
     console.log(C.b('Verify') + (wip?.worktree ? C.dim(`  · in worktree ${wip.worktree}`) : '') + '\n');
     for (const r of v.toolchain) {
-      const tag = r.status === 'pass' ? C.g('pass') : r.status === 'fail' ? C.r('fail') : r.status === 'deferred' ? C.y('defer') : C.dim('skip');
+      const check = coverage.checks.find(check => check.kind === 'toolchain' && check.gate === r.gate);
+      const tag = checkTag(check.status);
       const note = r.status === 'deferred' ? C.dim(`  (${r.cmd})  ${C.y('runs at chalk audit')}`) : (r.cmd ? C.dim(`  (${r.cmd})`) : C.dim('  (not configured)'));
-      console.log(`  ${tag}  ${r.gate}${note}`);
+      console.log(`  ${tag}  ${r.gate}${note}${check.status !== check.outcome ? C.dim(` — command ${check.outcome}; inputs ${v.freshness}`) : ''}`);
       if (r.status === 'fail' && r.tail) console.log(r.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
     }
     if (v.integrity.length) {
       console.log('\n' + C.r('  test-integrity VIOLATED (P6):'));
       for (const i of v.integrity) for (const b of i.broken) console.log(`    ${C.r('✗')} ${b.path} changed under ${i.done ? C.y('DONE ') : ''}task ${i.taskId.slice(0, 12)}${i.done ? ` (${i.title.slice(0, 40)})` : ''} — use \`chalk amend-spec ${i.taskId.slice(0, 12)} --test ${b.path} --why "..."\``);
     }
-    for (const r of v.e2e || []) console.log(`  ${r.status === 'passed' ? C.g('pass') : C.r('fail')}  ${C.dim('e2e')} ${r.path} ${C.dim(`→ ${r.runDir}`)}`);
+    for (const [index, r] of (v.e2e || []).entries()) console.log(`  ${checkTag(coverage.checks.filter(check => check.kind === 'browser')[index].status)}  ${C.dim('e2e')} ${r.path} ${C.dim(`→ ${r.runDir}`)}`);
+    for (const check of coverage.checks.filter(check => check.kind === 'browser' && check.scope === 'command')) console.log(`  ${checkTag(check.status)}  ${check.gate} ${C.dim(`(recovered command ${check.outcome}; specification result unavailable)`)}`);
     if (v.evidence) console.log(C.dim(`  verification record: ${v.evidence.path}`));
     if (v.evidenceError) console.log(C.r(`  evidence error: ${v.evidenceError}`));
     if (v.freshness !== 'fresh') console.log(C.r(`  verification inputs ${v.freshness} — resolve input/storage errors or source changes and re-run chalk verify`));
-    console.log('\n' + (v.green ? C.g('● GREEN — done gate is open') : C.r('● RED — done gate is closed')));
+    console.log(C.dim(`  executed checks: ${coverage.executedChecks}; visible test integrity: ${coverage.integrity}`));
+    console.log('\n' + (v.green ? C.g('● VERIFICATION GREEN') : C.r('● VERIFICATION RED')) + C.dim(' — review and release gates are evaluated separately'));
     // A green made of nothing is a trap, not a pass — label it every time it prints. An e2e spec
     // that actually RAN is a real check, so its green is not vacuous even with an empty toolchain.
-    if (v.green && v.toolchain.every((r) => r.status === 'skipped') && !(v.e2e || []).length) {
-      console.log(C.y('  ⚠ VACUOUS — no verify commands configured; this green checked NOTHING. Set protocol.verify.test in .chalk/chalk.json (or `chalk init --preset <stack>` on a fresh project).'));
+    if (v.green && !coverage.executedChecks) {
+      const reason = v.toolchain.every(r => r.status === 'skipped') && !(v.e2e || []).length ? 'no verify commands configured; ' : '';
+      console.log(C.y(`  ⚠ VACUOUS — ${reason}no executable checks ran. Integrity is reported separately. Configure task checks or run deferred checks with chalk audit.`));
     }
     if (!v.green) process.exit(2);
     // Funnel milestone: first GREEN verify (#154). Fire-and-forget — NOT awaited; the guarded POST rides
@@ -1726,6 +1734,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const t = mustTask(s, _[0]);
     if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
     const v = runVerify(s, { cwd: workdir(s, t) });
+    s.emitUpdate({ title: `Verification ${v.green ? 'green' : 'red'} (done)`, taskId: t.id, verification: verificationCoverage(v) });
     if (v.evidence?.path) console.log(C.dim(`  verification record: ${v.evidence.path}`));
     if (!v.green) {
       const reasons = [];
@@ -1829,11 +1838,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
     console.log(C.dim('  running adversarial reviewer…'));
     let r = runReview(s, t);
+    const readOnlyFailure = result => result.diagnostics?.find(diagnostic => diagnostic.code === 'read-only-mutation');
     // No diff to review → abort loudly (#151). Not a transient flake, so no retry: a PASS over an empty
     // change set is a vacuous certification. Records NO review and exits non-zero so the gate can't be
     // cleared on nothing — the pipeline then auto-blocks the task rather than merging it.
     if (r.status === 'no-diff') die('review ABORTED — no diff captured: the change set is EMPTY, so the reviewer would grade nothing.\n  Check protocol.github.base and that the branch has committed changes (or that you are in the task worktree).');
-    if (r.status === 'error' && !flags['no-retry']) {
+    if (r.status === 'error' && !readOnlyFailure(r) && !flags['no-retry']) {
       // A transient reviewer failure — a dropped/truncated response or a momentary bad parse — is not a
       // verdict, so retry once so a flake doesn't sink the review; only a SECOND consecutive error is fatal.
       // The pipeline passes --no-retry: it retries the whole review STAGE itself, so an inner retry would
@@ -1841,7 +1851,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.log(C.dim('  reviewer returned no valid verdict — retrying once…'));
       r = runReview(s, t);
     }
-    if (r.status === 'error') die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
+    if (r.status === 'error') {
+      const refusal = readOnlyFailure(r);
+      if (refusal) die(`reviewer violated the read-only workspace contract: ${String(refusal.message).slice(0, 1200)}\n  No verdict was accepted. Run state-writing review checks in an isolated fixture; do not bypass the read-only guard.`);
+      die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
+    }
     t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [] });
     // Same pipeline-order rule as the manual path above (#102): the verdict is recorded either way —
     // the done/merge gates read t.reviews — but the stage only advances when the PR already exists.
@@ -1910,18 +1924,24 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   audit() {
     const s = Store.open();
     const r = runAudit(s);
+    const coverage = auditCoverage(r);
     console.log(C.b('Audit · held-out regression'));
     for (const p of r.broken) console.log(`  ${C.r('✗ integrity')} ${p} ${C.dim('— held-out test modified (P7 violation)')}`);
-    if (r.status === 'unconfigured') console.log(C.dim('  no regression.command configured — integrity check only.'));
+    if (r.status === 'unconfigured') console.log(C.dim('  unconfigured — no held-out command ran; no independent regression coverage.'));
     else console.log('  ' + (r.passed ? C.g('held-out checks PASS') : C.r('held-out checks FAIL')) + C.dim('  (output withheld — fix against the spec, not the hidden tests)'));
-    const phaseRun = (r.phaseGates || []).filter((g) => g.status !== 'skipped' && g.status !== 'deferred');
+    console.log(C.dim(`  held-out scope: ${coverage.heldOut.lockedFiles} locked file(s); author independence and assertion coverage are not established by command execution`));
+    const phaseRun = r.phaseGates || [];
     if (phaseRun.length) {
       console.log('\n' + C.b('Audit · phase-boundary toolchain gates'));
       for (const g of phaseRun) {
-        console.log(`  ${g.status === 'pass' ? C.g('pass') : C.r('fail')}  ${g.gate}${C.dim(`  (${g.cmd})`)}`);
+        const check = coverage.phase.checks.find(check => check.kind === 'toolchain' && check.gate === g.gate);
+        console.log(`  ${checkTag(check.status)}  ${g.gate}${C.dim(g.cmd ? `  (${g.cmd})` : '  (not configured)')}${check.status !== check.outcome ? C.dim(` — command ${check.outcome}; inputs ${r.phaseVerification.freshness}`) : ''}`);
         if (g.status === 'fail' && g.tail) console.log(g.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
       }
     }
+    for (const check of coverage.phase.checks.filter(check => check.kind === 'browser')) console.log(`  ${checkTag(check.status)}  ${check.gate} ${C.dim(check.scope === 'command' ? `(recovered command ${check.outcome}; specification result unavailable)` : '(browser specification)')}`);
+    console.log(C.dim(`  phase executed checks: ${coverage.phase.executedChecks}; visible test integrity: ${coverage.phase.integrity}`));
+    if (!coverage.phase.executedChecks) console.log(C.y('  phase verification: no executable checks ran'));
     if (r.phaseVerification?.evidence) console.log(C.dim(`  phase verification record: ${r.phaseVerification.evidence.path}`));
     if (r.phaseVerification?.evidenceError) console.log(C.r(`  phase evidence error: ${r.phaseVerification.evidenceError}`));
     if (r.phaseVerification && r.phaseVerification.freshness !== 'fresh') console.log(C.r(`  phase verification inputs ${r.phaseVerification.freshness} — resolve input changes or unavailable monitoring and re-run chalk audit`));
@@ -1934,10 +1954,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const m = s.meta();
     m.protocol = m.protocol || {};
     const reg = m.protocol.regression = m.protocol.regression || {};
-    reg.lastAudit = { at: now(), green: r.green, size: r.size, count: (reg.tests || []).length };
+    reg.lastAudit = { at: now(), green: r.green, size: r.size, count: r.heldOutCount, coverage };
     s.saveMeta(m);
-    s.emitUpdate({ type: 'progress-update', title: AUDIT_TITLE(r.green) });
-    console.log('\n' + (r.green ? C.g('● AUDIT GREEN') : C.r('● AUDIT RED — phase gate closed')));
+    s.emitUpdate({ type: 'progress-update', title: AUDIT_TITLE(r.green), audit: coverage });
+    console.log('\n' + (r.green ? C.g('● AUDIT GREEN — configured audit checks passed') : C.r('● AUDIT RED — configured audit checks failed')) + C.dim('; phase admission is evaluated separately'));
     process.exit(r.green ? 0 : 2);
   },
 

@@ -199,3 +199,58 @@ This is supplied host evidence, not independently executed reviewer testing or a
 attestation. The reviewer still examines the full contract and reruns checks where
 possible. Source/spec/config freshness does not establish complete SDK/environment
 identity. This attachment changes no completion gate, and `done` still verifies.
+
+## Coverage and adoption
+
+Existing projects adopt recording and review attachment by using the updated CLI;
+no new protocol setting or migration is required. Configure the real commands in
+`protocol.verify`, prepare stable ignored output directories, and run `chalk verify`
+(or `node bin/chalk.mjs verify` from a Chalk source checkout). The emitted receipt
+path is local to the invoking workstation. Open that `run.json` for command outcomes
+and its referenced stdout/stderr files for actual output. Held-out command output
+is withheld and is never included in these receipts or structured status events.
+
+CLI `verify` and the verification performed by `done` append a local update with a
+`verification` object. `audit` appends an `audit` object and saves the same scope in
+`regression.lastAudit.coverage`. These additive fields distinguish passed, failed,
+deferred, unconfigured, stale and unknown checks. `outcome` retains the check's
+result when stale input identity prevents treating its pass as current. Counts
+refer to executed toolchain commands and browser specification replays, not test
+assertions or coverage percentages. Visible test integrity is reported separately;
+an interrupted setup does not establish that integrity checking completed.
+If a later browser replay cannot start, retained earlier command executions remain
+in the report with unknown freshness. Their `scope: "command"` outcome does not
+claim a browser specification verdict; completed specification results use
+`scope: "specification"`. Partial recovery never makes the failed run GREEN.
+Events contain status metadata and receipt IDs, without raw command output or
+environment values. They are local bookkeeping, not telemetry.
+
+Verification GREEN describes verification only. Review and release admission are
+separate gates. A deferred-only or entirely unconfigured run explicitly says no
+executable checks ran, even if its integrity checks pass. An audit keeps phase
+verification and held-out execution as separate outcomes. No configured held-out
+command means no independent regression coverage. A command's successful exit and
+a locked-file count do not measure assertion coverage or prove author independence.
+Historical audit records without these fields have unknown scope; their GREEN
+value alone must not be interpreted as independent regression coverage.
+
+Retained receipts and archives stay under `.chalk/local/verification/`; Chalk does
+not automatically prune them or commit/upload them. Remove only completed runs you
+no longer need while verification and review are idle. Removing a run also removes
+its local review context. Leave active runs and recovery storage intact; use a fresh
+`chalk verify` to collect new evidence. Malformed or unreadable candidate entries can
+make review selection uncertain. Full logs may contain anything the configured
+commands print, so choose access and retention appropriate for that project.
+
+The source manifest covers the boundaries described above, including configured
+source exclusions. It does not establish complete SDK, installed dependency or
+environment identity. The reviewer preflight and protected execution path remain
+separate work; `done` continues to rerun verification rather than reuse a receipt.
+
+Review is read-only for the whole workspace, including protocol bookkeeping and
+ignored artifacts. `chalk verify` records receipts/events, and `chalk audit` also
+writes audit state. Reviewers inspect the supplied records or exercise those CLI
+workflows in isolated temporary fixtures with separate output paths and without
+copying held-out content. Directly rerun only checks that leave the reviewed tree
+unchanged. A detected read-only mutation rejects the verdict with its diagnostic
+and is not automatically retried as a malformed JSON response.
