@@ -1,0 +1,36 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { Store } from '../lib/store.mjs';
+import { releasableTasks } from '../lib/release.mjs';
+import { planArchive } from '../lib/archive.mjs';
+const CLI = resolve('bin/chalk.mjs');
+const ok = (cwd, ...args) => { const r = spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8' }); assert.equal(r.status, 0, r.stdout + r.stderr); return r; };
+
+test('director redirect reopens an amended released contract without inheriting its shipped candidate', t => {
+  const root = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), 'chalk-spec-reopening-')));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true })); ok(root, 'init', '--bare');
+  fs.writeFileSync(join(root, 'check.cjs'), 'console.log("checked");');
+  fs.writeFileSync(join(root, 'review.cjs'), `process.stdin.resume();process.stdin.on('end',()=>console.log(JSON.stringify({verdict:'pass',findings:[],decisions:[{choice:'fixture choice',rationale:'fixture rationale',blastRadius:'low',reversibility:'easy'}]})));`);
+  const store = new Store(root), meta = store.meta(), id = 'task-reopen';
+  meta.protocol.verify = { test: 'node check.cjs' }; meta.protocol.requireTest = false;
+  meta.protocol.executor = { command: 'node check.cjs' };
+  meta.protocol.review = { command: 'node review.cjs', requiredAt: ['per-task'] }; store.saveMeta(meta);
+  store.upsertTask({ id, title: 'chore: reopen contract', state: 'done', doneAt: '2026-01-01T00:00:00Z', released: '1.0.0', releasedAt: '2026-01-01T01:00:00Z', branch: 'old-merged-branch', worktree: root, pr: { number: 7, recorded: true }, pipeline: { stage: 'merged' }, acceptanceCriteria: [{ text: 'initial' }], tests: [], reviews: [] });
+  ok(root, 'amend-spec', id, '--add', 'new requirement', '--why', 'changed contract');
+  const history = structuredClone(store.task(id).specRevisions);
+  ok(root, 'review', id);
+  ok(root, 'pending', 'redirect', `${id}#0`, 'apply the revised direction');
+  const reopened = store.task(id); assert.equal(reopened.state, 'in-progress');
+  for (const key of ['doneAt', 'released', 'releasedAt', 'branch', 'worktree', 'pr']) assert.equal(reopened[key], undefined, `${key} belongs only to the historical candidate`);
+  assert.equal(reopened.pipeline.stage, 'selected'); assert.deepEqual(reopened.specRevisions, history);
+  ok(root, 'work', id); ok(root, 'done', id);
+  const completed = store.task(id); assert.equal(completed.completedSpecRevision, completed.specRevision);
+  assert.equal(completed.released, undefined); assert.equal(completed.pr, undefined); assert.equal(completed.branch, undefined);
+  assert.deepEqual(releasableTasks(store).map(task => task.id), [id]);
+  assert.equal(planArchive(store).move.length, 0, 'new completion is not yet released');
+  ok(root, 'release', '--no-tag', '--version', '1.1.0'); assert.equal(store.task(id).released, '1.1.0');
+});

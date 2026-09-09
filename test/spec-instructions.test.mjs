@@ -1,0 +1,50 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { Store } from '../lib/store.mjs';
+const CLI = resolve('bin/chalk.mjs');
+const run = (cwd, ...args) => spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } });
+const ok = (cwd, ...args) => { const r = run(cwd, ...args); assert.equal(r.status, 0, r.stdout + r.stderr); return r.stdout; };
+for (const operation of ['replace', 'retire', 'test']) {
+  test(`${operation} amendment makes old plans and blocking review instructions historical, then permits fresh planning and review`, t => {
+    const root = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), 'chalk-spec-instructions-')));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    ok(root, 'init', '--bare');
+    fs.writeFileSync(join(root, 'check.cjs'), 'console.log("checked");');
+    fs.writeFileSync(join(root, 'planner.cjs'), `let text='';process.stdin.on('data',c=>text+=c);process.stdin.on('end',()=>{if(text.includes('Implement OBSOLETE_PLAN')||text.includes('Fix OBSOLETE_FINDING'))process.exit(2);console.log('Implement the current contract');});`);
+    const store = new Store(root), meta = store.meta();
+    meta.protocol.verify = { test: 'node check.cjs' }; meta.protocol.plan = { required: true };
+    meta.protocol.planner = { command: 'node planner.cjs' }; meta.protocol.review = { requiredAt: ['per-task'] }; store.saveMeta(meta);
+    const id = 'task-instructions';
+    const review = { verdict: 'block', findings: [{ severity: 'high', area: 'correctness', note: 'Fix OBSOLETE_FINDING' }] };
+    store.upsertTask({ id, title: 'current instructions', state: 'in-progress', acceptanceCriteria: [{ text: 'OBSOLETE_CRITERION' }, { text: 'RETAINED_CRITERION' }], tests: [], plan: 'Implement OBSOLETE_PLAN', planApproved: { by: 'human' }, pipeline: { stage: 'reviewed' }, branch: 'fix/preserved', pr: { number: 7 }, reviews: [review] });
+    assert.match(ok(root, 'context', id), /Implement OBSOLETE_PLAN/);
+    assert.match(ok(root, 'context', id), /Fix OBSOLETE_FINDING/);
+    const args = operation === 'replace' ? ['--replace', 'ac-1', '--criterion', 'CURRENT_CRITERION'] : operation === 'retire' ? ['--retire', 'ac-1'] : ['--test', 'check.cjs'];
+    ok(root, 'amend-spec', id, ...args, '--why', 'replace obsolete instructions');
+    let task = store.task(id);
+    assert.equal(task.plan, undefined); assert.equal(task.planApproved, undefined);
+    assert.equal(task.pipeline.planInvalidated, task.specRevision); assert.equal(task.pipeline.stage, 'reviewed');
+    assert.equal(task.reviews.at(-1).verdict, 'stale');
+    assert.equal(task.specRevisions.at(-1).invalidated.plan, 'Implement OBSOLETE_PLAN');
+    assert.deepEqual(task.specRevisions.at(-1).invalidated.review, review);
+    assert.doesNotMatch(ok(root, 'context', id), /OBSOLETE_PLAN|OBSOLETE_FINDING/);
+    assert.notEqual(run(root, 'approve-plan', id).status, 0, 'must regenerate before approval');
+    assert.match(ok(root, 'plan', id), /plan ready/);
+    task = store.task(id);
+    assert.equal(task.plan, 'Implement the current contract'); assert.equal(task.pipeline.planInvalidated, undefined);
+    assert.equal(task.pipeline.stage, 'reviewed'); assert.equal(task.pr.number, 7); assert.equal(task.branch, 'fix/preserved');
+    assert.match(ok(root, 'plan', id), /already done/);
+    ok(root, 'approve-plan', id);
+    assert.notEqual(run(root, 'done', id).status, 0, 'historical review cannot accept the current contract');
+    // Isolate task completion from PR comment publication in this fixture.
+    task = store.task(id); delete task.pr; store.upsertTask(task);
+    ok(root, 'review', id, '--note', 'current contract accepted'); ok(root, 'done', id);
+    assert.equal(store.task(id).completedSpecRevision, task.specRevision);
+    assert.match(ok(root, 'amend-spec', id, '--history'), /OBSOLETE_PLAN/);
+    assert.match(ok(root, 'amend-spec', id, '--history'), /OBSOLETE_FINDING/);
+  });
+}

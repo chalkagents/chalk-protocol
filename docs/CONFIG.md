@@ -131,6 +131,10 @@ human runs `chalk align <id>` to accept the task's acceptance criteria as the de
 before any code is built. Where `plan.required` gates the approach, this gates the framing of *done*
 (the empty-middle misalignment in #160). Default false.
 
+Sanctioned criteria and locked-test amendments invalidate task alignment, plan
+approval and passing review. See [specification revisions](spec-revisions.md) for
+stable criterion IDs, add/replace/retire commands and retained history.
+
 ### `executor`
 
 `{ command }` — the agent that writes code for `chalk run`/`chalk work`/`chalk pipeline`: receives
