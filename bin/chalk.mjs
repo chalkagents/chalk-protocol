@@ -3,10 +3,15 @@
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
 import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_VERSION, PHASES, TASK_STATES, NEEDS, UPDATE_TYPES, SPINE_STATE_PATHS, depsSatisfied, runnableTasks, pendingDirectives, needsRework, resolveDirectives, openRaises, resolveRef, workdir, buildContext } from '../lib/store.mjs';
+import { currentCriteria, reviseSpecification, specificationEstablished, completionCurrent } from '../lib/spec-revisions.mjs';
+import { auditApprovalCurrent } from '../lib/audit-specification.mjs';
+import { withReleaseAdmission, recordReleaseContract, checkReleaseRecovery } from '../lib/release-admission.mjs';
+import { amendedPr, amendmentPublication, publishAmendedPr } from '../lib/amendment-publication.mjs';
 import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
+import { verificationCoverage, auditCoverage } from '../lib/verification-coverage.mjs';
 import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
@@ -18,7 +23,7 @@ import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
 import { postReviewToPr } from '../lib/prreview.mjs';
 import { brokeCheck, ciStatus } from '../lib/brokecheck.mjs';
 import { mergeBlockers } from '../lib/mergegate.mjs';
-import { extractQuestions, planApprovalRequired, criteriaAcceptedRequired } from '../lib/planning.mjs';
+import { extractQuestions, planApprovalRequired, criteriaAcceptedRequired, completionApprovalBlockers } from '../lib/planning.mjs';
 import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } from '../lib/release.mjs';
 import { runSpecs, isSpec } from '../lib/e2e.mjs';
 import { extractScreenshots, evidenceMarkdown } from '../lib/evidence.mjs';
@@ -92,6 +97,7 @@ function clearReviewBlockOnPass(t) {
 const colors = !Object.hasOwn(process.env, 'NO_COLOR') && process.env.TERM !== 'dumb';
 const paint = (code, value) => colors ? `\x1b[${code}m${value}\x1b[0m` : String(value);
 const C = { dim: (s) => paint(2, s), b: (s) => paint(1, s), g: (s) => paint(32, s), r: (s) => paint(31, s), y: (s) => paint(33, s) };
+const checkTag = status => status === 'passed' ? C.g(status) : status === 'failed' ? C.r(status) : ['stale', 'unknown', 'deferred'].includes(status) ? C.y(status) : C.dim(status);
 const die = (msg) => { console.error(C.r('✗ ') + msg); process.exit(1); };
 const ok = (msg) => console.log(C.g('✓ ') + msg);
 
@@ -344,6 +350,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const s = Store.open();
     const tasks = s.tasks();
     const wip = tasks.filter((t) => t.state === 'in-progress');
+    const revalidation = tasks.filter(t => t.state === 'done' && !completionCurrent(t));
     const specd = tasks.filter((t) => t.state === 'specd');
     const ready = specd.filter((t) => depsSatisfied(t, tasks));   // deps done → startable now
     const waiting = specd.filter((t) => !depsSatisfied(t, tasks)); // specd but blocked behind deps
@@ -351,7 +358,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // Machine-readable signal for an orchestrator: which task to run, and that it should run in a
     // FRESH session (one session per task) seeded with the task's latest handoff, if any.
     if (flags.json) {
-      const pick = wip[0] || ready[0] || null; // in-progress first, else the next runnable
+      const pick = wip[0] || revalidation[0] || ready[0] || null; // in-progress first, else the next runnable
       const t = pick && { id: pick.id, title: pick.title, state: pick.state };
       const handoff = pick?.handoff?.path || null;
       const action = pick ? (pick.state === 'in-progress' ? 'work' : 'start') : null;
@@ -370,7 +377,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       const c = view.counts;
       console.log('\n' + C.b('Queue summary'));
       console.log(`  active ${c.inProgress} · runnable ${c.runnable} · needs criteria ${c.needsCriteria} · waiting on dependencies ${c.dependencies}${waiting[0] ? ` (first: ${waiting[0].title})` : ''}`);
-      console.log(`  blocked ${c.blocked} ${C.dim(`(human input ${c.humanInput} · review rework ${c.reviewBlocked})`)} · done ${c.done}`);
+      console.log(`  blocked ${c.blocked} ${C.dim(`(human input ${c.humanInput} · review rework ${c.reviewBlocked})`)} · done ${c.done}${c.revalidation ? ` · needs revalidation ${c.revalidation}` : ''}`);
       console.log(C.dim('  full details: chalk next --verbose'));
       return;
     }
@@ -378,7 +385,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const reg0 = s.protocol().regression;
     if (reg0?.required) {
       const la = reg0.lastAudit;
-      const stale = !la || !la.green || (la.size && la.size.loc !== codeSize(s.root).loc);
+      const stale = !auditApprovalCurrent(s, la) || (la.size && la.size.loc !== codeSize(s.root).loc);
       if (stale) console.log(C.y('  ⚠ held-out audit is stale — run `chalk audit` (required to advance phase).'));
     }
     for (const t of tasks.filter((x) => x.state === 'blocked')) {
@@ -417,28 +424,29 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         console.log(C.dim(`     read first:  chalk context ${short}`));
       }
     }
+    for (const t of revalidation) console.log(C.y(`  ↻ revalidate amended contract: ${t.title} — chalk start ${t.id.slice(0, 12)}`));
     if (ready.length || waiting.length) {
       if (ready.length) {
         console.log(`  ${C.y('◐')} ${ready.length} task(s) ready. Pick ${C.b('ONE')} and start it:`);
         for (const t of ready) console.log(C.dim(`     chalk start ${t.id.slice(0, 12)}   `) + t.title);
       }
       for (const t of waiting) {
-        const deps = (t.after || []).map((ref) => resolveRef(tasks, ref)).filter((d) => d && d.state !== 'done').map((d) => d.title);
+        const deps = (t.after || []).map((ref) => resolveRef(tasks, ref)).filter((d) => d && !completionCurrent(d)).map((d) => d.title);
         console.log(C.dim(`     ⧗ waiting: ${t.title} — on ${deps.join(', ') || 'unresolved deps'}`));
       }
-      if (!ready.length && !todo.length) console.log(C.dim('  (all remaining work is waiting on deps or blocked)'));
+      if (!ready.length && !todo.length && !revalidation.length) console.log(C.dim('  (all remaining work is waiting on deps or blocked)'));
     }
     if (todo.length) {
       console.log(`  ${C.dim('○')} ${todo.length} task(s) need acceptance criteria before they can start (GATE P1):`);
       for (const t of todo) console.log(C.dim(`     chalk spec ${t.id.slice(0, 12)} --criterion "..."   `) + `(${t.title})`);
     }
-    const completed = tasks.filter((task) => task.state === 'done');
+    const completed = tasks.filter(completionCurrent);
     if (completed.length) {
       console.log(`  ${C.g('✓')} ${completed.length} completed task(s):`);
       for (const task of completed) console.log(C.dim(`     ${task.id.slice(0, 12)}   `) + task.title);
     }
     if (!tasks.length) { console.log(C.dim('  no tasks yet →  chalk task add "<title>"')); return; }
-    if (tasks.every((task) => task.state === 'done')) console.log(`  ${C.g('✓')} all tasks done. Add the next one ${C.dim('(chalk task add)')} or advance phase ${C.dim('(chalk phase ...)')}.`);
+    if (tasks.every(completionCurrent)) console.log(`  ${C.g('✓')} all tasks done. Add the next one ${C.dim('(chalk task add)')} or advance phase ${C.dim('(chalk phase ...)')}.`);
   },
 
   // The ordered backlog/DAG — work grouped by milestone, with dependency edges + runnability.
@@ -453,9 +461,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.log('\n' + C.b(milestone));
       for (const t of items) {
         const deps = (t.after || []).map((ref) => resolveRef(tasks, ref)).filter(Boolean);
-        const open = deps.filter((d) => d.state !== 'done').map((d) => d.title);
+        const open = deps.filter((d) => !completionCurrent(d)).map((d) => d.title);
         let mark;
-        if (t.state === 'done') mark = C.g('✓ done');
+        if (t.state === 'done') mark = completionCurrent(t) ? C.g('✓ done') : C.y(`↻ needs revalidation — chalk start ${t.id.slice(0, 12)}`);
         else if (t.state === 'blocked') mark = C.y(t.block?.needs === 'review' ? '⊘ review-blocked (agent-owned)' : `⊘ blocked (needs ${t.block?.needs})`);
         else if (t.state === 'in-progress') mark = C.b('● wip');
         else if (open.length) mark = C.dim(`⧗ waiting on ${open.join(', ')}`);
@@ -634,6 +642,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     gitAdd(wd, paths);
     gitCommit(wd, already ? [subject] : [subject, t.issue?.number ? `Closes #${t.issue.number}` : '']);
     if (!already) t.pipeline = { ...(t.pipeline || {}), stage: 'committed', at: now() };
+    if (amendedPr(t)) t.pipeline = { ...(t.pipeline || {}), publicationInvalidated: t.specRevision };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'work-item-submitted', title: `Committed: ${subject}`, taskId: t.id });
     ok(`${already ? 'committed follow-up' : 'committed'} ${C.dim(`${paths.length} file(s)`)} — ${C.b(subject)}`);
@@ -647,7 +656,15 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // The idempotency guard needs a REAL PR, not just the stage rank: a stage fast-forwarded past
     // pr-open with no PR (the #102 pollution) must fall through and actually open one — reporting
     // "already open" with `PR #?` was a lie that stranded the task at the merge gate.
-    if (stageDone(t, 'pr-open') && t.pr?.number) {
+    if (t.pr?.number && (stageDone(t, 'pr-open') || amendedPr(t))) {
+      if (amendedPr(t)) {
+        const untracked = untrackedLockedTests(s, t);
+        if (untracked.length) die(`locked tests are not tracked — git add ${untracked.join(' ')} and run chalk commit`);
+        publishAmendedPr(s, t);
+        if (t.pipeline) delete t.pipeline.publicationInvalidated;
+        s.upsertTask(t);
+        console.log(C.dim('  pushed the amended contract commit to the existing PR'));
+      }
       // Back-compat: a PR opened before recordings existed has no `recorded` flag and `chalk pr`
       // used to no-op here — leaving it permanently stuck at the merge gate. Backfill it from the
       // committed diff so the merge can proceed.
@@ -695,7 +712,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   plan({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
-    if (stageDone(t, 'planned')) return ok(`plan ${C.dim('(already done)')}`);
+    if (stageDone(t, 'planned') && !t.pipeline?.planInvalidated) return ok(`plan ${C.dim('(already done)')}`);
     const profile = resolveAgentRole(s.protocol(), 'planner');
     if (!profile?.command) die('no planner configured (protocol.agents.roles.planner or protocol.planner.command).');
     const agentResult = runAgent('planner', { profile, cwd: workdir(s, t), context: buildContext(s, t), output: { kind: 'text' }, cost: { store: s, taskId: t.id } });
@@ -703,7 +720,8 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const planText = planOut.trim();
     if (!planText) die('planner produced no plan.');
     t.plan = planText.slice(0, 8000);
-    t.pipeline = { ...(t.pipeline || {}), stage: 'planned', at: now() };
+    t.pipeline = { ...(t.pipeline || {}), stage: stageDone(t, 'planned') ? t.pipeline.stage : 'planned', at: now() };
+    delete t.pipeline.planInvalidated;
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'planning-generated', title: `Planned: ${t.title}`, taskId: t.id });
     // Planning is the human checkpoint: record the planner's clarifying questions so a human can
@@ -753,7 +771,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
     // Surface what "done" means so the human accepts with eyes open, not blind.
     console.log(C.b(`Acceptance criteria for ${t.title}:`));
-    criteria.forEach((c, i) => console.log(`  ${i + 1}. ${c.text}`));
+    currentCriteria(t).forEach((c, i) => console.log(`  ${i + 1}. ${c.text}  (id: ${c.id})`));
     (t.tests || []).forEach((x) => console.log(C.dim(`  · locked test: ${x.path}`)));
     t.criteriaAccepted = { at: now(), by: flags.by || 'human' };
     s.upsertTask(t); syncBrowser(s);
@@ -764,7 +782,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   // Release stage — turn the merged, done work into a shipped release: a CHANGELOG entry + semver
   // bump (from the change types) + a git tag, marking each task `released` so it's idempotent.
   release({ flags }) {
-    const s = Store.open();
+    const store = Store.open();
+    const execute = s => {
+    // Throw through the transaction so every failure releases its lease.
+    const die = message => { throw new Error(message); };
     const tasks = releasableTasks(s);
     if (!tasks.length) return ok('release — nothing to ship (no done tasks awaiting release).');
 
@@ -822,6 +843,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         const v = orphan.v;
         // A post-interruption dry-run must preview the RESUME, not a double-bumped next version.
         if (flags['dry-run'] === true) return ok(`release ${C.b('v' + v)} ${C.dim(`(dry-run) — would RESUME the interrupted --commit release (tag the existing release commit); nothing written`)}`);
+        checkReleaseRecovery(s, v);
         if (promote) { resume = orphan; } // the release commit exists — skip rewriting, finish the promotion below
         else {
         if (wantTag) {
@@ -850,11 +872,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // fatal BEFORE anything is written or marked. With --commit the order flips — the release artifacts
     // are committed and the tag lands on that commit, so the tagged tree carries the bumped version —
     // and the collision is probed up front instead (same invariant: fail before anything is written).
-    if (wantTag && !withCommit) {
-      try { runGit(s.root, `tag -a v${version} -m ${shq('release v' + version)}`); tagged = true; }
-      catch (e) { die(`release: git tag v${version} failed — ${String(e.message || e).split('\n')[0]}.\n    Likely the tag already exists; bump past it (--version/--major/…) or re-run with --no-tag. Nothing was released.`); }
-    }
-    if (wantTag && withCommit && gitTry(s.root, `rev-parse --verify --quiet refs/tags/v${version}`) !== '') {
+    if (wantTag && gitTry(s.root, `rev-parse --verify --quiet refs/tags/v${version}`) !== '') {
       die(`release: tag v${version} already exists.\n    Bump past it (--version/--major/…) or re-run with --no-tag. Nothing was released.`);
     }
     // Promote keeps #93's collision safety too: a FRESH promote (not a resume) probes both the local
@@ -862,6 +880,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // written, not silently ship a vX.Y.Z pointing at the wrong commit.
     if (promote && !resume && (gitTry(s.root, `rev-parse --verify --quiet refs/tags/v${version}`) !== '' || gitTry(s.root, `ls-remote --tags origin refs/tags/v${version}`) !== '')) {
       die(`release --promote: tag v${version} already exists (locally or on origin).\n    Bump past it (--version/--major/…). Nothing was released.`);
+    }
+
+    if (!resume) recordReleaseContract(s, version, tasks);
+    if (wantTag && !withCommit) {
+      try { runGit(s.root, `tag -a v${version} -m ${shq('release v' + version)}`); tagged = true; }
+      catch (e) { die(`release: git tag v${version} failed — ${String(e.message || e).split('\n')[0]}.\n    Likely the tag already exists; bump past it (--version/--major/…) or re-run with --no-tag. Nothing was released.`); }
     }
 
     // CHANGELOG.md — keep the title line, prepend the new section above older ones. (Skipped when
@@ -956,13 +980,16 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     s.emitUpdate({ type: 'work-item-accepted', title: `Released v${version} (${tasks.length} change(s))` });
     console.log(notes.trimEnd());
     ok(`released ${C.b('v' + version)} ${C.dim(`— ${tasks.length} change(s), CHANGELOG updated${tagged ? `, tagged v${version}` : ''}`)}`);
+    };
+    if (flags['dry-run'] === true) return execute(store);
+    return withReleaseAdmission(store, execute);
   },
 
   // GitHub pipeline — start (if needed) + run the executor in the worktree + verify. exit 2 RED.
   work({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
-    if (stageDone(t, 'verified')) return ok(`work ${C.b(t.title)} ${C.dim('(already verified)')}`);
+    if (stageDone(t, 'verified') && !t.pipeline?.verificationInvalidated) return ok(`work ${C.b(t.title)} ${C.dim('(already verified)')}`);
     // Plan-approval gate (the human checkpoint): when planning is required, no code is written until a
     // human has approved the plan. Checked BEFORE the state flip so a refusal leaves no side effect.
     // Exit 2 → the pipeline auto-blocks (needs:human-input) + handoff.
@@ -1027,7 +1054,8 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.error(C.r('✗ ') + `weak tests — mutants survived in: ${mut.survived.join(', ')}. The suite doesn't pin this change; strengthen the assertions (or kill the mutants).`);
       process.exit(2);
     }
-    t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };
+    t.pipeline = { ...(t.pipeline || {}), stage: stageDone(t, 'verified') ? t.pipeline.stage : 'verified', at: now() };
+    delete t.pipeline.verificationInvalidated;
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Worked + verified: ${t.title}`, taskId: t.id });
     ok(`worked ${C.b(t.title)} — verify green ✓`);
@@ -1037,11 +1065,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   // verify green ∧ (if required) review pass ∧ (if required) held-out audit green.
   merge({ _ }) {
     const s = Store.open();
-    const t = mustTask(s, _[0]);
+    let t = mustTask(s, _[0]);
     const gh0 = s.protocol().github || {};
     // Idempotent on resume: if a prior run already merged + cleaned, don't re-run the gates against a
     // torn-down branch — just report done. (Guard precedes the in-progress check, which a done task fails.)
-    if (stageDone(t, 'cleaned')) return ok(`merge ${C.dim('(already done)')}`);
+    if (stageDone(t, 'cleaned') && completionCurrent(t)) return ok(`merge ${C.dim('(already done)')}`);
     // Must be in-progress: verify only checks integrity (P6) + e2e (P4) for in-progress tasks, so
     // merging a done/specd/blocked task would vacuously pass those gates. Require it explicitly.
     if (t.state !== 'in-progress') die(`merge requires an in-progress, verified task (this is [${t.state}]).`);
@@ -1049,7 +1077,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // Broke-check: did something break? Remote CI when the PR has it, else local verify. Replaces the
     // bare verify gate (its fallback IS local verify, so non-CI projects behave as before).
     const broke = brokeCheck(s, t);
-    if (broke.source === 'local') console.log(C.y('  ⚠ ') + C.dim('PR has no remote CI checks — merge safety used LOCAL verify.'));
+    if (broke.source === 'local') console.log(C.y('  ⚠ ') + C.dim(t.pipeline?.verificationInvalidated ? 'Specification amended — merge safety requires current LOCAL verification.' : 'PR has no remote CI checks — merge safety used LOCAL verify.'));
     const reviewReq = reviewRequiredNow(s, t);
     // If the review passed but the LGTM wasn't surfaced on the PR yet (review predated the PR, or a
     // gh hiccup), post it now so the gate can confirm a sign-off precedes the merge.
@@ -1061,24 +1089,48 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const blockers = mergeBlockers(s, t, { reviewRequired: reviewReq, broke });
     if (blockers.length) die(`GATE: cannot merge —\n  - ${blockers.join('\n  - ')}`);
     const reg = s.protocol().regression;
-    if (reg?.required && !(reg.lastAudit && reg.lastAudit.green)) die('GATE P7: held-out audit is not green — run `chalk audit`.');
-    try { runGh(workdir(s, t), gh0.command, `pr merge ${t.pr.number} --${gh0.mergeMethod || 'squash'} --delete-branch`); }
-    catch (e) {
-      // `--delete-branch` can fail (e.g. a worktree still holds the local branch) even though the
-      // squash-merge SUCCEEDED — don't die on that. Only fail if the PR didn't actually merge.
-      let merged = false;
-      try { merged = /MERGED/i.test(runGh(s.root, gh0.command, `pr view ${t.pr.number} --json state -q .state`)); } catch { /* gh down */ }
-      if (!merged) die(`gh pr merge failed: ${String(e.message).split('\n').slice(-2).join(' ')}`);
-    }
-    // Sync the primary base branch (best-effort) then tear down the worktree + local branch. A
-    // failure here is non-fatal (the remote is source of truth) but is surfaced, not swallowed.
+    if (reg?.required && !auditApprovalCurrent(s, reg.lastAudit)) die('GATE P7: audit is not green for the current specification — run `chalk audit`.');
+    const current = s.task(t.id);
+    if ((current.specRevision || 0) !== (t.specRevision || 0)) die('specification changed — reload context and retry merge');
+    const approvals = completionApprovalBlockers(s, current);
+    if (approvals.length) die(`cannot merge — ${approvals.join('; ')}`);
+    const publication = amendmentPublication(s, current);
+    if (!publication.ok) die(`cannot merge — ${publication.detail}`);
+    const cleanup = { worktree: t.worktree, branch: t.branch };
+    let resolvedN = 0;
+    // Publication can perform network I/O. Recheck under the same spine lock used
+    // by amendments, and hold it through the remote merge and accepted-state save.
+    // No nested upsertTask calls: mutateTasks persists the transaction atomically.
+    s.mutateTasks(tasks => {
+      const index = tasks.findIndex(task => task.id === t.id);
+      const current = tasks[index];
+      if (!current || current.state !== 'in-progress' || (current.specRevision || 0) !== (t.specRevision || 0)) throw new Error('specification changed before merge admission — reload context and retry chalk merge');
+      t = current; // Complete the freshly admitted task, not the pre-network snapshot.
+      const approvals = completionApprovalBlockers(s, t);
+      const blockers = mergeBlockers(s, t, { reviewRequired: reviewRequiredNow(s, t), broke });
+      if (approvals.length || blockers.length) throw new Error(`cannot merge — ${[...approvals, ...blockers].join('; ')}`);
+      const regression = s.protocol().regression;
+      if (regression?.required && !auditApprovalCurrent(s, regression.lastAudit)) throw new Error('GATE P7: audit is not green for the current specification — run chalk audit');
+      try { runGh(workdir(s, t), gh0.command, `pr merge ${t.pr.number} --${gh0.mergeMethod || 'squash'} --delete-branch`); }
+      catch (e) {
+        let merged = false;
+        try { merged = /MERGED/i.test(runGh(s.root, gh0.command, `pr view ${t.pr.number} --json state -q .state`)); } catch { /* provider unavailable */ }
+        if (!merged) throw new Error(`gh pr merge failed: ${String(e.message).split('\n').slice(-2).join(' ')}`);
+      }
+      t.worktree = undefined; t.state = 'done'; t.doneAt = now();
+      t.completedSpecRevision = t.specRevision || 0; delete t.completionInvalidated;
+      if (t.pipeline) { delete t.pipeline.verificationInvalidated; delete t.pipeline.publicationInvalidated; }
+      resolvedN = resolveDirectives(t);
+      t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
+      tasks[index] = t;
+      return tasks;
+    }, { protectOwner: true });
+    // Cleanup is best-effort and cannot overwrite an amendment arriving after the
+    // accepted merge. Use the original worktree refs, never save a stale snapshot.
     try { runGit(s.root, `checkout ${gh0.base || 'main'}`); runGit(s.root, 'pull --ff-only'); }
     catch { console.log(C.y(`  ⚠ couldn't fast-forward ${gh0.base || 'main'} locally — pull it manually (the remote is up to date).`)); }
-    worktreeRemove(s.root, { dir: t.worktree && t.worktree !== s.root ? t.worktree : undefined, branch: t.branch });
-    t.worktree = undefined; t.state = 'done'; t.doneAt = now();
-    const resolvedN = resolveDirectives(t); // #200: the pipeline rework landed — resolve (same helper as `done`)
-    t.pipeline = { ...(t.pipeline || {}), stage: 'cleaned', at: now() };
-    s.upsertTask(t); syncBrowser(s);
+    worktreeRemove(s.root, { dir: cleanup.worktree && cleanup.worktree !== s.root ? cleanup.worktree : undefined, branch: cleanup.branch });
+    syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Merged + cleaned: PR #${t.pr.number}`, taskId: t.id });
     ok(`merged ${C.b('#' + t.pr.number)} (${gh0.mergeMethod || 'squash'}) + cleaned up ✓${resolvedN ? C.dim(` · ${resolvedN} director correction(s) resolved`) : ''}`);
   },
@@ -1187,7 +1239,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (allTok) console.log(`  ${C.b('overhead share')} ${(100 * (allTok - workTok) / allTok).toFixed(0)}% ${C.dim(`(${fmtTok(allTok - workTok)} gate tokens vs ${fmtTok(workTok)} work tokens)`)}`);
     const byTask = {};
     for (const r of withTok) { if (r.taskId) byTask[r.taskId] = (byTask[r.taskId] || 0) + tok(r); }
-    const doneIds = new Set(s.tasks().filter((t) => t.state === 'done').map((t) => t.id));
+    const doneIds = new Set(s.tasks().filter(completionCurrent).map((t) => t.id));
     const perTask = Object.entries(byTask).sort((a, b) => b[1] - a[1]);
     for (const [id, n] of perTask.slice(0, 8)) console.log(`  ${C.dim(id.slice(0, 12).padEnd(13))} ${fmtTok(n).padStart(8)} tokens${doneIds.has(id) ? C.dim('  ✓ done') : ''}`);
     const acceptedTok = perTask.filter(([id]) => doneIds.has(id));
@@ -1234,7 +1286,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if (st.landing.overridden) console.log(`  overridden ${pct(st.landing.overridden, st.landing.done)} ${C.y('review gate overridden (--force-review)')}`);
     if (st.landing.unreviewed) console.log(`  unreviewed ${pct(st.landing.unreviewed, st.landing.done)} ${C.y('done without the review gate weighing in')}`);
     console.log(`  pipeline   ${pct(st.landing.pipelineLanded, st.landing.done)} ${C.dim('landed via PR + gated merge (rest hand-landed)')}`);
-    if (st.audit.green + st.audit.red) console.log(C.b('\n  held-out audit') + ` (P7)  ${st.audit.green} green / ${st.audit.red} red`);
+    if (st.audit.green + st.audit.red) console.log(C.b('\n  audits (configured checks)') + `  ${st.audit.green} green / ${st.audit.red} red`);
   },
 
   // Preflight readiness check for autonomous operation (read-only). Exits non-zero on any FAIL.
@@ -1412,7 +1464,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
             ? C.y(`  ⊘ review-blocked (agent-owned — fix findings, re-run \`chalk review\`): ${t.block.reason}`)
             : C.y(`  ⊘ needs ${t.block.needs}: ${t.block.reason}`))
           : C.dim(`(${(t.acceptanceCriteria || []).length} crit, ${(t.tests || []).length} test)`);
-        console.log(`  ${stateBadge(st)} ${C.dim(t.id.slice(0, 12))} ${t.title} ${meta}`);
+        console.log(`  ${st === 'done' && !completionCurrent(t) ? C.y('↻ needs revalidation') : stateBadge(st)} ${C.dim(t.id.slice(0, 12))} ${t.title} ${meta}`);
       }
     }
     console.log('\n' + C.b('Open questions') + ` ${openQ.length}`);
@@ -1479,18 +1531,32 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   spec({ _, flags }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
-    let changed = false;
-    for (const c of arr(flags.criterion)) { t.acceptanceCriteria.push({ text: String(c) }); changed = true; }
-    for (const p of arr(flags.test)) {
-      const lock = s.lockTest(resolve(process.cwd(), String(p)));
-      if (!t.tests.some((x) => x.path === lock.path)) t.tests.push(lock);
-      changed = true;
-      console.log(C.dim(`  locked ${lock.path} @ ${lock.sha256.slice(0, 12)}`));
-    }
-    for (const p of arr(flags['held-out'])) { if (!t.heldOut.includes(String(p))) t.heldOut.push(String(p)); changed = true; }
-    if (!changed) die('nothing to add — use --criterion "..." and/or --test <path>');
-    if (t.state === 'todo' && (t.acceptanceCriteria.length || t.tests.length)) t.state = 'specd';
-    s.upsertTask(t);
+    const operations = arr(flags.criterion).map(text => ({ type: 'add', text }));
+    const locks = arr(flags.test).map(p => {
+      if (typeof p !== 'string' || !p.trim()) die('--test requires a path');
+      return s.lockTest(resolve(process.cwd(), p));
+    });
+    let updated;
+    s.mutateTasks(tasks => {
+      const index = tasks.findIndex(task => task.id === t.id);
+      const current = tasks[index];
+      // `spec` may add a new test, but only amend-spec may replace an existing lock.
+      for (const lock of locks) if (!(current.tests || []).some(x => x.path === lock.path)) operations.push({ type: 'test', lock });
+      if (!operations.length && !arr(flags['held-out']).length) {
+        if (locks.length) { updated = current; return tasks; }
+        throw new Error('nothing to add — use --criterion "..." and/or --test <path>');
+      }
+      const needsReason = specificationEstablished(current) && (operations.some(op => op.type !== 'test') || current.criteriaAccepted || current.planApproved || current.reviews?.length);
+      if (operations.length && needsReason && !flags.why) throw new Error('established specification — use chalk amend-spec with --why (or chalk spec --why for additions)');
+      updated = operations.length ? reviseSpecification(current, operations, { why: flags.why || (specificationEstablished(current) ? 'Added initial acceptance tests during implementation' : 'Initial specification'), at: now(), kind: specificationEstablished(current) ? 'amendment' : 'initial' }) : structuredClone(current);
+      updated.heldOut ||= [];
+      for (const p of arr(flags['held-out'])) if (!updated.heldOut.includes(String(p))) updated.heldOut.push(String(p));
+      if (updated.state === 'todo' && (updated.acceptanceCriteria.length || updated.tests.length)) updated.state = 'specd';
+      tasks[index] = updated;
+      return tasks;
+    });
+    Object.assign(t, updated);
+    if (operations.length && updated.specRevisions.at(-1).kind === 'amendment') s.appendDecision({ title: `Amended specification for "${t.title}"`, why: updated.specRevisions.at(-1).why, taskId: t.id });
     syncBrowser(s);
     ok(`spec updated — ${t.title} ${C.dim(`[${t.state}] ${t.acceptanceCriteria.length} crit, ${t.tests.length} test`)}`);
   },
@@ -1501,7 +1567,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const t = mustTask(s, _[0]);
     const hasCriteria = (t.acceptanceCriteria || []).length || (t.tests || []).length;
     if (!hasCriteria) die(`GATE P1: task has no acceptance criteria. Add them first:\n    chalk spec ${t.id.slice(0, 12)} --criterion "..."  (or --test <path>)`);
-    if (t.state === 'done') die('task already done.');
+    if (completionCurrent(t)) die('task already done.');
     // One-at-a-time is now a hard gate (#110 slice 4), not a soft `chalk next` warning. Silently
     // allowing a second in-progress task (yesterday's behavior) then RED-ing verify's shared-cwd P6
     // check was the trap — the parallel machinery (per-worktree P6, spine-write safety, driver
@@ -1688,23 +1754,32 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const s = Store.open();
     const wip = s.tasks().find((t) => t.state === 'in-progress');
     const v = runVerify(s, { cwd: workdir(s, wip) });
+    const coverage = verificationCoverage(v);
+    s.emitUpdate({ title: `Verification ${v.green ? 'green' : 'red'} (task)`, taskId: wip?.id, verification: coverage });
     console.log(C.b('Verify') + (wip?.worktree ? C.dim(`  · in worktree ${wip.worktree}`) : '') + '\n');
     for (const r of v.toolchain) {
-      const tag = r.status === 'pass' ? C.g('pass') : r.status === 'fail' ? C.r('fail') : r.status === 'deferred' ? C.y('defer') : C.dim('skip');
+      const check = coverage.checks.find(check => check.kind === 'toolchain' && check.gate === r.gate);
+      const tag = checkTag(check.status);
       const note = r.status === 'deferred' ? C.dim(`  (${r.cmd})  ${C.y('runs at chalk audit')}`) : (r.cmd ? C.dim(`  (${r.cmd})`) : C.dim('  (not configured)'));
-      console.log(`  ${tag}  ${r.gate}${note}`);
+      console.log(`  ${tag}  ${r.gate}${note}${check.status !== check.outcome ? C.dim(` — command ${check.outcome}; inputs ${v.freshness}`) : ''}`);
       if (r.status === 'fail' && r.tail) console.log(r.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
     }
     if (v.integrity.length) {
       console.log('\n' + C.r('  test-integrity VIOLATED (P6):'));
       for (const i of v.integrity) for (const b of i.broken) console.log(`    ${C.r('✗')} ${b.path} changed under ${i.done ? C.y('DONE ') : ''}task ${i.taskId.slice(0, 12)}${i.done ? ` (${i.title.slice(0, 40)})` : ''} — use \`chalk amend-spec ${i.taskId.slice(0, 12)} --test ${b.path} --why "..."\``);
     }
-    for (const r of v.e2e || []) console.log(`  ${r.status === 'passed' ? C.g('pass') : C.r('fail')}  ${C.dim('e2e')} ${r.path} ${C.dim(`→ ${r.runDir}`)}`);
-    console.log('\n' + (v.green ? C.g('● GREEN — done gate is open') : C.r('● RED — done gate is closed')));
+    for (const [index, r] of (v.e2e || []).entries()) console.log(`  ${checkTag(coverage.checks.filter(check => check.kind === 'browser')[index].status)}  ${C.dim('e2e')} ${r.path} ${C.dim(`→ ${r.runDir}`)}`);
+    for (const check of coverage.checks.filter(check => check.kind === 'browser' && check.scope === 'command')) console.log(`  ${checkTag(check.status)}  ${check.gate} ${C.dim(`(recovered command ${check.outcome}; specification result unavailable)`)}`);
+    if (v.evidence) console.log(C.dim(`  verification record: ${v.evidence.path}`));
+    if (v.evidenceError) console.log(C.r(`  evidence error: ${v.evidenceError}`));
+    if (v.freshness !== 'fresh') console.log(C.r(`  verification inputs ${v.freshness} — resolve input/storage errors or source changes and re-run chalk verify`));
+    console.log(C.dim(`  executed checks: ${coverage.executedChecks}; visible test integrity: ${coverage.integrity}`));
+    console.log('\n' + (v.green ? C.g('● VERIFICATION GREEN') : C.r('● VERIFICATION RED')) + C.dim(' — review and release gates are evaluated separately'));
     // A green made of nothing is a trap, not a pass — label it every time it prints. An e2e spec
     // that actually RAN is a real check, so its green is not vacuous even with an empty toolchain.
-    if (v.green && v.toolchain.every((r) => r.status === 'skipped') && !(v.e2e || []).length) {
-      console.log(C.y('  ⚠ VACUOUS — no verify commands configured; this green checked NOTHING. Set protocol.verify.test in .chalk/chalk.json (or `chalk init --preset <stack>` on a fresh project).'));
+    if (v.green && !coverage.executedChecks) {
+      const reason = v.toolchain.every(r => r.status === 'skipped') && !(v.e2e || []).length ? 'no verify commands configured; ' : '';
+      console.log(C.y(`  ⚠ VACUOUS — ${reason}no executable checks ran. Integrity is reported separately. Configure task checks or run deferred checks with chalk audit.`));
     }
     if (!v.green) process.exit(2);
     // Funnel milestone: first GREEN verify (#154). Fire-and-forget — NOT awaited; the guarded POST rides
@@ -1723,11 +1798,15 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const t = mustTask(s, _[0]);
     if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
     const v = runVerify(s, { cwd: workdir(s, t) });
+    s.emitUpdate({ title: `Verification ${v.green ? 'green' : 'red'} (done)`, taskId: t.id, verification: verificationCoverage(v) });
+    if (v.evidence?.path) console.log(C.dim(`  verification record: ${v.evidence.path}`));
     if (!v.green) {
       const reasons = [];
       if (!v.toolchainGreen) reasons.push('toolchain not green (run `chalk verify`)');
       if (!v.integrityGreen) reasons.push('locked tests were modified (P6) — use `chalk amend-spec`');
       if (!v.e2eGreen) reasons.push('a browser-spec (e2e) check failed');
+      if (v.evidenceError) reasons.push(`verification evidence could not be saved: ${v.evidenceError}`);
+      if (v.freshness !== 'fresh') reasons.push(`verification inputs are ${v.freshness} — resolve source changes or unavailable inputs and re-run chalk verify`);
       die(`GATE P4+P6: cannot mark done — ${reasons.join('; ')}.`);
     }
     // GATE P6 (tracking) — a pinned test that isn't in git ships a vacuous green to CI (#107): the
@@ -1750,7 +1829,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         console.log(C.y('  ! review gate overridden (decision logged).'));
       }
     }
-    t.state = 'done'; t.doneAt = now();
+    const approvals = completionApprovalBlockers(s, s.task(t.id));
+    if (approvals.length) die(`cannot mark done — ${approvals.join('; ')}`);
+    if (t.pipeline) delete t.pipeline.verificationInvalidated;
+    t.state = 'done'; t.doneAt = now(); t.completedSpecRevision = t.specRevision || 0;
+    delete t.completionInvalidated;
     // #200: completing the task resolves any director corrections it was re-opened to address — the
     // rework landed, so the directive drops out of context (#199) and the loop closes.
     const resolvedN = resolveDirectives(t);
@@ -1763,30 +1846,44 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     void emitMilestone({ event: 'done', config: s.protocol().telemetry, env: process.env, stateFile: s.p.telemetry, version: CHALK_VERSION, now: now() });
   },
 
-  // P6 — the ONLY sanctioned path to change a locked acceptance test.
+  // P6 — sanctioned contract changes, with current criteria separate from history.
   'amend-spec'({ _, flags }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
+    const allowed = ['add', 'replace', 'retire', 'criterion', 'test', 'why', 'reason', 'history'];
+    for (const key of Object.keys(flags)) if (!allowed.includes(key)) die(`unknown amend-spec option --${key}`);
+    if (flags.history) {
+      if (Object.keys(flags).length !== 1) die('--history cannot be combined with mutations');
+      console.log(JSON.stringify({ taskId: t.id, revision: t.specRevision || 0, revisions: t.specRevisions || [] }, null, 2));
+      return;
+    }
     const why = flags.why || flags.reason;
-    if (!flags.test) die('usage: chalk amend-spec <id> --test <path> --why "<reason>"');
-    if (!why) die('amend-spec requires --why "<reason>" (the change is logged as a decision).');
+    if (typeof why !== 'string' || !why.trim()) die('amend-spec requires --why "<reason>" (the change is logged as a decision).');
+    const operations = arr(flags.add).map(text => ({ type: 'add', text }));
+    if (flags.replace !== undefined) {
+      if (typeof flags.replace !== 'string' || typeof flags.criterion !== 'string') die('--replace <criterion-id> requires one --criterion "<new text>"');
+      operations.push({ type: 'replace', id: flags.replace, text: flags.criterion });
+    } else if (flags.criterion !== undefined) die('use --add "<text>" or --replace <id> --criterion "<text>"');
+    for (const id of arr(flags.retire)) {
+      if (typeof id !== 'string') die('--retire requires a criterion ID');
+      operations.push({ type: 'retire', id });
+    }
     for (const p of arr(flags.test)) {
-      const lock = s.lockTest(resolve(process.cwd(), String(p)));
-      const i = t.tests.findIndex((x) => x.path === lock.path);
-      if (i >= 0) t.tests[i] = lock; else t.tests.push(lock);
-      console.log(C.dim(`  re-locked ${lock.path} @ ${lock.sha256.slice(0, 12)}`));
+      if (typeof p !== 'string' || !p.trim()) die('--test requires a path');
+      operations.push({ type: 'test', lock: s.lockTest(resolve(process.cwd(), p)) });
     }
-    // A changed locked test INVALIDATES a prior passing review: the adversary approved a different test, so
-    // that verdict is stale. Mark it (a non-'pass' last verdict) so `done`/merge require a fresh review —
-    // closing the bypass "get a pass, then weaken the locked test, then merge on the stale approval" (P5/P6).
-    const lastReview = (t.reviews || []).slice(-1)[0];
-    if (lastReview && lastReview.verdict === 'pass') {
-      t.reviews.push({ at: now(), by: 'amend-spec', verdict: 'stale', note: 'locked test amended after review — re-review required' });
-      console.log(C.y('  ! prior passing review invalidated — re-review required before done.'));
-    }
-    s.upsertTask(t);
-    s.appendDecision({ title: `Amended acceptance test for "${t.title}"`, why: String(why) });
-    ok('spec amended + decision logged.');
+    if (!operations.length) die('usage: chalk amend-spec <id> --add "..." | --replace <id> --criterion "..." | --retire <id> | --test <path> --why "..."');
+    let updated;
+    s.mutateTasks(tasks => {
+      const index = tasks.findIndex(task => task.id === t.id);
+      updated = reviseSpecification(tasks[index], operations, { why, at: now() });
+      tasks[index] = updated;
+      return tasks;
+    });
+    s.appendDecision({ title: `Amended specification for "${t.title}"`, why: why.trim(), taskId: t.id });
+    syncBrowser(s);
+    for (const op of operations) if (op.type === 'test') console.log(C.dim(`  re-locked ${op.lock.path} @ ${op.lock.sha256.slice(0, 12)}`));
+    ok(`spec amended + decision logged — revision ${updated.specRevision}; prior contract approvals invalidated.`);
   },
 
   // P5 — adversarial review. Runs the configured reviewer; if none, records a manual note.
@@ -1823,11 +1920,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
 
     console.log(C.dim('  running adversarial reviewer…'));
     let r = runReview(s, t);
+    const readOnlyFailure = result => result.diagnostics?.find(diagnostic => diagnostic.code === 'read-only-mutation');
     // No diff to review → abort loudly (#151). Not a transient flake, so no retry: a PASS over an empty
     // change set is a vacuous certification. Records NO review and exits non-zero so the gate can't be
     // cleared on nothing — the pipeline then auto-blocks the task rather than merging it.
     if (r.status === 'no-diff') die('review ABORTED — no diff captured: the change set is EMPTY, so the reviewer would grade nothing.\n  Check protocol.github.base and that the branch has committed changes (or that you are in the task worktree).');
-    if (r.status === 'error' && !flags['no-retry']) {
+    if (r.status === 'error' && !readOnlyFailure(r) && !flags['no-retry']) {
       // A transient reviewer failure — a dropped/truncated response or a momentary bad parse — is not a
       // verdict, so retry once so a flake doesn't sink the review; only a SECOND consecutive error is fatal.
       // The pipeline passes --no-retry: it retries the whole review STAGE itself, so an inner retry would
@@ -1835,8 +1933,13 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.log(C.dim('  reviewer returned no valid verdict — retrying once…'));
       r = runReview(s, t);
     }
-    if (r.status === 'error') die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
-    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [] });
+    if (r.status === 'error') {
+      const refusal = readOnlyFailure(r);
+      if (refusal) die(`reviewer violated the read-only workspace contract: ${String(refusal.message).slice(0, 1200)}\n  No verdict was accepted. Run state-writing review checks in an isolated fixture; do not bypass the read-only guard.`);
+      die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
+    }
+    if ((s.task(t.id)?.specRevision || 0) !== (t.specRevision || 0)) die('specification changed during review — reload context and run chalk review again; no verdict was accepted or posted');
+    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [], specRevision: t.specRevision || 0 });
     // Same pipeline-order rule as the manual path above (#102): the verdict is recorded either way —
     // the done/merge gates read t.reviews — but the stage only advances when the PR already exists.
     if (r.verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
@@ -1904,18 +2007,27 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   audit() {
     const s = Store.open();
     const r = runAudit(s);
+    const coverage = auditCoverage(r);
     console.log(C.b('Audit · held-out regression'));
     for (const p of r.broken) console.log(`  ${C.r('✗ integrity')} ${p} ${C.dim('— held-out test modified (P7 violation)')}`);
-    if (r.status === 'unconfigured') console.log(C.dim('  no regression.command configured — integrity check only.'));
+    if (r.status === 'unconfigured') console.log(C.dim('  unconfigured — no held-out command ran; no independent regression coverage.'));
     else console.log('  ' + (r.passed ? C.g('held-out checks PASS') : C.r('held-out checks FAIL')) + C.dim('  (output withheld — fix against the spec, not the hidden tests)'));
-    const phaseRun = (r.phaseGates || []).filter((g) => g.status !== 'skipped' && g.status !== 'deferred');
+    console.log(C.dim(`  held-out scope: ${coverage.heldOut.lockedFiles} locked file(s); author independence and assertion coverage are not established by command execution`));
+    const phaseRun = r.phaseGates || [];
     if (phaseRun.length) {
       console.log('\n' + C.b('Audit · phase-boundary toolchain gates'));
       for (const g of phaseRun) {
-        console.log(`  ${g.status === 'pass' ? C.g('pass') : C.r('fail')}  ${g.gate}${C.dim(`  (${g.cmd})`)}`);
+        const check = coverage.phase.checks.find(check => check.kind === 'toolchain' && check.gate === g.gate);
+        console.log(`  ${checkTag(check.status)}  ${g.gate}${C.dim(g.cmd ? `  (${g.cmd})` : '  (not configured)')}${check.status !== check.outcome ? C.dim(` — command ${check.outcome}; inputs ${r.phaseVerification.freshness}`) : ''}`);
         if (g.status === 'fail' && g.tail) console.log(g.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
       }
     }
+    for (const check of coverage.phase.checks.filter(check => check.kind === 'browser')) console.log(`  ${checkTag(check.status)}  ${check.gate} ${C.dim(check.scope === 'command' ? `(recovered command ${check.outcome}; specification result unavailable)` : '(browser specification)')}`);
+    console.log(C.dim(`  phase executed checks: ${coverage.phase.executedChecks}; visible test integrity: ${coverage.phase.integrity}`));
+    if (!coverage.phase.executedChecks) console.log(C.y('  phase verification: no executable checks ran'));
+    if (r.phaseVerification?.evidence) console.log(C.dim(`  phase verification record: ${r.phaseVerification.evidence.path}`));
+    if (r.phaseVerification?.evidenceError) console.log(C.r(`  phase evidence error: ${r.phaseVerification.evidenceError}`));
+    if (r.phaseVerification && r.phaseVerification.freshness !== 'fresh') console.log(C.r(`  phase verification inputs ${r.phaseVerification.freshness} — resolve input changes or unavailable monitoring and re-run chalk audit`));
     console.log(C.dim(`  code size: ${r.size.loc} LOC across ${r.size.files} file(s)`));
     // P7 stringency scales with code size (SpecBench): warn (non-fatal — audit is about correctness) when
     // the held-out set has not grown with the code. The `phase` gate turns this into a refusal.
@@ -1925,10 +2037,11 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const m = s.meta();
     m.protocol = m.protocol || {};
     const reg = m.protocol.regression = m.protocol.regression || {};
-    reg.lastAudit = { at: now(), green: r.green, size: r.size, count: (reg.tests || []).length };
+    reg.lastAudit = { at: now(), green: r.green, size: r.size, count: r.heldOutCount, coverage, specificationDigest: r.specificationDigest };
+    if (r.specificationChanged) console.log(C.r('  specification changed during audit — run chalk audit again'));
     s.saveMeta(m);
-    s.emitUpdate({ type: 'progress-update', title: AUDIT_TITLE(r.green) });
-    console.log('\n' + (r.green ? C.g('● AUDIT GREEN') : C.r('● AUDIT RED — phase gate closed')));
+    s.emitUpdate({ type: 'progress-update', title: AUDIT_TITLE(r.green), audit: coverage });
+    console.log('\n' + (r.green ? C.g('● AUDIT GREEN — configured audit checks passed') : C.r('● AUDIT RED — configured audit checks failed')) + C.dim('; phase admission is evaluated separately'));
     process.exit(r.green ? 0 : 2);
   },
 
@@ -1937,12 +2050,15 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const p = _[0];
     if (!p) die(`usage: chalk phase <${PHASES.join('|')}>`);
     if (!PHASES.includes(p)) console.log(C.y(`! "${p}" is not a standard phase (${PHASES.join(', ')}) — setting anyway.`));
+    s.withLock(() => {
+    // Throw through the transaction so every refusal releases its lease.
+    const die = message => { throw new Error(message); };
     // GATE P7 — advancing a phase requires a fresh green held-out audit (size-aware).
     const reg = s.protocol().regression;
     if (reg?.required) {
       const la = reg.lastAudit;
       const size = codeSize(s.root);
-      const changed = la && la.size && la.size.loc !== size.loc;
+      const changed = (la && la.size && la.size.loc !== size.loc) || (la?.green && !auditApprovalCurrent(s, la));
       // P7 stringency scales with code size (SpecBench): the held-out set must GROW with the code, so a set
       // below the size floor blocks advance even when the audit is green — the oracle has decayed.
       const floor = heldOutFloor(size.loc, reg.locPerTest);
@@ -1950,7 +2066,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (!la || !la.green || changed || understaffed) {
         if (!flags['force-audit']) {
           const msg = (!la || !la.green || changed)
-            ? `run a green \`chalk audit\` before advancing phase (${!la ? 'never audited' : !la.green ? 'last audit was RED' : 'code changed since last audit'})`
+            ? `run a green \`chalk audit\` before advancing phase (${!la ? 'never audited' : !la.green ? 'last audit was RED' : 'code or specification changed since last audit'})`
             : `held-out set too small for ${size.loc} LOC — need ≥${floor} held-out test(s), have ${reg.tests?.length || 0}; P7 stringency scales with code size (author more via \`chalk guard\`)`;
           die(`GATE P7: ${msg}.\n    To override (logged): chalk phase ${p} --force-audit --why "..."`);
         }
@@ -1970,6 +2086,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       }
     }
     s.setPhase(p);
+    }, { protectOwner: true });
     s.emitUpdate({ type: 'progress-update', title: `Phase → ${p}` });
     ok(`phase → ${C.b(p)}`);
   },
@@ -2349,6 +2466,8 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk review <id>                    ${C.dim('GATE P5: adversarial reviewer; cadence via review.requiredAt (per-task|milestone-boundary|phase-advance)')}
   chalk done <id> [--force-review --why "..."]   ${C.dim('GATE P4+P6(+P5): verify green, locks intact, review passed')}
   chalk amend-spec <id> --test <path> --why "..."   ${C.dim('gated test change (P6)')}
+  chalk amend-spec <id> --add "..." | --replace <ac-id> --criterion "..." | --retire <ac-id> --why "..."
+  chalk amend-spec <id> --history                 ${C.dim('retained definitions and reasons')}
   chalk block <id> --needs <creds|decision|human-input|upstream|review> --reason "..."   ${C.dim('park; keep the run moving')}
   chalk unblock <id>                   ${C.dim('restore a blocked task to its prior state')}
   chalk handoff <id> [--note "..."]    ${C.dim('write a handoff doc for a fresh session to pick up')}

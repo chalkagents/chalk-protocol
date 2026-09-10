@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { spawnSync, execSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -29,15 +29,16 @@ test('REVIEW_DIFF_EXCLUDES — spine state is excluded, contract artifacts are n
   assert.doesNotMatch(joined, /\.chalk\/evidence/, '.chalk/evidence/ stays visible');
 });
 
-test('chalk review — the reviewer prompt carries the code + the .chalk/tests spec, NOT spine churn', () => {
-  const d = mkdtempSync(join(tmpdir(), 'chalk-diffscope-'));
+test('chalk review — the reviewer prompt carries the code + the .chalk/tests spec, NOT spine churn', (t) => {
+  const top = mkdtempSync(join(tmpdir(), 'chalk-diffscope-')), d = join(top, 'app');
+  mkdirSync(d); t.after(() => rmSync(top, { recursive: true, force: true }));
   execSync('git init -q -b main', { cwd: d });
   execSync('git config user.email t@t.t && git config user.name t', { cwd: d });
   chalk(d, 'init', '--name', 'p');
   execSync('git add -A && git commit -q -m init', { cwd: d });
 
   // A stub reviewer that records the prompt it received (stdin) to a file, then passes.
-  const promptFile = join(d, 'seen-prompt.txt');
+  const promptFile = join(top, 'seen-prompt.txt');
   writeFileSync(join(d, 'rev.mjs'), `import {readFileSync,writeFileSync} from 'node:fs';
     let s=''; try{s=readFileSync(0,'utf8')}catch{} writeFileSync(${JSON.stringify(promptFile)}, s);
     console.log(JSON.stringify({verdict:'pass',findings:[]}));`);

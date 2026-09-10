@@ -89,6 +89,10 @@ The P4 toolchain gates, `{ test, typecheck, lint, build }` — each a command st
 every `chalk verify`. **`verify.test` is the one practically-required key**: with everything empty,
 verify prints GREEN with a `⚠ VACUOUS` label. Presets fill this (`chalk init` auto-detects; or
 `--preset node|flutter|dart|python|go`, `--verify-test "<cmd>"`).
+Deferred-only runs also report that no executable checks ran. Verification GREEN
+does not open review or release gates. CLI output and local events distinguish
+execution results from stale or unknown input identity; see
+[verification evidence and coverage](verification-evidence.md#coverage-and-adoption).
 
 ### `review`
 
@@ -106,6 +110,9 @@ tests, locPerTest, lastAudit }`. `chalk audit` runs `command` with output withhe
 only); `required: true` gates `chalk phase`. `dir` defaults to `.chalk/held-out` — gitignore it
 (doctor FAILS if it's git-tracked; a worktree checkout would leak it). The stringency floor scales
 with code size (`locPerTest`, default 2000).
+Audit results retain separate phase-verification and held-out-command scope in
+`lastAudit.coverage`. With no held-out command configured, an audit provides no
+independent regression coverage even when its configured phase checks pass.
 
 ### `planner`
 
@@ -123,6 +130,10 @@ with code size (`locPerTest`, default 2000).
 human runs `chalk align <id>` to accept the task's acceptance criteria as the definition of *done* —
 before any code is built. Where `plan.required` gates the approach, this gates the framing of *done*
 (the empty-middle misalignment in #160). Default false.
+
+Sanctioned criteria and locked-test amendments invalidate task alignment, plan
+approval and passing review. See [specification revisions](spec-revisions.md) for
+stable criterion IDs, add/replace/retire commands and retained history.
 
 ### `executor`
 
