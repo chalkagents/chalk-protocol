@@ -204,7 +204,8 @@ identity. This attachment changes no completion gate, and `done` still verifies.
 
 New PR descriptions use the same receipt selection and freshness checks as reviews.
 Both show each command's recorded start, finish and elapsed milliseconds, plus the
-recorded source fingerprint. A command that finished successfully can be shown as
+recorded source fingerprint. Accepted time values are normalized to UTC ISO timestamps;
+comments embedded in date strings are not published. A command that finished successfully can be shown as
 passed while its overall receipt remains incomplete. Running commands have no
 completed duration. This does not repair an interrupted receipt or certify that its
 final integrity and observation checks finished.

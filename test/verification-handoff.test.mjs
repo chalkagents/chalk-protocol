@@ -95,8 +95,29 @@ test('PR projection is bounded, discloses omissions and keeps untrusted text ins
   assert.ok(body.length <= PR_EVIDENCE_LIMIT); assert.equal(data.commands.length, 8); assert.equal(data.omittedCommands, 32);
   assert.equal((body.match(/```/g) || []).length, 2);
   assert.doesNotMatch(body, /PRIVATE_COMMAND|\/private\/log/);
+  assert.doesNotMatch(body, /Injected heading/); assert.equal(data.commands[0].gate, 'browser');
   const oversized = formatPrEvidence({ state: 'unknown', sourceFingerprint: 'x'.repeat(PR_EVIDENCE_LIMIT * 2) });
   assert.ok(oversized.length <= PR_EVIDENCE_LIMIT); assert.equal(payload(oversized).state, 'unavailable');
+});
+
+test('accepted date comments cannot publish private paths or environment values', t => {
+  const { root, store, task } = fixture(t), result = verify(store);
+  assert.equal(result.green, true);
+  const record = JSON.parse(fs.readFileSync(result.evidence.path, 'utf8'));
+  const decorate = value => new Date(value).toUTCString() + ' (/Users/private/api.env API_KEY=PRIVATE_SENTINEL)';
+  for (const item of [record, ...record.toolchain.filter(command => command.startedAt)]) {
+    item.startedAt = decorate(item.startedAt); item.finishedAt = decorate(item.finishedAt);
+  }
+  fs.writeFileSync(result.evidence.path, JSON.stringify(record));
+  const local = reviewEvidence(store, task), body = pr(store, task), published = payload(body);
+  assert.equal(published.state, 'current'); assert.equal(published.recordedGreen, true);
+  for (const item of [published, ...published.commands.filter(command => command.startedAt)]) {
+    assert.equal(item.startedAt, new Date(item.startedAt).toISOString());
+    assert.equal(item.finishedAt, new Date(item.finishedAt).toISOString());
+  }
+  assert.equal(local.startedAt, published.startedAt);
+  assert.doesNotMatch(body, /PRIVATE_SENTINEL|API_KEY|\/Users\/private|api\.env/);
+  assert.equal(fs.readFileSync(join(root, '.chalk/local/counter'), 'utf8'), '1');
 });
 
 for (const changed of ['source', 'configuration', 'spec']) test(`PR evidence retains ${changed} staleness`, t => {
