@@ -2004,3 +2004,53 @@
 
 - _when:_ 2026-09-10T06:11:47.043Z
 - _why:_ Re-lock the passing timestamp-comment privacy regression and known-command-label projection checks. All 32 focused evidence/PR tests passed after the first Codex finding. The user has been given the 30-minute checkpoint and remaining gate estimate; no fresh full-suite or review PASS is claimed for this correction.
+
+## Implement a single-process finish workflow before cross-command verification reuse
+
+- _when:_ 2026-09-10T08:29:39.620Z
+- _why:_ Existing runDriver already retains an actual verification result through review and completion. Extending it to active work removes the separate done rerun without introducing trust in editable receipt files or claiming complete external SDK identity. User authorized the efficiency work; proceeding with the recommended bounded scope after offering the alternative. Task-d54a02bf remains specd for full cross-command reuse; six historical amended contracts retain pending revalidation.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T08:40:33.894Z
+- _why:_ Added initial acceptance tests during implementation
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T08:59:23.555Z
+- _why:_ Add regressions for reviewer findings: inconclusive configured adequacy probes must block finish, and probe/forced-verification reruns must retain the initial semantic contract even without a revision increment. Preserve all existing assertions and re-lock final bytes after validation.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:03:28.486Z
+- _why:_ Lock the validated review-fix regressions: inconclusive break-it and mutation tools block, a mutation cannot replace the initial contract without a revision bump, and successful probes can restore source and complete after fresh verification. All 51 finish/protocol tests passed.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:23:55.009Z
+- _why:_ Add second-review regressions for mandatory review policy changed during probes and committed implementation bypassing working-tree adequacy helpers. Bind the initial completion policy; reject unsupported committed probe scope before gates, preserving current assertions.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:26:43.621Z
+- _why:_ Lock validated policy and probe-scope regressions. All 56 finish/protocol checks passed, including mandatory review-policy tampering, committed and mixed implementation scope refusal before execution, and bookkeeping-only commit compatibility.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:43:26.859Z
+- _why:_ Add the third review reproduction: removing a task milestone during adequacy probes must not erase the initially required milestone-boundary review. Preserve initial review necessity throughout verification, probes and final admission.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:46:29.335Z
+- _why:_ Lock the validated initial-gate regressions: milestone-boundary review remains mandatory after milestone removal for both PASS and BLOCK verdicts, and deleting a dependency cannot hide an initially complete prerequisite reopening. All 59 finish/protocol tests passed.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T10:04:29.169Z
+- _why:_ Add regressions for final open-raise admission and configured break-it skipping without a runnable locked code test. Audit and recheck mutable entry requirements at final admission; preserve all existing positive and negative assertions.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T10:10:20.708Z
+- _why:_ Lock the completed entry-to-admission audit regressions: open director forks, unsupported configured probe skips, cannot-execute status, new directives, moved review base and removed required tests. All 67 finish/protocol tests passed with zero failures or skips.

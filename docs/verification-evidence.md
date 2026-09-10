@@ -168,6 +168,61 @@ work. `done` continues to run verification. Within a run, changes to task/config
 authority files conservatively invalidate the result, including unrelated concurrent
 bookkeeping; later reuse must compare the relevant semantic inputs instead.
 
+## Finish already implemented work
+
+For an already started task, use the existing run driver without invoking an executor:
+
+```sh
+chalk run --finish <id> --dry-run
+chalk run --finish <id>
+```
+
+Finish selects only that in-progress task. It displays the execution directory, actual
+branch and task base, verifies prerequisites, and runs fresh verification, configured
+test-adequacy checks, required adversarial review and serialized completion admission.
+It preserves the original start time and implementation-attempt count. No executor
+configuration is needed. Stage newly locked tests before running it.
+
+An unchanged finish normally runs the configured verification commands once. The
+driver retains the actual result in memory and rechecks source/specification/configuration
+approval, current review, visible locks, tracking and retained evidence at completion.
+It does not load an earlier receipt to authorize completion. Missing or changed output
+or receipt bytes block admission, including observed writes that restore the original
+bytes. A failed gate leaves the task unfinished with a recorded reason. Review BLOCKs
+and diagnostics are displayed; this mode does not retry a reviewer automatically.
+Configured adequacy probes that cannot execute block finish as inconclusive. The
+initial semantic verification approval remains binding across probes and reruns;
+changing criteria without incrementing a revision cannot replace the original contract.
+The initial review/completion policy is bound too, so a probe cannot disable mandatory
+review or other completion requirements. A review required when finish starts remains
+required even if milestone membership changes later; initial prerequisites must still
+be complete at admission, even if their dependency edges are subsequently removed.
+Unanswered director forks and required test presence are checked again at final
+admission. New director instructions or a moved review base require a fresh finish
+invocation; newly arrived instructions cannot be marked resolved as earlier work.
+The existing adequacy helpers operate on
+uncommitted implementation changes from HEAD. If configured probes cannot cover the
+task's committed implementation changes, finish refuses that scope before verification;
+it does not silently skip them. Bookkeeping-only commits do not trigger this refusal.
+Projects using those probes should run them before committing implementation changes;
+support for probing arbitrary committed task deltas remains separate work.
+Configured probes must produce evidence when implementation changes require coverage:
+missing runnable code locks, unsupported skips and cannot-execute outcomes block finish.
+
+`--force-rerun` requests a second verification after review. Adequacy probes that alter
+the tree also retain the existing verification after restoration. Every new invocation
+starts fresh: interrupted finish runs cannot resume from an editable receipt. After
+fixing a blocked task, use `chalk start <id>` and run finish again. The command prints
+verification and review durations, completion-check duration and local receipt paths.
+It cannot be combined with queue controls `--max` or `--until`.
+
+This extends the existing single-process driver; it is **not cross-command verification
+reuse**. Separate `chalk verify`, `chalk review` and `chalk done` commands still work,
+and `done` still verifies. Full identity for external SDKs, dependency installations
+and relevant environment inputs remains future work. Where those can change during
+review, use `--force-rerun`. Finish does not merge, deploy, publish a release or claim
+device QA; an existing task PR retains the driver's existing review-posting behavior.
+
 ## Review attachment
 
 `chalk review` automatically supplies a bounded summary of the newest local receipt
