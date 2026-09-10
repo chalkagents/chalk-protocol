@@ -177,3 +177,43 @@ test('successful adequacy probes retain restoration verification and can finish'
   assert.equal(f.count('checks'), 2, 'verify again after restoration'); assert.equal(f.count('reviews'), 1);
   assert.equal(f.store.task(f.task.id).state, 'done');
 });
+
+test('mutation cannot disable mandatory review through a completion-policy change', t => {
+  const f = fixture(t, { git: true }), script = join(f.parent, 'disable-review.cjs');
+  fs.writeFileSync(script, `const fs=require('fs');const p='.chalk/chalk.json';const m=JSON.parse(fs.readFileSync(p));m.protocol.review.required=false;fs.writeFileSync(p,JSON.stringify(m));`);
+  const meta = f.store.meta(); meta.protocol.mutation = `node '${script}' {file}`; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /initial review\/completion policy changed/);
+  assert.equal(f.count('checks'), 1); assert.equal(f.count('reviews'), 0);
+  assert.notEqual(f.store.task(f.task.id).state, 'done');
+});
+
+for (const gate of ['breakTest', 'mutation']) test(`finish refuses committed implementation outside ${gate} probe scope before verification`, t => {
+  const f = fixture(t, { git: true }), meta = f.store.meta();
+  meta.protocol[gate] = `node -e "process.exit(${gate === 'breakTest' ? 0 : 1})"`; f.store.saveMeta(meta);
+  execFileSync('git', ['add', 'source.txt'], { cwd: f.root });
+  execFileSync('git', ['commit', '-qm', 'committed implementation'], { cwd: f.root });
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /committed implementation changes.*probe scope/);
+  assert.equal(f.count('checks'), 0); assert.equal(f.count('reviews'), 0);
+  assert.notEqual(f.store.task(f.task.id).state, 'done');
+});
+
+test('mixed committed and working implementation cannot disguise unsupported probe scope', t => {
+  const f = fixture(t, { git: true }), meta = f.store.meta();
+  meta.protocol.mutation = 'node -e "process.exit(0)"'; f.store.saveMeta(meta);
+  execFileSync('git', ['add', 'source.txt'], { cwd: f.root });
+  execFileSync('git', ['commit', '-qm', 'partial implementation'], { cwd: f.root });
+  fs.appendFileSync(join(f.root, 'source.txt'), 'more work\n');
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /committed implementation changes.*probe scope/); assert.equal(f.count('checks'), 0);
+});
+
+test('bookkeeping-only commits do not prevent valid working-tree adequacy probes', t => {
+  const f = fixture(t, { git: true }), meta = f.store.meta();
+  meta.protocol.mutation = 'node -e "process.exit(0)"'; f.store.saveMeta(meta);
+  execFileSync('git', ['add', '.chalk/tasks.json'], { cwd: f.root });
+  execFileSync('git', ['commit', '-qm', 'task bookkeeping'], { cwd: f.root });
+  const result = f.finish(); assert.equal(result.status, 0, output(result));
+  assert.equal(f.count('checks'), 2); assert.equal(f.count('reviews'), 1);
+});

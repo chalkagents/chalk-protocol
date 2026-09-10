@@ -193,6 +193,13 @@ and diagnostics are displayed; this mode does not retry a reviewer automatically
 Configured adequacy probes that cannot execute block finish as inconclusive. The
 initial semantic verification approval remains binding across probes and reruns;
 changing criteria without incrementing a revision cannot replace the original contract.
+The initial review/completion policy is bound too, so a probe cannot disable mandatory
+review or other completion requirements. The existing adequacy helpers operate on
+uncommitted implementation changes from HEAD. If configured probes cannot cover the
+task's committed implementation changes, finish refuses that scope before verification;
+it does not silently skip them. Bookkeeping-only commits do not trigger this refusal.
+Projects using those probes should run them before committing implementation changes;
+support for probing arbitrary committed task deltas remains separate work.
 
 `--force-rerun` requests a second verification after review. Adequacy probes that alter
 the tree also retain the existing verification after restoration. Every new invocation
