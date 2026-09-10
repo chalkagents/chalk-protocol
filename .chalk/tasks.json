@@ -25985,7 +25985,7 @@
   {
     "id": "task-96da0ef1",
     "title": "fix: validate deterministic review inputs before invoking the reviewer",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "id": "ac-1",
@@ -26698,6 +26698,101 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "specification revision 22: Address seventh review: preserve literal POSIX backslashes in protected directory exclusions. Add direct configured-path and canonical symlink-target regressions using empty disposable placeholders; keep all existing assertions. — re-review required"
+      },
+      {
+        "at": "2026-09-10T07:12:39.460Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [],
+        "decisions": [
+          {
+            "choice": "Pin immutable task bases and persist uniquely resolved legacy bases.",
+            "rationale": "Keeps review scope stable as branches advance; existing tasks can explicitly select their starting commit.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Reject partially staged files, submodules, hiding index flags and unsupported Git transformations.",
+            "rationale": "Prevents incomplete review inputs, at the cost of requiring users to reconcile or simplify some Git workflows.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Preserve approval when identical reviewed bytes are staged or committed.",
+            "rationale": "Binds approval to effective content and the pinned base while retaining the original execution manifest.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Keep the 600000 ms default and configure this repository’s complete suite for 900000 ms.",
+            "rationale": "Allows the full workload to finish while retaining validated, recorded deadlines and failure on timeout.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Run publication lock probes in the scheduler’s serial batch.",
+            "rationale": "Reduces process contention without removing discovered tests or weakening assertions.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Publish bounded verification summaries in PR descriptions.",
+            "rationale": "Replaces unsupported green-run claims with recorded outcomes and timings while withholding command strings, local paths and raw logs.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ],
+        "specRevision": 25,
+        "approval": {
+          "version": 1,
+          "kind": "review",
+          "status": "known",
+          "specification": "c6d051dada15c02c91212392e11ad2ea914a9ac69f1567af368394aca4417a89",
+          "configuration": "c41600540950181193ca07be846b6eec37179a33cab7a8e96532115491216b5b",
+          "source": "62943d3191c7c08fdefcf2a46ae0c0a3ed66f49426ee90d8dd5b7e981235c527",
+          "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+          "runtime": "6355f6277073874f21ca544e03b9c668bad550658ec41d011230233f5c9844de"
+        },
+        "inputs": {
+          "version": 1,
+          "mode": "git",
+          "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+          "branch": "feat/verification-evidence-handoff",
+          "base": "0b98f2e6e674799264135e21c4e5f269dd4b356d",
+          "head": "5dd38a9efc7e0df38dcb6da8b832c80b4ad420a0",
+          "files": [
+            ".chalk/docs/OKADA_API_REVIEW_RETROSPECTIVE.md",
+            "bin/chalk.mjs",
+            "docs/CONFIG.md",
+            "docs/review-inputs.md",
+            "docs/verification-evidence.md",
+            "lib/approval-inputs.mjs",
+            "lib/config.mjs",
+            "lib/prbody.mjs",
+            "lib/review-evidence.mjs",
+            "lib/review-inputs.mjs",
+            "lib/review.mjs",
+            "lib/run.mjs",
+            "lib/store.mjs",
+            "lib/verification-command.mjs",
+            "lib/verify.mjs",
+            "scripts/verify-tests.mjs",
+            "test/agent-runner-roles.test.mjs",
+            "test/approval-execution-boundary.test.mjs",
+            "test/approval-policy-symlink.test.mjs",
+            "test/director-triage.test.mjs",
+            "test/review-digest.test.mjs",
+            "test/review-inputs.test.mjs",
+            "test/review-no-diff.test.mjs",
+            "test/spec-review-race.test.mjs",
+            "test/verification-handoff.test.mjs",
+            "test/verification-scheduling.test.mjs",
+            "test/verification-timeout.test.mjs"
+          ],
+          "untracked": [],
+          "contentFingerprint": "a0664e0225fadfe1423366cef8eb443c47a086aed3a18a30241b45e325bead8c",
+          "fingerprint": "846d1257d71d9ede5026235d3b89122824cac203b0c24eec997ce1ba862b4f3f"
+        }
       }
     ],
     "specRevision": 25,
@@ -29156,7 +29251,6 @@
       "ref": "HEAD"
     },
     "pipeline": {
-      "verificationInvalidated": 25,
       "planInvalidated": 25
     },
     "blockedFrom": "in-progress",
@@ -29171,7 +29265,9 @@
       "reason": "review",
       "seq": 1,
       "specRevision": 25
-    }
+    },
+    "doneAt": "2026-09-10T07:25:06.066Z",
+    "completedSpecRevision": 25
   },
   {
     "id": "task-3cbf419d",
