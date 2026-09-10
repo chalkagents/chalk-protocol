@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync, existsSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync, existsSync, symlinkSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -365,4 +365,27 @@ test('symlinked tracked input parents are refused before Git diff reads their ta
   mkdirSync(join(d, 'private-regressions')); writeFileSync(join(d, 'private-regressions/code.js'), '');
   symlinkSync('private-regressions', join(d, 'src'));
   assert.throws(() => captureReviewInputs(d, task, { regression: { dir: 'private-regressions' } }), /symlinked review input directory/);
+});
+
+test('executable-bit changes stay reviewable when Git normally ignores file modes', t => {
+  const { d, store, id } = reviewingFixture(t);
+  assert.equal(chalk(d, 'start', id).status, 0); writeFileSync(join(d, 'feature.js'), 'task work\n');
+  const passed = chalk(d, 'review', id); assert.equal(passed.status, 0, passed.stdout + passed.stderr);
+  git(d, 'config', 'core.filemode', 'false'); chmodSync(join(d, 'old.js'), 0o755);
+  assert.equal(git(d, 'diff', '--name-only', '--', 'old.js'), '', 'ordinary Git hides the mode-only change');
+  const candidate = captureReviewInputs(d, store.task(id), store.protocol());
+  assert.ok(candidate.files.includes('old.js')); assert.match(candidate.diff, /old mode 100644\nnew mode 100755/);
+  assert.equal(currentReview(store, store.task(id)), false, 'an executable-bit change closes the earlier approval');
+});
+
+test('branch reuse pins the actual checkout even after the configured base advances', t => {
+  const { d, store, id } = reviewingFixture(t), original = git(d, 'rev-parse', 'HEAD');
+  git(d, 'branch', 'fix/reused');
+  writeFileSync(join(d, 'main-only.js'), 'later main work\n'); git(d, 'add', 'main-only.js'); git(d, 'commit', '-qm', 'advance main');
+  store.upsertTask({ ...store.task(id), branch: 'fix/reused' });
+  const result = chalk(d, 'branch', id); assert.equal(result.status, 0, result.stdout + result.stderr);
+  const task = store.task(id); assert.equal(git(task.worktree, 'rev-parse', 'HEAD'), original);
+  assert.equal(task.reviewBase.commit, original, 'the requested main start point was not the reused branch starting revision');
+  writeFileSync(join(task.worktree, 'new-work.js'), 'new task work\n');
+  assert.deepEqual(captureReviewInputs(task.worktree, task, store.protocol()).files, ['new-work.js']);
 });

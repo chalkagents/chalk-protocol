@@ -599,7 +599,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       // here (the executor's, or a manual one) resolves to the MAIN checkout's single canonical spine
       // via findRoot's linked-worktree detection — so state can never bifurcate. (Finding #4)
       t.worktree = dir;
-      t.reviewBase ||= pinReviewBase(s.root, startPoint);
+      t.reviewBase ||= pinReviewBase(dir);
       // Bootstrap hook: a fresh worktree has no resolved toolchain (no .dart_tool/, node_modules, venv);
       // run the configured setup once before work/verify. A failure blocks here with a clear, diagnosable
       // reason rather than a confusing verify failure later. (Finding 2)

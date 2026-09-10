@@ -1,7 +1,8 @@
 # Deterministic review inputs
 
 Chalk pins the current commit when `chalk start` begins a task. `chalk branch`
-records a base for a task worktree, and `chalk run` pins before execution. Restarting
+records the actual checkout's starting commit, including when reusing an existing
+branch, and `chalk run` pins before execution. Restarting
 a task preserves its base. A task started before the repository's first commit has
 an explicit empty-tree base.
 
@@ -43,7 +44,8 @@ partial version before review. Git submodule review inputs are currently unsuppo
 and are refused; use a task rooted in the submodule repository for its own changes.
 
 Git replacement refs are ignored consistently when resolving and comparing review
-revisions. Clean filters, working-tree encoding conversion and ident expansion are
+revisions. Executable-bit changes are captured even when `core.filemode=false`.
+Clean filters, working-tree encoding conversion and ident expansion are
 unsupported and refused before diff capture: they can remove effective source from
 Git's diff. CRLF files subject to Git line-ending normalization are also refused;
 normalize those working files before review. Ordinary LF text attributes remain
