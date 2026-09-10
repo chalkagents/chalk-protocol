@@ -7,6 +7,7 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pinReviewBase } from '../lib/review-inputs.mjs';
 import { runReview } from '../lib/review.mjs';
 import { runDiscovery } from '../lib/discovery.mjs';
 import { runFeedback } from '../lib/feedback.mjs';
@@ -53,6 +54,7 @@ test('reviewer, discovery, feedback, retro, handoff, and PR narrative share Agen
   const store = fakeStore(d);
   const task = { id: 'task-fake0001', title: 'fake task', state: 'in-progress', acceptanceCriteria: [{ text: 'works' }], tests: [], reviews: [] };
 
+  task.reviewBase = pinReviewBase(d);
   const review = runReview(store, task);
   assert.equal(review.status, 'ok', 'a valid verdict survives a non-zero adapter exit');
   assert.equal(review.verdict, 'pass');

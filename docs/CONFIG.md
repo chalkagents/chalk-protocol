@@ -85,10 +85,17 @@ edits to every legacy command.
 ### `verify`
 
 The P4 toolchain gates, `{ test, typecheck, lint, build }` — each a command string or
-`{ cmd, when }` where `when: "phase"` defers a slow gate (full build) to `chalk audit` instead of
+`{ cmd, when, timeoutMs? }` where `when: "phase"` defers a slow gate (full build) to `chalk audit` instead of
 every `chalk verify`. **`verify.test` is the one practically-required key**: with everything empty,
 verify prints GREEN with a `⚠ VACUOUS` label. Presets fill this (`chalk init` auto-detects; or
 `--preset node|flutter|dart|python|go`, `--verify-test "<cmd>"`).
+
+Commands default to a 600000 ms deadline. Set a positive integer `timeoutMs` on an
+individual command when its full workload needs a different bounded deadline, for
+example `{ "cmd": "node scripts/verify-tests.mjs", "timeoutMs": 900000 }`. Values
+above 2147483647 ms are rejected to avoid timer overflow. Execution receipts record
+the applied deadline. Timeout or incomplete execution still fails verification; this
+option does not skip tests or change integrity checks.
 Deferred-only runs also report that no executable checks ran. Verification GREEN
 does not open review or release gates. CLI output and local events distinguish
 execution results from stale or unknown input identity; see

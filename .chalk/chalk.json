@@ -9,7 +9,10 @@
     "phase": "discovery",
     "status": "active",
     "verify": {
-      "test": "node --test --test-concurrency=3 --test-reporter=tap",
+      "test": {
+        "cmd": "node scripts/verify-tests.mjs",
+        "timeoutMs": 900000
+      },
       "typecheck": "",
       "lint": "",
       "build": ""
@@ -178,6 +181,6 @@
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",
-  "updatedAt": "2026-09-10T00:24:17.677Z",
+  "updatedAt": "2026-09-10T02:23:49.779Z",
   "writerVersion": "0.4.0"
 }

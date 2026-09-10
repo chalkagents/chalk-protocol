@@ -13,6 +13,7 @@ import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify, verificationFailureReason } from '../lib/verify.mjs';
 import { verificationCoverage, auditCoverage } from '../lib/verification-coverage.mjs';
+import { pinReviewBase, formatReviewInputs } from '../lib/review-inputs.mjs';
 import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
@@ -598,6 +599,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       // here (the executor's, or a manual one) resolves to the MAIN checkout's single canonical spine
       // via findRoot's linked-worktree detection — so state can never bifurcate. (Finding #4)
       t.worktree = dir;
+      t.reviewBase ||= pinReviewBase(dir);
       // Bootstrap hook: a fresh worktree has no resolved toolchain (no .dart_tool/, node_modules, venv);
       // run the configured setup once before work/verify. A failure blocks here with a clear, diagnosable
       // reason rather than a confusing verify failure later. (Finding 2)
@@ -609,6 +611,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     } else {
       t.worktree = s.root; // no isolation — work in the primary tree
     }
+    t.reviewBase ||= pinReviewBase(workdir(s, t));
     t.pipeline = { ...(t.pipeline || {}), stage: 'branched', at: now() };
     s.upsertTask(t); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Branched: ${t.branch}`, taskId: t.id });
@@ -1016,6 +1019,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
     if (t.state === 'todo' || t.state === 'specd') {
       if (!((t.acceptanceCriteria || []).length || (t.tests || []).length)) die('GATE P1: task has no acceptance criteria.');
+      t.reviewBase ||= pinReviewBase(workdir(s, t));
       t.state = 'in-progress'; t.startedAt = now(); s.upsertTask(t);
     }
     if (t.state !== 'in-progress') die(`task is [${t.state}], not workable.`);
@@ -1615,6 +1619,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         die(`${others.length} task(s) already in-progress (e.g. ${o.id.slice(0, 12)} — ${o.title.slice(0, 48)}).\n    Chalk works ONE task at a time. Finish it (chalk done), block it (chalk block), or enable\n    concurrent work with protocol.parallel.enabled=true in .chalk/chalk.json (or pass --parallel).`);
       }
     }
+    t.reviewBase ||= pinReviewBase(workdir(s, t));
     t.state = 'in-progress'; t.startedAt = now();
     s.upsertTask(t);
     syncBrowser(s);
@@ -1938,6 +1943,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const t = mustTask(s, _[0]);
     const meta = s.meta();
     t.reviews = t.reviews || [];
+    if (flags.base !== undefined) {
+      t.reviewBase = pinReviewBase(workdir(s, t), flags.base);
+      s.upsertTask(t);
+    }
 
     // Idempotent on resume: a passing review advances the stage to 'reviewed' (only on pass — a
     // block leaves the stage at 'pr-open' so the re-run after a fix re-reviews). So if we're already
@@ -1969,30 +1978,30 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       return ok('manual review recorded ' + C.dim('(checklist: test-adequacy · design-intent · regressions)') + (mp.posted ? C.dim(' · posted to PR') : ''));
     }
 
-    console.log(C.dim('  running adversarial reviewer…'));
-    let r = runReview(s, t);
+    console.log(C.dim('  preparing adversarial review…'));
+    let r = runReview(s, t, { onInputs: input => console.log(C.dim(formatReviewInputs(input))) });
     const readOnlyFailure = result => result.diagnostics?.find(diagnostic => diagnostic.code === 'read-only-mutation');
     // No diff to review → abort loudly (#151). Not a transient flake, so no retry: a PASS over an empty
     // change set is a vacuous certification. Records NO review and exits non-zero so the gate can't be
     // cleared on nothing — the pipeline then auto-blocks the task rather than merging it.
-    if (r.status === 'no-diff') die('review ABORTED — no diff captured: the change set is EMPTY, so the reviewer would grade nothing.\n  Check protocol.github.base and that the branch has committed changes (or that you are in the task worktree).');
-    if (r.status === 'error' && !r.diagnostics?.some(d => d.code === 'approval-inputs') && !readOnlyFailure(r) && !flags['no-retry']) {
+    if (r.status === 'no-diff') die('review ABORTED — no diff captured: the change set is EMPTY, so the reviewer would grade nothing.\n  Check the displayed task base and directory. For existing committed work, select its actual starting commit with --base <ref>.');
+    if (r.status === 'error' && !r.diagnostics?.some(d => ['approval-inputs', 'review-inputs'].includes(d.code)) && !readOnlyFailure(r) && !flags['no-retry']) {
       // A transient reviewer failure — a dropped/truncated response or a momentary bad parse — is not a
       // verdict, so retry once so a flake doesn't sink the review; only a SECOND consecutive error is fatal.
       // The pipeline passes --no-retry: it retries the whole review STAGE itself, so an inner retry would
       // double the reviewer calls it accounts for.
       console.log(C.dim('  reviewer returned no valid verdict — retrying once…'));
-      r = runReview(s, t);
+      r = runReview(s, t, { onInputs: input => console.log(C.dim(formatReviewInputs(input))) });
     }
     if (r.status === 'error') {
-      const inputFailure = r.diagnostics?.find(d => d.code === 'approval-inputs');
+      const inputFailure = r.diagnostics?.find(d => ['approval-inputs', 'review-inputs'].includes(d.code));
       if (inputFailure) die(inputFailure.message);
       const refusal = readOnlyFailure(r);
       if (refusal) die(`reviewer violated the read-only workspace contract: ${String(refusal.message).slice(0, 1200)}\n  No verdict was accepted. Run state-writing review checks in an isolated fixture; do not bypass the read-only guard.`);
       die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
     }
     if ((s.task(t.id)?.specRevision || 0) !== (t.specRevision || 0)) die('specification changed during review — reload context and run chalk review again; no verdict was accepted or posted');
-    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [], specRevision: t.specRevision || 0, approval: r.approval });
+    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [], specRevision: t.specRevision || 0, approval: r.approval, inputs: r.inputs });
     // Same pipeline-order rule as the manual path above (#102): the verdict is recorded either way —
     // the done/merge gates read t.reviews — but the stage only advances when the PR already exists.
     if (r.verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
@@ -2523,7 +2532,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
   chalk verify                         ${C.dim('toolchain + test-integrity (P4/P6/P7)')}
-  chalk review <id>                    ${C.dim('GATE P5: adversarial reviewer; cadence via review.requiredAt (per-task|milestone-boundary|phase-advance)')}
+  chalk review <id> [--base <ref>]     ${C.dim('GATE P5: adversarial reviewer; cadence via review.requiredAt (per-task|milestone-boundary|phase-advance)')}
   chalk done <id> [--force-review --why "..."]   ${C.dim('GATE P4+P6(+P5): verify green, locks intact, review passed')}
   chalk amend-spec <id> --test <path> --why "..."   ${C.dim('gated test change (P6)')}
   chalk amend-spec <id> --add "..." | --replace <ac-id> --criterion "..." | --retire <ac-id> --why "..."

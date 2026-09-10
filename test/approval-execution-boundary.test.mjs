@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { Store } from '../lib/store.mjs';
+import { pinReviewBase } from '../lib/review-inputs.mjs';
 import { runReview } from '../lib/review.mjs';
 import { checkApproval } from '../lib/approval-inputs.mjs';
 const CLI = resolve('bin/chalk.mjs');
@@ -67,6 +68,7 @@ test('review preflights split-index cache writes and resumes after materializing
   const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
   git('init', '-q'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.invalid');
   git('add', '.'); git('commit', '-qm', 'fixture');
+  store.upsertTask({ ...store.task(id), reviewBase: pinReviewBase(root) });
   fs.writeFileSync(join(root, 'executor.cjs'), 'console.log("changed");'); git('add', 'executor.cjs'); git('update-index', '--split-index');
   const staged = git('diff', '--cached');
   const refused = runReview(store, store.task(id)); assert.equal(refused.status, 'error');

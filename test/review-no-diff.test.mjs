@@ -1,5 +1,5 @@
-// A diffless review must not silently pass (#151). captureDiff tries several git-diff strategies and,
-// when all come up empty, chalk used to still run the reviewer — which then produced a PASS/BLOCK over
+// A diffless review must not silently pass (#151). With a pinned task base,
+// an empty candidate must not run the reviewer — which then produced a PASS/BLOCK over
 // an EMPTY change set (a vacuous certification, same class as #134). Now, inside a git work tree, an
 // empty diff makes runReview return 'no-diff' WITHOUT invoking the reviewer, and `chalk review` aborts
 // loudly (non-zero, no review recorded). A real diff is unaffected. Locked contract for #151.
@@ -24,7 +24,7 @@ const REVIEWER = `import { existsSync, readFileSync, writeFileSync } from 'node:
 function repo() {
   const d = mkdtempSync(join(tmpdir(), 'chalk-nodiff-'));
   const counter = `${d}.calls`; // instrumentation stays outside the read-only reviewer workspace
-  execSync('git init -q && git config user.email t@t.t && git config user.name t', { cwd: d });
+  execSync('git init -q -b main && git config user.email t@t.t && git config user.name t', { cwd: d });
   chalk(d, 'init', '--name', 'p');
   writeFileSync(join(d, 'reviewer.mjs'), REVIEWER.replace("const c = 'n.txt'", `const c = ${JSON.stringify(counter)}`));
   conf(d, (p) => { p.review = { command: 'node reviewer.mjs', requiredAt: ['per-task'] }; });
@@ -32,12 +32,13 @@ function repo() {
   chalk(d, 'task', 'add', 'feat: thing');
   const id = tid(d);
   chalk(d, 'spec', id, '--criterion', 'c', '--test', 'x.test.mjs');
+  execSync('git add reviewer.mjs x.test.mjs AGENTS.md CLAUDE.md .chalk/spec.md && git commit -q -m baseline', { cwd: d });
   chalk(d, 'start', id);
   return { d, id, counter };
 }
 
 test('an empty diff in a git tree aborts review loudly and never invokes the reviewer', () => {
-  const { d, id, counter } = repo(); // nothing committed/tracked → every git-diff strategy is empty
+  const { d, id, counter } = repo(); // baseline pinned at start; only excluded Chalk bookkeeping differs
   const r = chalk(d, 'review', id);
   assert.notEqual(r.code, 0, 'a diffless review must fail, not pass');
   assert.match(r.out, /no diff|empty/i, 'the abort names the empty change set');
@@ -45,11 +46,9 @@ test('an empty diff in a git tree aborts review loudly and never invokes the rev
   assert.equal(reviewsOf(d).length, 0, 'no review verdict is recorded on the task');
 });
 
-test('a change COMMITTED on the current branch (no base delta, clean tree) is still captured + reviewed', () => {
+test('a change committed after the pinned task start is captured on the same branch', () => {
   const { d, id, counter } = repo();
-  // Commit real work to the branch, leaving a CLEAN tree — every base-relative diff is empty (HEAD is
-  // the base), so only the committed-change fallback can capture it. Without that fallback this would
-  // wrongly abort as no-diff. This is the `chalk demo` / single-branch topology.
+  // The task start pins the baseline, so subsequent commits remain reviewable on this branch.
   writeFileSync(join(d, 'code.js'), 'export const v = 1;\n');
   execSync('git add code.js && git commit -q -m "feat: work"', { cwd: d });
   const r = chalk(d, 'review', id);

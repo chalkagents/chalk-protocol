@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { Store } from '../lib/store.mjs';
+import { pinReviewBase } from '../lib/review-inputs.mjs';
 import { runReview } from '../lib/review.mjs';
 
 for (const change of ['unchanged', 'restored-link', 'restored-policy']) test(`review observes symlinked Git policy parents (${change})`, t => {
@@ -23,7 +24,7 @@ for (const change of ['unchanged', 'restored-link', 'restored-policy']) test(`re
     : change === 'restored-policy' ? `const p=${JSON.stringify(join(link, 'gitconfig'))},b=fs.readFileSync(p);fs.writeFileSync(p,'');fs.writeFileSync(p,b);` : '';
   fs.writeFileSync(join(root, 'review.cjs'), `process.stdin.resume();process.stdin.on('end',()=>{const fs=require('fs');${action}console.log(JSON.stringify({verdict:'pass',findings:[]}));});`);
   const store = new Store(root), meta = store.meta(); meta.protocol.review = { command: 'node review.cjs', requiredAt: ['per-task'] }; store.saveMeta(meta);
-  const task = { id: 'task-policy', title: 'chore: fixture', state: 'in-progress', acceptanceCriteria: [{ text: 'current requirement' }], tests: [] }; store.upsertTask(task);
+  const task = { reviewBase: pinReviewBase(root), id: 'task-policy', title: 'chore: fixture', state: 'in-progress', acceptanceCriteria: [{ text: 'current requirement' }], tests: [] }; store.upsertTask(task);
   const previous = process.env.GIT_CONFIG_SYSTEM;
   try {
     process.env.GIT_CONFIG_SYSTEM = join(link, 'gitconfig');

@@ -17,6 +17,8 @@ test('scheduled verification includes every repository test exactly once and iso
   assert.ok(batches[0].includes('--test-concurrency=1'));
   assert.ok(batches[0].includes('test/adapter-conformance.test.mjs'));
   assert.ok(batches[0].includes('test/codex-gemini-adapters.test.mjs'));
+  assert.equal(batches[0].filter(file => file === 'test/spec-review-publication.test.mjs').length, 1);
+  assert.equal(batches[1].includes('test/spec-review-publication.test.mjs'), false);
 });
 
 test('either failed batch, a lost child, or unknown test layout keeps scheduled verification closed', t => {

@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1788999515921,
+  "updatedAt": 1789004688597,
   "order": 0,
   "cards": [
     {
@@ -665,18 +665,13 @@
     {
       "id": "task-daa45169",
       "title": "fix: review diff-capture silently passes on no diff — abort loudly instead of a vacuous verdict (#151)",
-      "column": "done",
+      "column": "todo",
       "createdAt": 1783530572745,
       "updatedAt": 1783531587182,
       "order": 36,
-      "description": "- When captureDiff yields an empty diff (all git-diff strategies produce nothing), runReview returns a distinct 'no-diff' status WITHOUT invoking the reviewer — so no pass/block verdict is fabricated over an empty change set\n- chalk review aborts LOUDLY on the no-diff status: non-zero exit, a clear 'no diff captured' message, and NO passing review recorded on the task; it is not treated as a retryable transient error\n- A review WITH a real (non-empty) diff is unaffected — the normal pass/block flow and recorded verdict are unchanged",
+      "description": "- When captureDiff yields an empty diff (all git-diff strategies produce nothing), runReview returns a distinct 'no-diff' status WITHOUT invoking the reviewer — so no pass/block verdict is fabricated over an empty change set\n- chalk review aborts LOUDLY on the no-diff status: non-zero exit, a clear 'no diff captured' message, and NO passing review recorded on the task; it is not treated as a retryable transient error\n- A review WITH a real (non-empty) diff is unaffected — the normal pass/block flow and recorded verdict are unchanged\n\nCurrent contract needs revalidation: chalk start task-daa45169",
       "testArtifact": {
-        "specPath": "test/review-no-diff.test.mjs",
-        "lastRun": {
-          "runId": "done-task-daa45169",
-          "status": "passed",
-          "at": 1783531587182
-        }
+        "specPath": "test/review-no-diff.test.mjs"
       }
     },
     {
@@ -1071,36 +1066,26 @@
     {
       "id": "task-167041a5",
       "title": "feat(director): risk-based decision triage + a director inbox — own the empty middle",
-      "column": "done",
+      "column": "todo",
       "createdAt": 1784275058501,
       "updatedAt": 1784279530868,
       "order": 63,
-      "description": "- decisionRisk scores a decision from blastRadius × reversibility into low/med/high; an unknown field is treated as the middle (unknown is not safe)\n- chalk review ranks the decision digest highest-risk-first with a per-decision risk badge (composes on #192; the digest line format is unchanged so #192's locked test stays green)\n- chalk pending is the director inbox: unresolved med/high-risk decisions across ALL tasks (from each task's latest review), ranked by risk, each with a stable <task>#<n> ref; an empty inbox reports cleanly\n- chalk pending accept <ref> marks a decision accepted and drops it from the inbox; chalk pending redirect <ref> \"why\" records a course-correction and logs a decision; neither can re-resolve a resolved call",
+      "description": "- decisionRisk scores a decision from blastRadius × reversibility into low/med/high; an unknown field is treated as the middle (unknown is not safe)\n- chalk review ranks the decision digest highest-risk-first with a per-decision risk badge (composes on #192; the digest line format is unchanged so #192's locked test stays green)\n- chalk pending is the director inbox: unresolved med/high-risk decisions across ALL tasks (from each task's latest review), ranked by risk, each with a stable <task>#<n> ref; an empty inbox reports cleanly\n- chalk pending accept <ref> marks a decision accepted and drops it from the inbox; chalk pending redirect <ref> \"why\" records a course-correction and logs a decision; neither can re-resolve a resolved call\n\nCurrent contract needs revalidation: chalk start task-167041a5",
       "testArtifact": {
         "specPath": "test/director-triage.test.mjs",
-        "lastRun": {
-          "runId": "done-task-167041a5",
-          "status": "passed",
-          "at": 1784279530868
-        },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/193"
       }
     },
     {
       "id": "task-7b477997",
       "title": "feat(director): reviewer emits a decision digest — the accept button, not just pass/block",
-      "column": "done",
+      "column": "todo",
       "createdAt": 1784275058509,
       "updatedAt": 1784277754839,
       "order": 64,
-      "description": "- The reviewer prompt requests a DECISION DIGEST — the judgment calls the implementer made — each with blastRadius + reversibility, framed for accept/redirect, and requested EVEN ON A PASS\n- parseVerdict extracts a decisions array when present but stays additive: a verdict with no decisions keeps the exact {verdict,findings} shape, so older reviewers and pinned contracts are unaffected\n- chalk review renders the decision digest (on PASS and BLOCK) and records it on the task's review entry (t.reviews[].decisions)\n- The shipped (share/agents) and dogfood (.claude/agents) chalk-reviewer definitions both describe the decisions output and stay in sync (agents-sync drift gate stays green)",
+      "description": "- The reviewer prompt requests a DECISION DIGEST — the judgment calls the implementer made — each with blastRadius + reversibility, framed for accept/redirect, and requested EVEN ON A PASS\n- parseVerdict extracts a decisions array when present but stays additive: a verdict with no decisions keeps the exact {verdict,findings} shape, so older reviewers and pinned contracts are unaffected\n- chalk review renders the decision digest (on PASS and BLOCK) and records it on the task's review entry (t.reviews[].decisions)\n- The shipped (share/agents) and dogfood (.claude/agents) chalk-reviewer definitions both describe the decisions output and stay in sync (agents-sync drift gate stays green)\n\nCurrent contract needs revalidation: chalk start task-7b477997",
       "testArtifact": {
         "specPath": "test/review-digest.test.mjs",
-        "lastRun": {
-          "runId": "done-task-7b477997",
-          "status": "passed",
-          "at": 1784277754839
-        },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/192"
       }
     },
@@ -1391,18 +1376,13 @@
     {
       "id": "task-d8fd5057",
       "title": "refactor: route every remaining agent-backed stage through Agent Runner",
-      "column": "done",
+      "column": "todo",
       "createdAt": 1785741191291,
       "updatedAt": 1785741746000,
       "order": 83,
-      "description": "- Reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring all call the Agent Runner.\n- Existing role-specific parsers receive normalized runner output and preserve their current success/error behavior.\n- Non-zero commands that still return a valid reviewer verdict remain parseable.\n- Best-effort narrative roles retain their fallback behavior and useful diagnostics.\n- Usage and wall-clock logging follow one runner-owned policy across every role.\n- Duplicate provider-aware execution and envelope-unwrapping code is removed.\n- Tests exercise each migrated role through the same fake-adapter seam.\n- The deletion test holds: removing Agent Runner would force execution complexity back into every caller.",
+      "description": "- Reviewer, discovery, feedback, retro, handoff, PR narrative, and regression authoring all call the Agent Runner.\n- Existing role-specific parsers receive normalized runner output and preserve their current success/error behavior.\n- Non-zero commands that still return a valid reviewer verdict remain parseable.\n- Best-effort narrative roles retain their fallback behavior and useful diagnostics.\n- Usage and wall-clock logging follow one runner-owned policy across every role.\n- Duplicate provider-aware execution and envelope-unwrapping code is removed.\n- Tests exercise each migrated role through the same fake-adapter seam.\n- The deletion test holds: removing Agent Runner would force execution complexity back into every caller.\n\nCurrent contract needs revalidation: chalk start task-d8fd5057",
       "testArtifact": {
         "specPath": "test/agent-runner-roles.test.mjs",
-        "lastRun": {
-          "runId": "done-task-d8fd5057",
-          "status": "passed",
-          "at": 1785741746000
-        },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/229"
       }
     },
@@ -1427,18 +1407,13 @@
     {
       "id": "task-2c947642",
       "title": "feat: enforce agent role capabilities and structured-output contracts",
-      "column": "done",
+      "column": "todo",
       "createdAt": 1785742705823,
       "updatedAt": 1785743653723,
       "order": 85,
-      "description": "- Every canonical role declares `read-only` or `workspace-write` access and text or structured output.\n- Adapters report which requested capabilities they can enforce.\n- Unsupported required capabilities fail readiness checks honestly rather than silently degrading.\n- Chalk detects worktree changes made by a read-only role and refuses to accept that role result.\n- The refusal identifies changed paths without automatically deleting user data.\n- Structured roles validate their normalized payload against one role-specific contract after adapter decoding.\n- Malformed, truncated, or schema-invalid output yields consistent diagnostics across providers.\n- Tests use malicious and incapable fake adapters to cover mutation and capability failures.\n- Executor write access remains unaffected.",
+      "description": "- Every canonical role declares `read-only` or `workspace-write` access and text or structured output.\n- Adapters report which requested capabilities they can enforce.\n- Unsupported required capabilities fail readiness checks honestly rather than silently degrading.\n- Chalk detects worktree changes made by a read-only role and refuses to accept that role result.\n- The refusal identifies changed paths without automatically deleting user data.\n- Structured roles validate their normalized payload against one role-specific contract after adapter decoding.\n- Malformed, truncated, or schema-invalid output yields consistent diagnostics across providers.\n- Tests use malicious and incapable fake adapters to cover mutation and capability failures.\n- Executor write access remains unaffected.\n\nCurrent contract needs revalidation: chalk start task-2c947642",
       "testArtifact": {
         "specPath": "test/agent-capabilities.test.mjs",
-        "lastRun": {
-          "runId": "done-task-2c947642",
-          "status": "passed",
-          "at": 1785743653723
-        },
         "evidenceUrl": "https://github.com/chalkagents/chalk-protocol/issues/231"
       }
     },
@@ -1734,18 +1709,13 @@
     {
       "id": "task-baa1f3a2",
       "title": "feat: amend current acceptance criteria with revision history",
-      "column": "done",
+      "column": "todo",
       "createdAt": 1788854141141,
       "updatedAt": 1788973935988,
       "order": 102,
-      "description": "- Criteria have stable IDs and sanctioned add/replace/retire operations with reasons and retained history; context renders only current criteria; legacy tasks remain readable.\n- Criteria or locked-test amendments invalidate dependent verification/review/alignment approvals; amendments cannot silently re-use a previous accepted definition of done.",
+      "description": "- Criteria have stable IDs and sanctioned add/replace/retire operations with reasons and retained history; context renders only current criteria; legacy tasks remain readable.\n- Criteria or locked-test amendments invalidate dependent verification/review/alignment approvals; amendments cannot silently re-use a previous accepted definition of done.\n\nCurrent contract needs revalidation: chalk start task-baa1f3a2",
       "testArtifact": {
-        "specPath": "test/spec-revisions.test.mjs",
-        "lastRun": {
-          "runId": "done-task-baa1f3a2",
-          "status": "passed",
-          "at": 1788973935988
-        }
+        "specPath": "test/spec-revisions.test.mjs"
       }
     },
     {
@@ -1838,6 +1808,50 @@
       "updatedAt": 1788999515553,
       "order": 110,
       "description": "- Prepare a separately reviewable PR publication change: an existing PR can publish a committed follow-up and merge admits only its verified published candidate.\n- Cover refusal, supported recovery and successful completion with a real local Git remote; retain normal fast-forward behavior and pending merge status."
+    },
+    {
+      "id": "task-96da0ef1",
+      "title": "fix: validate deterministic review inputs before invoking the reviewer",
+      "column": "in_progress",
+      "createdAt": 1789004422358,
+      "updatedAt": 1789004688597,
+      "order": 111,
+      "description": "- Before invoking a configured reviewer in Git, identify and display the execution directory, branch, immutable task base, HEAD, complete changed-file list and untracked files. Include committed, staged, unstaged and non-ignored untracked task changes in one base-relative review input; exclude Chalk spine state and protected content.\n- Never fall back to the previous commit or the whole repository merely because the task diff is empty. Pin a base when work starts or branches; allow an explicit review --base ref for existing tasks. Refuse missing, invalid, unrelated or ambiguous bases and unresolved conflicts before reviewer invocation, without recording or retrying a verdict.\n- Persist the reviewed input manifest and fingerprint with the verdict. Preserve source observation, locked-test checks and the full adversarial rubric; base changes invalidate prior approval. Regression tests cover the reported untracked-file failure, mixed committed and working changes, empty inputs, pinned bases and actionable preflight rejection.\n- Use the existing complete-suite scheduler for this repository, with an explicit bounded 900000 ms test-command timeout. Support a validated positive per-gate timeoutMs option while retaining the default 600000 ms deadline; record the applied deadline with execution evidence. Every discovered test remains mandatory and timeout, failure or incomplete execution never opens the gate.",
+      "testArtifact": {
+        "specPath": "test/review-inputs.test.mjs",
+        "lastRun": {
+          "runId": "review-task-96da0ef1",
+          "status": "failed",
+          "at": 1789016562120
+        }
+      }
+    },
+    {
+      "id": "task-3cbf419d",
+      "title": "feat: complete verification evidence handoff to review and PR descriptions",
+      "column": "todo",
+      "createdAt": 1789004443434,
+      "updatedAt": 1789004443434,
+      "order": 112,
+      "description": "- Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+    },
+    {
+      "id": "task-971d7e8b",
+      "title": "fix: expose structured reviewer failures and retry only transient errors",
+      "column": "todo",
+      "createdAt": 1789004443605,
+      "updatedAt": 1789004443605,
+      "order": 113,
+      "description": "- Preserve structured timeout, invalid-output, permission and read-only-mutation diagnostics across reviewer failures. Retry only documented transient categories; record invocation duration and available usage without accepting invalid verdicts or weakening source integrity."
+    },
+    {
+      "id": "task-8e568987",
+      "title": "feat: make worktree binding and isolated reviewer execution explicit",
+      "column": "todo",
+      "createdAt": 1789004443793,
+      "updatedAt": 1789004443793,
+      "order": 114,
+      "description": "- Show and validate the actual task directory, branch and base before gates; support explicit worktree attachment and refuse mismatches. Isolate reviewer test output while preserving protected source and locked-test integrity; distinguish supplied evidence from independent execution."
     }
   ]
 }

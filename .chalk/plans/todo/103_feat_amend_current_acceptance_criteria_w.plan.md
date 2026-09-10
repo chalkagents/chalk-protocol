@@ -7,10 +7,10 @@ created: "2026-09-08T07:55:41.141Z"
 todos:
   - id: "task-baa1f3a2-c1"
     content: "Criteria have stable IDs and sanctioned add/replace/retire operations with reasons and retained history; context renders only current criteria; legacy tasks remain readable."
-    status: done
+    status: pending
   - id: "task-baa1f3a2-c2"
     content: "Criteria or locked-test amendments invalidate dependent verification/review/alignment approvals; amendments cannot silently re-use a previous accepted definition of done."
-    status: done
+    status: pending
 ---
 
 # feat: amend current acceptance criteria with revision history
@@ -18,6 +18,8 @@ todos:
 > state: **done** · phase: discovery
 
 ## Objective
+
+Current contract needs revalidation: `chalk start task-baa1f3a2`. Historical completion is retained in revision history.
 
 - Criteria have stable IDs and sanctioned add/replace/retire operations with reasons and retained history; context renders only current criteria; legacy tasks remain readable.
 - Criteria or locked-test amendments invalidate dependent verification/review/alignment approvals; amendments cannot silently re-use a previous accepted definition of done.
@@ -68,6 +70,7 @@ todos:
 - **block** · 2026-09-09T12:45 · adversary
 - **stale** · 2026-09-09T12:47 · amend-spec
 - **pass** · 2026-09-09T17:05 · adversary
+- **stale** · 2026-09-10T02:03 · amend-spec
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._
