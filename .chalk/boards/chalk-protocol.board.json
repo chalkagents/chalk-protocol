@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785888331986,
+  "updatedAt": 1788999515921,
   "order": 0,
   "cards": [
     {
@@ -1679,6 +1679,165 @@
           "at": 1785760477473
         }
       }
+    },
+    {
+      "id": "task-3689504d",
+      "title": "feat: persist verification runs with source-bound evidence",
+      "column": "done",
+      "createdAt": 1788854103324,
+      "updatedAt": 1788903264830,
+      "order": 99,
+      "description": "- Every verify invocation, including done and automated callers, stores a unique local run with commands, complete stdout/stderr logs, timestamps, exit/signal/error status, source fingerprints, effective verification configuration and matching task criteria/test identity.\n- Source identity includes tracked and ordinary untracked inputs and excludes protocol bookkeeping, held-out content and ignored build output; unknown identity or inputs changing during a run are reported and cannot produce green verification.\n- Passing, failing, timed-out and interrupted subprocess results retain evidence without shell-buffer truncation; failures to persist evidence fail verification explicitly; existing integrity and toolchain behavior remains covered.",
+      "testArtifact": {
+        "specPath": "test/verification-record.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3689504d",
+          "status": "passed",
+          "at": 1788903264830
+        }
+      }
+    },
+    {
+      "id": "task-aeb59c37",
+      "title": "feat: supply recorded verification evidence to reviewers",
+      "column": "done",
+      "createdAt": 1788854140689,
+      "updatedAt": 1788907885777,
+      "order": 100,
+      "description": "- Review receives the latest verification evidence for its worktree and matching task, with status, source/spec/config freshness, command outcomes and local log references; missing, malformed or stale evidence is explicitly labeled.\n- Unrelated worktree/task evidence is never presented as current; summaries are bounded and raw logs are never injected as instructions; no held-out assertion output is exposed.",
+      "testArtifact": {
+        "specPath": "test/review-evidence.test.mjs",
+        "lastRun": {
+          "runId": "done-task-aeb59c37",
+          "status": "passed",
+          "at": 1788907885777
+        }
+      }
+    },
+    {
+      "id": "task-f644b066",
+      "title": "feat: report verification coverage and audit scope precisely",
+      "column": "done",
+      "createdAt": 1788854140900,
+      "updatedAt": 1788914200816,
+      "order": 101,
+      "description": "- CLI and structured events distinguish passed, failed, deferred, unconfigured and stale checks; an unconfigured held-out audit never claims independent regression coverage.\n- Verify status does not claim that review or release gates are open; deferred-only verification is labeled as having no executed checks; phase checks and held-out checks retain distinct outcomes.\n- Document local evidence access, retention, source-manifest limitations and adoption; run the real suite and a phase-boundary audit.",
+      "testArtifact": {
+        "specPath": "test/verification-coverage.test.mjs",
+        "lastRun": {
+          "runId": "done-task-f644b066",
+          "status": "passed",
+          "at": 1788914200816
+        }
+      }
+    },
+    {
+      "id": "task-baa1f3a2",
+      "title": "feat: amend current acceptance criteria with revision history",
+      "column": "done",
+      "createdAt": 1788854141141,
+      "updatedAt": 1788973935988,
+      "order": 102,
+      "description": "- Criteria have stable IDs and sanctioned add/replace/retire operations with reasons and retained history; context renders only current criteria; legacy tasks remain readable.\n- Criteria or locked-test amendments invalidate dependent verification/review/alignment approvals; amendments cannot silently re-use a previous accepted definition of done.",
+      "testArtifact": {
+        "specPath": "test/spec-revisions.test.mjs",
+        "lastRun": {
+          "runId": "done-task-baa1f3a2",
+          "status": "passed",
+          "at": 1788973935988
+        }
+      }
+    },
+    {
+      "id": "task-f4376c4c",
+      "title": "feat: bind gate approvals to current inputs",
+      "column": "in_progress",
+      "createdAt": 1788854141390,
+      "updatedAt": 1788974622774,
+      "order": 103,
+      "description": "- Done, merge, phase and automated callers use shared freshness checks over the source, spec and configuration relevant to each approval.\n- Same-size source edits invalidate audits; legacy records without sufficient identity are historical rather than freshly approved; failures identify an actionable recovery command.\n- Integration umbrella after the user-approved scope reset: preserve the existing criteria and locked tests, and leave this task unfinished until independently scoped review-history, freshness and publication changes have passed their own gates. Do not resume the combined review loop.",
+      "testArtifact": {
+        "specPath": "test/director-align.test.mjs",
+        "lastRun": {
+          "runId": "review-task-f4376c4c",
+          "status": "failed",
+          "at": 1788997347494
+        }
+      }
+    },
+    {
+      "id": "task-e3b7ad34",
+      "title": "feat: enforce task prerequisites at command boundaries",
+      "column": "todo",
+      "createdAt": 1788854141629,
+      "updatedAt": 1788854141629,
+      "order": 104,
+      "description": "- Direct start/work and automated execution refuse incomplete, missing or cyclic dependencies before any work or state mutation; next and execution share dependency evaluation.\n- A reopened or blocked predecessor cannot leave a dependent task silently authorized; single-task and worktree behavior remain covered."
+    },
+    {
+      "id": "task-5b3d0076",
+      "title": "feat: enforce candidate-bound release prerequisites",
+      "column": "todo",
+      "createdAt": 1788854141857,
+      "updatedAt": 1788854141857,
+      "order": 105,
+      "description": "- An opt-in release workflow stores candidate source/artifact identity and check/sign-off prerequisites separately from coding-task completion; replacement candidates invalidate affected sign-offs.\n- Release side effects require current configured prerequisites at every entry point and support safe retries; QA artifact preparation is distinct from production publication.\n- Human-required approvals must have an explicit trusted authorization mechanism, not a caller-supplied name; missing project workflow or authorization inputs are surfaced as human blockers."
+    },
+    {
+      "id": "task-8faf1eab",
+      "title": "chore: pilot evidence and release discipline with outcome metrics",
+      "column": "todo",
+      "createdAt": 1788854142107,
+      "updatedAt": 1788854142107,
+      "order": 106,
+      "description": "- Use the reporting project workflow to validate evidence delivery and release ordering after hermetic Chalk coverage; record baseline and next ten tasks/two release attempts when project access is supplied.\n- Report manual evidence requests, repeated encoded instructions, stale prerequisite acceptance, evidence-related review delay, gate overhead and unnecessary refusals; do not equate refusal count with value."
+    },
+    {
+      "id": "task-38db08ca",
+      "title": "fix: make Codex-only review operational with the installed CLI",
+      "column": "done",
+      "createdAt": 1788856802431,
+      "updatedAt": 1788860565242,
+      "order": 107,
+      "description": "- Codex adapter argv places approval settings where the installed CLI accepts them, keeps read-only versus workspace-write isolation and multiline stdin intact, and supplies a fully specified strict reviewer output schema.\n- Connect executor/planner/reviewer to Codex with per-task review retained; remove legacy Claude commands, leave unsupported optional roles explicitly unconfigured and do not claim verified model independence.\n- Preserve offline adapter conformance and protocol contracts, add a regression fixture rejecting misplaced approval flags and malformed reviewer schema, and obtain a real structured Codex review through Chalk before completion.",
+      "testArtifact": {
+        "specPath": "test/codex-cli-compat.test.mjs",
+        "lastRun": {
+          "runId": "done-task-38db08ca",
+          "status": "passed",
+          "at": 1788860565242
+        }
+      }
+    },
+    {
+      "id": "task-6285aa3f",
+      "title": "fix: preserve newer review findings during task saves",
+      "column": "in_progress",
+      "createdAt": 1788999445631,
+      "updatedAt": 1788999515921,
+      "order": 108,
+      "description": "- A whole-task save cannot erase or replace a newer recorded review verdict, findings or approval; stale saves fail with a recovery command.\n- Normal review appends and director decision annotations remain supported. A regression drives the real planner-save path after an intervening BLOCK.",
+      "testArtifact": {
+        "specPath": "test/review-history-save.test.mjs"
+      }
+    },
+    {
+      "id": "task-51b4446c",
+      "title": "feat: bind approval freshness at completion boundaries",
+      "column": "todo",
+      "createdAt": 1788999515450,
+      "updatedAt": 1788999515450,
+      "order": 109,
+      "description": "- Prepare a separately reviewable change binding completion approvals to the current task contract, source and relevant gate configuration; retain stale-approval refusals and actionable recovery.\n- Limit the first implementation to review and done admission. Audit/phase observation, verification reuse and external toolchain runners require separate scopes before implementation."
+    },
+    {
+      "id": "task-bbb57122",
+      "title": "fix: publish and merge the verified PR candidate",
+      "column": "todo",
+      "createdAt": 1788999515553,
+      "updatedAt": 1788999515553,
+      "order": 110,
+      "description": "- Prepare a separately reviewable PR publication change: an existing PR can publish a committed follow-up and merge admits only its verified published candidate.\n- Cover refusal, supported recovery and successful completion with a real local Git remote; retain normal fast-forward behavior and pending merge status."
     }
   ]
 }

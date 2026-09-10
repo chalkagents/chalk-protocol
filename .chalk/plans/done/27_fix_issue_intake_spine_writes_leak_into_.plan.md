@@ -52,6 +52,7 @@ todos:
 - **block** · 2026-07-07T10:24 · adversary
 - **block** · 2026-07-07T10:31 · adversary
 - **pass** · 2026-07-07T10:38 · adversary
+- **stale** · 2026-09-08T23:45 · amend-spec
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

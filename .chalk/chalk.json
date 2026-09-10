@@ -9,41 +9,95 @@
     "phase": "discovery",
     "status": "active",
     "verify": {
-      "test": "node --test",
+      "test": "node --test --test-concurrency=3 --test-reporter=tap",
       "typecheck": "",
       "lint": "",
       "build": ""
     },
     "review": {
-      "command": "claude -p --agent chalk-reviewer --max-turns 20",
+      "command": "",
       "requiredAt": [
         "per-task"
       ]
     },
     "regression": {
       "command": "",
-      "authorCommand": "claude -p --permission-mode acceptEdits --max-turns 40",
+      "authorCommand": "",
       "dir": ".chalk/held-out",
       "required": false,
       "tests": [],
       "lastAudit": {
-        "at": "2026-08-04T14:49:17.942Z",
+        "at": "2026-09-09T00:23:33.057Z",
         "green": true,
         "size": {
-          "loc": 20202,
-          "files": 187
+          "loc": 24992,
+          "files": 234
         },
-        "count": 0
+        "count": 0,
+        "coverage": {
+          "green": true,
+          "phase": {
+            "mode": "phase",
+            "green": true,
+            "freshness": "fresh",
+            "checks": [
+              {
+                "kind": "toolchain",
+                "gate": "typecheck",
+                "scope": "command",
+                "outcome": "unconfigured",
+                "executed": false,
+                "status": "unconfigured"
+              },
+              {
+                "kind": "toolchain",
+                "gate": "lint",
+                "scope": "command",
+                "outcome": "unconfigured",
+                "executed": false,
+                "status": "unconfigured"
+              },
+              {
+                "kind": "toolchain",
+                "gate": "test",
+                "scope": "command",
+                "outcome": "passed",
+                "executed": true,
+                "status": "passed"
+              },
+              {
+                "kind": "toolchain",
+                "gate": "build",
+                "scope": "command",
+                "outcome": "unconfigured",
+                "executed": false,
+                "status": "unconfigured"
+              }
+            ],
+            "executedChecks": 1,
+            "integrity": "passed",
+            "review": "not-evaluated",
+            "release": "not-evaluated",
+            "receiptId": "dcc908c4-deac-4f8b-a0fc-a514325424fd"
+          },
+          "heldOut": {
+            "status": "unconfigured",
+            "executed": false,
+            "lockedFiles": 0,
+            "integrity": "no-locked-files",
+            "independence": "not-established"
+          }
+        }
       }
     },
     "executor": {
-      "command": "claude -p --agent chalk-executor --permission-mode acceptEdits --max-turns 40"
+      "command": ""
     },
     "planner": {
-      "command": "claude -p --agent chalk-planner --max-turns 30"
+      "command": ""
     },
     "retro": {
-      "command": "claude -p --agent chalk-retro --max-turns 20"
+      "command": ""
     },
     "github": {
       "command": "gh",
@@ -66,11 +120,64 @@
     },
     "agents": {
       "version": 1,
-      "profiles": {},
-      "roles": {}
+      "profiles": {
+        "codex": {
+          "adapter": "codex",
+          "command": "\"/Users/devid/.nvm/versions/node/v24.18.1/bin/node\" \"/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol/bin/adapters/codex.mjs\"",
+          "model": null,
+          "identity": {
+            "displayName": "Codex CLI"
+          },
+          "capabilities": {
+            "roles": [
+              "executor",
+              "planner",
+              "reviewer"
+            ],
+            "access": [
+              "read-only",
+              "workspace-write"
+            ],
+            "output": [
+              "text",
+              "json"
+            ]
+          },
+          "options": {}
+        },
+        "codex-reviewer": {
+          "adapter": "codex",
+          "command": "\"/Users/devid/.nvm/versions/node/v24.18.1/bin/node\" \"/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol/bin/adapters/codex.mjs\"",
+          "model": null,
+          "identity": {
+            "displayName": "Codex CLI"
+          },
+          "capabilities": {
+            "roles": [
+              "executor",
+              "planner",
+              "reviewer"
+            ],
+            "access": [
+              "read-only",
+              "workspace-write"
+            ],
+            "output": [
+              "text",
+              "json"
+            ]
+          },
+          "options": {}
+        }
+      },
+      "roles": {
+        "executor": "codex",
+        "planner": "codex",
+        "reviewer": "codex-reviewer"
+      }
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",
-  "updatedAt": "2026-08-04T14:49:17.942Z",
+  "updatedAt": "2026-09-10T00:24:17.677Z",
   "writerVersion": "0.4.0"
 }
