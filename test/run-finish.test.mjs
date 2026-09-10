@@ -217,3 +217,27 @@ test('bookkeeping-only commits do not prevent valid working-tree adequacy probes
   const result = f.finish(); assert.equal(result.status, 0, output(result));
   assert.equal(f.count('checks'), 2); assert.equal(f.count('reviews'), 1);
 });
+
+for (const verdict of ['pass', 'block']) test(`initial milestone-boundary review remains required after a probe removes the milestone (${verdict})`, t => {
+  const f = fixture(t, { git: true, verdict }), script = join(f.parent, 'remove-milestone.cjs');
+  fs.writeFileSync(script, `const fs=require('fs');const p='.chalk/tasks.json';const ts=JSON.parse(fs.readFileSync(p));delete ts[0].milestone;fs.writeFileSync(p,JSON.stringify(ts));`);
+  f.store.upsertTask({ ...f.task, milestone: 'final milestone' });
+  const meta = f.store.meta(); meta.protocol.review = { command: 'node review.cjs', requiredAt: ['milestone-boundary'] };
+  meta.protocol.mutation = `node '${script}' {file}`; f.store.saveMeta(meta);
+  const result = f.finish();
+  assert.equal(f.count('reviews'), 1, output(result));
+  assert.equal(f.store.task(f.task.id).reviews.at(-1).verdict, verdict);
+  assert.equal(f.count('checks'), 2);
+  assert.equal(f.store.task(f.task.id).state === 'done', verdict === 'pass', output(result));
+  assert.equal(result.status === 0, verdict === 'pass', output(result));
+});
+
+test('removing a dependency cannot hide an initially completed prerequisite that reopens during probes', t => {
+  const f = fixture(t, { git: true }), script = join(f.parent, 'remove-dependency.cjs');
+  const upstream = { id: 'task-upstream', title: 'prerequisite', state: 'done', acceptanceCriteria: [], tests: [], reviews: [] };
+  f.store.upsertTask(upstream); f.store.upsertTask({ ...f.task, after: [upstream.id] });
+  fs.writeFileSync(script, `const fs=require('fs');const p='.chalk/tasks.json';const ts=JSON.parse(fs.readFileSync(p));ts.find(t=>t.id==='task-upstream').state='specd';ts.find(t=>t.id==='task-finish').after=[];fs.writeFileSync(p,JSON.stringify(ts));`);
+  const meta = f.store.meta(); meta.protocol.mutation = `node '${script}' {file}`; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.notEqual(f.store.task(f.task.id).state, 'done'); assert.match(output(result), /prerequisites changed/);
+});

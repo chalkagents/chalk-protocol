@@ -194,7 +194,10 @@ Configured adequacy probes that cannot execute block finish as inconclusive. The
 initial semantic verification approval remains binding across probes and reruns;
 changing criteria without incrementing a revision cannot replace the original contract.
 The initial review/completion policy is bound too, so a probe cannot disable mandatory
-review or other completion requirements. The existing adequacy helpers operate on
+review or other completion requirements. A review required when finish starts remains
+required even if milestone membership changes later; initial prerequisites must still
+be complete at admission, even if their dependency edges are subsequently removed.
+The existing adequacy helpers operate on
 uncommitted implementation changes from HEAD. If configured probes cannot cover the
 task's committed implementation changes, finish refuses that scope before verification;
 it does not silently skip them. Bookkeeping-only commits do not trigger this refusal.
