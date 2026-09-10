@@ -19,6 +19,7 @@ test('scheduled verification includes every repository test exactly once and iso
   assert.ok(batches[0].includes('--test-concurrency=1'));
   assert.ok(batches[0].includes('test/adapter-conformance.test.mjs'));
   assert.ok(batches[0].includes('test/codex-gemini-adapters.test.mjs'));
+  assert.ok(batches[0].includes('test/verification-scheduling.test.mjs'));
 });
 
 test('either failed batch, a lost child, or unknown test layout keeps scheduled verification closed', t => {
@@ -60,6 +61,8 @@ test('repository verification entry points use the bounded scheduler', () => {
   const chalk = JSON.parse(fs.readFileSync(join(ROOT, '.chalk/chalk.json'), 'utf8'));
   assert.equal(chalk.protocol.verify.test, 'npm test');
   for (const path of ['.github/workflows/test.yml', '.github/workflows/release.yml']) {
-    assert.match(fs.readFileSync(join(ROOT, path), 'utf8'), /run: npm test/);
+    const workflow = fs.readFileSync(join(ROOT, path), 'utf8');
+    assert.match(workflow, /run: node --test/);
+    assert.match(workflow, /NODE_OPTIONS: --test-concurrency=2/);
   }
 });

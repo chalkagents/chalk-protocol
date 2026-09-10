@@ -52,7 +52,7 @@ npm test                            # (source checkout) run the suite — hermet
 
 ### Platform support
 
-Chalk supports Linux and Windows, and the complete `npm test` suite runs on both
+Chalk supports Linux and Windows, and the complete `node --test` suite runs on both
 `ubuntu-latest` and `windows-latest` for every pull request and push to `dev` or `main`.
 macOS is supported on a best-effort basis but is not currently a required CI lane.
 

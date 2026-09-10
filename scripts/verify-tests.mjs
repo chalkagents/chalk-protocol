@@ -5,6 +5,13 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const SERIAL_TESTS = new Set([
+  'test/codex-gemini-adapters.test.mjs',
+  'test/spec-release.test.mjs',
+]);
+const requiresSerialExecution = file => file.includes('conformance') ||
+  file.startsWith('test/verification-') || SERIAL_TESTS.has(file);
+const integrationPriority = file => Number(file === 'test/pipeline.test.mjs');
 
 export function runVerificationTests({ root = ROOT, launch = spawnSync } = {}) {
   const files = [];
@@ -21,12 +28,11 @@ export function runVerificationTests({ root = ROOT, launch = spawnSync } = {}) {
     }
   };
   walk('test'); if (!files.length) unknown(); files.sort();
-  const serial = file => file.includes('conformance') || file.endsWith('/codex-gemini-adapters.test.mjs') || file.endsWith('/spec-release.test.mjs');
   // Start the long end-to-end pipeline before short files occupy its worker.
   // This avoids a late serial tail without increasing concurrency or the deadline.
-  const integrations = files.filter(file => !serial(file));
-  integrations.sort((a, b) => Number(b.endsWith('/pipeline.test.mjs')) - Number(a.endsWith('/pipeline.test.mjs')) || a.localeCompare(b));
-  for (const [concurrency, batch] of [[1, files.filter(serial)], [4, integrations]]) {
+  const concurrentFiles = files.filter(file => !requiresSerialExecution(file));
+  concurrentFiles.sort((a, b) => integrationPriority(b) - integrationPriority(a) || a.localeCompare(b));
+  for (const [concurrency, batch] of [[1, files.filter(requiresSerialExecution)], [4, concurrentFiles]]) {
     if (!batch.length) continue;
     // A caller may itself be a test child. Do not let that private Node marker
     // turn an explicit new verification process into an empty recursive run.

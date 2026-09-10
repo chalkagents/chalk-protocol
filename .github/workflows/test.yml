@@ -25,5 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      # Zero-dependency project — the scheduler runs every test with bounded concurrency.
-      - run: npm test
+      # Keep the direct full-suite contract while bounding watcher-heavy fixture concurrency.
+      - run: node --test
+        env:
+          NODE_OPTIONS: --test-concurrency=2
