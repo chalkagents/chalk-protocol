@@ -1054,3 +1054,8 @@
 
 - _when:_ 2026-08-05T03:27:06.706Z
 - _why:_ Re-lock after deterministically pinning Windows sharing retries, deadline expiry, immediate non-retryable failure, and no-delete atomicity.
+
+## Amended acceptance test for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-09-10T19:03:57.283Z
+- _why:_ Update the locked adapter contract to find Codex's exec subcommand after newly required global approval flags.

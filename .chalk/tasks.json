@@ -7649,7 +7649,7 @@
     "tests": [
       {
         "path": "test/codex-gemini-adapters.test.mjs",
-        "sha256": "555edb1bdc6a77a9e53f13fbadf3088301d8c52bd8269a3381607c3c99bd189e"
+        "sha256": "23bf121074122d8caad926636a5b473b41054ff97df0a5f9775cf91411c80dd8"
       }
     ],
     "heldOut": [],
