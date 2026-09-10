@@ -25985,7 +25985,7 @@
   {
     "id": "task-96da0ef1",
     "title": "fix: validate deterministic review inputs before invoking the reviewer",
-    "state": "blocked",
+    "state": "in-progress",
     "acceptanceCriteria": [
       {
         "id": "ac-1",
@@ -29148,7 +29148,7 @@
         "invalidated": {}
       }
     ],
-    "startedAt": "2026-09-10T01:44:48.597Z",
+    "startedAt": "2026-09-10T06:55:00.397Z",
     "reviewBase": {
       "commit": "0b98f2e6e674799264135e21c4e5f269dd4b356d",
       "capturedAt": "2026-09-10T01:44:48.597Z",

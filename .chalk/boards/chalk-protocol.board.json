@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789023208995,
+  "updatedAt": 1789023300397,
   "order": 0,
   "cards": [
     {
@@ -1814,7 +1814,7 @@
       "title": "fix: validate deterministic review inputs before invoking the reviewer",
       "column": "in_progress",
       "createdAt": 1789004422358,
-      "updatedAt": 1789004688597,
+      "updatedAt": 1789023300397,
       "order": 111,
       "description": "- Before invoking a configured reviewer in Git, identify and display the execution directory, branch, immutable task base, HEAD, complete changed-file list and untracked files. Include committed, staged, unstaged and non-ignored untracked task changes in one base-relative review input; exclude Chalk spine state and protected content.\n- Never fall back to the previous commit or the whole repository merely because the task diff is empty. Pin a base when work starts or branches; allow an explicit review --base ref for existing tasks. Refuse missing, invalid, unrelated or ambiguous bases and unresolved conflicts before reviewer invocation, without recording or retrying a verdict.\n- Persist the reviewed input manifest and fingerprint with the verdict. Preserve source observation, locked-test checks and the full adversarial rubric; base changes invalidate prior approval. Regression tests cover the reported untracked-file failure, mixed committed and working changes, empty inputs, pinned bases and actionable preflight rejection.\n- Use the existing complete-suite scheduler for this repository, with an explicit bounded 900000 ms test-command timeout. Support a validated positive per-gate timeoutMs option while retaining the default 600000 ms deadline; record the applied deadline with execution evidence. Every discovered test remains mandatory and timeout, failure or incomplete execution never opens the gate.",
       "testArtifact": {
