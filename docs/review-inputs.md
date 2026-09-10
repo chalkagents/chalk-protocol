@@ -39,6 +39,13 @@ has both staged and unstaged edits, stage its intended full contents or unstage 
 partial version before review. Git submodule review inputs are currently unsupported
 and are refused; use a task rooted in the submodule repository for its own changes.
 
+Git replacement refs are ignored consistently when resolving and comparing review
+revisions. Clean filters, working-tree encoding conversion and ident expansion are
+unsupported and refused before diff capture: they can remove effective source from
+Git's diff. CRLF files subject to Git line-ending normalization are also refused;
+normalize those working files before review. Ordinary LF text attributes remain
+supported. These checks include tracked files Git otherwise reports as unchanged.
+
 Chalk runtime records and its transaction locks are excluded from the candidate.
 The accepted verdict records the input manifest and fingerprints for both the
 presented revision and effective file contents. Approval admission revalidates this

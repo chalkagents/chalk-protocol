@@ -278,3 +278,50 @@ test('excluded-spine conflicts refuse review globally without invoking the revie
   const nested = join(d, 'nested'); mkdirSync(nested); writeFileSync(join(nested, 'code.js'), 'nested work');
   assert.throws(() => captureReviewInputs(nested, store.task(id), store.protocol()), /unresolved merge conflicts/, 'a subdirectory review cannot hide conflicts elsewhere in the index');
 });
+
+test('replacement refs cannot reinterpret a pinned base or approved candidate', t => {
+  const { d, store, id } = reviewingFixture(t);
+  assert.equal(chalk(d, 'start', id).status, 0);
+  writeFileSync(join(d, 'feature.js'), 'task work\n');
+  const passed = chalk(d, 'review', id); assert.equal(passed.status, 0, passed.stdout + passed.stderr);
+  const task = store.task(id), before = captureReviewInputs(d, task, store.protocol());
+  // Replacing the base with an empty-tree commit would turn old.js into a task
+  // addition if any baseline resolution or diff command honored replacement refs.
+  const empty = git(d, 'hash-object', '-w', '-t', 'tree', '--stdin');
+  const replacement = git(d, 'commit-tree', empty, '-m', 'replacement baseline');
+  git(d, 'replace', task.reviewBase.commit, replacement);
+  const after = captureReviewInputs(d, task, store.protocol());
+  assert.equal(after.base, before.base); assert.equal(after.diff, before.diff);
+  assert.deepEqual(after.files, before.files); assert.equal(after.contentFingerprint, before.contentFingerprint);
+  assert.equal(currentReview(store, store.task(id)), true, 'replacement refs are ignored consistently, so the approved candidate is unchanged');
+});
+
+test('clean filters cannot erase working source from review or retain earlier approval', t => {
+  const { d, top, store, id, counter } = reviewingFixture(t);
+  const attrs = join(d, '.git/info/attributes'), filter = join(top, 'clean.cjs');
+  writeFileSync(filter, 'process.stdout.write(require("fs").readFileSync(0,"utf8").replace(/^hidden.*\\n/gm,""));');
+  git(d, 'config', 'filter.erase.clean', `node ${filter}`);
+  assert.equal(chalk(d, 'start', id).status, 0); writeFileSync(join(d, 'feature.js'), 'task work\n');
+  const passed = chalk(d, 'review', id); assert.equal(passed.status, 0, passed.stdout + passed.stderr);
+  writeFileSync(attrs, 'old.js filter=erase\n');
+  assert.equal(currentReview(store, store.task(id)), false, 'new transformation policy closes the earlier approval');
+  writeFileSync(join(d, 'old.js'), 'hiddenRuntimeBehavior();\n' + readFileSync(join(d, 'old.js'), 'utf8'));
+  git(d, 'add', 'old.js');
+  assert.equal(git(d, 'diff', '--name-only', 'HEAD', '--', 'old.js'), '', 'fixture demonstrates Git hiding the effective source change');
+  const refused = chalk(d, 'review', id); assert.notEqual(refused.status, 0); assert.match(refused.stdout + refused.stderr, /Git content transformation filter.*old\.js/);
+  assert.equal(readFileSync(counter, 'utf8'), 'call\n'); assert.equal(store.task(id).reviews.length, 1);
+});
+
+test('conversion-dependent inputs are refused while ordinary LF text attributes remain supported', t => {
+  const { d } = fixture(t), task = { reviewBase: pinReviewBase(d) }, attrs = join(d, '.git/info/attributes');
+  writeFileSync(join(d, 'new.js'), 'task work\n');
+  writeFileSync(attrs, '*.js text=auto\n');
+  assert.deepEqual(captureReviewInputs(d, task).files, ['new.js']);
+  writeFileSync(join(d, 'new.js'), 'task work\r\n');
+  assert.throws(() => captureReviewInputs(d, task), /line-ending normalization/);
+  writeFileSync(join(d, 'new.js'), 'task work\n');
+  for (const attr of ['working-tree-encoding=UTF-8', 'ident', 'filter=']) {
+    writeFileSync(attrs, `*.js ${attr}\n`);
+    assert.throws(() => captureReviewInputs(d, task), /Git content transformation/);
+  }
+});
