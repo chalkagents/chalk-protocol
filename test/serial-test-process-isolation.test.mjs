@@ -18,4 +18,11 @@ test('serial scheduler files receive independent node:test runner lifetimes', t 
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /serial 1[\s\S]*tests 1[\s\S]*serial 2[\s\S]*tests 1/);
   assert.doesNotMatch(result.stdout, /tests 2/);
+
+  const marker = join(root, 'second-ran');
+  fs.writeFileSync(join(root, files[0]), "import { test } from 'node:test'; import assert from 'node:assert/strict'; test('fails', () => assert.fail('expected'));\n");
+  fs.writeFileSync(join(root, files[1]), `import { test } from 'node:test'; import fs from 'node:fs'; test('still runs', () => fs.writeFileSync(${JSON.stringify(marker)}, 'yes'));\n`);
+  const failed = spawnSync(process.execPath, [batch, '1', ...files.map(file => join(root, file))], { encoding: 'utf8' });
+  assert.equal(failed.status, 1, failed.stdout + failed.stderr);
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'yes');
 });
