@@ -2044,3 +2044,13 @@
 
 - _when:_ 2026-09-10T09:46:29.335Z
 - _why:_ Lock the validated initial-gate regressions: milestone-boundary review remains mandatory after milestone removal for both PASS and BLOCK verdicts, and deleting a dependency cannot hide an initially complete prerequisite reopening. All 59 finish/protocol tests passed.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T10:04:29.169Z
+- _why:_ Add regressions for final open-raise admission and configured break-it skipping without a runnable locked code test. Audit and recheck mutable entry requirements at final admission; preserve all existing positive and negative assertions.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T10:10:20.708Z
+- _why:_ Lock the completed entry-to-admission audit regressions: open director forks, unsupported configured probe skips, cannot-execute status, new directives, moved review base and removed required tests. All 67 finish/protocol tests passed with zero failures or skips.

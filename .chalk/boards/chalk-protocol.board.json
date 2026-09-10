@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789033406683,
+  "updatedAt": 1789034668992,
   "order": 0,
   "cards": [
     {
@@ -1875,7 +1875,7 @@
       "title": "feat: finalize an active task through one guarded run",
       "column": "in_progress",
       "createdAt": 1789028960226,
-      "updatedAt": 1789033406683,
+      "updatedAt": 1789034668992,
       "order": 116,
       "description": "- Extend the existing chalk run driver with --finish <id> for exactly one already in-progress task. Skip executor invocation and require no executor configuration; preserve start time and attempts. Validate target, dependencies and incompatible flags before running gates; dry-run is read-only and identifies the actual execution directory, branch and task base.\n- Run fresh verification and all existing configured test-adequacy and completion gates, then required adversarial review, then completion using only the actual verification result retained in the same process. Never load a receipt as execution authority. Check fresh source/spec/config approval, visible locked-test integrity and Git tracking, current review and completion approvals in the final serialized admission. Preserve source observation and full review rubric; a changed contract, failed gate or missing evidence must not complete.\n- Revalidate retained verification output bytes before completion and reject damage. Keep new reviewer findings and decisions inspectable, report stage timings and receipt location, and support --force-rerun for a second verification after review. Each invocation begins with fresh verification; cross-command reuse and full external toolchain/environment identity remain deferred and clearly documented.\n- Meaningful CLI regressions prove unchanged finish invokes verification once, never invokes executor, and completes only the selected task. Cover invalid target/dependencies, dry-run, forced rerun, failed verification, review BLOCK/error, source/spec/locked-test changes, untracked locked tests, and tampered local evidence. Preserve existing ordinary run and done behavior.",
       "testArtifact": {
@@ -1883,7 +1883,7 @@
         "lastRun": {
           "runId": "review-task-2c04dcc4",
           "status": "failed",
-          "at": 1789033406853
+          "at": 1789034669162
         }
       }
     }
