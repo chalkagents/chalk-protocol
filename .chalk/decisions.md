@@ -2014,3 +2014,13 @@
 
 - _when:_ 2026-09-10T08:40:33.894Z
 - _why:_ Added initial acceptance tests during implementation
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T08:59:23.555Z
+- _why:_ Add regressions for reviewer findings: inconclusive configured adequacy probes must block finish, and probe/forced-verification reruns must retain the initial semantic contract even without a revision increment. Preserve all existing assertions and re-lock final bytes after validation.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:03:28.486Z
+- _why:_ Lock the validated review-fix regressions: inconclusive break-it and mutation tools block, a mutation cannot replace the initial contract without a revision bump, and successful probes can restore source and complete after fresh verification. All 51 finish/protocol tests passed.

@@ -34,5 +34,10 @@ todos:
 
 - `test/run-finish.test.mjs`
 
+## Reviews
+
+- **block** · 2026-09-10T08:58 · adversary
+- **stale** · 2026-09-10T08:59 · amend-spec
+
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._
