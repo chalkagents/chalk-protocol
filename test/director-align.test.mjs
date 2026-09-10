@@ -1,3 +1,4 @@
+import { captureApproval } from '../lib/approval-inputs.mjs';
 // The alignment gate (#191) — the director checkpoint. When protocol.director.required is on, a human
 // must ACCEPT the acceptance criteria as the definition of *done* (via `chalk align`) before any code is
 // built. This is the fix for #160: an autonomous run that builds everything and only then turns out
@@ -18,9 +19,11 @@ const tasks = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json')));
 const conf = (d, fn) => { const f = join(d, '.chalk/chalk.json'); const o = JSON.parse(readFileSync(f)); fn(o.protocol); writeFileSync(f, JSON.stringify(o, null, 2)); };
 
 test('criteriaAcceptedRequired — only when director.required is set and the task is not accepted', () => {
-  const store = (required) => ({ protocol: () => ({ director: { required } }) });
+  const store = (required) => ({ protocol: () => ({ director: { required } }), meta: () => ({}), spec: () => '', questions: () => [] });
   assert.equal(criteriaAcceptedRequired(store(true), {}), true);
-  assert.equal(criteriaAcceptedRequired(store(true), { criteriaAccepted: { at: 'x' } }), false);
+  assert.equal(criteriaAcceptedRequired(store(true), { criteriaAccepted: { at: 'x' } }), true, 'legacy approvals are historical');
+  const task = {}; task.criteriaAccepted = { at: 'x', approval: captureApproval(store(true), 'alignment', task) };
+  assert.equal(criteriaAcceptedRequired(store(true), task), false, 'a current approval permits work');
   assert.equal(criteriaAcceptedRequired(store(false), {}), false, 'opt-in: off by default');
   assert.equal(criteriaAcceptedRequired({ protocol: () => ({}) }, {}), false, 'no director config → off');
 });

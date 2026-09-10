@@ -1,3 +1,4 @@
+import { captureApproval } from '../lib/approval-inputs.mjs';
 // The plan-approval gate — planning is the human checkpoint. When protocol.plan.required is on, a
 // human must approve the plan (after answering the scoping questions) before any code is written.
 // Covers the predicate, `chalk approve-plan` (refusals + the open-questions guard + --force), the
@@ -17,9 +18,11 @@ const tasks = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json')));
 const conf = (d, fn) => { const f = join(d, '.chalk/chalk.json'); const o = JSON.parse(readFileSync(f)); fn(o.protocol); writeFileSync(f, JSON.stringify(o, null, 2)); };
 
 test('planApprovalRequired — only when plan.required is set and the task is not approved', () => {
-  const store = (required) => ({ protocol: () => ({ plan: { required } }) });
+  const store = (required) => ({ protocol: () => ({ plan: { required } }), meta: () => ({}), spec: () => '', questions: () => [] });
   assert.equal(planApprovalRequired(store(true), {}), true);
-  assert.equal(planApprovalRequired(store(true), { planApproved: { at: 'x' } }), false);
+  assert.equal(planApprovalRequired(store(true), { planApproved: { at: 'x' } }), true, 'legacy approvals are historical');
+  const task = {}; task.planApproved = { at: 'x', approval: captureApproval(store(true), 'plan', task) };
+  assert.equal(planApprovalRequired(store(true), task), false, 'a current approval permits work');
   assert.equal(planApprovalRequired(store(false), {}), false, 'opt-in: off by default');
 });
 

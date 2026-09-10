@@ -1054,3 +1054,713 @@
 
 - _when:_ 2026-08-05T03:27:06.706Z
 - _why:_ Re-lock after deterministically pinning Windows sharing retries, deadline expiry, immediate non-retryable failure, and no-delete atomicity.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T08:00:23.528Z
+- _why:_ Correct new test fixture assumptions: compare canonical macOS temporary paths and select the test gate by name rather than assuming toolchain order; add unknown-source refusal coverage without weakening assertions.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T08:05:12.042Z
+- _why:_ Allow two seconds for the timeout fixture to start under full-suite process contention; retain all timeout, signal, failure and captured-output assertions.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T08:09:10.470Z
+- _why:_ Exercise the external-manifest symlink refusal on every platform using a directory junction supported by Windows, instead of excluding Windows.
+
+## Bound local verification test concurrency to four processes
+
+- _when:_ 2026-09-08T08:09:10.562Z
+- _why:_ Two full-suite runs hit different pre-existing adapter fixture subprocess deadlines under default host concurrency. Execute the same complete node:test suite with four test processes; retain every test and deadline assertion.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T08:12:54.405Z
+- _why:_ Add a regression assertion that configured commands retain shell environment-assignment semantics while their output is captured to files.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T08:15:05.095Z
+- _why:_ Add a regression test proving live verification logs cannot false-trigger the existing read-only agent mutation guard; keep the mutation guard fully enforced.
+
+## Persist source-bound verification evidence locally
+
+- _when:_ 2026-09-08T08:24:45.163Z
+- _why:_ Capture full stdout/stderr outside the workspace while a gate runs, then archive it with command, timing, exit/signal, configuration, task contract and before/after source identity. Unknown or changed inputs and storage failures fail closed. Live logs must not weaken or false-trigger read-only agent mutation checks.
+
+## Resume configured Claude review with user authorization
+
+- _when:_ 2026-09-08T08:37:20.131Z
+- _why:_ The user answered Continue to the explicit request to send the current repository diff and task criteria to the configured external Claude reviewer.
+
+## Amended acceptance test for "feat: prove adapter portability with first-party Codex and Gemini CLI adapters"
+
+- _when:_ 2026-09-08T08:42:41.451Z
+- _why:_ Correct the Codex argv contract to place the global approval option before exec, as required by the installed Codex CLI; retain the existing sandbox, approval value, stdin, model and structured-result assertions.
+
+## Use Codex for executor, planner and required reviewer
+
+- _when:_ 2026-09-08T09:43:28.428Z
+- _why:_ User specified Codex rather than Claude. Installed CLI global approval syntax and strict review schema are fixed in 1e300c7, 599 tests passed, a real Codex review passed, and chalk done accepted the task. Legacy commands are cleared; optional unsupported roles remain unconfigured and independence remains unverified.
+
+## Bind verification identity to executable bits and submodule source
+
+- _when:_ 2026-09-08T09:46:35.934Z
+- _why:_ Adversarial review reproduced a permission-only false green and rejected populated submodules. New locked tests reproduce both. Fingerprints now include execution-relevant mode bits plus gitlink, checked-out commit and recursive source state; uninitialized modules retain gitlink identity.
+
+## Authorize Codex reviews for the agreed protocol improvement tasks
+
+- _when:_ 2026-09-08T09:57:48.444Z
+- _why:_ The user explicitly approved sending the current evidence-task diff and acceptance criteria, and those of the remaining agreed protocol tasks, to Codex for required reviews. This authorization follows the disclosure-specific automatic approval rejection and applies to the queued roadmap reviews.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T10:16:55.864Z
+- _why:_ Canonicalize the fixture root so the archive-location assertion compares the same physical macOS temporary directory rather than /var versus /private/var aliases; retain the archival and cancellation assertions.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T10:40:44.098Z
+- _why:_ Strengthen the snapshot-error fixture by creating a legitimate Store.lockTest contract before replacing its file with a directory, rather than supplying a synthetic hash. Preserve all receipt-retention assertions and avoid Windows file-symlink privilege requirements.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T10:47:39.312Z
+- _why:_ Add a regression assertion for source filenames such as __proto__, which a plain JavaScript object silently loses. Preserve the existing supervision and error-receipt assertions.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T11:38:25.099Z
+- _why:_ Make timeout-log retention depend on an independent marker written only after stdout emission. Retry only startup-starved attempts with a larger deadline; still fail immediately if emitted output is missing, and retain timeout/signal assertions for every attempt.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T12:59:03.056Z
+- _why:_ Strengthen review regression: reject transient ordinary files hidden by directory-only ignores, including replacement of pre-existing ignored directories. Keep positive output-deletion coverage using an explicit ignore for both file and directory forms; ambiguous directory-only deletion must fail closed.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T13:12:59.726Z
+- _why:_ Add adversarial file-to-directory transition regression and audit call-site coverage for visible locks and browser failures. Preserve positive generated-output coverage with explicit type-independent ignore rules; directory-only rules cannot certify the original type of queued events.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T13:14:17.742Z
+- _why:_ Read completed browser command evidence from the final receipt e2e execution field; keep exit status, actual stdout/stderr and audit rejection assertions unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T13:28:40.487Z
+- _why:_ Extend input-policy coverage to an initially absent external Git ignore file created and deleted during execution; retain disk-full cancellation and closed-stream descendant regressions.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T13:31:28.880Z
+- _why:_ Add staging-invariance regression: policy identities must use canonical path order rather than Git tracked versus untracked enumeration order.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T14:23:33.900Z
+- _why:_ User approved publishing Windows supervision follow-up #251. Cite that tracked issue beside the POSIX-only integration test; assertions and platform guard are unchanged.
+
+## Track Windows descendant-supervision parity in issue #251
+
+- _when:_ 2026-09-08T14:23:34.027Z
+- _why:_ User explicitly authorized the scoped public follow-up. https://github.com/chalkagents/chalk-protocol/issues/251 records the missing Windows post-parent-exit behavior; this does not claim Windows parity or waive the verification/review gates.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T14:58:16.388Z
+- _why:_ Cover split-index support explicitly: unchanged shared indexes must verify green, while command-time writes to the shared index must invalidate evidence.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T15:15:51.205Z
+- _why:_ Strengthen criterion 2 against a reproduced temporary branch-selector change that activates conditional Git ignore configuration and restores HEAD before verification ends.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T15:31:12.786Z
+- _why:_ Close the Codex-reproduced repository-selector bypass with gitfile replacement, ordinary .git directory replacement and initially absent nearer .git selection; retain identical endpoint source fingerprints to demonstrate the required within-run rejection.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T15:49:02.729Z
+- _why:_ Add production Git regressions for the Codex-reproduced descendant repository-selection bypass, using both a gitfile and a Git directory in an initially empty watched directory.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T15:49:02.857Z
+- _why:_ Require later-gate deletion and truncation of earlier stdout/stderr archives to fail verification while retaining the original output; also cover successful cleanup after complete multi-gate archival.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T15:50:23.154Z
+- _why:_ Strengthen recovery coverage against a later gate redirecting an archive to a source-file symlink; preserve the source while recovering the original log, and capture cleanup paths before teardown.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T15:50:23.370Z
+- _why:_ Re-lock strengthened retention tests: deletion, truncation and symlink redirection all reject GREEN while preserving captured output and source; successful finalization releases temporary copies.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T16:09:14.617Z
+- _why:_ Lock minimized end-to-end reproductions for live spool replacement/truncation, initial archive symlinks, parent-directory redirection and receipt temporary-file redirection before fixing capture/storage authority.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T16:35:00.215Z
+- _why:_ Pin Codex reproductions for literal configured exclusions and valid output under a stable ignored ancestor containing a force-tracked input; preserve rejection of ambiguous ignored-directory replacement.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T16:36:21.270Z
+- _why:_ Make the intermittent ignore-policy diagnostic regression deterministic by suppressing callback delivery; require restored policy writes to appear in command inputChanges through endpoint identity checks.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T16:50:09.271Z
+- _why:_ Lock the reproduced significant-whitespace bypass across external ignore paths, initially empty explicit global config paths and ancestor Git roots before correcting path parsing.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T17:11:58.001Z
+- _why:_ Lock the Codex-reproduced empty/absent newline-containing global-config bypass and require ambiguous default global discovery to fail closed; unsupported filesystem names must also reject verification.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T17:47:53.916Z
+- _why:_ Cover the review's cross-gate input-monitoring and escaped-descendant cancellation failures, including final collection, interruption and unchanged execution.
+
+## Observe verification continuously through final input collection; re-hash the observed manifest without Git index reads, and bound escaped-pipe cancellation to a one-second grace period.
+
+- _when:_ 2026-09-08T17:49:17.693Z
+- _why:_ Codex review reproduced an unmonitored handoff and an escaped descendant that outlived timeout. Continuous in-memory observation preserves shared-index write detection without Git's own timestamp refreshes; unfinished streams are explicitly incomplete.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T17:50:06.102Z
+- _why:_ Make the escaped-pipe fixture tolerate parallel process startup while still asserting bounded cancellation before the descendant exits.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T17:50:06.273Z
+- _why:_ Re-lock bounded cancellation regression with a five-second command deadline and a fifteen-second escaped worker, retaining output and incomplete-stream assertions.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T17:56:19.698Z
+- _why:_ Pin real verify behavior for special object-key source filenames in final observed-manifest collection.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T18:16:19.741Z
+- _why:_ Lock concurrent startup membership, final archive retention and late task/config authority changes reproduced by Codex review.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T18:40:50.514Z
+- _why:_ Cover concurrent source and archive writes during final sequential validation, plus Node module-input observer startup and the recorded completion boundary.
+
+## Keep source and completed archives under observation through final validation, and record the observer's completion boundary in the receipt.
+
+- _when:_ 2026-09-08T18:45:11.404Z
+- _why:_ Codex reproduced source changes after observation stopped and damage to an earlier stream during later-stream validation. Concurrent archive watches plus endpoint metadata checks close those intervals; late damage remains failed and recoverable.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T19:05:18.145Z
+- _why:_ Lock source and archive races during the observer's own final contract reads, testing synchronous and asynchronous read paths with concurrent writers.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T19:14:35.401Z
+- _why:_ Pin the reproduced source race during slow ignored-output classification; observer callbacks must remain responsive and settle before completion.
+
+## Keep observer final reads and callback classification asynchronous, and drain pending work before closing observation.
+
+- _when:_ 2026-09-08T19:16:47.792Z
+- _why:_ Codex reproduced writes hidden while final synchronous contract reads blocked notifications; an additional focused regression found the same failure during slow Git ignore classification. Both now remain observable without weakening gates.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T19:42:57.782Z
+- _why:_ Add deterministic negative coverage for withheld transient-source notifications, both alone and beside valid ignored output. Current implementation reproduces false GREEN; preserve these regressions while the recorded compatibility decision is resolved.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T20:10:18.954Z
+- _why:_ User approved the stricter source-directory membership boundary: ignored output directories must exist before verification and remain present. Replace the prior create/remove-directory success case with rejection and retain a positive case for output inside a stable ignored directory. All existing negative and archival assertions remain.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T20:11:39.090Z
+- _why:_ Re-lock the user-approved stable-output-directory contract: root output-directory creation/deletion is rejected, while generated files inside a pre-existing ignored directory pass. Existing negative and archival assertions are retained.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T20:14:37.762Z
+- _why:_ Lock regressions proving that namespace identities cover transient inputs before observer startup and during the final drain even when the source notification is withheld.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T20:15:23.241Z
+- _why:_ Apply the user-approved stable-output-directory requirement to the second existing positive fixture: prepare its ignored build directory before verify instead of creating it in the command. Preserve its GREEN assertion and all unrelated supervision/negative tests.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T20:15:23.484Z
+- _why:_ Re-lock the unchanged GREEN assertion with its build directory prepared before verify, consistent with the user-approved compatibility contract. Negative and process-supervision assertions are unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T20:34:59.517Z
+- _why:_ Lock deterministic startup/final-collection regressions for absent visible contracts and external policy authorities, including missing parents and explicitly included policy inside ignored output. The six original review reproductions all failed before the fix.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T20:34:59.656Z
+- _why:_ Lock real verify/done CLI assertions for discoverable successful and failed receipts, stale-source explanations, storage-error explanations and retained incomplete task state. Done receipt discovery failed before its reporting fix.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T20:54:07.346Z
+- _why:_ Lock both independently reproduced missing tracked-input boundaries: create/read/delete inside ignored output before observer startup and during final collection with notifications withheld. Both failed before the fix; valid ignored-output assertions are retained.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T20:54:07.481Z
+- _why:_ Lock the same absent-identity boundary for recorded ancestor repository selectors outside the source root. Startup and final-collection cases fail against the previous staged library in an isolated copy and pass with parent-namespace binding.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T21:08:19.218Z
+- _why:_ Lock restored tracked-symlink replacement at observer startup and final collection, plus unchanged tracked-symlink verification with legitimate ignored sibling output. The startup case failed before initial link metadata was preserved; existing source/boundary/ignored-output assertions remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-08T21:15:58.024Z
+- _why:_ Lock restored shared-index writes before observer startup. The deterministic test failed before preserving metadata captured after the initial Git probes; unchanged split-index and symlink/output positive cases still pass.
+
+## Amended acceptance test for "feat: supply recorded verification evidence to reviewers"
+
+- _when:_ 2026-09-08T21:59:07.083Z
+- _why:_ Lock matching receipt selection, freshness, malformed and incomplete evidence, bounded untrusted summaries, and protected output regressions.
+
+## Amended acceptance test for "feat: supply recorded verification evidence to reviewers"
+
+- _when:_ 2026-09-08T21:59:07.230Z
+- _why:_ Lock automatic evidence attachment through the actual review entrypoint without rerunning checks or embedding raw output.
+
+## Amended acceptance test for "feat: supply recorded verification evidence to reviewers"
+
+- _when:_ 2026-09-08T22:08:35.035Z
+- _why:_ Extend locked regressions for Codex review findings: missing or malformed execution metadata and uncertain selection when a newer receipt is missing.
+
+## Amended acceptance test for "feat: supply recorded verification evidence to reviewers"
+
+- _when:_ 2026-09-08T22:13:21.483Z
+- _why:_ Re-lock passing regressions for both independently reproduced Codex findings, including configured browser execution coverage and absent newer receipts.
+
+## Amended acceptance test for "feat: supply recorded verification evidence to reviewers"
+
+- _when:_ 2026-09-08T22:23:43.584Z
+- _why:_ Add the second Codex review reproduction: linked or wrong-type run entries cannot silently reveal an older successful receipt as current.
+
+## Amended acceptance test for "feat: supply recorded verification evidence to reviewers"
+
+- _when:_ 2026-09-08T22:25:12.809Z
+- _why:_ Re-lock the passing linked and wrong-type run candidate regression from the second Codex review.
+
+## Amended acceptance test for "feat: supply recorded verification evidence to reviewers"
+
+- _when:_ 2026-09-08T22:34:49.105Z
+- _why:_ Strengthen the actual reviewer-prompt regression after Codex demonstrated that removing available log paths was not detected.
+
+## Amended acceptance test for "feat: supply recorded verification evidence to reviewers"
+
+- _when:_ 2026-09-08T22:36:05.040Z
+- _why:_ Re-lock prompt assertions for executed command outcomes and exact stdout/stderr paths; isolated mutation testing confirms path removal is detected.
+
+## Amended acceptance test for "feat: report verification coverage and audit scope precisely"
+
+- _when:_ 2026-09-08T23:04:17.522Z
+- _why:_ Lock CLI and structured-event coverage across passed, failed, deferred, unconfigured, stale and unknown checks; separate review admission, browser outcomes, phase checks and withheld held-out results.
+
+## Run state-writing review checks in isolated fixtures
+
+- _when:_ 2026-09-08T23:37:40.812Z
+- _why:_ Two native Codex review attempts ran chalk audit in the reviewed workspace and wrote protocol state, causing the read-only guard to discard their verdicts. Review guidance now distinguishes implementer-run evidence from independent fixture execution; the guard remains enforced, and read-only mutation diagnostics stop automatic retries.
+
+## Amended acceptance test for "feat: report verification coverage and audit scope precisely"
+
+- _when:_ 2026-09-08T23:37:40.968Z
+- _why:_ Lock the live adoption fix: actual reviewer prompts require isolated state-writing workflows, and audit metadata mutation remains a read-only refusal with a clear diagnostic and no retry.
+
+## Amended acceptance test for "fix: issue-intake spine writes leak into unrelated task branches — recurring scoped-diff review noise"
+
+- _when:_ 2026-09-08T23:45:27.043Z
+- _why:_ Correct the test harness to capture the reviewer prompt outside the reviewed workspace. Its existing code/spec inclusion and spine exclusion assertions remain intact; the harness must not depend on retrying a read-only mutation.
+
+## Amended acceptance test for "fix: issue-intake spine writes leak into unrelated task branches — recurring scoped-diff review noise"
+
+- _when:_ 2026-09-08T23:46:32.858Z
+- _why:_ Re-lock the passing diff-scope contract after moving only the prompt capture into its separate temporary parent directory; all original assertions are preserved.
+
+## Amended acceptance test for "feat: report verification coverage and audit scope precisely"
+
+- _when:_ 2026-09-09T00:07:04.856Z
+- _why:_ Add the Codex review regression for a completed browser execution followed by failure setting up the next replay; CLI and events must retain partial execution scope.
+
+## Amended acceptance test for "feat: report verification coverage and audit scope precisely"
+
+- _when:_ 2026-09-09T00:11:02.334Z
+- _why:_ Re-lock passing partial-browser regressions for verify and audit, including a successful process whose specification failed before a later replay setup error.
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T01:57:06.091Z
+- _why:_ Pin stable criterion IDs, current-only context and reviewer inputs, atomic revision history, approval invalidation, restored-content evidence staleness, and resumable verification
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T02:04:07.129Z
+- _why:_ Extend regressions to prevent a stale task writer or long-running executor from erasing newer contract revisions and restoring approvals
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T02:04:07.696Z
+- _why:_ Lock stale-writer and executor-amendment regressions without altering the existing amendment assertions
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T02:11:14.606Z
+- _why:_ Add a batch regression that prevents retiring a not-yet-issued criterion ID and reusing that retired identity
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T02:11:15.032Z
+- _why:_ Lock atomic rejection of guessed future criterion IDs while preserving all previous amendment regressions
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T02:31:04.770Z
+- _why:_ Pin Codex review findings: done/run must renew required approvals after amendment, and merge must verify the current contract despite old green CI; cover refusal and recovery
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T02:47:01.087Z
+- _why:_ Extend merge fixtures to use real local Git remotes and pin the Codex finding that verified amendment follow-up commits must reach the existing PR before merge
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T02:48:11.346Z
+- _why:_ Lock real-remote amendment resumption through work, commit, existing PR and merge; preserve earlier approval and verification refusal assertions
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T02:49:54.644Z
+- _why:_ Make the real-remote fixture represent previously healthy old code and tests before the executor updates them for the amended contract
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T02:49:58.681Z
+- _why:_ Lock the healthy-old-candidate to verified-and-published-correction regression with all previous refusal assertions intact
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T03:16:53.285Z
+- _why:_ Pin rejection of in-flight review verdicts across canonical-spine revisions for run and review, including no PR post and unblock/done refusal until fresh review
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T03:54:32.438Z
+- _why:_ Pin concurrent merge admission, protected lease and crash recovery, and completed-contract dependency and release invalidation with revalidation recovery
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T04:21:26.857Z
+- _why:_ Pin amendment-safe archival and honest current-contract completion across board, plan, portal and statistics, including revalidation recovery
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T04:50:21.444Z
+- _why:_ Pin current-only context after replacing, retiring or relocking a contract with a prior handoff; preserve documents and refuse in-flight stale narration
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T05:05:25.160Z
+- _why:_ Update approval-recovery fixtures to regenerate invalidated plans before approval while preserving every negative gate assertion
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T05:09:44.666Z
+- _why:_ Pin obsolete-plan and BLOCK-finding retirement plus real plan regeneration while preserving later pipeline records
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T07:41:30.315Z
+- _why:_ Pin the user-authorized planner fixture correction and regeneration steps; all negative admission assertions remain intact and related focused checks pass
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T08:11:26.828Z
+- _why:_ Pin required-audit rejection after criterion and test amendments, restored wording, fresh-audit recovery, archival stability and in-flight specification changes
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T08:31:44.058Z
+- _why:_ Pin protected release and promotion admission plus rejection of changed contracts across interrupted release recovery, including legacy records
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T11:30:43.768Z
+- _why:_ Pin interrupted promotion recovery after partial release marking and archival, allowing unchanged accepted revisions while rejecting amended archived contracts
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T11:53:45.243Z
+- _why:_ Pin interrupted archival history reconciliation and serialized revision-scoped review publication after adversarial findings
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T12:09:29.859Z
+- _why:_ Pin serialized audit/review phase admission and retirement of historical shipping records through director reopening
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T12:29:38.480Z
+- _why:_ Pin late planner rejection after archival, fail-closed historical authority, and artifact-free release preflight retry
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-09T12:47:23.683Z
+- _why:_ Pin P1 for unstarted criterion retirement and prevent legacy empty contracts from executing in the unattended driver
+
+## Acceptance amendments govern the current workflow contract
+
+- _when:_ 2026-09-09T17:13:18.116Z
+- _why:_ Completed task-baa1f3a2 at specification revision 24 in source commit 59637da. Stable criterion IDs and sanctioned revisions retain history while invalidating prior review, verification, plan and alignment approvals. Admission and recovery paths protect amended completion across merge, phase, release, archival and reopening. Codex adversarial review passed; final chalk done verification passed all 817 tests with locked-test integrity intact. This is local specification freshness, not complete source/config/toolchain identity or verification reuse.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T17:32:17.321Z
+- _why:_ Migrate legacy approval expectations to the current-input contract; retain gate refusal assertions and establish fresh approvals through their commands
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T17:39:10.020Z
+- _why:_ Pin shared approval freshness, legacy-record renewal, command-boundary races and updated positive fixtures with current identities
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T17:52:56.711Z
+- _why:_ Migrate gate fixtures to current approval identities and keep generated review output outside candidate source; preserve existing negative and resume assertions
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T17:59:05.148Z
+- _why:_ Add an audit execution regression for temporary source changes that are removed before the endpoint check
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T18:07:32.247Z
+- _why:_ Lock final freshness regressions and renew legacy approval fixtures under the current source/spec/configuration contract; preserve blocked-path and pipeline-resume assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T18:22:38.980Z
+- _why:_ Lock fresh endpoint-manifest equivalence and invalidation tests, including Gitlinks and refusal to use admission identities as execution-monitor baselines; execution monitoring remains complete.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T18:33:46.781Z
+- _why:_ Lock deterministic coverage for ordinary adapter startup exceeding two seconds, preserving the separate timeout-enforcement fixture; addresses repeated concurrent full-verification environment failures without relaxing completion or integrity gates.
+
+## Use three test-file workers and TAP output for this checkout’s complete verification suite.
+
+- _when:_ 2026-09-09T18:43:05.729Z
+- _why:_ Repeated full runs showed process-startup and lock-probe deadline failures under four workers, while isolated retries passed. Reduce local contention and retain immediate failure diagnostics; keep every test and the ten-minute gate deadline.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T18:54:42.324Z
+- _why:_ Lock real done-command regressions for a new BLOCK after verification and preservation of newly recorded review history; shared review freshness must use the current canonical verdict rather than an old task snapshot.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T19:00:16.276Z
+- _why:_ Lock complete-suite scheduling: every repository test appears exactly once, adapter probes run outside the concurrent pool, and either failed batch or incomplete discovery closes the gate.
+
+## Schedule adapter conformance separately from the concurrent integration pool in this checkout’s full verification command.
+
+- _when:_ 2026-09-09T19:00:16.540Z
+- _why:_ Three workers produced one complete 830-test pass, but conformance startup failures recurred in the next run. Both scheduled batches remain mandatory; exhaustive discovery and failure propagation are locked tests. No completion gate, assertion, or overall deadline is relaxed.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T19:23:08.627Z
+- _why:_ Lock the Codex BLOCK fixes: audit visible locks in active/all-locks/worktree scopes, restored project-spec edits during done including absent and external canonical files, and automated-review diagnostic/handoff continuity.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T20:03:35.645Z
+- _why:_ Lock reviewer selection inside observation, preserved work/run verification recovery diagnostics, malformed-output input diagnostics, and split-index preflight with staged-content-preserving recovery.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T20:30:05.930Z
+- _why:_ Lock regressions for continuous audit configuration observation, failed preflight evidence, and split-index recovery without source changes.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T20:54:29.816Z
+- _why:_ Lock Codex review regressions for complete verification integrity scope at done/merge admission and continuously observed archive authorities and membership.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T20:59:46.127Z
+- _why:_ Update the merge fixture to expose the Store task inventory required by complete integrity-scope approval capture; retain all existing gate assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T21:00:24.930Z
+- _why:_ Re-lock the final merge fixture with an explicit task inventory after all 25 focused admission checks pass; gate assertions unchanged.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T21:23:32.622Z
+- _why:_ Lock real CLI regressions for a concurrent BLOCK arriving immediately before done and run completion transactions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T21:23:32.802Z
+- _why:_ Lock valid symlinked Git-policy compatibility and rejection of restored link or policy mutations during review.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T21:45:08.364Z
+- _why:_ Lock late BLOCK preservation across both merge-publication and work-verification metadata transactions, including downstream done refusal.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T21:45:08.528Z
+- _why:_ Lock first-run audit coverage with executable browser checks and both default and nested browser output directories.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:18:37.230Z
+- _why:_ Update the offline GitHub fixture to report and enforce the published PR head and confirmed merge state; preserve existing behavioral assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:18:37.378Z
+- _why:_ Update the offline GitHub fixture to report and enforce the published PR head and confirmed merge state; preserve existing behavioral assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:18:37.543Z
+- _why:_ Update the offline GitHub fixture to report and enforce the published PR head and confirmed merge state; preserve existing behavioral assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:18:37.715Z
+- _why:_ Update the offline GitHub fixture to report and enforce the published PR head and confirmed merge state; preserve existing behavioral assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:18:37.892Z
+- _why:_ Update the offline GitHub fixture to report and enforce the published PR head and confirmed merge state; preserve existing behavioral assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:26:54.839Z
+- _why:_ Lock final passing coverage for current review admission and publication/confirmation of the approved PR head; all existing gate assertions retained.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:26:55.000Z
+- _why:_ Lock final passing coverage for current review admission and publication/confirmation of the approved PR head; all existing gate assertions retained.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:26:55.165Z
+- _why:_ Lock final passing coverage for current review admission and publication/confirmation of the approved PR head; all existing gate assertions retained.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:26:55.335Z
+- _why:_ Lock final passing coverage for current review admission and publication/confirmation of the approved PR head; all existing gate assertions retained.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:26:55.508Z
+- _why:_ Lock final passing coverage for current review admission and publication/confirmation of the approved PR head; all existing gate assertions retained.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:26:55.678Z
+- _why:_ Lock final passing coverage for current review admission and publication/confirmation of the approved PR head; all existing gate assertions retained.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:26:55.847Z
+- _why:_ Lock final passing coverage for current review admission and publication/confirmation of the approved PR head; all existing gate assertions retained.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:32:07.166Z
+- _why:_ Update the local-verification merge fixture to model the now-required published PR head and confirmed merge state; retain every assertion.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T22:33:10.122Z
+- _why:_ Re-lock the updated offline provider fixture after all existing gate-hardening assertions pass; no assertion changed.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T23:06:25.472Z
+- _why:_ Extend candidate regressions to index flags hiding tracked differences and refusal-to-publication recovery for an existing unamended PR.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T23:09:29.490Z
+- _why:_ Update the existing-PR idempotency fixture to include a real committed and published branch; preserve stage-order and recorded-backfill assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T23:22:14.399Z
+- _why:_ Lock final regressions for review findings: hidden index changes cannot merge; follow-up PR publication recovers; raw committed bytes and modes bind source with protected paths and submodules handled safely.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-09T23:42:27.511Z
+- _why:_ Lock regressions for Codex review finding: align and approve-plan admit inside task transactions, preserve intervening BLOCKs, reject concurrent contract changes, and shared upserts cannot erase newer review history.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-10T00:05:24.966Z
+- _why:_ Extend scheduling coverage before edits: exercise real Node execution order and child failure propagation, because Node CLI alphabetizes supplied file arguments and defeated the proposed long-file-first schedule.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-10T00:07:36.682Z
+- _why:_ Lock final real-runner coverage: the pipeline executes first, all files execute exactly once, child assertions propagate failure, and inherited test context cannot produce a vacuous successful recursive run.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-10T00:18:35.661Z
+- _why:_ User approved splitting the oversized task and applying a bounded review/rework budget after eight BLOCK reviews and repeated expensive full verification.
+
+## Amended specification for "fix: preserve newer review findings during task saves"
+
+- _when:_ 2026-09-10T00:23:33.293Z
+- _why:_ Lock the isolated review-history regressions, including the real planner-save interleaving; they fail against the unmodified baseline and pass with the safeguard.
+
+## Bound the scope-reset review and validation effort
+
+- _when:_ 2026-09-10T00:24:17.682Z
+- _why:_ User approved stopping the oversized loop. First slice: review-history task saves in an isolated worktree from 59637da, one production file plus its regression file. One full verification attempt, one Codex review attempt, and only the mandatory fresh done verification after both pass. Any BLOCK, RED, timeout or additional production-file requirement stops for reassessment. Restore the earlier complete-suite command with recorded GREEN receipt b67cd4f9-6d1b-49bc-9908-e3f0bf6c2abb; every test and the 600-second gate deadline remain required.

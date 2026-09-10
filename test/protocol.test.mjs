@@ -475,7 +475,7 @@ const seedPr = (d, number) => { const f = join(d, '.chalk/tasks.json'); const ts
 test('chalk review — posts the verdict to the PR and records the LGTM signal', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'd');
-  const out = join(d, 'gh-comment.txt');
+  const out = join(scratch(), 'gh-comment.txt');
   conf(d, (o) => { o.github = { ...(o.github || {}), command: ghCommentStub(d, out) }; o.review = { command: passReviewer(d) }; });
   chalk(d, 'task', 'add', 'T'); const a = tid(d, 0);
   chalk(d, 'spec', a, '--criterion', 'x'); chalk(d, 'start', a);
@@ -489,7 +489,7 @@ test('chalk review — posts the verdict to the PR and records the LGTM signal',
 test('chalk run — the loop posts the review verdict (LGTM) to a task that has a PR', () => {
   const d = scratch();
   chalk(d, 'init', '--name', 'd');
-  const out = join(d, 'gh-comment.txt');
+  const out = join(scratch(), 'gh-comment.txt');
   writeFileSync(join(d, 'exec.mjs'), `import {readFileSync,writeFileSync} from 'node:fs'; try{readFileSync(0,'utf8')}catch{} writeFileSync('impl.js','x'); writeFileSync('impl.test.js','// asserts');`);
   writeFileSync(join(d, 'check.mjs'), `import {existsSync} from 'node:fs'; process.exit(existsSync('impl.js')?0:1);`);
   conf(d, (o) => { o.verify.test = 'node check.mjs'; o.executor = { command: 'node exec.mjs' };

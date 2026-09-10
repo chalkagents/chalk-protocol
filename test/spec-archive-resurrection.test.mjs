@@ -40,7 +40,7 @@ for (const conflict of ['older', 'same-revision', 'unreadable']) {
     fs.writeFileSync(join(dir, 'tasks-2020.json'), conflict === 'unreadable' ? '{' : JSON.stringify([{ ...task, specRevision: conflict === 'older' ? 2 : 1, acceptanceCriteria: [{ text: 'archived' }] }]));
     const error = conflict === 'unreadable' ? /history is unreadable/ : /conflicting live\/archive/;
     assert.throws(() => auditSpecificationDigest(store), error);
-    assert.throws(() => auditApprovalCurrent(store, { green: true }), error);
+    assert.equal(auditApprovalCurrent(store, { green: true }), false, 'unidentified legacy audit never opens the gate');
     assert.throws(() => releasableTasks(store), error);
     assert.throws(() => checkReleaseRecovery(store, '1.0.0'), error);
     if (conflict === 'unreadable') assert.throws(() => store.upsertTask({ ...task, id: 'new-task' }), error);

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { captureApproval, checkApproval, requireCurrentApproval, currentReview } from '../lib/approval-inputs.mjs';
 // Chalk Protocol CLI (v0). Drives an agent through read → work → verify → write.
 // The protocol's whole value is in the GATES: start (P1), done (P4+P6), amend-spec (P6).
 import { resolve, join } from 'node:path';
@@ -6,11 +7,11 @@ import { Store, initSpine, installAgentDocs, findRoot, now, id, PROTOCOL, CHALK_
 import { currentCriteria, reviseSpecification, specificationEstablished, completionCurrent } from '../lib/spec-revisions.mjs';
 import { auditApprovalCurrent } from '../lib/audit-specification.mjs';
 import { withReleaseAdmission, recordReleaseContract, checkReleaseRecovery } from '../lib/release-admission.mjs';
-import { amendedPr, amendmentPublication, publishAmendedPr } from '../lib/amendment-publication.mjs';
+import { amendedPr, publishPrCandidate } from '../lib/amendment-publication.mjs';
 import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
-import { verify as runVerify } from '../lib/verify.mjs';
+import { verify as runVerify, verificationFailureReason } from '../lib/verify.mjs';
 import { verificationCoverage, auditCoverage } from '../lib/verification-coverage.mjs';
 import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
@@ -21,8 +22,10 @@ import { runDriver } from '../lib/run.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, gitCommitPaths, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
 import { postReviewToPr } from '../lib/prreview.mjs';
+import { persistReview } from '../lib/review-record.mjs';
 import { brokeCheck, ciStatus } from '../lib/brokecheck.mjs';
 import { mergeBlockers } from '../lib/mergegate.mjs';
+import { mergeCandidate, localMergeHead, remotePrCandidate } from '../lib/merge-candidate.mjs';
 import { extractQuestions, planApprovalRequired, criteriaAcceptedRequired, completionApprovalBlockers } from '../lib/planning.mjs';
 import { releasableTasks, bumpVersion, renderReleaseNotes, latestSemverTag } from '../lib/release.mjs';
 import { runSpecs, isSpec } from '../lib/e2e.mjs';
@@ -417,7 +420,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         }
         const needsReview = reviewRequiredNow(s, t);
         const last = (t.reviews || []).slice(-1)[0];
-        const seq = needsReview && !(last && last.verdict === 'pass')
+        const seq = needsReview && !currentReview(s, t)
           ? `chalk verify   then   chalk review ${short}   then   chalk done ${short}`
           : `chalk verify   then   chalk done ${short}`;
         console.log(C.dim(`     when ready:  ${seq}`));
@@ -656,23 +659,22 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // The idempotency guard needs a REAL PR, not just the stage rank: a stage fast-forwarded past
     // pr-open with no PR (the #102 pollution) must fall through and actually open one — reporting
     // "already open" with `PR #?` was a lie that stranded the task at the merge gate.
-    if (t.pr?.number && (stageDone(t, 'pr-open') || amendedPr(t))) {
-      if (amendedPr(t)) {
-        const untracked = untrackedLockedTests(s, t);
-        if (untracked.length) die(`locked tests are not tracked — git add ${untracked.join(' ')} and run chalk commit`);
-        publishAmendedPr(s, t);
-        if (t.pipeline) delete t.pipeline.publicationInvalidated;
-        s.upsertTask(t);
-        console.log(C.dim('  pushed the amended contract commit to the existing PR'));
-      }
+    if (t.pr?.number) {
+      const untracked = untrackedLockedTests(s, t);
+      if (untracked.length) die(`locked tests are not tracked — git add ${untracked.join(' ')} and run chalk commit`);
+      publishPrCandidate(s, t);
       // Back-compat: a PR opened before recordings existed has no `recorded` flag and `chalk pr`
       // used to no-op here — leaving it permanently stuck at the merge gate. Backfill it from the
       // committed diff so the merge can proceed.
-      if (t.pr.recorded === undefined) {
-        t.pr.recorded = diffPaths(workdir(s, t), gh0.base || 'main').length > 0;
-        s.upsertTask(t);
-      }
-      return ok(`PR ${C.b('#' + t.pr.number)} ${C.dim('(already open)')}`);
+      const recorded = t.pr.recorded === undefined ? diffPaths(workdir(s, t), gh0.base || 'main').length > 0 : undefined;
+      s.mutateTasks(tasks => {
+        const current = tasks.find(task => task.id === t.id);
+        if (!current || current.pr?.number !== t.pr.number || current.branch !== t.branch || (current.specRevision || 0) !== (t.specRevision || 0)) throw new Error('task changed during PR publication — reload context and retry chalk pr');
+        if (current.pipeline) delete current.pipeline.publicationInvalidated;
+        if (current.pr.recorded === undefined && recorded !== undefined) current.pr.recorded = recorded;
+        return tasks;
+      }, { protectOwner: true });
+      return ok(`PR ${C.b('#' + t.pr.number)} ${C.dim('(already open — current commit published)')}`);
     }
     const wd = workdir(s, t);
     if (!t.branch) die('no branch — run `chalk branch <id>` first.');
@@ -753,8 +755,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (!flags.why) die('--force requires --why "<reason>" (logged as a decision).');
       s.appendDecision({ title: `Approved plan for "${t.title}" with ${openQ.length} open question(s)`, why: String(flags.why) });
     }
-    t.planApproved = { at: now(), by: flags.by || 'human' };
-    s.upsertTask(t); syncBrowser(s);
+    t.planApproved = { at: now(), by: flags.by || 'human', approval: captureApproval(s, 'plan', t) };
+    s.upsertTask(t, { admit(current) {
+      if (!current) throw new Error('task disappeared — reload chalk context');
+      requireCurrentApproval(s, 'plan', t.planApproved, current);
+      return { ...current, planApproved: t.planApproved };
+    } }); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Plan approved: ${t.title}`, taskId: t.id });
     ok(`plan approved ${C.dim(`for ${t.title}`)} — \`chalk work ${t.id.slice(0, 12)}\` may proceed`);
   },
@@ -773,8 +779,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     console.log(C.b(`Acceptance criteria for ${t.title}:`));
     currentCriteria(t).forEach((c, i) => console.log(`  ${i + 1}. ${c.text}  (id: ${c.id})`));
     (t.tests || []).forEach((x) => console.log(C.dim(`  · locked test: ${x.path}`)));
-    t.criteriaAccepted = { at: now(), by: flags.by || 'human' };
-    s.upsertTask(t); syncBrowser(s);
+    t.criteriaAccepted = { at: now(), by: flags.by || 'human', approval: captureApproval(s, 'alignment', t) };
+    s.upsertTask(t, { admit(current) {
+      if (!current) throw new Error('task disappeared — reload chalk context');
+      requireCurrentApproval(s, 'alignment', t.criteriaAccepted, current);
+      return { ...current, criteriaAccepted: t.criteriaAccepted };
+    } }); syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Criteria aligned: ${t.title}`, taskId: t.id });
     ok(`aligned ${C.dim(`— criteria accepted (by: ${t.criteriaAccepted.by})`)} — \`chalk work ${t.id.slice(0, 12)}\` may proceed`);
   },
@@ -989,7 +999,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   work({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
-    if (stageDone(t, 'verified') && !t.pipeline?.verificationInvalidated) return ok(`work ${C.b(t.title)} ${C.dim('(already verified)')}`);
+    if (stageDone(t, 'verified') && !t.pipeline?.verificationInvalidated && checkApproval(s, 'verification', t.pipeline?.verification, t).current) return ok(`work ${C.b(t.title)} ${C.dim('(already verified)')}`);
     // Plan-approval gate (the human checkpoint): when planning is required, no code is written until a
     // human has approved the plan. Checked BEFORE the state flip so a refusal leaves no side effect.
     // Exit 2 → the pipeline auto-blocks (needs:human-input) + handoff.
@@ -1022,10 +1032,10 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.error(C.r('✗ ') + `${raised.length} fork(s) raised for the director — answer via \`chalk pending\`, then re-run \`chalk work ${t.id.slice(0, 12)}\`. Not proceeding on a guess.`);
       process.exit(2);
     }
-    const v = runVerify(s, { cwd: workdir(s, t) });
+    let v = runVerify(s, { cwd: workdir(s, t) });
     if (!v.green) {
       const churn = overAttemptBudget(s, t) ? ` (churn — ${t.attempts} attempts without green; resume in a FRESH session)` : '';
-      console.error(C.r('✗ ') + `verify RED after work — gate closed.${churn}`);
+      console.error(C.r('✗ ') + verificationFailureReason(v, `verify RED after work — gate closed.${churn}`));
       process.exit(2);
     }
     // Test-enforcement gate: a green verify can be vacuous, so a feature change must add/change a test.
@@ -1054,9 +1064,22 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       console.error(C.r('✗ ') + `weak tests — mutants survived in: ${mut.survived.join(', ')}. The suite doesn't pin this change; strengthen the assertions (or kill the mutants).`);
       process.exit(2);
     }
-    t.pipeline = { ...(t.pipeline || {}), stage: stageDone(t, 'verified') ? t.pipeline.stage : 'verified', at: now() };
-    delete t.pipeline.verificationInvalidated;
-    s.upsertTask(t); syncBrowser(s);
+    // Adequacy probes deliberately restore source after mutation. Their success
+    // is not verification of that restored tree; validate it before admitting work.
+    if (!bi.skipped || !mut.skipped) {
+      v = runVerify(s, { cwd: workdir(s, t) });
+      if (!v.green) die(verificationFailureReason(v, 'verification failed after restoring adequacy probes'));
+    }
+    s.mutateTasks(tasks => {
+      const current = tasks.find(task => task.id === t.id);
+      if (!current || current.state !== 'in-progress') throw new Error(`task changed before verification admission — reload chalk context ${t.id}`);
+      if ((current.specRevision || 0) !== (t.specRevision || 0)) throw new Error('specification changed while work was running — reload chalk context and retry against the current revision');
+      requireCurrentApproval(s, 'verification', { approval: v.approvals?.[t.id] }, current);
+      current.pipeline = { ...(current.pipeline || {}), stage: stageDone(current, 'verified') ? current.pipeline.stage : 'verified', at: now(), verification: { approval: v.approvals[t.id] } };
+      delete current.pipeline.verificationInvalidated;
+      return tasks;
+    }, { protectOwner: true });
+    syncBrowser(s);
     s.emitUpdate({ type: 'progress-update', title: `Worked + verified: ${t.title}`, taskId: t.id });
     ok(`worked ${C.b(t.title)} — verify green ✓`);
   },
@@ -1074,16 +1097,24 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // merging a done/specd/blocked task would vacuously pass those gates. Require it explicitly.
     if (t.state !== 'in-progress') die(`merge requires an in-progress, verified task (this is [${t.state}]).`);
     if (!t.pr?.number) die('no PR — run `chalk pr <id>` first.');
-    // Broke-check: did something break? Remote CI when the PR has it, else local verify. Replaces the
-    // bare verify gate (its fallback IS local verify, so non-CI projects behave as before).
+    // Existing remote CI must settle green; local verification then binds current inputs.
     const broke = brokeCheck(s, t);
-    if (broke.source === 'local') console.log(C.y('  ⚠ ') + C.dim(t.pipeline?.verificationInvalidated ? 'Specification amended — merge safety requires current LOCAL verification.' : 'PR has no remote CI checks — merge safety used LOCAL verify.'));
+    if (broke.source === 'local') console.log(C.y('  ⚠ ') + C.dim(t.pipeline?.verificationInvalidated ? 'Specification amended — merge safety requires current LOCAL verification.' : broke.ci === 'pass' ? 'Remote CI is green; LOCAL verification binds current inputs.' : 'PR has no remote CI checks — merge safety used LOCAL verify.'));
     const reviewReq = reviewRequiredNow(s, t);
     // If the review passed but the LGTM wasn't surfaced on the PR yet (review predated the PR, or a
     // gh hiccup), post it now so the gate can confirm a sign-off precedes the merge.
-    if (reviewReq && !t.pr?.lgtm && (t.reviews || []).slice(-1)[0]?.verdict === 'pass') {
+    if (reviewReq && !t.pr?.lgtm && currentReview(s, t)) {
       const p = postReviewToPr(s, t, { verdict: 'pass', findings: [] });
-      if (p.lgtm) { t.pr = { ...t.pr, lgtm: true }; s.upsertTask(t); }
+      if (p.lgtm) {
+        s.mutateTasks(tasks => {
+          const current = tasks.find(task => task.id === t.id);
+          if (!current || current.pr?.number !== t.pr.number || (current.specRevision || 0) !== (t.specRevision || 0)) throw new Error('task changed during review publication — reload context and retry chalk merge');
+          if (!currentReview(s, current)) throw new Error(`review changed during publication — run chalk review ${current.id}`);
+          current.pr = { ...current.pr, lgtm: true };
+          t = current;
+          return tasks;
+        }, { protectOwner: true });
+      }
       else console.log(C.y(`  ⚠ couldn't post the LGTM comment (${p.reason || 'gh'}); merging on the passing review verdict.`));
     }
     const blockers = mergeBlockers(s, t, { reviewRequired: reviewReq, broke });
@@ -1094,8 +1125,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     if ((current.specRevision || 0) !== (t.specRevision || 0)) die('specification changed — reload context and retry merge');
     const approvals = completionApprovalBlockers(s, current);
     if (approvals.length) die(`cannot merge — ${approvals.join('; ')}`);
-    const publication = amendmentPublication(s, current);
-    if (!publication.ok) die(`cannot merge — ${publication.detail}`);
+    // The actual PR head is authoritative, including recovery after GitHub has
+    // merged the approved commit and deleted the published branch.
+    const candidate = mergeCandidate(s, current);
     const cleanup = { worktree: t.worktree, branch: t.branch };
     let resolvedN = 0;
     // Publication can perform network I/O. Recheck under the same spine lock used
@@ -1106,17 +1138,20 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       const current = tasks[index];
       if (!current || current.state !== 'in-progress' || (current.specRevision || 0) !== (t.specRevision || 0)) throw new Error('specification changed before merge admission — reload context and retry chalk merge');
       t = current; // Complete the freshly admitted task, not the pre-network snapshot.
+      if (t.pr?.number !== candidate.pr || localMergeHead(s, t) !== candidate.head) throw new Error('merge candidate changed before admission — run chalk pr, then retry chalk merge');
       const approvals = completionApprovalBlockers(s, t);
       const blockers = mergeBlockers(s, t, { reviewRequired: reviewRequiredNow(s, t), broke });
       if (approvals.length || blockers.length) throw new Error(`cannot merge — ${[...approvals, ...blockers].join('; ')}`);
       const regression = s.protocol().regression;
       if (regression?.required && !auditApprovalCurrent(s, regression.lastAudit)) throw new Error('GATE P7: audit is not green for the current specification — run chalk audit');
-      try { runGh(workdir(s, t), gh0.command, `pr merge ${t.pr.number} --${gh0.mergeMethod || 'squash'} --delete-branch`); }
+      try { runGh(workdir(s, t), gh0.command, `pr merge ${t.pr.number} --${gh0.mergeMethod || 'squash'} --delete-branch --match-head-commit ${candidate.head}`); }
       catch (e) {
         let merged = false;
-        try { merged = /MERGED/i.test(runGh(s.root, gh0.command, `pr view ${t.pr.number} --json state -q .state`)); } catch { /* provider unavailable */ }
-        if (!merged) throw new Error(`gh pr merge failed: ${String(e.message).split('\n').slice(-2).join(' ')}`);
+        try { const remote = remotePrCandidate(s, t); merged = remote.state === 'MERGED' && remote.head === candidate.head; } catch { /* provider unavailable */ }
+        if (!merged) throw new Error(`gh pr merge failed or the PR head changed — retry chalk pr and chalk merge: ${String(e.message).split('\n').slice(-2).join(' ')}`);
       }
+      const mergedCandidate = remotePrCandidate(s, t);
+      if (mergedCandidate.state !== 'MERGED' || mergedCandidate.head !== candidate.head) throw new Error('the approved PR head is not confirmed merged — wait for the provider, then retry chalk merge');
       t.worktree = undefined; t.state = 'done'; t.doneAt = now();
       t.completedSpecRevision = t.specRevision || 0; delete t.completionInvalidated;
       if (t.pipeline) { delete t.pipeline.verificationInvalidated; delete t.pipeline.publicationInvalidated; }
@@ -1795,7 +1830,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   // GATE P4 + P6 (+ P5) — done is impossible unless verify is green, locks intact, review passed.
   async done({ _, flags }) {
     const s = Store.open();
-    const t = mustTask(s, _[0]);
+    let t = mustTask(s, _[0]);
     if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
     const v = runVerify(s, { cwd: workdir(s, t) });
     s.emitUpdate({ title: `Verification ${v.green ? 'green' : 'red'} (done)`, taskId: t.id, verification: verificationCoverage(v) });
@@ -1806,38 +1841,49 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       if (!v.integrityGreen) reasons.push('locked tests were modified (P6) — use `chalk amend-spec`');
       if (!v.e2eGreen) reasons.push('a browser-spec (e2e) check failed');
       if (v.evidenceError) reasons.push(`verification evidence could not be saved: ${v.evidenceError}`);
+      if (v.approvalError) reasons.push(v.approvalError);
       if (v.freshness !== 'fresh') reasons.push(`verification inputs are ${v.freshness} — resolve source changes or unavailable inputs and re-run chalk verify`);
       die(`GATE P4+P6: cannot mark done — ${reasons.join('; ')}.`);
     }
-    // GATE P6 (tracking) — a pinned test that isn't in git ships a vacuous green to CI (#107): the
-    // sha256 verifies against the working tree, but a fresh checkout runs without the contract test.
-    const untracked = untrackedLockedTests(s, t);
-    if (untracked.length) {
-      die(`GATE P6: locked test(s) exist on disk but are NOT tracked in git — CI would run a vacuous green:\n` +
-        untracked.map((p) => `      ✗ ${p}`).join('\n') +
-        `\n    fix: git add ${untracked.join(' ')}   (then commit / re-run \`chalk commit ${t.id.slice(0, 12)}\`)`);
-    }
-    // GATE P5 — if review is required for this task (per the configured cadence), the latest
-    // review must pass (override is logged).
-    if (reviewRequiredNow(s, t)) {
-      const last = (t.reviews || []).slice(-1)[0];
-      const passed = last && last.verdict === 'pass';
-      if (!passed) {
-        if (!flags['force-review']) die(`GATE P5: needs a passing adversarial review — run \`chalk review ${t.id.slice(0, 12)}\`${last ? ` (last verdict: ${last.verdict})` : ''}.\n    To override (logged): chalk done ${t.id.slice(0, 12)} --force-review --why "..."`);
-        if (!flags.why) die('--force-review requires --why "<reason>" (it is logged as a decision).');
-        s.appendDecision({ title: REVIEW_OVERRIDE_TITLE(t), why: String(flags.why), taskId: t.id });
-        console.log(C.y('  ! review gate overridden (decision logged).'));
+    // Serialize final admission with review/spec writers. Check and mutate the
+    // freshly locked record, never save the pre-verification task snapshot.
+    let resolvedN = 0;
+    s.mutateTasks(tasks => {
+      const die = message => { throw new Error(message); };
+      t = tasks.find(task => task.id === t.id);
+      if (!t) die('task no longer exists — reload chalk context');
+      if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress — reload chalk context ${t.id}.`);
+      // GATE P6 (tracking) — a pinned test that isn't in git ships a vacuous green to CI (#107): the
+      // sha256 verifies against the working tree, but a fresh checkout runs without the contract test.
+      const untracked = untrackedLockedTests(s, t);
+      if (untracked.length) {
+        die(`GATE P6: locked test(s) exist on disk but are NOT tracked in git — CI would run a vacuous green:\n` +
+          untracked.map((p) => `      ✗ ${p}`).join('\n') +
+          `\n    fix: git add ${untracked.join(' ')}   (then commit / re-run \`chalk commit ${t.id.slice(0, 12)}\`)`);
       }
-    }
-    const approvals = completionApprovalBlockers(s, s.task(t.id));
-    if (approvals.length) die(`cannot mark done — ${approvals.join('; ')}`);
-    if (t.pipeline) delete t.pipeline.verificationInvalidated;
-    t.state = 'done'; t.doneAt = now(); t.completedSpecRevision = t.specRevision || 0;
-    delete t.completionInvalidated;
-    // #200: completing the task resolves any director corrections it was re-opened to address — the
-    // rework landed, so the directive drops out of context (#199) and the loop closes.
-    const resolvedN = resolveDirectives(t);
-    s.upsertTask(t);
+      // GATE P5 — if review is required for this task (per the configured cadence), the latest
+      // review must pass (override is logged).
+      if (reviewRequiredNow(s, t)) {
+        const last = (t.reviews || []).slice(-1)[0];
+        const passed = currentReview(s, t);
+        if (!passed) {
+          if (!flags['force-review']) die(`GATE P5: needs a passing adversarial review — run \`chalk review ${t.id.slice(0, 12)}\`${last ? ` (last verdict: ${last.verdict})` : ''}.\n    To override (logged): chalk done ${t.id.slice(0, 12)} --force-review --why "..."`);
+          if (!flags.why) die('--force-review requires --why "<reason>" (it is logged as a decision).');
+          s.appendDecision({ title: REVIEW_OVERRIDE_TITLE(t), why: String(flags.why), taskId: t.id });
+          console.log(C.y('  ! review gate overridden (decision logged).'));
+        }
+      }
+      requireCurrentApproval(s, 'verification', { approval: v.approvals?.[t.id] }, t);
+      const approvals = completionApprovalBlockers(s, t);
+      if (approvals.length) die(`cannot mark done — ${approvals.join('; ')}`);
+      if (t.pipeline) delete t.pipeline.verificationInvalidated;
+      t.state = 'done'; t.doneAt = now(); t.completedSpecRevision = t.specRevision || 0;
+      delete t.completionInvalidated;
+      // #200: completing the task resolves any director corrections it was re-opened to address — the
+      // rework landed, so the directive drops out of context (#199) and the loop closes.
+      resolvedN = resolveDirectives(t);
+      return tasks;
+    }, { protectOwner: true });
     syncBrowser(s);
     s.emitUpdate({ type: 'work-item-accepted', title: `Done: ${t.title}`, taskId: t.id });
     ok(`done ${C.b(t.title)} — verify green ✓${resolvedN ? C.dim(` · ${resolvedN} director correction(s) resolved`) : ''}`);
@@ -1898,13 +1944,13 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // past 'reviewed', short-circuit: don't re-invoke the reviewer or append a DUPLICATE review. But only
     // while the last verdict still STANDS — `amend-spec` invalidates a prior pass (verdict 'stale'), and a
     // changed locked test must be re-reviewed even though the stage is still 'reviewed'.
-    if (stageDone(t, 'reviewed') && t.reviews.slice(-1)[0]?.verdict === 'pass') return ok(`review ${C.dim('(already passed)')}`);
+    if (stageDone(t, 'reviewed') && currentReview(s, t)) return ok(`review ${C.dim('(already passed)')}`);
 
     if (!resolveAgentRole(meta.protocol, 'reviewer')?.command) {
       const note = flags.note || _.slice(1).join(' ');
       if (!note) die('no reviewer configured. Bind protocol.agents.roles.reviewer or set protocol.review.command,\n  or record a manual review:  chalk review <id> --note "..."');
       const verdict = flags.block ? 'block' : 'pass';
-      t.reviews.push({ at: now(), by: flags.by || 'human', verdict, findings: [], note: String(note), checklist: ['test-adequacy', 'design-intent', 'regressions'] });
+      t.reviews.push({ at: now(), by: flags.by || 'human', verdict, findings: [], note: String(note), checklist: ['test-adequacy', 'design-intent', 'regressions'], approval: captureApproval(s, 'review', t) });
       // Advance the pipeline stage only when the review happens in PIPELINE order (the PR exists).
       // A manual-order review (verify green → review → commit/pr later) must not fast-forward the
       // stage past commit/pr — their guards would then no-op with nothing committed and no PR (#102).
@@ -1912,7 +1958,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       const unblocked = verdict === 'pass' && clearReviewBlockOnPass(t);
       const mp = postReviewToPr(s, t, { verdict, findings: [] });
       if (mp.lgtm) t.pr = { ...(t.pr || {}), lgtm: true };
-      s.upsertTask(t);
+      requireCurrentApproval(s, 'review', t.reviews.at(-1), t);
+      persistReview(s, t, current => {
+        if (verdict === 'pass' && stageDone(current, 'pr-open')) current.pipeline = { ...(current.pipeline || {}), stage: 'reviewed', at: now() };
+        if (verdict === 'pass') clearReviewBlockOnPass(current);
+        if (mp.lgtm) current.pr = { ...(current.pr || {}), lgtm: true };
+      });
       s.emitUpdate({ type: 'progress-update', title: `Review (manual): ${t.title}`, description: String(note), taskId: t.id });
       if (unblocked) console.log(C.g('  ✓ needs:review block cleared — task is runnable again'));
       return ok('manual review recorded ' + C.dim('(checklist: test-adequacy · design-intent · regressions)') + (mp.posted ? C.dim(' · posted to PR') : ''));
@@ -1925,7 +1976,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // change set is a vacuous certification. Records NO review and exits non-zero so the gate can't be
     // cleared on nothing — the pipeline then auto-blocks the task rather than merging it.
     if (r.status === 'no-diff') die('review ABORTED — no diff captured: the change set is EMPTY, so the reviewer would grade nothing.\n  Check protocol.github.base and that the branch has committed changes (or that you are in the task worktree).');
-    if (r.status === 'error' && !readOnlyFailure(r) && !flags['no-retry']) {
+    if (r.status === 'error' && !r.diagnostics?.some(d => d.code === 'approval-inputs') && !readOnlyFailure(r) && !flags['no-retry']) {
       // A transient reviewer failure — a dropped/truncated response or a momentary bad parse — is not a
       // verdict, so retry once so a flake doesn't sink the review; only a SECOND consecutive error is fatal.
       // The pipeline passes --no-retry: it retries the whole review STAGE itself, so an inner retry would
@@ -1934,12 +1985,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       r = runReview(s, t);
     }
     if (r.status === 'error') {
+      const inputFailure = r.diagnostics?.find(d => d.code === 'approval-inputs');
+      if (inputFailure) die(inputFailure.message);
       const refusal = readOnlyFailure(r);
       if (refusal) die(`reviewer violated the read-only workspace contract: ${String(refusal.message).slice(0, 1200)}\n  No verdict was accepted. Run state-writing review checks in an isolated fixture; do not bypass the read-only guard.`);
       die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
     }
     if ((s.task(t.id)?.specRevision || 0) !== (t.specRevision || 0)) die('specification changed during review — reload context and run chalk review again; no verdict was accepted or posted');
-    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [], specRevision: t.specRevision || 0 });
+    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [], specRevision: t.specRevision || 0, approval: r.approval });
     // Same pipeline-order rule as the manual path above (#102): the verdict is recorded either way —
     // the done/merge gates read t.reviews — but the stage only advances when the PR already exists.
     if (r.verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
@@ -1948,7 +2001,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     // reviews — and record the LGTM signal the merge gate requires.
     const posted = postReviewToPr(s, t, { verdict: r.verdict, findings: r.findings });
     if (posted.lgtm) t.pr = { ...(t.pr || {}), lgtm: true };
-    s.upsertTask(t);
+    requireCurrentApproval(s, 'review', t.reviews.at(-1), t);
+    persistReview(s, t, current => {
+      if (r.verdict === 'pass' && stageDone(current, 'pr-open')) current.pipeline = { ...(current.pipeline || {}), stage: 'reviewed', at: now() };
+      if (r.verdict === 'pass') clearReviewBlockOnPass(current);
+      if (posted.lgtm) current.pr = { ...(current.pr || {}), lgtm: true };
+    });
     s.emitUpdate({ type: 'progress-update', title: `Review (${r.verdict}): ${t.title}`, taskId: t.id });
     console.log((r.verdict === 'pass' ? C.g('● review PASS') : C.r('● review BLOCK')) + ` ${C.dim(t.title)}` + (posted.posted ? C.dim(' · posted to PR') : ''));
     if (unblocked) console.log(C.g('  ✓ needs:review block cleared — task is runnable again'));
@@ -2011,6 +2069,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     console.log(C.b('Audit · held-out regression'));
     for (const p of r.broken) console.log(`  ${C.r('✗ integrity')} ${p} ${C.dim('— held-out test modified (P7 violation)')}`);
     if (r.status === 'unconfigured') console.log(C.dim('  unconfigured — no held-out command ran; no independent regression coverage.'));
+    else if (!coverage.heldOut.executed) console.log(C.dim('  not executed — audit observation unavailable; no independent regression coverage.'));
     else console.log('  ' + (r.passed ? C.g('held-out checks PASS') : C.r('held-out checks FAIL')) + C.dim('  (output withheld — fix against the spec, not the hidden tests)'));
     console.log(C.dim(`  held-out scope: ${coverage.heldOut.lockedFiles} locked file(s); author independence and assertion coverage are not established by command execution`));
     const phaseRun = r.phaseGates || [];
@@ -2037,7 +2096,8 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const m = s.meta();
     m.protocol = m.protocol || {};
     const reg = m.protocol.regression = m.protocol.regression || {};
-    reg.lastAudit = { at: now(), green: r.green, size: r.size, count: r.heldOutCount, coverage, specificationDigest: r.specificationDigest };
+    reg.lastAudit = { at: now(), green: r.green, size: r.size, count: r.heldOutCount, coverage, specificationDigest: r.specificationDigest, approval: r.approval };
+    if (r.approvalError) console.log(C.r(`  ${r.approvalError}`));
     if (r.specificationChanged) console.log(C.r('  specification changed during audit — run chalk audit again'));
     s.saveMeta(m);
     s.emitUpdate({ type: 'progress-update', title: AUDIT_TITLE(r.green), audit: coverage });
@@ -2414,7 +2474,7 @@ function reviewRequiredNow(store, task) {
 // Only in-progress/done tasks count — todo/specd were never worked, and a `blocked` task is
 // parked on a human dependency (creds/upstream) and isn't reviewable, so it must not wedge the gate.
 function unreviewed(store) {
-  return store.tasks().filter((t) => (t.state === 'in-progress' || t.state === 'done') && (t.reviews || []).slice(-1)[0]?.verdict !== 'pass');
+  return store.tasks().filter((t) => (t.state === 'in-progress' || t.state === 'done') && !currentReview(store, t));
 }
 function printHelp() {
   console.log(`${C.b('chalk')} — Chalk Protocol CLI (v0)  ${C.dim('· read → work → verify → write')}

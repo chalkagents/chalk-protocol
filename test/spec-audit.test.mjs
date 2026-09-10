@@ -1,3 +1,4 @@
+import { candidateGh } from '../scripts/test-gh-candidate.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -31,7 +32,7 @@ for (const operation of ['criterion', 'test']) {
   test(`${operation} amendment makes an earlier green audit insufficient for phase and merge, with fresh-audit recovery`, t => {
     const { parent, root, store, id } = fixture(t), bare = join(parent, 'remote'), merged = join(parent, 'merged');
     fs.mkdirSync(bare);
-    fs.writeFileSync(join(root, 'gh.cjs'), `const a=process.argv.slice(2);if(a.includes('checks'))console.log(JSON.stringify([{bucket:'pass'}]));if(a.includes('merge'))require('fs').writeFileSync(${JSON.stringify(merged)},'merged');`);
+    fs.writeFileSync(join(root, 'gh.cjs'), candidateGh(`const a=process.argv.slice(2);if(a.includes('checks'))console.log(JSON.stringify([{bucket:'pass'}]));if(a.includes('merge'))require('fs').writeFileSync(${JSON.stringify(merged)},'merged');`, { commonjs: true }));
     const meta = store.meta(); meta.protocol.github = { command: 'node gh.cjs', ciPollAttempts: 0 }; store.saveMeta(meta);
     git(bare, 'init', '--bare', '-b', 'main'); git(root, 'init', '-b', 'main'); git(root, 'config', 'user.email', 'test@example.invalid'); git(root, 'config', 'user.name', 'Test');
     git(root, 'add', '-A'); git(root, 'commit', '-m', 'initial'); git(root, 'remote', 'add', 'origin', bare); git(root, 'push', '-u', 'origin', 'main');
@@ -61,7 +62,7 @@ for (const operation of ['criterion', 'test']) {
 }
 test('audit identity excludes completion bookkeeping and survives archival; legacy audit cannot cover an amendment', t => {
   const { root, store, id } = fixture(t);
-  const legacy = { green: true }; assert.ok(auditApprovalCurrent(store, legacy));
+  const legacy = { green: true }; assert.equal(auditApprovalCurrent(store, legacy), false, 'unidentified legacy audit is historical even before an amendment');
   const original = auditSpecificationDigest(store);
   let task = store.task(id); task.state = 'done'; task.released = '1.0'; task.doneAt = new Date().toISOString(); store.upsertTask(task);
   assert.equal(auditSpecificationDigest(store), original);

@@ -1,3 +1,5 @@
+import { candidateGh } from '../scripts/test-gh-candidate.mjs';
+import { captureApproval } from '../lib/approval-inputs.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -70,7 +72,7 @@ for (const required of [false, true]) {
   test(`merge enforces amended-contract verification and required approvals (required=${required})`, t => {
     const { root, store, id } = fixture(t, required);
     const marker = root + '-merged'; t.after(() => fs.rmSync(marker, { force: true }));
-    fs.writeFileSync(join(root, 'gh.cjs'), `const a=process.argv.slice(2);if(a.includes('checks'))console.log(JSON.stringify([{bucket:'pass'}]));else if(a.includes('merge')){require('fs').writeFileSync(${JSON.stringify(marker)},'merged');console.log('merged');}`);
+    fs.writeFileSync(join(root, 'gh.cjs'), candidateGh(`const a=process.argv.slice(2);if(a.includes('checks'))console.log(JSON.stringify([{bucket:'pass'}]));else if(a.includes('merge')){require('fs').writeFileSync(${JSON.stringify(marker)},'merged');console.log('merged');}`, { commonjs: true }));
     const meta = store.meta(); meta.protocol.github = { command: 'node gh.cjs', ciPollAttempts: 0 }; store.saveMeta(meta);
     const { branch } = remoteFixture(t, root);
     ok(root, 'start', id);
@@ -94,12 +96,14 @@ for (const required of [false, true]) {
   });
 }
 
-test('merge decision rejects missing or wrong-revision verification for an amended contract', () => {
-  const task = { specRevision: 2, pipeline: { verificationInvalidated: 2 }, pr: { recorded: true } };
+test('merge decision rejects missing or wrong-revision verification for an amended contract', t => {
+  const { store } = fixture(t, false);
+  const task = { id: 'task-proof', title: 'proof', acceptanceCriteria: [], tests: [], specRevision: 2, pipeline: { verificationInvalidated: 2 }, pr: { recorded: true } };
   for (const broke of [{ ok: true, source: 'ci' }, { ok: true, source: 'local' }, { ok: true, source: 'local', contractRevision: 1 }]) {
     assert.ok(mergeBlockers({}, task, { reviewRequired: false, broke }).some(reason => /current-contract verification/.test(reason)));
   }
-  assert.deepEqual(mergeBlockers({}, task, { reviewRequired: false, broke: { ok: true, source: 'local', contractRevision: 2 } }), []);
+  store.upsertTask(task);
+  assert.deepEqual(mergeBlockers(store, task, { reviewRequired: false, broke: { ok: true, source: 'local', contractRevision: 2, approval: captureApproval(store, 'verification', task) } }), []);
 });
 
 
@@ -109,7 +113,7 @@ test('amendment work and follow-up commit reach the existing PR remote before me
   fs.writeFileSync(join(root, 'check.cjs'), "require('assert').equal(require('fs').readFileSync('value.txt','utf8'),'old');");
   const newCheck = "require('assert').equal(require('fs').readFileSync('value.txt','utf8'),'new');";
   fs.writeFileSync(join(root, 'executor.cjs'), `require('fs').writeFileSync('value.txt','new'); require('fs').writeFileSync('check.cjs',${JSON.stringify(newCheck)});`);
-  fs.writeFileSync(join(root, 'gh.cjs'), "const a=process.argv.slice(2);if(a.includes('checks'))console.log(JSON.stringify([{bucket:'pass'}]));else if(a.includes('create'))process.exit(17);else if(a.includes('merge'))console.log('merged');");
+  fs.writeFileSync(join(root, 'gh.cjs'), candidateGh("const a=process.argv.slice(2);if(a.includes('checks'))console.log(JSON.stringify([{bucket:'pass'}]));else if(a.includes('create'))process.exit(17);else if(a.includes('merge'))console.log('merged');", { commonjs: true }));
   const meta = store.meta(); meta.protocol.executor = { command: 'node executor.cjs' }; meta.protocol.github = { command: 'node gh.cjs', ciPollAttempts: 0 }; store.saveMeta(meta);
   const { bare, branch } = remoteFixture(t, root);
   execFileSync(process.execPath, ['check.cjs'], { cwd: root }); // the old remote candidate was healthy

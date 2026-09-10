@@ -1,3 +1,4 @@
+import { candidateGh } from '../scripts/test-gh-candidate.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -19,7 +20,7 @@ test('merge rejects an amendment during publication I/O and protects final admis
   for (const dir of [root, bare, shim]) fs.mkdirSync(dir);
   ok(root, 'init', '--bare'); fs.writeFileSync(join(root, 'check.cjs'), 'console.log("checked");');
   const id = 'task-transaction';
-  fs.writeFileSync(join(root, 'gh.mjs'), `import fs from 'node:fs';import {retireLockGeneration} from ${JSON.stringify(STORE)};process.stdin.resume();const a=process.argv.slice(2);if(a.includes('checks'))console.log(JSON.stringify([{bucket:'pass'}]));if(a.includes('merge')){const lock=${JSON.stringify(join(root, '.chalk/.lock'))};const token=fs.readFileSync(lock+'/owner','utf8').split(' ')[0];const old=new Date(Date.now()-60000);fs.utimesSync(lock,old,old);const stolen=retireLockGeneration(lock,token,{requireStale:true});fs.writeFileSync(${JSON.stringify(merged)},JSON.stringify({stolen}));console.log('merged');}`);
+  fs.writeFileSync(join(root, 'gh.mjs'), candidateGh(`import fs from 'node:fs';import {retireLockGeneration} from ${JSON.stringify(STORE)};process.stdin.resume();const a=process.argv.slice(2);if(a.includes('checks'))console.log(JSON.stringify([{bucket:'pass'}]));if(a.includes('merge')){const lock=${JSON.stringify(join(root, '.chalk/.lock'))};const token=fs.readFileSync(lock+'/owner','utf8').split(' ')[0];const old=new Date(Date.now()-60000);fs.utimesSync(lock,old,old);const stolen=retireLockGeneration(lock,token,{requireStale:true});fs.writeFileSync(${JSON.stringify(merged)},JSON.stringify({stolen}));console.log('merged');}`));
   const store = new Store(root), meta = store.meta(); meta.protocol.verify = { test: 'node check.cjs' }; meta.protocol.review = { requiredAt: ['per-task'] }; meta.protocol.github = { command: 'node gh.mjs', ciPollAttempts: 0 }; store.saveMeta(meta);
   store.upsertTask({ id, title: 'chore: merge transaction', state: 'specd', acceptanceCriteria: [{ text: 'original' }], tests: [], reviews: [] });
   git(bare, 'init', '--bare', '-b', 'main'); git(root, 'init', '-b', 'main'); git(root, 'config', 'user.email', 'test@example.invalid'); git(root, 'config', 'user.name', 'Test');
