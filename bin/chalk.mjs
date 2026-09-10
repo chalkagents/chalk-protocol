@@ -488,9 +488,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   // the turn boundaries between tasks.
   run({ flags }) {
     const s = Store.open();
+    if (flags.finish !== undefined) {
+      if (typeof flags.finish !== 'string' || !flags.finish.trim()) die('--finish requires a task ID');
+      if (flags.max !== undefined || flags.until !== undefined) die('--finish selects exactly one task; do not combine it with --max or --until');
+    }
+    if (flags['force-rerun'] !== undefined && (flags['force-rerun'] !== true || flags.finish === undefined || flags['dry-run'])) die('--force-rerun requires --finish <id> and cannot be combined with --dry-run');
     const until = flags.until === 'blocked' ? 'blocked' : 'empty';
     const max = Number(flags.max || 50);
-    const r = runDriver(s, { until, max, dryRun: flags['dry-run'] === true, reviewRequiredNow, log: (m) => console.log(C.dim('  ' + m)) });
+    const r = runDriver(s, { until, max, finish: flags.finish, forceRerun: flags['force-rerun'] === true, dryRun: flags['dry-run'] === true, reviewRequiredNow, log: (m) => console.log(C.dim('  ' + m)) });
     if (r.dryRun) {
       console.log(C.b('chalk run · dry-run — planned order'));
       if (!r.planned.length) console.log(C.dim('  (nothing runnable right now)'));
@@ -2529,6 +2534,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk agent test <profile> [--live] ${C.dim('offline conformance by default; --live makes ONE explicit model call')}
   chalk smoke [--create|--issue N] --yes   ${C.dim('prove the pipeline on ONE throwaway issue (real; use a scratch repo)')}
   chalk run [--until empty|blocked] [--max N] [--dry-run]   ${C.dim('unattended: drive runnable tasks via protocol.executor.command')}
+  chalk run --finish <id> [--dry-run | --force-rerun]      ${C.dim('finish active work: verify → review → completion; no executor')}
   chalk spec <id> --criterion "..." [--test <path>] [--held-out <path>]
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
   chalk verify                         ${C.dim('toolchain + test-integrity (P4/P6/P7)')}

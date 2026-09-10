@@ -51,6 +51,19 @@ preflight means `chalk run` can drive each runnable task through executor → ve
 Use `chalk doctor --json` for automation and bug reports. The gates—not the model—decide whether
 work advances.
 
+If you have already started a task and implemented its change, finish through the same
+driver without another executor invocation:
+
+```sh
+chalk run --finish <id> --dry-run
+chalk run --finish <id>
+```
+
+This runs fresh verification, required review and completion in one process. It normally
+avoids the second full verification from a separate `chalk done`. Use `--force-rerun`
+to verify again after review. Saved receipts cannot skip execution. See
+[finish guarantees and limits](./docs/verification-evidence.md#finish-already-implemented-work).
+
 ## 2. Manual mode — no model required
 
 Manual mode is a first-class workflow. Skip `chalk connect`; you write the change and Chalk holds
