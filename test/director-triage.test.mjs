@@ -113,6 +113,7 @@ function repoWithReviewer(verdictJson) {
   spawnSync('git', ['init', '-b', 'main'], { cwd: d });
   spawnSync('git', ['add', '-A'], { cwd: d });
   spawnSync('git', ['-c', 'user.email=t@t.t', '-c', 'user.name=t', 'commit', '-m', 'x'], { cwd: d });
+  assert.equal(chalk(d, 'start', 'task-9f3a2b1c').code, 0);
   writeFileSync(join(d, 'change.txt'), 'a change to review');
   spawnSync('git', ['add', '-A'], { cwd: d });
   spawnSync('git', ['-c', 'user.email=t@t.t', '-c', 'user.name=t', 'commit', '-m', 'change'], { cwd: d });

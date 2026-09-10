@@ -31,6 +31,7 @@ for (const command of ['run', 'review']) {
     store.upsertTask({ id, title: 'chore: concurrent review', state: 'specd', acceptanceCriteria: [{ text: 'old contract' }], tests: [], reviews: [], pr: { number: 7, recorded: true }, worktree: wt });
     git(root, 'init', '-b', 'main'); git(root, 'config', 'user.email', 'test@example.invalid'); git(root, 'config', 'user.name', 'Test');
     git(root, 'add', '-A'); git(root, 'commit', '-m', 'initial'); git(root, 'worktree', 'add', '-b', 'fix/review-race', wt);
+    fs.writeFileSync(join(wt, 'change.txt'), 'actual task change under review');
     if (command === 'review') ok(root, 'start', id);
     const result = command === 'run' ? run(root, 'run', '--max', '1') : run(root, 'review', id);
     let task = store.task(id);
