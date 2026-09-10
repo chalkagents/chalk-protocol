@@ -4,6 +4,9 @@ The conformance kit is part of the published `chalk-protocol` package. It checks
 outputs, failures, capabilities, identity, usage, diagnostics, deadlines, and read-only mutation
 refusal without contacting a model provider.
 
+Ordinary probes have a five-second deadline including adapter process startup.
+The dedicated `timeout` fixture retains a 40 ms deadline to check cancellation.
+
 Run a built-in adapter with one command:
 
 ```sh

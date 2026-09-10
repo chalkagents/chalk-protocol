@@ -82,7 +82,7 @@ test('Codex maps all three roles, preserves stdin, normalizes reviewer JSON, usa
 
   const captured = JSON.parse(readFileSync(call.capture, 'utf8'));
   assert.equal(captured.stdin, context, 'multiline run context is verbatim stdin');
-  assert.equal(captured.args[0], 'exec');
+  assert.equal(captured.args.indexOf('exec'), 2, 'global approval options precede the exec subcommand');
   assert.ok(captured.args.includes('--json'));
   assert.deepEqual(captured.args.slice(captured.args.indexOf('--sandbox'), captured.args.indexOf('--sandbox') + 2), ['--sandbox', 'read-only']);
   assert.deepEqual(captured.args.slice(captured.args.indexOf('--ask-for-approval'), captured.args.indexOf('--ask-for-approval') + 2), ['--ask-for-approval', 'never']);

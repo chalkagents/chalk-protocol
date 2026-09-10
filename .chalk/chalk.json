@@ -15,14 +15,14 @@
       "build": ""
     },
     "review": {
-      "command": "claude -p --agent chalk-reviewer --max-turns 20",
+      "command": "",
       "requiredAt": [
         "per-task"
       ]
     },
     "regression": {
       "command": "",
-      "authorCommand": "claude -p --permission-mode acceptEdits --max-turns 40",
+      "authorCommand": "",
       "dir": ".chalk/held-out",
       "required": false,
       "tests": [],
@@ -37,13 +37,13 @@
       }
     },
     "executor": {
-      "command": "claude -p --agent chalk-executor --permission-mode acceptEdits --max-turns 40"
+      "command": ""
     },
     "planner": {
-      "command": "claude -p --agent chalk-planner --max-turns 30"
+      "command": ""
     },
     "retro": {
-      "command": "claude -p --agent chalk-retro --max-turns 20"
+      "command": ""
     },
     "github": {
       "command": "gh",
@@ -66,11 +66,40 @@
     },
     "agents": {
       "version": 1,
-      "profiles": {},
-      "roles": {}
+      "profiles": {
+        "codex": {
+          "adapter": "codex",
+          "command": "node bin/adapters/codex.mjs",
+          "model": null,
+          "identity": {
+            "displayName": "Codex CLI"
+          },
+          "capabilities": {
+            "roles": [
+              "executor",
+              "planner",
+              "reviewer"
+            ],
+            "access": [
+              "read-only",
+              "workspace-write"
+            ],
+            "output": [
+              "text",
+              "json"
+            ]
+          },
+          "options": {}
+        }
+      },
+      "roles": {
+        "executor": "codex",
+        "planner": "codex",
+        "reviewer": "codex"
+      }
     }
   },
   "createdAt": "2026-06-24T18:58:15.431Z",
-  "updatedAt": "2026-08-04T14:49:17.942Z",
+  "updatedAt": "2026-09-10T19:07:14.084Z",
   "writerVersion": "0.4.0"
 }
