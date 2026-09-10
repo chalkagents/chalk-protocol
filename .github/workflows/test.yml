@@ -26,6 +26,4 @@ jobs:
         with:
           node-version: '20'
       # Keep the direct full-suite contract while bounding watcher-heavy fixture concurrency.
-      - run: node --test
-        env:
-          NODE_OPTIONS: --test-concurrency=2
+      - run: node --test --test-concurrency=2

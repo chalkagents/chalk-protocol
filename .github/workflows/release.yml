@@ -25,7 +25,5 @@ jobs:
         with:
           node-version: 24 # bundles npm ≥ 11.5.1 (trusted-publishing minimum)
           registry-url: 'https://registry.npmjs.org'
-      - run: node --test
-        env:
-          NODE_OPTIONS: --test-concurrency=2
+      - run: node --test --test-concurrency=2
       - run: npm publish --provenance --access public

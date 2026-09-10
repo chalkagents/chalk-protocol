@@ -5,29 +5,30 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const SERIAL_TESTS = new Set([
-  'test/codex-gemini-adapters.test.mjs',
-  'test/spec-release.test.mjs',
-]);
-const requiresSerialExecution = file => file.includes('conformance') ||
-  file.startsWith('test/verification-') || SERIAL_TESTS.has(file);
+const SERIAL_POLICIES = [
+  { reason: 'adapter process startup', matches: file => file.includes('conformance') },
+  { reason: 'filesystem observation', matches: file => file.startsWith('test/verification-') },
+  { reason: 'provider process startup', matches: file => file === 'test/codex-gemini-adapters.test.mjs' },
+  { reason: 'release subprocess lifecycle', matches: file => file === 'test/spec-release.test.mjs' },
+];
+const requiresSerialExecution = file => SERIAL_POLICIES.some(policy => policy.matches(file));
 const integrationPriority = file => Number(file === 'test/pipeline.test.mjs');
 
 export function runVerificationTests({ root = ROOT, launch = spawnSync } = {}) {
   const files = [];
-  const unknown = () => { throw new Error('unrecognized test layout; update complete-suite discovery before verification'); };
+  const throwUnrecognizedLayout = () => { throw new Error('unrecognized test layout; update complete-suite discovery before verification'); };
   // Empty fixture directories are harmless. Discover nested tests, but refuse
   // unfamiliar files or protected trees rather than silently omit new tests.
   const walk = relative => {
     for (const entry of readdirSync(join(root, relative), { withFileTypes: true })) {
       const file = `${relative}/${entry.name}`;
-      if (['.chalk', '.git', 'node_modules'].includes(entry.name)) unknown();
+      if (['.chalk', '.git', 'node_modules'].includes(entry.name)) throwUnrecognizedLayout();
       if (entry.isDirectory()) walk(file);
       else if (entry.isFile() && entry.name.endsWith('.test.mjs')) files.push(file);
-      else unknown();
+      else throwUnrecognizedLayout();
     }
   };
-  walk('test'); if (!files.length) unknown(); files.sort();
+  walk('test'); if (!files.length) throwUnrecognizedLayout(); files.sort();
   // Start the long end-to-end pipeline before short files occupy its worker.
   // This avoids a late serial tail without increasing concurrency or the deadline.
   const concurrentFiles = files.filter(file => !requiresSerialExecution(file));

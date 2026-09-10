@@ -62,7 +62,7 @@ test('repository verification entry points use the bounded scheduler', () => {
   assert.equal(chalk.protocol.verify.test, 'npm test');
   for (const path of ['.github/workflows/test.yml', '.github/workflows/release.yml']) {
     const workflow = fs.readFileSync(join(ROOT, path), 'utf8');
-    assert.match(workflow, /run: node --test/);
-    assert.match(workflow, /NODE_OPTIONS: --test-concurrency=2/);
+    assert.match(workflow, /run: node --test --test-concurrency=2/);
+    assert.doesNotMatch(workflow, /NODE_OPTIONS:[^\n]*--test-concurrency/);
   }
 });
