@@ -2004,3 +2004,8 @@
 
 - _when:_ 2026-09-10T06:11:47.043Z
 - _why:_ Re-lock the passing timestamp-comment privacy regression and known-command-label projection checks. All 32 focused evidence/PR tests passed after the first Codex finding. The user has been given the 30-minute checkpoint and remaining gate estimate; no fresh full-suite or review PASS is claimed for this correction.
+
+## Implement a single-process finish workflow before cross-command verification reuse
+
+- _when:_ 2026-09-10T08:29:39.620Z
+- _why:_ Existing runDriver already retains an actual verification result through review and completion. Extending it to active work removes the separate done rerun without introducing trust in editable receipt files or claiming complete external SDK identity. User authorized the efficiency work; proceeding with the recommended bounded scope after offering the alternative. Task-d54a02bf remains specd for full cross-command reuse; six historical amended contracts retain pending revalidation.

@@ -29960,5 +29960,96 @@
         "invalidated": {}
       }
     ]
+  },
+  {
+    "id": "task-2c04dcc4",
+    "title": "feat: finalize an active task through one guarded run",
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "id": "ac-1",
+        "text": "Extend the existing chalk run driver with --finish <id> for exactly one already in-progress task. Skip executor invocation and require no executor configuration; preserve start time and attempts. Validate target, dependencies and incompatible flags before running gates; dry-run is read-only and identifies the actual execution directory, branch and task base."
+      },
+      {
+        "id": "ac-2",
+        "text": "Run fresh verification and all existing configured test-adequacy and completion gates, then required adversarial review, then completion using only the actual verification result retained in the same process. Never load a receipt as execution authority. Check fresh source/spec/config approval, visible locked-test integrity and Git tracking, current review and completion approvals in the final serialized admission. Preserve source observation and full review rubric; a changed contract, failed gate or missing evidence must not complete."
+      },
+      {
+        "id": "ac-3",
+        "text": "Revalidate retained verification output bytes before completion and reject damage. Keep new reviewer findings and decisions inspectable, report stage timings and receipt location, and support --force-rerun for a second verification after review. Each invocation begins with fresh verification; cross-command reuse and full external toolchain/environment identity remain deferred and clearly documented."
+      },
+      {
+        "id": "ac-4",
+        "text": "Meaningful CLI regressions prove unchanged finish invokes verification once, never invokes executor, and completes only the selected task. Cover invalid target/dependencies, dry-run, forced rerun, failed verification, review BLOCK/error, source/spec/locked-test changes, untracked locked tests, and tampered local evidence. Preserve existing ordinary run and done behavior."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "Okada API review efficiency",
+    "after": [
+      "task-3cbf419d"
+    ],
+    "createdAt": "2026-09-10T08:29:20.226Z",
+    "reviews": [],
+    "specRevision": 1,
+    "specRevisions": [
+      {
+        "revision": 1,
+        "at": "2026-09-10T08:29:39.186Z",
+        "kind": "initial",
+        "why": "Initial specification",
+        "operations": [
+          {
+            "type": "add",
+            "text": "Extend the existing chalk run driver with --finish <id> for exactly one already in-progress task. Skip executor invocation and require no executor configuration; preserve start time and attempts. Validate target, dependencies and incompatible flags before running gates; dry-run is read-only and identifies the actual execution directory, branch and task base."
+          },
+          {
+            "type": "add",
+            "text": "Run fresh verification and all existing configured test-adequacy and completion gates, then required adversarial review, then completion using only the actual verification result retained in the same process. Never load a receipt as execution authority. Check fresh source/spec/config approval, visible locked-test integrity and Git tracking, current review and completion approvals in the final serialized admission. Preserve source observation and full review rubric; a changed contract, failed gate or missing evidence must not complete."
+          },
+          {
+            "type": "add",
+            "text": "Revalidate retained verification output bytes before completion and reject damage. Keep new reviewer findings and decisions inspectable, report stage timings and receipt location, and support --force-rerun for a second verification after review. Each invocation begins with fresh verification; cross-command reuse and full external toolchain/environment identity remain deferred and clearly documented."
+          },
+          {
+            "type": "add",
+            "text": "Meaningful CLI regressions prove unchanged finish invokes verification once, never invokes executor, and completes only the selected task. Cover invalid target/dependencies, dry-run, forced rerun, failed verification, review BLOCK/error, source/spec/locked-test changes, untracked locked tests, and tampered local evidence. Preserve existing ordinary run and done behavior."
+          }
+        ],
+        "before": {
+          "acceptanceCriteria": [],
+          "tests": []
+        },
+        "after": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend the existing chalk run driver with --finish <id> for exactly one already in-progress task. Skip executor invocation and require no executor configuration; preserve start time and attempts. Validate target, dependencies and incompatible flags before running gates; dry-run is read-only and identifies the actual execution directory, branch and task base."
+            },
+            {
+              "id": "ac-2",
+              "text": "Run fresh verification and all existing configured test-adequacy and completion gates, then required adversarial review, then completion using only the actual verification result retained in the same process. Never load a receipt as execution authority. Check fresh source/spec/config approval, visible locked-test integrity and Git tracking, current review and completion approvals in the final serialized admission. Preserve source observation and full review rubric; a changed contract, failed gate or missing evidence must not complete."
+            },
+            {
+              "id": "ac-3",
+              "text": "Revalidate retained verification output bytes before completion and reject damage. Keep new reviewer findings and decisions inspectable, report stage timings and receipt location, and support --force-rerun for a second verification after review. Each invocation begins with fresh verification; cross-command reuse and full external toolchain/environment identity remain deferred and clearly documented."
+            },
+            {
+              "id": "ac-4",
+              "text": "Meaningful CLI regressions prove unchanged finish invokes verification once, never invokes executor, and completes only the selected task. Cover invalid target/dependencies, dry-run, forced rerun, failed verification, review BLOCK/error, source/spec/locked-test changes, untracked locked tests, and tampered local evidence. Preserve existing ordinary run and done behavior."
+            }
+          ],
+          "tests": []
+        },
+        "invalidated": {}
+      }
+    ],
+    "reviewBase": {
+      "commit": "4b0c90f8b2b699f07b5fa4818140acc26a65a831",
+      "capturedAt": "2026-09-10T08:29:39.475Z",
+      "source": "task-start",
+      "ref": "HEAD"
+    },
+    "startedAt": "2026-09-10T08:29:39.475Z"
   }
 ]
