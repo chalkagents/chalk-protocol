@@ -149,3 +149,31 @@ process.argv=${JSON.stringify([process.execPath, CLI, 'run', '--finish', f.task.
   assert.equal(f.store.task(f.task.id).reviews.at(-1).verdict, 'block');
   assert.notEqual(f.store.task(f.task.id).state, 'done');
 });
+
+for (const gate of ['breakTest', 'mutation']) test(`finish blocks inconclusive configured ${gate} without accepting review`, t => {
+  const f = fixture(t, { git: true }), meta = f.store.meta();
+  meta.protocol[gate] = `chalk-nonexistent-adequacy-tool ${gate === 'breakTest' ? '{test}' : '{file}'}`; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /probe is inconclusive/); assert.equal(f.count('checks'), 1); assert.equal(f.count('reviews'), 0);
+  assert.notEqual(f.store.task(f.task.id).state, 'done');
+  assert.equal(fs.readFileSync(join(f.root, 'source.txt'), 'utf8'), 'implemented\n', 'break-it restores the implementation');
+});
+
+test('mutation cannot replace the original semantic contract without incrementing its revision', t => {
+  const f = fixture(t, { git: true }), script = join(f.parent, 'mutate-contract.cjs');
+  fs.writeFileSync(script, `const fs=require('fs');const p='.chalk/tasks.json';const ts=JSON.parse(fs.readFileSync(p));ts[0].acceptanceCriteria=[{text:'replacement contract'}];fs.writeFileSync(p,JSON.stringify(ts));`);
+  const meta = f.store.meta(); meta.protocol.mutation = `node '${script}' {file}`; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /inputs changed during adequacy probes/);
+  assert.equal(f.store.task(f.task.id).specRevision, f.task.specRevision, 'the exploit does not increment the revision');
+  assert.equal(f.count('checks'), 1, 'do not verify a replacement contract'); assert.equal(f.count('reviews'), 0);
+  assert.notEqual(f.store.task(f.task.id).state, 'done');
+});
+
+test('successful adequacy probes retain restoration verification and can finish', t => {
+  const f = fixture(t, { git: true }), meta = f.store.meta();
+  meta.protocol.breakTest = 'node -e "process.exit(1)"'; meta.protocol.mutation = 'node -e "process.exit(0)"'; f.store.saveMeta(meta);
+  const result = f.finish(); assert.equal(result.status, 0, output(result));
+  assert.equal(f.count('checks'), 2, 'verify again after restoration'); assert.equal(f.count('reviews'), 1);
+  assert.equal(f.store.task(f.task.id).state, 'done');
+});

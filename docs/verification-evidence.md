@@ -190,6 +190,9 @@ It does not load an earlier receipt to authorize completion. Missing or changed 
 or receipt bytes block admission, including observed writes that restore the original
 bytes. A failed gate leaves the task unfinished with a recorded reason. Review BLOCKs
 and diagnostics are displayed; this mode does not retry a reviewer automatically.
+Configured adequacy probes that cannot execute block finish as inconclusive. The
+initial semantic verification approval remains binding across probes and reruns;
+changing criteria without incrementing a revision cannot replace the original contract.
 
 `--force-rerun` requests a second verification after review. Adequacy probes that alter
 the tree also retain the existing verification after restoration. Every new invocation
