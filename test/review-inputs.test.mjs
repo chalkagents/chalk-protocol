@@ -389,3 +389,19 @@ test('branch reuse pins the actual checkout even after the configured base advan
   writeFileSync(join(task.worktree, 'new-work.js'), 'new task work\n');
   assert.deepEqual(captureReviewInputs(task.worktree, task, store.protocol()).files, ['new-work.js']);
 });
+
+for (const alias of [false, true]) test(`literal POSIX backslashes in protected paths remain excluded (alias=${alias})`, { skip: process.platform === 'win32' }, t => {
+  const { d, store, id, counter } = reviewingFixture(t);
+  git(d, 'add', '.chalk/spec.md', 'AGENTS.md', 'CLAUDE.md'); git(d, 'commit', '-qm', 'project contract baseline');
+  assert.equal(chalk(d, 'start', id).status, 0);
+  const protectedDir = 'private\\regressions';
+  mkdirSync(join(d, protectedDir)); writeFileSync(join(d, protectedDir, 'empty.test.mjs'), '');
+  if (alias) symlinkSync(`../${protectedDir}`, join(d, '.chalk/regression-alias'));
+  const meta = store.meta(); meta.protocol.regression = { dir: alias ? '.chalk/regression-alias' : protectedDir }; store.saveMeta(meta);
+  const empty = captureReviewInputs(d, store.task(id), store.protocol());
+  assert.deepEqual(empty.files, []); assert.equal(empty.diff, '');
+  const refused = chalk(d, 'review', id); assert.notEqual(refused.status, 0); assert.equal(existsSync(counter), false);
+  writeFileSync(join(d, 'feature.js'), 'visible work\n');
+  const mixed = captureReviewInputs(d, store.task(id), store.protocol());
+  assert.deepEqual(mixed.files, ['feature.js']); assert.doesNotMatch(mixed.diff, /empty\.test\.mjs|private|regression-alias/);
+});
