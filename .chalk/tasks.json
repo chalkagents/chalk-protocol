@@ -29986,7 +29986,7 @@
     "tests": [
       {
         "path": "test/run-finish.test.mjs",
-        "sha256": "fa26265418563bb63cfd4cc9e4b76e848df459aefd333dcd8559da1a69113af2"
+        "sha256": "23c08e3e5f6056ec34a5d5c719bf73f410421d62db4c4f574b5ce82f3e03f8f5"
       }
     ],
     "heldOut": [],
@@ -30171,9 +30171,86 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "specification revision 5: Add second-review regressions for mandatory review policy changed during probes and committed implementation bypassing working-tree adequacy helpers. Bind the initial completion policy; reject unsupported committed probe scope before gates, preserving current assertions. — re-review required"
+      },
+      {
+        "at": "2026-09-10T09:42:47.221Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "Mandatory milestone review can be bypassed during adequacy probes. lib/run-finish.mjs:35–44 binds protocol configuration but omits task.milestone; lib/run.mjs:197 then recalculates review necessity from the modified task. Independently reproduced in scratch: configure milestone-boundary review for the final task, then have the mutation probe delete its milestone. Finish exits successfully with state=done, two verifications and zero reviews. This violates criterion 2 despite all 33 targeted existing tests passing. Preserve the initially required review across probes and final admission, and add this regression."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Retain verification authority only within the current process.",
+            "rationale": "Avoids trusting editable receipts while eliminating ordinary duplicate verification.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Reject committed implementation changes when adequacy probes are configured.",
+            "rationale": "Existing probes operate on the working delta from HEAD and cannot certify arbitrary task-base changes.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Reverify after adequacy probes and optionally after review.",
+            "rationale": "Checks the restored implementation and provides an explicit refresh for external environment changes.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Block failed finish attempts without automatically retrying review.",
+            "rationale": "Preserves inspectable findings and requires a fresh invocation after recovery.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ],
+        "specRevision": 6,
+        "approval": {
+          "version": 1,
+          "kind": "review",
+          "status": "known",
+          "specification": "66c11ad75e88f25da98280005de539af68ebdda80ae13c997b33eb2cde8607a0",
+          "configuration": "c41600540950181193ca07be846b6eec37179a33cab7a8e96532115491216b5b",
+          "source": "6dc683a777b2107bbda6d69d1b4ea36b5487acd77bdff693823703aa1e3862ff",
+          "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+          "runtime": "6355f6277073874f21ca544e03b9c668bad550658ec41d011230233f5c9844de"
+        },
+        "inputs": {
+          "version": 1,
+          "mode": "git",
+          "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+          "branch": "feat/guarded-run-finish",
+          "base": "4b0c90f8b2b699f07b5fa4818140acc26a65a831",
+          "head": "af2388d9d8e14f980dc526570e49f6b8f76553a3",
+          "files": [
+            "QUICKSTART.md",
+            "bin/chalk.mjs",
+            "docs/verification-evidence.md",
+            "lib/approval-inputs.mjs",
+            "lib/run-finish.mjs",
+            "lib/run.mjs",
+            "lib/verification-record.mjs",
+            "lib/verify.mjs",
+            "test/run-finish.test.mjs"
+          ],
+          "untracked": [],
+          "contentFingerprint": "936ef16b202b92ff0f3323caa54908a889cc40d4c71836149cdefb91ca2fa2b1",
+          "fingerprint": "b704e1252f200c3482c8a9768755983d59c104074d54a7358cea6060fcd103a3"
+        }
+      },
+      {
+        "at": "2026-09-10T09:43:26.853Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "specification revision 7: Add the third review reproduction: removing a task milestone during adequacy probes must not erase the initially required milestone-boundary review. Preserve initial review necessity throughout verification, probes and final admission. — re-review required"
       }
     ],
-    "specRevision": 6,
+    "specRevision": 8,
     "specRevisions": [
       {
         "revision": 1,
@@ -30739,6 +30816,221 @@
           ]
         },
         "invalidated": {}
+      },
+      {
+        "revision": 7,
+        "at": "2026-09-10T09:43:26.853Z",
+        "kind": "amendment",
+        "why": "Add the third review reproduction: removing a task milestone during adequacy probes must not erase the initially required milestone-boundary review. Preserve initial review necessity throughout verification, probes and final admission.",
+        "operations": [
+          {
+            "type": "test",
+            "lock": {
+              "path": "test/run-finish.test.mjs",
+              "sha256": "fa26265418563bb63cfd4cc9e4b76e848df459aefd333dcd8559da1a69113af2"
+            }
+          }
+        ],
+        "before": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend the existing chalk run driver with --finish <id> for exactly one already in-progress task. Skip executor invocation and require no executor configuration; preserve start time and attempts. Validate target, dependencies and incompatible flags before running gates; dry-run is read-only and identifies the actual execution directory, branch and task base."
+            },
+            {
+              "id": "ac-2",
+              "text": "Run fresh verification and all existing configured test-adequacy and completion gates, then required adversarial review, then completion using only the actual verification result retained in the same process. Never load a receipt as execution authority. Check fresh source/spec/config approval, visible locked-test integrity and Git tracking, current review and completion approvals in the final serialized admission. Preserve source observation and full review rubric; a changed contract, failed gate or missing evidence must not complete."
+            },
+            {
+              "id": "ac-3",
+              "text": "Revalidate retained verification output bytes before completion and reject damage. Keep new reviewer findings and decisions inspectable, report stage timings and receipt location, and support --force-rerun for a second verification after review. Each invocation begins with fresh verification; cross-command reuse and full external toolchain/environment identity remain deferred and clearly documented."
+            },
+            {
+              "id": "ac-4",
+              "text": "Meaningful CLI regressions prove unchanged finish invokes verification once, never invokes executor, and completes only the selected task. Cover invalid target/dependencies, dry-run, forced rerun, failed verification, review BLOCK/error, source/spec/locked-test changes, untracked locked tests, and tampered local evidence. Preserve existing ordinary run and done behavior."
+            }
+          ],
+          "tests": [
+            {
+              "path": "test/run-finish.test.mjs",
+              "sha256": "fa26265418563bb63cfd4cc9e4b76e848df459aefd333dcd8559da1a69113af2"
+            }
+          ]
+        },
+        "after": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend the existing chalk run driver with --finish <id> for exactly one already in-progress task. Skip executor invocation and require no executor configuration; preserve start time and attempts. Validate target, dependencies and incompatible flags before running gates; dry-run is read-only and identifies the actual execution directory, branch and task base."
+            },
+            {
+              "id": "ac-2",
+              "text": "Run fresh verification and all existing configured test-adequacy and completion gates, then required adversarial review, then completion using only the actual verification result retained in the same process. Never load a receipt as execution authority. Check fresh source/spec/config approval, visible locked-test integrity and Git tracking, current review and completion approvals in the final serialized admission. Preserve source observation and full review rubric; a changed contract, failed gate or missing evidence must not complete."
+            },
+            {
+              "id": "ac-3",
+              "text": "Revalidate retained verification output bytes before completion and reject damage. Keep new reviewer findings and decisions inspectable, report stage timings and receipt location, and support --force-rerun for a second verification after review. Each invocation begins with fresh verification; cross-command reuse and full external toolchain/environment identity remain deferred and clearly documented."
+            },
+            {
+              "id": "ac-4",
+              "text": "Meaningful CLI regressions prove unchanged finish invokes verification once, never invokes executor, and completes only the selected task. Cover invalid target/dependencies, dry-run, forced rerun, failed verification, review BLOCK/error, source/spec/locked-test changes, untracked locked tests, and tampered local evidence. Preserve existing ordinary run and done behavior."
+            }
+          ],
+          "tests": [
+            {
+              "path": "test/run-finish.test.mjs",
+              "sha256": "fa26265418563bb63cfd4cc9e4b76e848df459aefd333dcd8559da1a69113af2"
+            }
+          ]
+        },
+        "invalidated": {
+          "handoff": {
+            "path": ".chalk/handoffs/task-2c04dcc-3.md",
+            "at": "2026-09-10T09:42:47.375Z",
+            "reason": "block",
+            "seq": 3,
+            "specRevision": 6
+          },
+          "review": {
+            "at": "2026-09-10T09:42:47.221Z",
+            "by": "adversary",
+            "verdict": "block",
+            "findings": [
+              {
+                "severity": "high",
+                "area": "correctness",
+                "note": "Mandatory milestone review can be bypassed during adequacy probes. lib/run-finish.mjs:35–44 binds protocol configuration but omits task.milestone; lib/run.mjs:197 then recalculates review necessity from the modified task. Independently reproduced in scratch: configure milestone-boundary review for the final task, then have the mutation probe delete its milestone. Finish exits successfully with state=done, two verifications and zero reviews. This violates criterion 2 despite all 33 targeted existing tests passing. Preserve the initially required review across probes and final admission, and add this regression."
+              }
+            ],
+            "decisions": [
+              {
+                "choice": "Retain verification authority only within the current process.",
+                "rationale": "Avoids trusting editable receipts while eliminating ordinary duplicate verification.",
+                "blastRadius": "med",
+                "reversibility": "easy"
+              },
+              {
+                "choice": "Reject committed implementation changes when adequacy probes are configured.",
+                "rationale": "Existing probes operate on the working delta from HEAD and cannot certify arbitrary task-base changes.",
+                "blastRadius": "med",
+                "reversibility": "easy"
+              },
+              {
+                "choice": "Reverify after adequacy probes and optionally after review.",
+                "rationale": "Checks the restored implementation and provides an explicit refresh for external environment changes.",
+                "blastRadius": "low",
+                "reversibility": "easy"
+              },
+              {
+                "choice": "Block failed finish attempts without automatically retrying review.",
+                "rationale": "Preserves inspectable findings and requires a fresh invocation after recovery.",
+                "blastRadius": "med",
+                "reversibility": "easy"
+              }
+            ],
+            "specRevision": 6,
+            "approval": {
+              "version": 1,
+              "kind": "review",
+              "status": "known",
+              "specification": "66c11ad75e88f25da98280005de539af68ebdda80ae13c997b33eb2cde8607a0",
+              "configuration": "c41600540950181193ca07be846b6eec37179a33cab7a8e96532115491216b5b",
+              "source": "6dc683a777b2107bbda6d69d1b4ea36b5487acd77bdff693823703aa1e3862ff",
+              "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+              "runtime": "6355f6277073874f21ca544e03b9c668bad550658ec41d011230233f5c9844de"
+            },
+            "inputs": {
+              "version": 1,
+              "mode": "git",
+              "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+              "branch": "feat/guarded-run-finish",
+              "base": "4b0c90f8b2b699f07b5fa4818140acc26a65a831",
+              "head": "af2388d9d8e14f980dc526570e49f6b8f76553a3",
+              "files": [
+                "QUICKSTART.md",
+                "bin/chalk.mjs",
+                "docs/verification-evidence.md",
+                "lib/approval-inputs.mjs",
+                "lib/run-finish.mjs",
+                "lib/run.mjs",
+                "lib/verification-record.mjs",
+                "lib/verify.mjs",
+                "test/run-finish.test.mjs"
+              ],
+              "untracked": [],
+              "contentFingerprint": "936ef16b202b92ff0f3323caa54908a889cc40d4c71836149cdefb91ca2fa2b1",
+              "fingerprint": "b704e1252f200c3482c8a9768755983d59c104074d54a7358cea6060fcd103a3"
+            }
+          }
+        }
+      },
+      {
+        "revision": 8,
+        "at": "2026-09-10T09:46:29.329Z",
+        "kind": "amendment",
+        "why": "Lock the validated initial-gate regressions: milestone-boundary review remains mandatory after milestone removal for both PASS and BLOCK verdicts, and deleting a dependency cannot hide an initially complete prerequisite reopening. All 59 finish/protocol tests passed.",
+        "operations": [
+          {
+            "type": "test",
+            "lock": {
+              "path": "test/run-finish.test.mjs",
+              "sha256": "23c08e3e5f6056ec34a5d5c719bf73f410421d62db4c4f574b5ce82f3e03f8f5"
+            }
+          }
+        ],
+        "before": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend the existing chalk run driver with --finish <id> for exactly one already in-progress task. Skip executor invocation and require no executor configuration; preserve start time and attempts. Validate target, dependencies and incompatible flags before running gates; dry-run is read-only and identifies the actual execution directory, branch and task base."
+            },
+            {
+              "id": "ac-2",
+              "text": "Run fresh verification and all existing configured test-adequacy and completion gates, then required adversarial review, then completion using only the actual verification result retained in the same process. Never load a receipt as execution authority. Check fresh source/spec/config approval, visible locked-test integrity and Git tracking, current review and completion approvals in the final serialized admission. Preserve source observation and full review rubric; a changed contract, failed gate or missing evidence must not complete."
+            },
+            {
+              "id": "ac-3",
+              "text": "Revalidate retained verification output bytes before completion and reject damage. Keep new reviewer findings and decisions inspectable, report stage timings and receipt location, and support --force-rerun for a second verification after review. Each invocation begins with fresh verification; cross-command reuse and full external toolchain/environment identity remain deferred and clearly documented."
+            },
+            {
+              "id": "ac-4",
+              "text": "Meaningful CLI regressions prove unchanged finish invokes verification once, never invokes executor, and completes only the selected task. Cover invalid target/dependencies, dry-run, forced rerun, failed verification, review BLOCK/error, source/spec/locked-test changes, untracked locked tests, and tampered local evidence. Preserve existing ordinary run and done behavior."
+            }
+          ],
+          "tests": [
+            {
+              "path": "test/run-finish.test.mjs",
+              "sha256": "fa26265418563bb63cfd4cc9e4b76e848df459aefd333dcd8559da1a69113af2"
+            }
+          ]
+        },
+        "after": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend the existing chalk run driver with --finish <id> for exactly one already in-progress task. Skip executor invocation and require no executor configuration; preserve start time and attempts. Validate target, dependencies and incompatible flags before running gates; dry-run is read-only and identifies the actual execution directory, branch and task base."
+            },
+            {
+              "id": "ac-2",
+              "text": "Run fresh verification and all existing configured test-adequacy and completion gates, then required adversarial review, then completion using only the actual verification result retained in the same process. Never load a receipt as execution authority. Check fresh source/spec/config approval, visible locked-test integrity and Git tracking, current review and completion approvals in the final serialized admission. Preserve source observation and full review rubric; a changed contract, failed gate or missing evidence must not complete."
+            },
+            {
+              "id": "ac-3",
+              "text": "Revalidate retained verification output bytes before completion and reject damage. Keep new reviewer findings and decisions inspectable, report stage timings and receipt location, and support --force-rerun for a second verification after review. Each invocation begins with fresh verification; cross-command reuse and full external toolchain/environment identity remain deferred and clearly documented."
+            },
+            {
+              "id": "ac-4",
+              "text": "Meaningful CLI regressions prove unchanged finish invokes verification once, never invokes executor, and completes only the selected task. Cover invalid target/dependencies, dry-run, forced rerun, failed verification, review BLOCK/error, source/spec/locked-test changes, untracked locked tests, and tampered local evidence. Preserve existing ordinary run and done behavior."
+            }
+          ],
+          "tests": [
+            {
+              "path": "test/run-finish.test.mjs",
+              "sha256": "23c08e3e5f6056ec34a5d5c719bf73f410421d62db4c4f574b5ce82f3e03f8f5"
+            }
+          ]
+        },
+        "invalidated": {}
       }
     ],
     "reviewBase": {
@@ -30747,16 +31039,16 @@
       "source": "task-start",
       "ref": "HEAD"
     },
-    "startedAt": "2026-09-10T09:23:54.795Z",
+    "startedAt": "2026-09-10T09:43:26.683Z",
     "pipeline": {
-      "verificationInvalidated": 6,
-      "planInvalidated": 6
+      "verificationInvalidated": 8,
+      "planInvalidated": 8
     },
     "blockedFrom": "in-progress",
     "block": {
       "needs": "review",
       "reason": "review block",
-      "at": "2026-09-10T09:22:03.154Z"
+      "at": "2026-09-10T09:42:47.354Z"
     }
   }
 ]

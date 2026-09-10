@@ -2034,3 +2034,13 @@
 
 - _when:_ 2026-09-10T09:26:43.621Z
 - _why:_ Lock validated policy and probe-scope regressions. All 56 finish/protocol checks passed, including mandatory review-policy tampering, committed and mixed implementation scope refusal before execution, and bookkeeping-only commit compatibility.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:43:26.859Z
+- _why:_ Add the third review reproduction: removing a task milestone during adequacy probes must not erase the initially required milestone-boundary review. Preserve initial review necessity throughout verification, probes and final admission.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:46:29.335Z
+- _why:_ Lock the validated initial-gate regressions: milestone-boundary review remains mandatory after milestone removal for both PASS and BLOCK verdicts, and deleting a dependency cannot hide an initially complete prerequisite reopening. All 59 finish/protocol tests passed.
