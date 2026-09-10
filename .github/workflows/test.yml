@@ -25,5 +25,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      # Keep the direct full-suite contract while bounding watcher-heavy fixture concurrency.
-      - run: node --test --test-concurrency=2
+      # Use the repository scheduler so watcher-heavy fixtures receive process isolation.
+      - run: npm test

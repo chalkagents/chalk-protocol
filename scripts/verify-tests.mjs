@@ -38,7 +38,7 @@ export function runVerificationTests({ root = ROOT, launch = spawnSync } = {}) {
     // A caller may itself be a test child. Do not let that private Node marker
     // turn an explicit new verification process into an empty recursive run.
     const { NODE_TEST_CONTEXT, ...env } = process.env;
-    const result = launch(process.execPath, [`--test-concurrency=${concurrency}`, join(ROOT, 'scripts/verify-test-batch.mjs'), String(concurrency), ...batch], { cwd: root, stdio: 'inherit', env });
+    const result = launch(process.execPath, [join(ROOT, 'scripts/verify-test-batch.mjs'), String(concurrency), ...batch], { cwd: root, stdio: 'inherit', env });
     if (result.error || result.signal || result.status !== 0) return result.status || 1;
   }
   return 0;
