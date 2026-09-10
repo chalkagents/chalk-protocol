@@ -62,11 +62,13 @@ test('repository verification entry points use the bounded scheduler', () => {
   assert.equal(pkg.scripts.test, 'node scripts/verify-tests.mjs');
   const chalk = JSON.parse(fs.readFileSync(join(ROOT, '.chalk/chalk.json'), 'utf8'));
   assert.equal(chalk.protocol.verify.test, 'npm test');
-  assert.equal(pkg.engines.node, '>=18.9.0');
+  assert.equal(pkg.engines.node, '>=18.17.0');
   for (const path of ['.github/workflows/test.yml', '.github/workflows/release.yml']) {
     const workflow = fs.readFileSync(join(ROOT, path), 'utf8');
     assert.match(workflow, /run: npm test/);
     assert.doesNotMatch(workflow, /run: node --test/);
     assert.doesNotMatch(workflow, /NODE_OPTIONS:[^\n]*--test-concurrency/);
   }
+  const ci = fs.readFileSync(join(ROOT, '.github/workflows/test.yml'), 'utf8');
+  assert.match(ci, /node: '18[.]17[.]0'/);
 });
