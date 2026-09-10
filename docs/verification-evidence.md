@@ -200,6 +200,22 @@ attestation. The reviewer still examines the full contract and reruns checks whe
 possible. Source/spec/config freshness does not establish complete SDK/environment
 identity. This attachment changes no completion gate, and `done` still verifies.
 
+### PR handoff
+
+New PR descriptions use the same receipt selection and freshness checks as reviews.
+Both show each command's recorded start, finish and elapsed milliseconds, plus the
+recorded source fingerprint. A command that finished successfully can be shown as
+passed while its overall receipt remains incomplete. Running commands have no
+completed duration. This does not repair an interrupted receipt or certify that its
+final integrity and observation checks finished.
+
+The PR projection includes command labels, outcomes, exit codes, timings and freshness,
+but omits command strings, local paths, environment values and raw output. It is limited
+to eight commands and 8,000 characters; omissions are explicit. The test-plan template
+asks for verification rather than claiming GREEN without evidence. Existing PR bodies
+are not rewritten by this change. The summary is informational: safe verification reuse
+and complete external toolchain identity remain separate work.
+
 ## Coverage and adoption
 
 Existing projects adopt recording and review attachment by using the updated CLI;
