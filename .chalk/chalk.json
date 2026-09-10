@@ -90,36 +90,12 @@
             ]
           },
           "options": {}
-        },
-        "codex-reviewer": {
-          "adapter": "codex",
-          "command": "node bin/adapters/codex.mjs",
-          "model": null,
-          "identity": {
-            "displayName": "Codex CLI"
-          },
-          "capabilities": {
-            "roles": [
-              "executor",
-              "planner",
-              "reviewer"
-            ],
-            "access": [
-              "read-only",
-              "workspace-write"
-            ],
-            "output": [
-              "text",
-              "json"
-            ]
-          },
-          "options": {}
         }
       },
       "roles": {
         "executor": "codex",
         "planner": "codex",
-        "reviewer": "codex-reviewer"
+        "reviewer": "codex"
       }
     }
   },
