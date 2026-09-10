@@ -25,5 +25,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      # Zero-dependency project — no install step. `node --test` discovers test/**/*.test.mjs.
-      - run: node --test
+      # Keep the direct full-suite contract while bounding watcher-heavy fixture concurrency.
+      - run: node --test --test-concurrency=2

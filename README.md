@@ -47,7 +47,7 @@ stubs with an installed agent CLI and use the same loop for real.
 npm install -g chalk-protocol       # puts `chalk` on your PATH (Node ≥ 18, zero dependencies)
 # or try it without installing:  npx chalk-protocol demo
 # or from source:                git clone https://github.com/chalkagents/chalk-protocol && cd chalk-protocol && npm link
-node --test                         # (source checkout) run the suite — hermetic, no network
+npm test                            # (source checkout) run the suite — hermetic, no network
 ```
 
 ### Platform support

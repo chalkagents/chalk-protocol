@@ -4,7 +4,7 @@
 
 ## Checklist
 
-- [ ] `node --test` is green locally (zero dependencies — no install step needed)
+- [ ] `npm test` is green locally (zero dependencies — no install step needed)
 - [ ] New behavior ships a test that **fails without the change** (chalk's own break-it rule)
 - [ ] Locked test files under existing tasks are untouched (or the change goes through `chalk amend-spec` with a reason)
 - [ ] Diff is small and scoped to one concern
