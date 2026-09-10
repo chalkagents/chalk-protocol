@@ -29176,7 +29176,7 @@
   {
     "id": "task-3cbf419d",
     "title": "feat: complete verification evidence handoff to review and PR descriptions",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "id": "ac-1",
@@ -29273,6 +29273,66 @@
         "by": "amend-spec",
         "verdict": "stale",
         "note": "specification revision 5: Address the first review finding: normalize accepted timestamp values before public rendering so date comments cannot disclose private paths or environment values. Also constrain public command labels to known gate names; preserve all existing evidence, privacy and bounded-output assertions. — re-review required"
+      },
+      {
+        "at": "2026-09-10T06:41:04.411Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [],
+        "decisions": [
+          {
+            "choice": "Reuse the review evidence validator for PR descriptions without changing completion gates.",
+            "rationale": "Keeps receipt selection and freshness consistent; execution reuse remains deferred until toolchain identity is established.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Publish an allowlisted projection capped at eight commands and 8,000 characters.",
+            "rationale": "Preserves useful outcomes while excluding sensitive commands, paths, environment values and logs; omissions are explicit.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Normalize accepted timestamps to UTC and suppress running-command completion timings.",
+            "rationale": "Prevents date comments from disclosing private data and avoids implying unfinished commands completed.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Apply evidence sections only to newly generated PR bodies.",
+            "rationale": "Removes unconditional verification claims from the template while preserving existing PR descriptions.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ],
+        "specRevision": 6,
+        "approval": {
+          "version": 1,
+          "kind": "review",
+          "status": "known",
+          "specification": "12a3c1bad18c3cd8a4b3f8d9d15255b45da01e607541319d286760fec3b6f2d6",
+          "configuration": "c41600540950181193ca07be846b6eec37179a33cab7a8e96532115491216b5b",
+          "source": "62943d3191c7c08fdefcf2a46ae0c0a3ed66f49426ee90d8dd5b7e981235c527",
+          "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+          "runtime": "6355f6277073874f21ca544e03b9c668bad550658ec41d011230233f5c9844de"
+        },
+        "inputs": {
+          "version": 1,
+          "mode": "git",
+          "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+          "branch": "feat/verification-evidence-handoff",
+          "base": "db147c4ecf5fd9f715f9dabc20295352f3f020fd",
+          "head": "252937569cba9f5d343ae0cb7758a843b476b0fc",
+          "files": [
+            "docs/verification-evidence.md",
+            "lib/prbody.mjs",
+            "lib/review-evidence.mjs",
+            "test/verification-handoff.test.mjs"
+          ],
+          "untracked": [],
+          "contentFingerprint": "9e135b91f30a6dc875b96392dc25c77ba708b6ed4486beca06bf40bbbfe564ee",
+          "fingerprint": "b98e67f07e8d34635dca4cd564921984bd623e0380b3d55dea5314137f2df401"
+        }
       }
     ],
     "specRevision": 6,
@@ -29625,7 +29685,6 @@
       }
     ],
     "pipeline": {
-      "verificationInvalidated": 6,
       "planInvalidated": 6
     },
     "reviewBase": {
@@ -29634,7 +29693,9 @@
       "source": "task-start",
       "ref": "HEAD"
     },
-    "startedAt": "2026-09-10T05:44:06.771Z"
+    "startedAt": "2026-09-10T05:44:06.771Z",
+    "doneAt": "2026-09-10T06:53:28.995Z",
+    "completedSpecRevision": 6
   },
   {
     "id": "task-971d7e8b",

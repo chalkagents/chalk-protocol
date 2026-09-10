@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789019423918,
+  "updatedAt": 1789023208995,
   "order": 0,
   "cards": [
     {
@@ -1829,17 +1829,17 @@
     {
       "id": "task-3cbf419d",
       "title": "feat: complete verification evidence handoff to review and PR descriptions",
-      "column": "in_progress",
+      "column": "done",
       "createdAt": 1789004443434,
-      "updatedAt": 1789019046771,
+      "updatedAt": 1789023208995,
       "order": 112,
       "description": "- Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks.\n- Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established.\n- New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion.",
       "testArtifact": {
         "specPath": "test/verification-handoff.test.mjs",
         "lastRun": {
-          "runId": "review-task-3cbf419d",
-          "status": "failed",
-          "at": 1789020602604
+          "runId": "done-task-3cbf419d",
+          "status": "passed",
+          "at": 1789023208995
         }
       }
     },
