@@ -134,6 +134,9 @@ before any code is built. Where `plan.required` gates the approach, this gates t
 Sanctioned criteria and locked-test amendments invalidate task alignment, plan
 approval and passing review. See [specification revisions](spec-revisions.md) for
 stable criterion IDs, add/replace/retire commands and retained history.
+Approvals also bind their relevant current inputs. Legacy timestamps and PASS
+records without that identity require renewal through the existing commands.
+See [approval freshness](approval-freshness.md) for scopes and recovery commands.
 
 ### `executor`
 

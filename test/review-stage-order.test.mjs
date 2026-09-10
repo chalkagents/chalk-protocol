@@ -8,8 +8,8 @@
 // Locked contract for task-124fde8a.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { spawnSync, execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,8 +72,14 @@ test('chalk pr — a polluted stage (past pr-open, but NO pr) falls through inst
   assert.match(r.out, /no branch/i, 'the real pr-open path ran');
 });
 
-test('chalk pr — a REAL open PR still short-circuits idempotently (and backfills `recorded`)', () => {
-  const d = repo('pr-open', { pr: { number: 7 } });
+test('chalk pr — a REAL open PR refreshes publication idempotently (and backfills `recorded`)', t => {
+  const d = repo('pr-open', { branch: 'main', pr: { number: 7 } });
+  const remote = mkdtempSync(join(tmpdir(), 'chalk-revorder-remote-'));
+  t.after(() => { rmSync(d, { recursive: true, force: true }); rmSync(remote, { recursive: true, force: true }); });
+  const git = (cwd, ...args) => execFileSync('git', args, { cwd, stdio: 'pipe' });
+  git(remote, 'init', '--bare', '-b', 'main'); git(d, 'init', '-b', 'main');
+  git(d, 'config', 'user.name', 'Fixture'); git(d, 'config', 'user.email', 'fixture@example.invalid');
+  git(d, 'add', '-A'); git(d, 'commit', '-qm', 'published'); git(d, 'remote', 'add', 'origin', remote); git(d, 'push', '-u', 'origin', 'main');
   const r = chalk(d, 'pr', 'task-aaaaaaaa');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /#7.*already open/i, 'the legitimate no-op is intact');

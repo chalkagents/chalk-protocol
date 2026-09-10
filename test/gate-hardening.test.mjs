@@ -22,13 +22,14 @@ import { runMutation } from '../lib/mutation.mjs';
 import { formatDiffForReview } from '../lib/review.mjs';
 import { writeHandoff } from '../lib/handoff.mjs';
 import { Store } from '../lib/store.mjs';
+import { candidateGh } from '../scripts/test-gh-candidate.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'chalk.mjs');
 const chalk = (cwd, ...args) => { const r = spawnSync('node', [CLI, ...args], { cwd, encoding: 'utf8' }); return { code: r.status, out: `${r.stdout || ''}${r.stderr || ''}` }; };
 const scratch = () => mkdtempSync(join(tmpdir(), 'gatehard-'));
 const tasksOf = (d) => JSON.parse(readFileSync(join(d, '.chalk/tasks.json'), 'utf8'));
 const confIn = (d, fn) => { const f = join(d, '.chalk/chalk.json'); const o = JSON.parse(readFileSync(f, 'utf8')); fn(o.protocol); writeFileSync(f, JSON.stringify(o, null, 2)); };
-const stubGh = (dir, body) => { const p = join(dir, 'fake-gh.mjs'); writeFileSync(p, body); return `node ${p}`; };
+const stubGh = (dir, body) => { const p = join(dir, 'fake-gh.mjs'); writeFileSync(p, candidateGh(body)); return `node ${p}`; };
 // A working repo whose origin is a local bare repo, so `git push` really works (offline).
 function repoWithBare() {
   const bare = scratch();

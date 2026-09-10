@@ -1,3 +1,6 @@
+import { captureApproval } from '../lib/approval-inputs.mjs';
+import { candidateGh } from '../scripts/test-gh-candidate.mjs';
+import { Store } from '../lib/store.mjs';
 // Tests for the GitHub issue→merge pipeline. Hermetic: a real temp git repo + a STUB `gh`
 // (a node script that records its args and returns canned output) — no network, no real merges.
 import { test } from 'node:test';
@@ -30,7 +33,7 @@ function repo(remote = 'git@github.com-work:acme/widgets.git') {
 // Write a stub `gh` as an executable node script; returns the command string to pass as ghCommand.
 function stubGh(dir, body) {
   const p = join(dir, 'fake-gh.mjs');
-  writeFileSync(p, body);
+  writeFileSync(p, candidateGh(body));
   return `node ${p}`;
 }
 // A working repo whose `origin` is a local bare repo, so `git push` actually works (offline).
@@ -637,7 +640,7 @@ test('merge discipline — review passed but LGTM not surfaced → merge posts t
   chalk(d, 'branch', id); chalk(d, 'work', id); chalk(d, 'commit', id); chalk(d, 'pr', id);
   // seed a passing review with no lgtm on the PR
   const f = join(d, '.chalk/tasks.json'); const ts = JSON.parse(readFileSync(f));
-  ts[0].reviews = [{ verdict: 'pass', by: 'adversary' }]; delete ts[0].pr.lgtm; writeFileSync(f, JSON.stringify(ts, null, 2));
+  ts[0].reviews = [{ verdict: 'pass', by: 'adversary', approval: captureApproval(new Store(d), 'review', ts[0]) }]; delete ts[0].pr.lgtm; writeFileSync(f, JSON.stringify(ts, null, 2));
 
   assert.equal(chalk(d, 'merge', id).code, 0, 'merge proceeds after posting the LGTM');
   assert.match(readFileSync(comment, 'utf8'), /LGTM/, 'merge posted the LGTM to the PR before merging');

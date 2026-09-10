@@ -70,9 +70,8 @@ Required audits are also bound to the specification they examined. Merge and pha
 admission reject an old green audit after any task's amendment, including restored
 wording or unchanged test locks. Run `chalk audit` again; a contract change during
 audit produces RED. Completion metadata and archival alone preserve the contract
-identity. Legacy audits without this identity remain compatible only when no
-sanctioned amendment exists. This adds specification freshness; it does not yet
-replace the existing source/configuration freshness checks with a complete identity.
+identity. Legacy audits without sufficient identity are historical. Audits also bind
+source and gate configuration; see [approval freshness](approval-freshness.md).
 
 For amended tasks with an existing PR, `work` preserves the PR record and `commit`
 records corrections locally. Run `chalk pr <task>` again to push the committed
@@ -111,9 +110,9 @@ contents. Test contents and hidden regression assertions are never placed in the
 revision log.
 
 These are local protocol records, not signed approvals or protection against manual
-spine edits. This slice invalidates task approvals on sanctioned specification
-changes. Binding every admission path to all current code, configuration and
-toolchain inputs remains separate work.
+spine edits. Specification changes invalidate task approvals, and shared freshness
+checks bind each approval to its relevant source and configuration. Complete
+external toolchain/environment identity and verification reuse remain separate work.
 
 Reviews also check the revision they started with before accepting a returned
 verdict. If the canonical specification changes while a review is running (including

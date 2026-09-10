@@ -41,15 +41,15 @@ test('ciStatus — tolerates gh exiting nonzero while still printing the JSON', 
   assert.equal(ciStatus(mkStore(d, ghChecks(d, [{ bucket: 'pass' }], 8)), withPr), 'pass');
 });
 
-test('brokeCheck — prefers CI; falls back to local verify only when CI is none', () => {
+test('brokeCheck — failing CI blocks and green buckets still require local verification', () => {
   const d = mkdtempSync(join(tmpdir(), 'brokeck-'));
   let localCalled = 0;
   const verifyFn = (green) => () => { localCalled++; return { green }; };
 
-  // CI present + green → ok via ci, local NOT consulted
+  // Green buckets do not identify current local inputs; local RED still blocks.
   let r = brokeCheck(mkStore(d, ghChecks(d, [{ bucket: 'pass' }])), withPr, { verifyFn: verifyFn(false) });
-  assert.deepEqual({ ok: r.ok, source: r.source }, { ok: true, source: 'ci' });
-  assert.equal(localCalled, 0, 'local verify skipped when CI decides');
+  assert.deepEqual({ ok: r.ok, source: r.source }, { ok: false, source: 'local' });
+  assert.equal(localCalled, 1, 'green CI cannot replace current local verification');
 
   // CI present + failing → not ok via ci
   r = brokeCheck(mkStore(d, ghChecks(d, [{ bucket: 'fail' }])), withPr, { verifyFn: verifyFn(true) });
@@ -58,7 +58,7 @@ test('brokeCheck — prefers CI; falls back to local verify only when CI is none
   // no CI → fall back to local verify
   r = brokeCheck(mkStore(d, 'gh'), { id: 't' }, { verifyFn: verifyFn(true) });
   assert.deepEqual({ ok: r.ok, source: r.source }, { ok: true, source: 'local' });
-  assert.equal(localCalled, 1, 'local verify consulted on the fallback path');
+  assert.equal(localCalled, 2, 'local verify consulted on the fallback path');
   r = brokeCheck(mkStore(d, 'gh'), { id: 't' }, { verifyFn: verifyFn(false) });
   assert.equal(r.ok, false, 'local red → not ok');
 });
@@ -68,8 +68,8 @@ test('brokeCheck — waits out a pending CI (bounded poll), then decides on the 
   let slept = 0; const sleep = () => { slept++; };
   // classify yields pending twice, then pass — the poll must keep going until it settles
   const seq = ['pending', 'pending', 'pass']; let i = 0;
-  let r = brokeCheck(mkStore(d, 'gh'), withPr, { classify: () => seq[Math.min(i++, seq.length - 1)], sleep });
-  assert.deepEqual({ ok: r.ok, source: r.source }, { ok: true, source: 'ci' }, 'settles to pass after waiting');
+  let r = brokeCheck(mkStore(d, 'gh'), withPr, { classify: () => seq[Math.min(i++, seq.length - 1)], sleep, verifyFn: () => ({ green: true }) });
+  assert.deepEqual({ ok: r.ok, source: r.source }, { ok: true, source: 'local' }, 'settled CI permits current local verification');
   assert.equal(slept, 2, 'slept once per pending re-check');
 
   // pending that never settles → bounded, then a clear "still running" non-ok (not a misleading fail)
