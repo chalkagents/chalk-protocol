@@ -171,6 +171,14 @@ the partial response into a role parser. For a valid `failed` response, Chalk SH
 as partial provider output and surface normalized diagnostics. Retry policy belongs to the Chalk
 workflow using the role; adapters MUST NOT silently repeat non-idempotent write requests.
 
+Reviewer workflows retry at most once, and only when every error diagnostic has `retryable` set to
+`true` and has one of these transient codes: `timeout`, `provider-timeout`, `transport-error`,
+`adapter-transport`, `signal`, `nonzero-exit`, `provider-exit`, or
+`malformed-structured-output`. Schema-invalid output, permission/capability failures, approval-input
+changes, and read-only workspace mutations are terminal. No timeout, invalid, permission, or mutation
+response is a verdict. Raw-command compatibility alone may retain a complete valid verdict emitted
+before a non-zero process exit; structured Protocol responses must report `status: "ok"`.
+
 Request and response bytes SHOULD be bounded by the Chalk runner. Cancellation SHOULD send the
 platform termination signal before a forceful kill. Exact buffer limits and retry counts are Chalk
 policy, not adapter behavior.
