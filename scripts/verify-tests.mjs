@@ -21,7 +21,7 @@ export function runVerificationTests({ root = ROOT, launch = spawnSync } = {}) {
     }
   };
   walk('test'); if (!files.length) unknown(); files.sort();
-  const serial = file => file.includes('conformance') || file.endsWith('/codex-gemini-adapters.test.mjs') || file.endsWith('/spec-release.test.mjs');
+  const serial = file => file.includes('conformance') || file.endsWith('/codex-gemini-adapters.test.mjs') || file.endsWith('/spec-release.test.mjs') || file.endsWith('/spec-review-publication.test.mjs');
   // Start the long end-to-end pipeline before short files occupy its worker.
   // This avoids a late serial tail without increasing concurrency or the deadline.
   const integrations = files.filter(file => !serial(file));
