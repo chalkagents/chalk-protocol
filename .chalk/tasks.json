@@ -25985,7 +25985,7 @@
   {
     "id": "task-96da0ef1",
     "title": "fix: validate deterministic review inputs before invoking the reviewer",
-    "state": "in-progress",
+    "state": "blocked",
     "acceptanceCriteria": [
       {
         "id": "ac-1",
@@ -29158,27 +29158,51 @@
     "pipeline": {
       "verificationInvalidated": 25,
       "planInvalidated": 25
+    },
+    "blockedFrom": "in-progress",
+    "block": {
+      "needs": "review",
+      "reason": "Review PASS and final gates remain outstanding. User approved prioritizing bounded efficiency improvements after the prolonged loop; resume this task with its saved checkpoint afterward.",
+      "at": "2026-09-10T05:43:43.657Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-96da0ef-1.md",
+      "at": "2026-09-10T05:43:43.728Z",
+      "reason": "review",
+      "seq": 1,
+      "specRevision": 25
     }
   },
   {
     "id": "task-3cbf419d",
     "title": "feat: complete verification evidence handoff to review and PR descriptions",
-    "state": "specd",
+    "state": "in-progress",
     "acceptanceCriteria": [
       {
         "id": "ac-1",
         "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+      },
+      {
+        "id": "ac-2",
+        "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+      },
+      {
+        "id": "ac-3",
+        "text": "New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/verification-handoff.test.mjs",
+        "sha256": "2c0ce554cd498e048567962ff752f83adc6f6233637ddc674af7b2eb2e0ae952"
+      }
+    ],
     "heldOut": [],
     "milestone": "Okada API review efficiency",
-    "after": [
-      "task-96da0ef1"
-    ],
+    "after": [],
     "createdAt": "2026-09-10T01:40:43.434Z",
     "reviews": [],
-    "specRevision": 1,
+    "specRevision": 4,
     "specRevisions": [
       {
         "revision": 1,
@@ -29205,8 +29229,152 @@
           "tests": []
         },
         "invalidated": {}
+      },
+      {
+        "revision": 2,
+        "at": "2026-09-10T05:43:43.967Z",
+        "kind": "amendment",
+        "why": "Concretize the existing evidence-handoff slice after inspecting current capabilities. Normal command persistence and automatic review attachment already exist; close presentation/PR gaps without introducing unsafe receipt reuse.",
+        "operations": [
+          {
+            "type": "add",
+            "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+          }
+        ],
+        "before": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            }
+          ],
+          "tests": []
+        },
+        "after": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            },
+            {
+              "id": "ac-2",
+              "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+            }
+          ],
+          "tests": []
+        },
+        "invalidated": {}
+      },
+      {
+        "revision": 3,
+        "at": "2026-09-10T05:45:58.574Z",
+        "kind": "amendment",
+        "why": "PR descriptions leave the local workstation; preserve useful recorded outcomes without publishing potentially sensitive command strings or log paths. Fix the existing unconditional green test-plan wording.",
+        "operations": [
+          {
+            "type": "add",
+            "text": "New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion."
+          }
+        ],
+        "before": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            },
+            {
+              "id": "ac-2",
+              "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+            }
+          ],
+          "tests": []
+        },
+        "after": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            },
+            {
+              "id": "ac-2",
+              "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+            },
+            {
+              "id": "ac-3",
+              "text": "New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion."
+            }
+          ],
+          "tests": []
+        },
+        "invalidated": {}
+      },
+      {
+        "revision": 4,
+        "at": "2026-09-10T05:51:30.473Z",
+        "kind": "amendment",
+        "why": "Added initial acceptance tests during implementation",
+        "operations": [
+          {
+            "type": "test",
+            "lock": {
+              "path": "test/verification-handoff.test.mjs",
+              "sha256": "2c0ce554cd498e048567962ff752f83adc6f6233637ddc674af7b2eb2e0ae952"
+            }
+          }
+        ],
+        "before": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            },
+            {
+              "id": "ac-2",
+              "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+            },
+            {
+              "id": "ac-3",
+              "text": "New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion."
+            }
+          ],
+          "tests": []
+        },
+        "after": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            },
+            {
+              "id": "ac-2",
+              "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+            },
+            {
+              "id": "ac-3",
+              "text": "New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion."
+            }
+          ],
+          "tests": [
+            {
+              "path": "test/verification-handoff.test.mjs",
+              "sha256": "2c0ce554cd498e048567962ff752f83adc6f6233637ddc674af7b2eb2e0ae952"
+            }
+          ]
+        },
+        "invalidated": {}
       }
-    ]
+    ],
+    "pipeline": {
+      "verificationInvalidated": 4,
+      "planInvalidated": 4
+    },
+    "reviewBase": {
+      "commit": "db147c4ecf5fd9f715f9dabc20295352f3f020fd",
+      "capturedAt": "2026-09-10T05:44:06.771Z",
+      "source": "task-start",
+      "ref": "HEAD"
+    },
+    "startedAt": "2026-09-10T05:44:06.771Z"
   },
   {
     "id": "task-971d7e8b",
@@ -29296,6 +29464,78 @@
             {
               "id": "ac-1",
               "text": "Show and validate the actual task directory, branch and base before gates; support explicit worktree attachment and refuse mismatches. Isolate reviewer test output while preserving protected source and locked-test integrity; distinguish supplied evidence from independent execution."
+            }
+          ],
+          "tests": []
+        },
+        "invalidated": {}
+      }
+    ]
+  },
+  {
+    "id": "task-d54a02bf",
+    "title": "feat: reuse verification only with validated inputs and execution provenance",
+    "state": "specd",
+    "acceptanceCriteria": [
+      {
+        "id": "ac-1",
+        "text": "Inspect existing receipt, observer, approval and executor trust boundaries before implementation. Establish explicit identity for relevant source, tests, dependencies, gate configuration, toolchain and environment; unknown coverage disables reuse."
+      },
+      {
+        "id": "ac-2",
+        "text": "Permit done to reuse only a successfully completed execution whose provenance and retained evidence are validated and whose relevant inputs still match. A matching hash or editable green field alone must never open the gate. Failed, interrupted, malformed, stale and untrusted receipts require fresh execution."
+      },
+      {
+        "id": "ac-3",
+        "text": "Retain fresh locked-test integrity and admission checks, detect changes during execution and reuse admission, and support an explicit force-rerun option. Unchanged verify-review-done avoids duplicate expensive execution; meaningful regressions prove relevant changes and damaged evidence close the gate."
+      }
+    ],
+    "tests": [],
+    "heldOut": [],
+    "milestone": "Okada API review efficiency",
+    "after": [
+      "task-3cbf419d"
+    ],
+    "createdAt": "2026-09-10T05:50:23.918Z",
+    "reviews": [],
+    "specRevision": 1,
+    "specRevisions": [
+      {
+        "revision": 1,
+        "at": "2026-09-10T05:51:30.278Z",
+        "kind": "initial",
+        "why": "Initial specification",
+        "operations": [
+          {
+            "type": "add",
+            "text": "Inspect existing receipt, observer, approval and executor trust boundaries before implementation. Establish explicit identity for relevant source, tests, dependencies, gate configuration, toolchain and environment; unknown coverage disables reuse."
+          },
+          {
+            "type": "add",
+            "text": "Permit done to reuse only a successfully completed execution whose provenance and retained evidence are validated and whose relevant inputs still match. A matching hash or editable green field alone must never open the gate. Failed, interrupted, malformed, stale and untrusted receipts require fresh execution."
+          },
+          {
+            "type": "add",
+            "text": "Retain fresh locked-test integrity and admission checks, detect changes during execution and reuse admission, and support an explicit force-rerun option. Unchanged verify-review-done avoids duplicate expensive execution; meaningful regressions prove relevant changes and damaged evidence close the gate."
+          }
+        ],
+        "before": {
+          "acceptanceCriteria": [],
+          "tests": []
+        },
+        "after": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Inspect existing receipt, observer, approval and executor trust boundaries before implementation. Establish explicit identity for relevant source, tests, dependencies, gate configuration, toolchain and environment; unknown coverage disables reuse."
+            },
+            {
+              "id": "ac-2",
+              "text": "Permit done to reuse only a successfully completed execution whose provenance and retained evidence are validated and whose relevant inputs still match. A matching hash or editable green field alone must never open the gate. Failed, interrupted, malformed, stale and untrusted receipts require fresh execution."
+            },
+            {
+              "id": "ac-3",
+              "text": "Retain fresh locked-test integrity and admission checks, detect changes during execution and reuse admission, and support an explicit force-rerun option. Unchanged verify-review-done avoids duplicate expensive execution; meaningful regressions prove relevant changes and damaged evidence close the gate."
             }
           ],
           "tests": []

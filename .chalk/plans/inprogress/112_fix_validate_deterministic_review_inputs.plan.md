@@ -21,7 +21,7 @@ todos:
 
 # fix: validate deterministic review inputs before invoking the reviewer
 
-> state: **in-progress** · phase: discovery
+> state: **blocked** · phase: discovery
 
 ## Objective
 
