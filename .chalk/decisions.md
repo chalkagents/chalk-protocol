@@ -1764,3 +1764,213 @@
 
 - _when:_ 2026-09-10T00:24:17.682Z
 - _why:_ User approved stopping the oversized loop. First slice: review-history task saves in an isolated worktree from 59637da, one production file plus its regression file. One full verification attempt, one Codex review attempt, and only the mandatory fresh done verification after both pass. Any BLOCK, RED, timeout or additional production-file requirement stops for reassessment. Restore the earlier complete-suite command with recorded GREEN receipt b67cd4f9-6d1b-49bc-9908-e3f0bf6c2abb; every test and the 600-second gate deadline remain required.
+
+## Amended specification for "fix: review diff-capture silently passes on no diff — abort loudly instead of a vacuous verdict (#151)"
+
+- _when:_ 2026-09-10T01:41:30.881Z
+- _why:_ Replace the obsolete last-commit fallback fixture with a pinned-start base. Preserve zero reviewer calls for genuinely empty inputs; cover new files explicitly instead of treating untracked input as empty.
+
+## Amended specification for "feat: enforce agent role capabilities and structured-output contracts"
+
+- _when:_ 2026-09-10T01:41:31.031Z
+- _why:_ Sanction the same no-diff fixture update for deterministic pinned bases; retain read-only reviewer instrumentation and no-verdict rejection assertions.
+
+## Amended specification for "refactor: route every remaining agent-backed stage through Agent Runner"
+
+- _when:_ 2026-09-10T01:47:23.394Z
+- _why:_ The direct reviewer fixture must declare its baseline instead of depending on implicit previous-commit fallback. Preserve all verdict, nonzero-exit and usage accounting assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-10T01:48:52.911Z
+- _why:_ Direct Git reviewer fixtures now need a declared task baseline. Add only baseline metadata so existing split-index and restored-policy mutation assertions still reach the reviewer and retain their original coverage.
+
+## Amended specification for "fix: review diff-capture silently passes on no diff — abort loudly instead of a vacuous verdict (#151)"
+
+- _when:_ 2026-09-10T01:52:06.776Z
+- _why:_ Lock the final pinned-baseline fixtures: genuinely empty inputs abort; committed and working changes still receive review.
+
+## Amended specification for "feat: enforce agent role capabilities and structured-output contracts"
+
+- _when:_ 2026-09-10T01:52:06.908Z
+- _why:_ Lock the same final no-diff fixture bytes, preserving external read-only instrumentation.
+
+## Amended specification for "refactor: route every remaining agent-backed stage through Agent Runner"
+
+- _when:_ 2026-09-10T01:52:07.006Z
+- _why:_ Lock the explicit baseline fixture; original nonzero-exit and role usage assertions pass unchanged.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-10T01:52:07.104Z
+- _why:_ Lock baseline-only fixture adaptations after all restored-policy and split-index regressions passed.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T01:52:07.201Z
+- _why:_ Added initial acceptance tests during implementation
+
+## Pin review candidates and include untracked source automatically
+
+- _when:_ 2026-09-10T01:52:07.408Z
+- _why:_ The okada-api retrospective identified unrelated previous-commit fallback as wasted review input. Use one immutable base, expose all visible changed files and fail ambiguous inputs before Codex. Preserve source observation and adversarial test-adequacy review.
+
+## Amended specification for "feat(director): risk-based decision triage + a director inbox — own the empty middle"
+
+- _when:_ 2026-09-10T02:03:46.775Z
+- _why:_ Record the fixture task start before committing its change; preserve digest ranking assertions while removing reliance on unrelated last-commit fallback.
+
+## Amended specification for "feat(director): reviewer emits a decision digest — the accept button, not just pass/block"
+
+- _when:_ 2026-09-10T02:03:46.882Z
+- _why:_ Record the fixture task start before committing its change; preserve decision recording and empty-digest assertions.
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-10T02:03:46.984Z
+- _why:_ Give the cross-worktree race fixture an actual source change so review reaches the concurrent amendment. Preserve every stale-verdict and publication refusal assertion.
+
+## Amended specification for "feat(director): risk-based decision triage + a director inbox — own the empty middle"
+
+- _when:_ 2026-09-10T02:05:14.351Z
+- _why:_ Lock the passing digest-ranking fixture with its explicit task start.
+
+## Amended specification for "feat(director): reviewer emits a decision digest — the accept button, not just pass/block"
+
+- _when:_ 2026-09-10T02:05:14.483Z
+- _why:_ Lock the passing digest fixtures with their explicit task start.
+
+## Amended specification for "feat: amend current acceptance criteria with revision history"
+
+- _when:_ 2026-09-10T02:05:14.585Z
+- _why:_ Lock the passing cross-worktree race fixture with a real review candidate; all stale-verdict and PR assertions remain enforced.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T02:05:14.683Z
+- _why:_ Observed full-gate execution reached the command deadline with 882 tests reported. Reuse existing scheduling support to isolate timing-sensitive conformance and begin the long pipeline file early without reducing test coverage.
+
+## Use the existing complete-suite verification schedule
+
+- _when:_ 2026-09-10T02:05:14.806Z
+- _why:_ The ordinary three-worker command hit its 600-second deadline and an adapter probe failed without useful diagnostics. The adapter passes in isolation. Existing scheduling tests prove all discovered tests run exactly once and failures propagate; the gate retains all checks and its deadline.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T02:07:58.780Z
+- _why:_ Add a regression for Git index flags hiding tracked changes; deterministic review preflight must reject these inputs before reviewer execution.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T02:09:26.589Z
+- _why:_ Lock thirteen passing deterministic-input regressions, including hidden-index-flag refusal and recovery.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T02:21:37.354Z
+- _why:_ The scheduled full run also exceeded the hard-coded command deadline, with 896 passes and no assertion failures reported. A bounded per-command override lets the complete suite finish; increasing a deadline must not bypass any assertion or integrity check.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T02:23:49.844Z
+- _why:_ Lock real-process regressions for the required bounded deadline configuration, including successful override, enforced cancellation and invalid timer refusal.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T02:45:37.505Z
+- _why:_ Address all three Codex findings: persist legacy bases, reject unsupported submodule candidates, and reject conflicting staged/working versions with regressions that also protect approval freshness.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T03:00:41.901Z
+- _why:_ Authorize the exact recovery assertion correction: preserve refusal of conflicting staged/working versions and zero extra reviewer calls while ambiguous; after changing and restoring a source file, require a fresh successful review rather than reusing its earlier approval because existing source freshness tracks file changes. Keep the separate unchanged-byte staging/commit continuity assertions intact.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T03:02:58.192Z
+- _why:_ Add execution-directory regressions for projects rooted below the Git root and for removed submodule inputs. These preserve deterministic path identity and protected/spine exclusions without relaxing existing assertions.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T03:05:23.472Z
+- _why:_ Lock eighteen passing input regressions covering the original wrong-diff case, all three Codex findings, runtime bookkeeping, unchanged-byte commit/staging continuity, removed submodules and subdirectory execution paths.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T03:25:08.869Z
+- _why:_ Add regressions for the second Codex review: branch/tag ref collisions must fail before invocation even with ambiguous-ref warnings disabled, and unresolved excluded-spine conflicts must block review globally without reading protected file contents.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T03:31:24.884Z
+- _why:_ Re-lock final regressions after addressing the second Codex review: reject ambiguous branch/tag refs despite disabled Git warnings and reject all unresolved index conflicts before reviewer invocation. All 25 focused tests passed.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T03:50:40.398Z
+- _why:_ Address third Codex review with regressions proving replacement refs cannot change pinned review baselines and clean-filter transformations cannot omit effective working source before model invocation. Preserve every existing assertion.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T03:53:34.662Z
+- _why:_ Re-lock final passing third-review regressions: replacement refs leave the actual base and diff unchanged, custom clean filters close prior approval and refuse invocation, and content normalization is rejected without breaking ordinary LF attributes. Focused suite 28/28 passed; empty filter-value parsing also passed.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T04:04:48.115Z
+- _why:_ Address fourth Codex finding: archived Chalk task state must not become a review candidate. Add archive-only zero-invocation and mixed-source regressions while retaining all existing coverage.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T04:06:18.652Z
+- _why:_ Re-lock the passing archive-only and mixed-source regression after committing project contract scaffolding in the fixture baseline. All prior review-input cases passed; the new regression and all nine shared intake/archive consumer checks passed.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T04:13:56.047Z
+- _why:_ Address fifth review: exclude both lexical and canonical configured regression paths, reject a protected root covering the review workspace, and reject symlinked input parents before Git can read content. Add disposable custom-regression fixtures without inspecting real held-out data.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T04:15:05.665Z
+- _why:_ Re-lock passing canonical protected-directory and pre-diff symlink-parent regressions. All 28 review-input and diff-scope tests passed; no actual held-out contents were inspected. Run fresh complete verification before the next Codex review.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T04:44:30.604Z
+- _why:_ Address sixth review with regressions for executable-bit changes under core.filemode=false and actual starting revision when reusing an existing task branch after main advances. Preserve existing assertions.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-10T04:44:30.782Z
+- _why:_ Add the sixth review requested placement assertion: publication lock-entry tests execute exactly once in the serial batch and never in the concurrent batch. Preserve discovery and fail-closed assertions.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T04:46:00.765Z
+- _why:_ Re-lock final passing executable-mode and reused-branch regressions. All 34 focused review-input, branch-base and scheduler tests passed.
+
+## Amended specification for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-10T04:46:00.949Z
+- _why:_ Re-lock the passing explicit serial placement assertion for publication lock-entry tests. Existing every-test-exactly-once, lost-child and failed-batch assertions remain intact.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T05:02:42.156Z
+- _why:_ Address seventh review: preserve literal POSIX backslashes in protected directory exclusions. Add direct configured-path and canonical symlink-target regressions using empty disposable placeholders; keep all existing assertions.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T05:03:44.869Z
+- _why:_ Re-lock passing POSIX literal-backslash protection regressions. Direct paths, canonical aliases and symlink-parent refusal all passed using empty disposable custom-regression placeholders.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T05:16:34.489Z
+- _why:_ Replace the new platform skip with portable protected-path coverage: backslashes remain literal on POSIX and act as separators on Windows. Retain all protection assertions, using recursive directory setup and a Windows junction for the alias fixture. Keep Windows CI exclusion policy unchanged.
+
+## Amended specification for "fix: validate deterministic review inputs before invoking the reviewer"
+
+- _when:_ 2026-09-10T05:18:02.436Z
+- _why:_ Re-lock the portable protected-path fixture after both path cases and the unchanged Windows exclusion policy passed. No fresh complete verification or review PASS is claimed; save a checkpoint while the user decides whether to continue expensive gates.
