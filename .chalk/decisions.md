@@ -2054,3 +2054,38 @@
 
 - _when:_ 2026-09-10T10:10:20.708Z
 - _why:_ Lock the completed entry-to-admission audit regressions: open director forks, unsupported configured probe skips, cannot-execute status, new directives, moved review base and removed required tests. All 67 finish/protocol tests passed with zero failures or skips.
+
+## Amended acceptance test for "fix: expose structured reviewer failures and retry only transient errors"
+
+- _when:_ 2026-09-10T12:30:55.186Z
+- _why:_ Lock structured reviewer failure propagation, bounded transient classification, invocation metadata, invalid-verdict refusal, and source-integrity dominance.
+
+## Amended acceptance test for "fix: expose structured reviewer failures and retry only transient errors"
+
+- _when:_ 2026-09-10T12:38:53.417Z
+- _why:_ Lock one bounded retry for documented transient reviewer failures and terminal handling for invalid output, permission refusal, and read-only mutation.
+
+## Amended acceptance test for "fix: expose structured reviewer failures and retry only transient errors"
+
+- _when:_ 2026-09-10T12:39:45.059Z
+- _why:_ Lock the subprocess boundary so pipeline retries exit 4 once and never retries terminal reviewer failures.
+
+## Amended acceptance test for "fix: expose structured reviewer failures and retry only transient errors"
+
+- _when:_ 2026-09-10T12:41:14.290Z
+- _why:_ Lock verdict integrity: timeout, permission, and mutation failures cannot smuggle structured verdicts, while the established raw non-zero compatibility remains.
+
+## Amended acceptance test for "feat: bind gate approvals to current inputs"
+
+- _when:_ 2026-09-10T17:43:49.065Z
+- _why:_ Supersede the former no-reuse assertion now that task-d54a02bf requires validated cross-command verification reuse while retaining bookkeeping-freshness coverage
+
+## Amended acceptance test for "feat: reuse verification only with validated inputs and execution provenance"
+
+- _when:_ 2026-09-10T17:47:37.531Z
+- _why:_ Lock regressions for validated reuse, force-rerun, source/configuration/environment/dependency/toolchain invalidation, failed attempts, damaged evidence, forged matching hashes and admission races
+
+## Reuse task verification through a non-authoritative latest-attempt locator
+
+- _when:_ 2026-09-10T17:56:14.078Z
+- _why:_ The locator only selects a candidate. Completion revalidates receipt structure, latest-attempt ordering, successful command provenance, retained streams, current semantic inputs, dependencies, configuration, runtime/toolchain/environment identity and a continuous admission observation; unknown coverage or explicit --force-rerun executes fresh checks.

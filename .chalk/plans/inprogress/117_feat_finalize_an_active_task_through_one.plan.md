@@ -21,7 +21,7 @@ todos:
 
 # feat: finalize an active task through one guarded run
 
-> state: **in-progress** · phase: discovery
+> state: **blocked** · phase: discovery
 
 ## Objective
 

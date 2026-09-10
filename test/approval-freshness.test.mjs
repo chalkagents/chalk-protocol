@@ -72,12 +72,12 @@ test('legacy human, review and audit records remain historical until their comma
   ok(root, 'audit'); ok(root, 'phase', 'delivery');
 });
 
-test('unchanged verify, review and done accept bookkeeping without enabling test reuse', t => {
+test('unchanged verify, review and done accept bookkeeping and reuse validated execution', t => {
   const { root, store, id } = fixture(t);
   fs.writeFileSync(join(root, 'check.cjs'), `require('fs').appendFileSync('.chalk/check-count','run\\n');console.log('checked');`);
   fs.writeFileSync(join(root, '.chalk/check-count'), '');
   ok(root, 'verify'); ok(root, 'review', id, '--note', 'review complete'); ok(root, 'update', 'ready for done'); ok(root, 'done', id);
-  assert.equal(store.task(id).state, 'done'); assert.equal(fs.readFileSync(join(root, '.chalk/check-count'), 'utf8'), 'run\nrun\n');
+  assert.equal(store.task(id).state, 'done'); assert.equal(fs.readFileSync(join(root, '.chalk/check-count'), 'utf8'), 'run\n');
 });
 
 test('merge rejects a review made stale while CI is queried, even when new local verification passes', t => {

@@ -15145,7 +15145,7 @@
       },
       {
         "path": "test/approval-freshness.test.mjs",
-        "sha256": "8a41130b33a082196f96abc48758a4cc59e7bd6e7167ab95db72b1c597965dac"
+        "sha256": "559066fe80b2ca1f4a586c398f1d905e91d8df74e2961796631074aff6860721"
       },
       {
         "path": "test/spec-amendment-admission.test.mjs",
@@ -29796,14 +29796,31 @@
   {
     "id": "task-971d7e8b",
     "title": "fix: expose structured reviewer failures and retry only transient errors",
-    "state": "specd",
+    "state": "blocked",
     "acceptanceCriteria": [
       {
         "id": "ac-1",
         "text": "Preserve structured timeout, invalid-output, permission and read-only-mutation diagnostics across reviewer failures. Retry only documented transient categories; record invocation duration and available usage without accepting invalid verdicts or weakening source integrity."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/reviewer-failures.test.mjs",
+        "sha256": "a7ba53d355db2880114705d5bb1a5aa635977e9c17003b767cec0589f4b01f3e"
+      },
+      {
+        "path": "test/reviewer-retry-policy.test.mjs",
+        "sha256": "07aab2ce98ae413d09f948eadbbd5f66abf80c9d1efb00c3a6eb610f4459bdcb"
+      },
+      {
+        "path": "test/reviewer-pipeline-retry.test.mjs",
+        "sha256": "89ba3dd0a1359c12c77483f126e70255bc9fc0b1d584c48976725390df43e036"
+      },
+      {
+        "path": "test/reviewer-verdict-integrity.test.mjs",
+        "sha256": "2d5b9cfa50f375c33d893086e27db0d548d5007d055f252abf9a404cd881fbf7"
+      }
+    ],
     "heldOut": [],
     "milestone": "Okada API review efficiency",
     "after": [
@@ -29839,7 +29856,20 @@
         },
         "invalidated": {}
       }
-    ]
+    ],
+    "startedAt": "2026-09-10T12:19:00.090Z",
+    "blockedFrom": "in-progress",
+    "block": {
+      "needs": "human-input",
+      "reason": "Authoritative verification is repeatedly blocked by the host filesystem-watcher ceiling: spec-review-publication review/run fixtures fail at approval observation with EMFILE (too many open files, watch), yielding 22/24 in the serial batch on two attempts. Scoped implementation is checkpointed at e50e3a0; 13 focused regressions, 17 docs checks, syntax and diff checks pass. Free watcher resources or restart the host session, then unblock and rerun chalk verify.",
+      "at": "2026-09-10T12:45:25.335Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-971d7e8-1.md",
+      "at": "2026-09-10T12:45:25.408Z",
+      "reason": "human-input",
+      "seq": 1
+    }
   },
   {
     "id": "task-8e568987",
@@ -29892,7 +29922,7 @@
   {
     "id": "task-d54a02bf",
     "title": "feat: reuse verification only with validated inputs and execution provenance",
-    "state": "specd",
+    "state": "blocked",
     "acceptanceCriteria": [
       {
         "id": "ac-1",
@@ -29907,7 +29937,12 @@
         "text": "Retain fresh locked-test integrity and admission checks, detect changes during execution and reuse admission, and support an explicit force-rerun option. Unchanged verify-review-done avoids duplicate expensive execution; meaningful regressions prove relevant changes and damaged evidence close the gate."
       }
     ],
-    "tests": [],
+    "tests": [
+      {
+        "path": "test/verification-reuse.test.mjs",
+        "sha256": "9632c5b04d6f189502b6769c8ac461d0a5c061952e2cb6c5c0b2cc583dd59148"
+      }
+    ],
     "heldOut": [],
     "milestone": "Okada API review efficiency",
     "after": [
@@ -29959,12 +29994,25 @@
         },
         "invalidated": {}
       }
-    ]
+    ],
+    "startedAt": "2026-09-10T12:45:41.212Z",
+    "blockedFrom": "in-progress",
+    "block": {
+      "needs": "human-input",
+      "reason": "Authoritative chalk verify is RED only because macOS fs.watch returns EMFILE in test/spec-review-publication.test.mjs before review starts (2/4 fail; the other serial tests pass and the integration batch reports 948/948). Close watcher-heavy applications or restart the host/session, then chalk unblock task-d54a02bf and rerun chalk verify; after GREEN run chalk review and chalk done.",
+      "at": "2026-09-10T17:56:30.222Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-d54a02b-1.md",
+      "at": "2026-09-10T17:56:30.278Z",
+      "reason": "human-input",
+      "seq": 1
+    }
   },
   {
     "id": "task-2c04dcc4",
     "title": "feat: finalize an active task through one guarded run",
-    "state": "in-progress",
+    "state": "blocked",
     "acceptanceCriteria": [
       {
         "id": "ac-1",
@@ -31348,9 +31396,16 @@
     },
     "blockedFrom": "in-progress",
     "block": {
-      "needs": "review",
-      "reason": "review block",
-      "at": "2026-09-10T10:02:55.403Z"
+      "needs": "human-input",
+      "reason": "review error",
+      "at": "2026-09-10T10:32:34.379Z"
+    },
+    "handoff": {
+      "path": ".chalk/handoffs/task-2c04dcc-5.md",
+      "at": "2026-09-10T10:32:34.402Z",
+      "reason": "block",
+      "seq": 5,
+      "specRevision": 10
     }
   }
 ]
