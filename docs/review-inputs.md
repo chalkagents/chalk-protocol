@@ -9,7 +9,7 @@ an explicit empty-tree base.
 content fingerprint, complete changed-file list and untracked files before invoking
 the reviewer. One base-relative diff includes committed, staged and unstaged changes.
 Non-ignored untracked files are included automatically, including new test files.
-Chalk spine state and protected regression content are excluded; visible contract
+Chalk spine state (including archived task history) and protected regression content are excluded; visible contract
 artifacts remain included. All visible changes are candidates: remove unrelated work
 from the task workspace before reviewing. Locked-test tracking requirements at the
 completion gate still apply.

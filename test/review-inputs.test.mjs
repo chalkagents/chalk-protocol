@@ -325,3 +325,19 @@ test('conversion-dependent inputs are refused while ordinary LF text attributes 
     assert.throws(() => captureReviewInputs(d, task), /Git content transformation/);
   }
 });
+
+test('archived spine alone never invokes review and mixed changes retain only source', t => {
+  const { d, store, id, counter } = reviewingFixture(t);
+  git(d, 'add', '.chalk/spec.md', 'AGENTS.md', 'CLAUDE.md'); git(d, 'commit', '-qm', 'project contract baseline');
+  assert.equal(chalk(d, 'start', id).status, 0);
+  mkdirSync(join(d, '.chalk/archive')); writeFileSync(join(d, '.chalk/archive/tasks-2025.json'), '[]\n');
+  assert.deepEqual(captureReviewInputs(d, store.task(id), store.protocol()).files, []);
+  const empty = chalk(d, 'review', id); assert.notEqual(empty.status, 0);
+  assert.equal(existsSync(counter), false); assert.equal(store.task(id).reviews.length, 0);
+  git(d, 'add', '.chalk/archive/tasks-2025.json'); git(d, 'commit', '-qm', 'archive bookkeeping');
+  writeFileSync(join(d, '.chalk/archive/tasks-2025.json'), '[ ]\n');
+  writeFileSync(join(d, 'feature.js'), 'real task work\n');
+  const mixed = chalk(d, 'review', id); assert.equal(mixed.status, 0, mixed.stdout + mixed.stderr);
+  assert.deepEqual(store.task(id).reviews.at(-1).inputs.files, ['feature.js']);
+  assert.equal(readFileSync(counter, 'utf8'), 'call\n');
+});
