@@ -13,6 +13,9 @@ Chalk spine state (including archived task history) and protected regression con
 artifacts remain included. All visible changes are candidates: remove unrelated work
 from the task workspace before reviewing. Locked-test tracking requirements at the
 completion gate still apply.
+Protected directories are excluded by both their configured paths and resolved
+symlink targets. A protected directory covering the entire workspace, or a tracked
+input beneath a symlinked parent directory, causes refusal before diff capture.
 
 For a task that predates base recording, Chalk can use a unique merge base with the
 configured base branch. If local and remote histories produce different bases, or no

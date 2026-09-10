@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync, existsSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -340,4 +340,29 @@ test('archived spine alone never invokes review and mixed changes retain only so
   const mixed = chalk(d, 'review', id); assert.equal(mixed.status, 0, mixed.stdout + mixed.stderr);
   assert.deepEqual(store.task(id).reviews.at(-1).inputs.files, ['feature.js']);
   assert.equal(readFileSync(counter, 'utf8'), 'call\n');
+});
+
+test('custom regression aliases exclude canonical content before review capture', t => {
+  const { d, store, id, counter } = reviewingFixture(t);
+  git(d, 'add', '.chalk/spec.md', 'AGENTS.md', 'CLAUDE.md'); git(d, 'commit', '-qm', 'project contract baseline');
+  assert.equal(chalk(d, 'start', id).status, 0);
+  mkdirSync(join(d, 'private-regressions')); writeFileSync(join(d, 'private-regressions/empty.test.mjs'), '');
+  symlinkSync('../private-regressions', join(d, '.chalk/regression-alias'));
+  const meta = store.meta(); meta.protocol.regression = { dir: '.chalk/regression-alias' }; store.saveMeta(meta);
+  const empty = captureReviewInputs(d, store.task(id), store.protocol()); assert.deepEqual(empty.files, []); assert.equal(empty.diff, '');
+  const refused = chalk(d, 'review', id); assert.notEqual(refused.status, 0); assert.equal(existsSync(counter), false);
+  git(d, 'add', 'private-regressions/empty.test.mjs'); git(d, 'commit', '-qm', 'protected placeholder');
+  writeFileSync(join(d, 'feature.js'), 'visible task work\n');
+  const mixed = captureReviewInputs(d, store.task(id), store.protocol());
+  assert.deepEqual(mixed.files, ['feature.js']); assert.doesNotMatch(mixed.diff, /private-regressions|regression-alias/);
+  assert.throws(() => captureReviewInputs(d, store.task(id), { regression: { dir: '.' } }), /protected regression directory covers/);
+});
+
+test('symlinked tracked input parents are refused before Git diff reads their targets', t => {
+  const { d, task } = fixture(t);
+  mkdirSync(join(d, 'src')); writeFileSync(join(d, 'src/code.js'), 'original\n'); git(d, 'add', 'src/code.js'); git(d, 'commit', '-qm', 'source directory');
+  rmSync(join(d, 'src'), { recursive: true });
+  mkdirSync(join(d, 'private-regressions')); writeFileSync(join(d, 'private-regressions/code.js'), '');
+  symlinkSync('private-regressions', join(d, 'src'));
+  assert.throws(() => captureReviewInputs(d, task, { regression: { dir: 'private-regressions' } }), /symlinked review input directory/);
 });
