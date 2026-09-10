@@ -1,8 +1,10 @@
 # Local verification evidence
 
 `chalk verify` writes a separate receipt for each invocation under
-`.chalk/local/verification/<run-id>/run.json`. The verification invoked by `done`
-and the phase verification invoked by `audit` use the same recorder. Each executed
+`.chalk/local/verification/<run-id>/run.json`. A task-scoped locator for the latest
+successful candidate is stored separately under `.chalk/local/verification-references/`;
+the locator is never trusted as execution evidence by itself. Fresh verification invoked
+by `done` and phase verification invoked by `audit` use the same recorder. Each executed
 toolchain or browser command has full stdout/stderr files, start and finish times,
 its command, exit status, signal and execution errors. Skipped and deferred gates
 remain explicit. The CLI prints the receipt location.
@@ -11,7 +13,10 @@ failed verification. Source-identity and storage errors explain why completion i
 blocked; a storage failure before receipt creation may have no receipt to link.
 
 The receipt binds the run to source inputs, effective gate configuration, task
-criteria and locked-test identities. Inputs are captured before and after execution;
+criteria, prerequisite completion, locked-test identities, the verification harness,
+resolved command executables, file arguments, runtime, shell and a digest of the inherited
+environment. Environment values are not copied into structured events or remote evidence.
+Inputs and execution provenance are captured before and after execution;
 a continuous observer also detects temporary changes across command handoffs,
 integrity checks, archive validation and final input collection. Unknown
 identity, observed input changes, failed commands or failed evidence storage keep
@@ -209,19 +214,25 @@ support for probing arbitrary committed task deltas remains separate work.
 Configured probes must produce evidence when implementation changes require coverage:
 missing runnable code locks, unsupported skips and cannot-execute outcomes block finish.
 
-`--force-rerun` requests a second verification after review. Adequacy probes that alter
+`chalk run --finish <id> --force-rerun` requests a second verification after review.
+`chalk done <id> --force-rerun` bypasses any reusable receipt and executes verification
+again. Adequacy probes that alter
 the tree also retain the existing verification after restoration. Every new invocation
 starts fresh: interrupted finish runs cannot resume from an editable receipt. After
 fixing a blocked task, use `chalk start <id>` and run finish again. The command prints
 verification and review durations, completion-check duration and local receipt paths.
 It cannot be combined with queue controls `--max` or `--until`.
 
-This extends the existing single-process driver; it is **not cross-command verification
-reuse**. Separate `chalk verify`, `chalk review` and `chalk done` commands still work,
-and `done` still verifies. Full identity for external SDKs, dependency installations
-and relevant environment inputs remains future work. Where those can change during
-review, use `--force-rerun`. Finish does not merge, deploy, publish a release or claim
-device QA; an existing task PR retains the driver's existing review-posting behavior.
+Separate `chalk verify`, `chalk review` and `chalk done` commands support validated
+cross-command reuse. `done` revalidates receipt structure, successful completion,
+retained stream bytes, current source/specification/locks/dependencies/configuration,
+and execution provenance under a fresh admission observer. Missing, malformed, failed,
+interrupted, stale, damaged or incompletely identified candidates are not reused;
+`done` performs a fresh verification instead. A matching locator hash or editable green
+field is insufficient. Commands requiring shell interpretation have unknown executable
+coverage and therefore remain valid for live verification but are never reused.
+Finish does not merge, deploy, publish a release or claim device QA; an existing task PR
+retains the driver's existing review-posting behavior.
 
 ## Review attachment
 

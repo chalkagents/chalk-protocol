@@ -12,6 +12,7 @@ import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify, verificationFailureReason } from '../lib/verify.mjs';
+import { loadReusableVerification } from '../lib/verification-reuse.mjs';
 import { verificationCoverage, auditCoverage } from '../lib/verification-coverage.mjs';
 import { pinReviewBase, formatReviewInputs } from '../lib/review-inputs.mjs';
 import { runReview, runReviewWithRetry, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK, formatReviewFailure, reviewFailureIsTransient, REVIEW_TRANSIENT_EXIT } from '../lib/review.mjs';
@@ -20,6 +21,7 @@ import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
 import { PRESETS, detectPreset, withRunner, reviewCadences, normGate, resolveAgentRole, resolveAgentConfiguration } from '../lib/config.mjs';
 import { runDriver } from '../lib/run.mjs';
+import { validateFinishVerification } from '../lib/run-finish.mjs';
 import { gh as runGh, git as runGit, gitAdd, gitCommit, gitCommitPaths, changedPaths, diffPaths, worktreeAdd, worktreeRemove, currentRepo, gitTry } from '../lib/git.mjs';
 import { buildPrBody, prNarrative } from '../lib/prbody.mjs';
 import { postReviewToPr } from '../lib/prreview.mjs';
@@ -1842,7 +1844,12 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const s = Store.open();
     let t = mustTask(s, _[0]);
     if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
-    const v = runVerify(s, { cwd: workdir(s, t) });
+    if (flags['force-rerun'] !== undefined && flags['force-rerun'] !== true) die('--force-rerun does not take a value.');
+    if (!depsSatisfied(t, s.tasks())) die('task prerequisites are incomplete — resolve dependencies before completion.');
+    const reusable = flags['force-rerun'] === true ? { verification: null, reason: 'forced by --force-rerun' } : loadReusableVerification(s, t);
+    const v = reusable.verification || runVerify(s, { cwd: workdir(s, t) });
+    if (reusable.verification) console.log(C.dim(`  reusing validated verification record: ${v.evidence.path}`));
+    else if (!flags['force-rerun'] && reusable.reason) console.log(C.dim(`  verification reuse unavailable (${reusable.reason}); running checks`));
     s.emitUpdate({ title: `Verification ${v.green ? 'green' : 'red'} (done)`, taskId: t.id, verification: verificationCoverage(v) });
     if (v.evidence?.path) console.log(C.dim(`  verification record: ${v.evidence.path}`));
     if (!v.green) {
@@ -1863,6 +1870,7 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       t = tasks.find(task => task.id === t.id);
       if (!t) die('task no longer exists — reload chalk context');
       if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress — reload chalk context ${t.id}.`);
+      if (!depsSatisfied(t, tasks)) die('task prerequisites changed before completion.');
       // GATE P6 (tracking) — a pinned test that isn't in git ships a vacuous green to CI (#107): the
       // sha256 verifies against the working tree, but a fresh checkout runs without the contract test.
       const untracked = untrackedLockedTests(s, t);
@@ -1886,12 +1894,22 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       requireCurrentApproval(s, 'verification', { approval: v.approvals?.[t.id] }, t);
       const approvals = completionApprovalBlockers(s, t);
       if (approvals.length) die(`cannot mark done — ${approvals.join('; ')}`);
-      if (t.pipeline) delete t.pipeline.verificationInvalidated;
-      t.state = 'done'; t.doneAt = now(); t.completedSpecRevision = t.specRevision || 0;
-      delete t.completionInvalidated;
-      // #200: completing the task resolves any director corrections it was re-opened to address — the
-      // rework landed, so the directive drops out of context (#199) and the loop closes.
-      resolvedN = resolveDirectives(t);
+      validateFinishVerification(s, t, v, () => {
+        const current = s.task(t.id), currentTasks = s.tasks();
+        if (!current || current.state !== 'in-progress' || (current.specRevision || 0) !== (t.specRevision || 0)) throw new Error('task changed during completion admission');
+        if (!depsSatisfied(current, currentTasks)) throw new Error('task prerequisites changed during completion admission');
+        const blockers = completionApprovalBlockers(s, current);
+        if (blockers.length) throw new Error(blockers.join('; '));
+        if (reviewRequiredNow(s, current) && !currentReview(s, current)) throw new Error(`review approval changed during admission — run chalk review ${current.id}`);
+        const tracking = untrackedLockedTests(s, current);
+        if (tracking.length) throw new Error(`locked tests became untracked during completion admission: ${tracking.join(', ')}`);
+        if (t.pipeline) delete t.pipeline.verificationInvalidated;
+        t.state = 'done'; t.doneAt = now(); t.completedSpecRevision = t.specRevision || 0;
+        delete t.completionInvalidated;
+        // #200: completing the task resolves any director corrections it was re-opened to address — the
+        // rework landed, so the directive drops out of context (#199) and the loop closes.
+        resolvedN = resolveDirectives(t);
+      });
       return tasks;
     }, { protectOwner: true });
     syncBrowser(s);
@@ -2538,7 +2556,7 @@ ${C.b('task lifecycle')}  ${C.dim('(gates refuse to advance unless a fundamental
   chalk start <id>                     ${C.dim('GATE P1: needs acceptance criteria')}
   chalk verify                         ${C.dim('toolchain + test-integrity (P4/P6/P7)')}
   chalk review <id> [--base <ref>]     ${C.dim('GATE P5: adversarial reviewer; cadence via review.requiredAt (per-task|milestone-boundary|phase-advance)')}
-  chalk done <id> [--force-review --why "..."]   ${C.dim('GATE P4+P6(+P5): verify green, locks intact, review passed')}
+  chalk done <id> [--force-rerun] [--force-review --why "..."]   ${C.dim('GATE P4+P6(+P5): reuse validated verification or run fresh, locks intact, review passed')}
   chalk amend-spec <id> --test <path> --why "..."   ${C.dim('gated test change (P6)')}
   chalk amend-spec <id> --add "..." | --replace <ac-id> --criterion "..." | --retire <ac-id> --why "..."
   chalk amend-spec <id> --history                 ${C.dim('retained definitions and reasons')}
