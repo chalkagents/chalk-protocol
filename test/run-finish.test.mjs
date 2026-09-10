@@ -241,3 +241,62 @@ test('removing a dependency cannot hide an initially completed prerequisite that
   const result = f.finish(); assert.notEqual(result.status, 0, output(result));
   assert.notEqual(f.store.task(f.task.id).state, 'done'); assert.match(output(result), /prerequisites changed/);
 });
+
+test('an unanswered director fork raised during probes blocks final completion as a decision', t => {
+  const f = fixture(t, { git: true }), script = join(f.parent, 'raise-fork.cjs');
+  fs.writeFileSync(script, `const fs=require('fs');const p='.chalk/tasks.json';const ts=JSON.parse(fs.readFileSync(p));ts[0].raised=[{id:'raise-new',fork:'Which delivery policy?',status:'open'}];fs.writeFileSync(p,JSON.stringify(ts));`);
+  const meta = f.store.meta(); meta.protocol.mutation = `node '${script}' {file}`; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.equal(f.store.task(f.task.id).block.needs, 'decision'); assert.match(output(result), /unanswered director forks/);
+  assert.notEqual(f.store.task(f.task.id).state, 'done');
+});
+
+test('configured break-it refuses implementation changes with only a non-code lock before verification', t => {
+  const f = fixture(t, { git: true }), meta = f.store.meta();
+  f.store.upsertTask({ ...f.task, tests: [f.store.lockTest(join(f.root, 'source.txt'))] });
+  meta.protocol.breakTest = 'chalk-nonexistent-adequacy-tool {test}'; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /no runnable locked code test/); assert.equal(f.count('checks'), 0); assert.equal(f.count('reviews'), 0);
+});
+
+test('configured mutation cannot silently skip a deleted implementation file', t => {
+  const f = fixture(t, { git: true }), meta = f.store.meta();
+  fs.unlinkSync(join(f.root, 'source.txt')); meta.protocol.mutation = 'node -e "process.exit(0)"'; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /configured mutation probe did not run/); assert.equal(f.count('reviews'), 0);
+});
+
+for (const gate of ['breakTest', 'mutation']) test(`finish treats shell cannot-execute status 126 as inconclusive for ${gate}`, t => {
+  const f = fixture(t, { git: true }), meta = f.store.meta();
+  meta.protocol[gate] = 'node -e "process.exit(126)"'; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /probe is inconclusive/); assert.equal(f.count('reviews'), 0);
+});
+
+test('new director instructions during probes cannot be resolved as previously implemented work', t => {
+  const f = fixture(t, { git: true }), script = join(f.parent, 'new-directive.cjs');
+  fs.writeFileSync(script, `const fs=require('fs');const p='.chalk/tasks.json';const ts=JSON.parse(fs.readFileSync(p));ts[0].directives=[{instead:'implement another requirement',resolved:false}];fs.writeFileSync(p,JSON.stringify(ts));`);
+  const meta = f.store.meta(); meta.protocol.mutation = `node '${script}' {file}`; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /director instructions or task review base changed/);
+  assert.equal(f.store.task(f.task.id).directives[0].resolved, false); assert.equal(f.count('checks'), 1);
+});
+
+test('a probe cannot move the immutable review base before reviewing the task', t => {
+  const f = fixture(t, { git: true }), script = join(f.parent, 'change-base.cjs');
+  execFileSync('git', ['commit', '--allow-empty', '-qm', 'another commit'], { cwd: f.root });
+  const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: f.root, encoding: 'utf8' }).trim();
+  fs.writeFileSync(script, `const fs=require('fs');const p='.chalk/tasks.json';const ts=JSON.parse(fs.readFileSync(p));ts[0].reviewBase.commit=${JSON.stringify(head)};fs.writeFileSync(p,JSON.stringify(ts));`);
+  const meta = f.store.meta(); meta.protocol.mutation = `node '${script}' {file}`; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /director instructions or task review base changed/); assert.equal(f.count('reviews'), 0);
+});
+
+test('a required changed test removed by a probe is rechecked at completion', t => {
+  const f = fixture(t, { git: true }), script = join(f.parent, 'remove-test.cjs');
+  f.store.upsertTask({ ...f.task, tests: [] }); fs.writeFileSync(join(f.root, 'extra.test.mjs'), '// test addition\n');
+  fs.writeFileSync(script, `require('fs').unlinkSync('extra.test.mjs');`);
+  const meta = f.store.meta(); meta.protocol.requireTest = true; meta.protocol.mutation = `node '${script}' {file}`; f.store.saveMeta(meta);
+  const result = f.finish(); assert.notEqual(result.status, 0, output(result));
+  assert.match(output(result), /no required test remains/); assert.notEqual(f.store.task(f.task.id).state, 'done');
+});

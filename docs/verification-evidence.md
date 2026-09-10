@@ -197,12 +197,17 @@ The initial review/completion policy is bound too, so a probe cannot disable man
 review or other completion requirements. A review required when finish starts remains
 required even if milestone membership changes later; initial prerequisites must still
 be complete at admission, even if their dependency edges are subsequently removed.
+Unanswered director forks and required test presence are checked again at final
+admission. New director instructions or a moved review base require a fresh finish
+invocation; newly arrived instructions cannot be marked resolved as earlier work.
 The existing adequacy helpers operate on
 uncommitted implementation changes from HEAD. If configured probes cannot cover the
 task's committed implementation changes, finish refuses that scope before verification;
 it does not silently skip them. Bookkeeping-only commits do not trigger this refusal.
 Projects using those probes should run them before committing implementation changes;
 support for probing arbitrary committed task deltas remains separate work.
+Configured probes must produce evidence when implementation changes require coverage:
+missing runnable code locks, unsupported skips and cannot-execute outcomes block finish.
 
 `--force-rerun` requests a second verification after review. Adequacy probes that alter
 the tree also retain the existing verification after restoration. Every new invocation
