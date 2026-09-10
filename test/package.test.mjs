@@ -64,10 +64,10 @@ test('release workflow — OIDC trusted publishing on v* tags, suite-gated, publ
   assert.match(wf, /tags:\s*\['v\*'\]/, 'triggers on version tags');
   assert.match(wf, /id-token:\s*write/, 'OIDC permission for trusted publishing (no NPM_TOKEN secret)');
   assert.doesNotMatch(wf, /secrets\.|NODE_AUTH_TOKEN/, 'no long-lived token wired — trusted publishing only');
-  assert.match(wf, /node --test/, 'the suite gates the publish');
+  assert.match(wf, /npm test/, 'the complete scheduled suite gates the publish');
   assert.doesNotMatch(wf, /npm pkg set version/, 'no tag-normalization step — `chalk release --commit` tags the bumped commit, so the tagged tree is published as-is');
   assert.match(wf, /npm publish --provenance --access public/);
-  const testIdx = wf.indexOf('node --test');
+  const testIdx = wf.indexOf('npm test');
   const pubIdx = wf.indexOf('npm publish');
   assert.ok(testIdx !== -1 && testIdx < pubIdx, 'tests run BEFORE publish');
 });
