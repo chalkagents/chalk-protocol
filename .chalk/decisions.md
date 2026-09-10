@@ -1994,3 +1994,13 @@
 
 - _when:_ 2026-09-10T05:51:30.480Z
 - _why:_ Added initial acceptance tests during implementation
+
+## Amended specification for "feat: complete verification evidence handoff to review and PR descriptions"
+
+- _when:_ 2026-09-10T06:10:02.610Z
+- _why:_ Address the first review finding: normalize accepted timestamp values before public rendering so date comments cannot disclose private paths or environment values. Also constrain public command labels to known gate names; preserve all existing evidence, privacy and bounded-output assertions.
+
+## Amended specification for "feat: complete verification evidence handoff to review and PR descriptions"
+
+- _when:_ 2026-09-10T06:11:47.043Z
+- _why:_ Re-lock the passing timestamp-comment privacy regression and known-command-label projection checks. All 32 focused evidence/PR tests passed after the first Codex finding. The user has been given the 30-minute checkpoint and remaining gate estimate; no fresh full-suite or review PASS is claimed for this correction.

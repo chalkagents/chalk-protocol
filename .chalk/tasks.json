@@ -29194,15 +29194,88 @@
     "tests": [
       {
         "path": "test/verification-handoff.test.mjs",
-        "sha256": "2c0ce554cd498e048567962ff752f83adc6f6233637ddc674af7b2eb2e0ae952"
+        "sha256": "ab140c544819a24f2cb5a8529d97f7d2598e27604c154a93fcce6189324bd924"
       }
     ],
     "heldOut": [],
     "milestone": "Okada API review efficiency",
     "after": [],
     "createdAt": "2026-09-10T01:40:43.434Z",
-    "reviews": [],
-    "specRevision": 4,
+    "reviews": [
+      {
+        "at": "2026-09-10T06:07:18.850Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "Criterion 3 fails: lib/review-evidence.mjs:211–214 publishes timestamp strings verbatim. Date.parse accepts comments containing private data. In an isolated fixture, timestamps ending with '(/Users/private/api.env)' and '(API_KEY=PRIVATE_SENTINEL)' passed validation; buildPrBody published both while reporting current evidence and recordedGreen:true. Normalize timestamps to canonical ISO values or reject noncanonical timestamps before publication. All 31 focused tests passed independently, but their redaction assertions miss this case."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Reuse reviewEvidence for PR evidence selection and freshness validation.",
+            "rationale": "Keeps both consumers consistent without executing checks or changing completion gates.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Publish an allowlisted JSON projection capped at eight commands and 8,000 characters.",
+            "rationale": "Bounds PR size and limits disclosure; omitted commands are counted explicitly.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Preserve completed command outcomes inside incomplete receipts while withholding overall success.",
+            "rationale": "Retains useful execution evidence without claiming final integrity checks completed.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Apply evidence sections only to new PR bodies and defer verification reuse.",
+            "rationale": "Preserves existing descriptions and avoids reuse without complete external toolchain identity.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ],
+        "specRevision": 4,
+        "approval": {
+          "version": 1,
+          "kind": "review",
+          "status": "known",
+          "specification": "0c9970d2024c24cf28c30bfe99c1ef5076eb2db22f92a2bb167de34d7b1ab92d",
+          "configuration": "c41600540950181193ca07be846b6eec37179a33cab7a8e96532115491216b5b",
+          "source": "510d598bdd7f959d36ed75d65e89d14196adb000b7729aa4e4a90f12e9bec9d6",
+          "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+          "runtime": "6355f6277073874f21ca544e03b9c668bad550658ec41d011230233f5c9844de"
+        },
+        "inputs": {
+          "version": 1,
+          "mode": "git",
+          "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+          "branch": "feat/verification-evidence-handoff",
+          "base": "db147c4ecf5fd9f715f9dabc20295352f3f020fd",
+          "head": "d16560250bd0c93fb9e4efe8584103cbac8cbf12",
+          "files": [
+            "docs/verification-evidence.md",
+            "lib/prbody.mjs",
+            "lib/review-evidence.mjs",
+            "test/verification-handoff.test.mjs"
+          ],
+          "untracked": [],
+          "contentFingerprint": "bab92f3d8337ef7512a91a09f61403cc6cc7d8141c3e6177be3e3b8156848b39",
+          "fingerprint": "0bd1ce34c44d66f0a89db28eea6d3919dbb4530f5396c732e4b3665a56991f99"
+        }
+      },
+      {
+        "at": "2026-09-10T06:10:02.604Z",
+        "by": "amend-spec",
+        "verdict": "stale",
+        "note": "specification revision 5: Address the first review finding: normalize accepted timestamp values before public rendering so date comments cannot disclose private paths or environment values. Also constrain public command labels to known gate names; preserve all existing evidence, privacy and bounded-output assertions. — re-review required"
+      }
+    ],
+    "specRevision": 6,
     "specRevisions": [
       {
         "revision": 1,
@@ -29362,11 +29435,198 @@
           ]
         },
         "invalidated": {}
+      },
+      {
+        "revision": 5,
+        "at": "2026-09-10T06:10:02.604Z",
+        "kind": "amendment",
+        "why": "Address the first review finding: normalize accepted timestamp values before public rendering so date comments cannot disclose private paths or environment values. Also constrain public command labels to known gate names; preserve all existing evidence, privacy and bounded-output assertions.",
+        "operations": [
+          {
+            "type": "test",
+            "lock": {
+              "path": "test/verification-handoff.test.mjs",
+              "sha256": "2c0ce554cd498e048567962ff752f83adc6f6233637ddc674af7b2eb2e0ae952"
+            }
+          }
+        ],
+        "before": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            },
+            {
+              "id": "ac-2",
+              "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+            },
+            {
+              "id": "ac-3",
+              "text": "New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion."
+            }
+          ],
+          "tests": [
+            {
+              "path": "test/verification-handoff.test.mjs",
+              "sha256": "2c0ce554cd498e048567962ff752f83adc6f6233637ddc674af7b2eb2e0ae952"
+            }
+          ]
+        },
+        "after": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            },
+            {
+              "id": "ac-2",
+              "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+            },
+            {
+              "id": "ac-3",
+              "text": "New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion."
+            }
+          ],
+          "tests": [
+            {
+              "path": "test/verification-handoff.test.mjs",
+              "sha256": "2c0ce554cd498e048567962ff752f83adc6f6233637ddc674af7b2eb2e0ae952"
+            }
+          ]
+        },
+        "invalidated": {
+          "review": {
+            "at": "2026-09-10T06:07:18.850Z",
+            "by": "adversary",
+            "verdict": "block",
+            "findings": [
+              {
+                "severity": "med",
+                "area": "correctness",
+                "note": "Criterion 3 fails: lib/review-evidence.mjs:211–214 publishes timestamp strings verbatim. Date.parse accepts comments containing private data. In an isolated fixture, timestamps ending with '(/Users/private/api.env)' and '(API_KEY=PRIVATE_SENTINEL)' passed validation; buildPrBody published both while reporting current evidence and recordedGreen:true. Normalize timestamps to canonical ISO values or reject noncanonical timestamps before publication. All 31 focused tests passed independently, but their redaction assertions miss this case."
+              }
+            ],
+            "decisions": [
+              {
+                "choice": "Reuse reviewEvidence for PR evidence selection and freshness validation.",
+                "rationale": "Keeps both consumers consistent without executing checks or changing completion gates.",
+                "blastRadius": "med",
+                "reversibility": "easy"
+              },
+              {
+                "choice": "Publish an allowlisted JSON projection capped at eight commands and 8,000 characters.",
+                "rationale": "Bounds PR size and limits disclosure; omitted commands are counted explicitly.",
+                "blastRadius": "low",
+                "reversibility": "easy"
+              },
+              {
+                "choice": "Preserve completed command outcomes inside incomplete receipts while withholding overall success.",
+                "rationale": "Retains useful execution evidence without claiming final integrity checks completed.",
+                "blastRadius": "low",
+                "reversibility": "easy"
+              },
+              {
+                "choice": "Apply evidence sections only to new PR bodies and defer verification reuse.",
+                "rationale": "Preserves existing descriptions and avoids reuse without complete external toolchain identity.",
+                "blastRadius": "med",
+                "reversibility": "easy"
+              }
+            ],
+            "specRevision": 4,
+            "approval": {
+              "version": 1,
+              "kind": "review",
+              "status": "known",
+              "specification": "0c9970d2024c24cf28c30bfe99c1ef5076eb2db22f92a2bb167de34d7b1ab92d",
+              "configuration": "c41600540950181193ca07be846b6eec37179a33cab7a8e96532115491216b5b",
+              "source": "510d598bdd7f959d36ed75d65e89d14196adb000b7729aa4e4a90f12e9bec9d6",
+              "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+              "runtime": "6355f6277073874f21ca544e03b9c668bad550658ec41d011230233f5c9844de"
+            },
+            "inputs": {
+              "version": 1,
+              "mode": "git",
+              "cwd": "/Users/devid/Documents/projects/personal/startup/chalk/chalk-protocol",
+              "branch": "feat/verification-evidence-handoff",
+              "base": "db147c4ecf5fd9f715f9dabc20295352f3f020fd",
+              "head": "d16560250bd0c93fb9e4efe8584103cbac8cbf12",
+              "files": [
+                "docs/verification-evidence.md",
+                "lib/prbody.mjs",
+                "lib/review-evidence.mjs",
+                "test/verification-handoff.test.mjs"
+              ],
+              "untracked": [],
+              "contentFingerprint": "bab92f3d8337ef7512a91a09f61403cc6cc7d8141c3e6177be3e3b8156848b39",
+              "fingerprint": "0bd1ce34c44d66f0a89db28eea6d3919dbb4530f5396c732e4b3665a56991f99"
+            }
+          }
+        }
+      },
+      {
+        "revision": 6,
+        "at": "2026-09-10T06:11:47.036Z",
+        "kind": "amendment",
+        "why": "Re-lock the passing timestamp-comment privacy regression and known-command-label projection checks. All 32 focused evidence/PR tests passed after the first Codex finding. The user has been given the 30-minute checkpoint and remaining gate estimate; no fresh full-suite or review PASS is claimed for this correction.",
+        "operations": [
+          {
+            "type": "test",
+            "lock": {
+              "path": "test/verification-handoff.test.mjs",
+              "sha256": "ab140c544819a24f2cb5a8529d97f7d2598e27604c154a93fcce6189324bd924"
+            }
+          }
+        ],
+        "before": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            },
+            {
+              "id": "ac-2",
+              "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+            },
+            {
+              "id": "ac-3",
+              "text": "New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion."
+            }
+          ],
+          "tests": [
+            {
+              "path": "test/verification-handoff.test.mjs",
+              "sha256": "2c0ce554cd498e048567962ff752f83adc6f6233637ddc674af7b2eb2e0ae952"
+            }
+          ]
+        },
+        "after": {
+          "acceptanceCriteria": [
+            {
+              "id": "ac-1",
+              "text": "Extend existing verification receipts and automatic review evidence: completed commands have exit status, timestamps and current source identity even if prior status was running. Review and PR descriptions consume the same recorded evidence and distinguish supplied evidence from independently rerun checks."
+            },
+            {
+              "id": "ac-2",
+              "text": "Reuse the existing bounded, local, source-aware evidence summary in deterministic PR descriptions. Include per-command start and finish times and elapsed duration. Clearly distinguish passed commands from an incomplete overall receipt and supplied evidence from independent execution; never upgrade running, failed, stale, malformed or unknown records into successful gate evidence. Preserve all existing completion and integrity gates; safe cross-command reuse remains a separately scoped follow-up because complete external toolchain identity is not established."
+            },
+            {
+              "id": "ac-3",
+              "text": "New PR bodies must not claim verification is green without evidence. Render a bounded projection of the shared summary, retaining command labels, outcomes, timestamps and source fingerprint while omitting command strings, local paths, raw logs and environment values. Evidence collection must not execute the toolchain or alter task completion."
+            }
+          ],
+          "tests": [
+            {
+              "path": "test/verification-handoff.test.mjs",
+              "sha256": "ab140c544819a24f2cb5a8529d97f7d2598e27604c154a93fcce6189324bd924"
+            }
+          ]
+        },
+        "invalidated": {}
       }
     ],
     "pipeline": {
-      "verificationInvalidated": 4,
-      "planInvalidated": 4
+      "verificationInvalidated": 6,
+      "planInvalidated": 6
     },
     "reviewBase": {
       "commit": "db147c4ecf5fd9f715f9dabc20295352f3f020fd",

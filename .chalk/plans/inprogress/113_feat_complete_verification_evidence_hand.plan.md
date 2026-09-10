@@ -30,5 +30,10 @@ todos:
 
 - `test/verification-handoff.test.mjs`
 
+## Reviews
+
+- **block** · 2026-09-10T06:07 · adversary
+- **stale** · 2026-09-10T06:10 · amend-spec
+
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._
