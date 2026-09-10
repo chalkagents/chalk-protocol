@@ -14,7 +14,7 @@ import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/tel
 import { verify as runVerify, verificationFailureReason } from '../lib/verify.mjs';
 import { verificationCoverage, auditCoverage } from '../lib/verification-coverage.mjs';
 import { pinReviewBase, formatReviewInputs } from '../lib/review-inputs.mjs';
-import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
+import { runReview, runReviewWithRetry, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK, formatReviewFailure, reviewFailureIsTransient, REVIEW_TRANSIENT_EXIT } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
 import { projectBoard } from '../lib/boards.mjs';
@@ -1984,29 +1984,28 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
 
     console.log(C.dim('  preparing adversarial review…'));
-    let r = runReview(s, t, { onInputs: input => console.log(C.dim(formatReviewInputs(input))) });
+    const r = runReviewWithRetry(
+      () => runReview(s, t, { onInputs: input => console.log(C.dim(formatReviewInputs(input))) }),
+      {
+        retry: !flags['no-retry'],
+        onRetry: () => console.log(C.dim('  reviewer returned a documented transient failure — retrying once…')),
+      },
+    );
     const readOnlyFailure = result => result.diagnostics?.find(diagnostic => diagnostic.code === 'read-only-mutation');
     // No diff to review → abort loudly (#151). Not a transient flake, so no retry: a PASS over an empty
     // change set is a vacuous certification. Records NO review and exits non-zero so the gate can't be
     // cleared on nothing — the pipeline then auto-blocks the task rather than merging it.
     if (r.status === 'no-diff') die('review ABORTED — no diff captured: the change set is EMPTY, so the reviewer would grade nothing.\n  Check the displayed task base and directory. For existing committed work, select its actual starting commit with --base <ref>.');
-    if (r.status === 'error' && !r.diagnostics?.some(d => ['approval-inputs', 'review-inputs'].includes(d.code)) && !readOnlyFailure(r) && !flags['no-retry']) {
-      // A transient reviewer failure — a dropped/truncated response or a momentary bad parse — is not a
-      // verdict, so retry once so a flake doesn't sink the review; only a SECOND consecutive error is fatal.
-      // The pipeline passes --no-retry: it retries the whole review STAGE itself, so an inner retry would
-      // double the reviewer calls it accounts for.
-      console.log(C.dim('  reviewer returned no valid verdict — retrying once…'));
-      r = runReview(s, t, { onInputs: input => console.log(C.dim(formatReviewInputs(input))) });
-    }
     if (r.status === 'error') {
       const inputFailure = r.diagnostics?.find(d => ['approval-inputs', 'review-inputs'].includes(d.code));
       if (inputFailure) die(inputFailure.message);
       const refusal = readOnlyFailure(r);
-      if (refusal) die(`reviewer violated the read-only workspace contract: ${String(refusal.message).slice(0, 1200)}\n  No verdict was accepted. Run state-writing review checks in an isolated fixture; do not bypass the read-only guard.`);
-      die('reviewer did not return a valid JSON verdict. raw tail:\n' + C.dim(r.raw || '(empty)'));
+      if (refusal) die(`reviewer violated the read-only workspace contract.\n  ${formatReviewFailure(r)}\n  Run state-writing review checks in an isolated fixture; do not bypass the read-only guard.`);
+      console.error(C.r('✗ ') + formatReviewFailure(r));
+      process.exit(reviewFailureIsTransient(r) ? REVIEW_TRANSIENT_EXIT : 1);
     }
     if ((s.task(t.id)?.specRevision || 0) !== (t.specRevision || 0)) die('specification changed during review — reload context and run chalk review again; no verdict was accepted or posted');
-    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [], specRevision: t.specRevision || 0, approval: r.approval, inputs: r.inputs });
+    t.reviews.push({ at: now(), by: 'adversary', verdict: r.verdict, findings: r.findings, decisions: r.decisions || [], specRevision: t.specRevision || 0, approval: r.approval, inputs: r.inputs, invocation: r.invocation });
     // Same pipeline-order rule as the manual path above (#102): the verdict is recorded either way —
     // the done/merge gates read t.reviews — but the stage only advances when the PR already exists.
     if (r.verdict === 'pass' && stageDone(t, 'pr-open')) t.pipeline = { ...(t.pipeline || {}), stage: 'reviewed', at: now() };
