@@ -30,5 +30,9 @@ todos:
 - Revalidate retained verification output bytes before completion and reject damage. Keep new reviewer findings and decisions inspectable, report stage timings and receipt location, and support --force-rerun for a second verification after review. Each invocation begins with fresh verification; cross-command reuse and full external toolchain/environment identity remain deferred and clearly documented.
 - Meaningful CLI regressions prove unchanged finish invokes verification once, never invokes executor, and completes only the selected task. Cover invalid target/dependencies, dry-run, forced rerun, failed verification, review BLOCK/error, source/spec/locked-test changes, untracked locked tests, and tampered local evidence. Preserve existing ordinary run and done behavior.
 
+## Locked tests (read-only — P6)
+
+- `test/run-finish.test.mjs`
+
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

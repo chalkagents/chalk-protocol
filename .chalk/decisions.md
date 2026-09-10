@@ -2009,3 +2009,8 @@
 
 - _when:_ 2026-09-10T08:29:39.620Z
 - _why:_ Existing runDriver already retains an actual verification result through review and completion. Extending it to active work removes the separate done rerun without introducing trust in editable receipt files or claiming complete external SDK identity. User authorized the efficiency work; proceeding with the recommended bounded scope after offering the alternative. Task-d54a02bf remains specd for full cross-command reuse; six historical amended contracts retain pending revalidation.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T08:40:33.894Z
+- _why:_ Added initial acceptance tests during implementation
