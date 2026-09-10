@@ -2024,3 +2024,13 @@
 
 - _when:_ 2026-09-10T09:03:28.486Z
 - _why:_ Lock the validated review-fix regressions: inconclusive break-it and mutation tools block, a mutation cannot replace the initial contract without a revision bump, and successful probes can restore source and complete after fresh verification. All 51 finish/protocol tests passed.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:23:55.009Z
+- _why:_ Add second-review regressions for mandatory review policy changed during probes and committed implementation bypassing working-tree adequacy helpers. Bind the initial completion policy; reject unsupported committed probe scope before gates, preserving current assertions.
+
+## Amended specification for "feat: finalize an active task through one guarded run"
+
+- _when:_ 2026-09-10T09:26:43.621Z
+- _why:_ Lock validated policy and probe-scope regressions. All 56 finish/protocol checks passed, including mandatory review-policy tampering, committed and mixed implementation scope refusal before execution, and bookkeeping-only commit compatibility.
