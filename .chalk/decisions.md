@@ -1974,3 +1974,33 @@
 
 - _when:_ 2026-09-10T05:18:02.436Z
 - _why:_ Re-lock the portable protected-path fixture after both path cases and the unchanged Windows exclusion policy passed. No fresh complete verification or review PASS is claimed; save a checkpoint while the user decides whether to continue expensive gates.
+
+## Prioritize the existing evidence-handoff task before resuming review-input gates
+
+- _when:_ 2026-09-10T05:43:43.839Z
+- _why:_ User approved future-run efficiency changes after the three-hour checkpoint. The receipt/PR handoff uses existing machinery and has no technical dependency on a PASS for task-96da0ef1; remove that scheduling edge only. Preserve both task completion states and all gates.
+
+## Amended specification for "feat: complete verification evidence handoff to review and PR descriptions"
+
+- _when:_ 2026-09-10T05:43:43.973Z
+- _why:_ Concretize the existing evidence-handoff slice after inspecting current capabilities. Normal command persistence and automatic review attachment already exist; close presentation/PR gaps without introducing unsafe receipt reuse.
+
+## Amended specification for "feat: complete verification evidence handoff to review and PR descriptions"
+
+- _when:_ 2026-09-10T05:45:58.580Z
+- _why:_ PR descriptions leave the local workstation; preserve useful recorded outcomes without publishing potentially sensitive command strings or log paths. Fix the existing unconditional green test-plan wording.
+
+## Amended specification for "feat: complete verification evidence handoff to review and PR descriptions"
+
+- _when:_ 2026-09-10T05:51:30.480Z
+- _why:_ Added initial acceptance tests during implementation
+
+## Amended specification for "feat: complete verification evidence handoff to review and PR descriptions"
+
+- _when:_ 2026-09-10T06:10:02.610Z
+- _why:_ Address the first review finding: normalize accepted timestamp values before public rendering so date comments cannot disclose private paths or environment values. Also constrain public command labels to known gate names; preserve all existing evidence, privacy and bounded-output assertions.
+
+## Amended specification for "feat: complete verification evidence handoff to review and PR descriptions"
+
+- _when:_ 2026-09-10T06:11:47.043Z
+- _why:_ Re-lock the passing timestamp-comment privacy regression and known-command-label projection checks. All 32 focused evidence/PR tests passed after the first Codex finding. The user has been given the 30-minute checkpoint and remaining gate estimate; no fresh full-suite or review PASS is claimed for this correction.
