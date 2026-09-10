@@ -1,17 +1,17 @@
 # Contributing to Chalk Protocol
 
 Thanks for wanting to improve chalk. Two things make this repo unusual to contribute to, and both
-work in your favor: there are **zero dependencies** (clone → `node --test`, nothing to install), and
+work in your favor: there are **zero dependencies** (clone → `npm test`, nothing to install), and
 **chalk builds itself** — every feature in this repo was shipped through chalk's own gated loop.
 
 ## The fast path
 
 ```sh
 git clone https://github.com/chalkagents/chalk-protocol.git && cd chalk-protocol
-node --test          # the whole suite, hermetic, no network — should be green before you start
+npm test             # the whole suite, hermetic, no network — should be green before you start
 ```
 
-Fix, add a test that **fails without your change**, open a PR. CI runs `node --test` on every PR.
+Fix, add a test that **fails without your change**, open a PR. CI runs `npm test` on every PR.
 
 ## The native path (recommended for non-trivial changes)
 

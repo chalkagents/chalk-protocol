@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runVerificationTests } from '../scripts/verify-tests.mjs';
 
+const ROOT = process.cwd();
+
 test('scheduled verification includes every repository test exactly once and isolates conformance', () => {
   const batches = [];
   assert.equal(runVerificationTests({ launch: (_node, args) => { batches.push(args); return { status: 0 }; } }), 0);
@@ -49,5 +51,15 @@ test('real scheduled children preserve pipeline order and propagate assertion fa
     assert.equal(outputs.length, 2); assert.match(outputs[0], /ok 1 - serial probe/);
     assert.match(outputs[1], /ok 1 - long pipeline/); assert.match(outputs[1], /ok 2 - short integration/);
     assert.match(outputs[1], failure ? /not ok 3 - last integration/ : /ok 3 - last integration/);
+  }
+});
+
+test('repository verification entry points use the bounded scheduler', () => {
+  const pkg = JSON.parse(fs.readFileSync(join(ROOT, 'package.json'), 'utf8'));
+  assert.equal(pkg.scripts.test, 'node scripts/verify-tests.mjs');
+  const chalk = JSON.parse(fs.readFileSync(join(ROOT, '.chalk/chalk.json'), 'utf8'));
+  assert.equal(chalk.protocol.verify.test, 'npm test');
+  for (const path of ['.github/workflows/test.yml', '.github/workflows/release.yml']) {
+    assert.match(fs.readFileSync(join(ROOT, path), 'utf8'), /run: npm test/);
   }
 });

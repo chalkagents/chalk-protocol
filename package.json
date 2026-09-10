@@ -32,7 +32,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node scripts/verify-tests.mjs"
   },
   "files": [
     "bin",

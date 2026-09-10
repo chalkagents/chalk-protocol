@@ -47,12 +47,12 @@ stubs with an installed agent CLI and use the same loop for real.
 npm install -g chalk-protocol       # puts `chalk` on your PATH (Node ≥ 18, zero dependencies)
 # or try it without installing:  npx chalk-protocol demo
 # or from source:                git clone https://github.com/chalkagents/chalk-protocol && cd chalk-protocol && npm link
-node --test                         # (source checkout) run the suite — hermetic, no network
+npm test                            # (source checkout) run the suite — hermetic, no network
 ```
 
 ### Platform support
 
-Chalk supports Linux and Windows, and the complete `node --test` suite runs on both
+Chalk supports Linux and Windows, and the complete `npm test` suite runs on both
 `ubuntu-latest` and `windows-latest` for every pull request and push to `dev` or `main`.
 macOS is supported on a best-effort basis but is not currently a required CI lane.
 

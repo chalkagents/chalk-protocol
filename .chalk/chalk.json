@@ -9,7 +9,7 @@
     "phase": "discovery",
     "status": "active",
     "verify": {
-      "test": "node --test",
+      "test": "npm test",
       "typecheck": "",
       "lint": "",
       "build": ""
