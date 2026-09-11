@@ -44,7 +44,7 @@ stubs with an installed agent CLI and use the same loop for real.
 ## Install
 
 ```sh
-npm install -g chalk-protocol       # puts `chalk` on your PATH (Node ≥ 18, zero dependencies)
+npm install -g chalk-protocol       # puts `chalk` on your PATH (Node 18.17+ on 18.x, or Node 20+; zero dependencies)
 # or try it without installing:  npx chalk-protocol demo
 # or from source:                git clone https://github.com/chalkagents/chalk-protocol && cd chalk-protocol && npm link
 npm test                            # (source checkout) run the suite — hermetic, no network
@@ -202,7 +202,7 @@ Details in [docs/CONFIG.md](./docs/CONFIG.md#telemetry).
 
 ## Status & feedback
 
-Beta (protocol `chalk/0`), zero dependencies (Node ≥ 18), **dogfooded on itself** — every command
+Beta (protocol `chalk/0`), zero dependencies (Node 18.17+ on 18.x, or Node 20+), **dogfooded on itself** — every command
 above was built through Chalk's own gated loop, and the `.chalk/` directory in this repo is our
 real, living project state (yours will look like it). Enforces all seven primitives (P1–P7) plus
 the agent contract and the full product lifecycle.

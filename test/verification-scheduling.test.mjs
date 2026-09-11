@@ -71,4 +71,7 @@ test('repository verification entry points use the bounded scheduler', () => {
   }
   const ci = fs.readFileSync(join(ROOT, '.github/workflows/test.yml'), 'utf8');
   assert.match(ci, /minimum-node:[\s\S]*node-version: '18[.]17[.]0'[\s\S]*run: npm test/);
+  for (const path of ['README.md', 'QUICKSTART.md']) {
+    assert.match(fs.readFileSync(join(ROOT, path), 'utf8'), /Node 18[.]17\+ on 18[.]x, or Node 20\+/);
+  }
 });
