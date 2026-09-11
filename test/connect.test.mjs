@@ -30,7 +30,7 @@ const chalk = (cwd, args, env = process.env) => {
 function shellCli(root, name, { auth = true, modelMarker = '' } = {}) {
   const file = join(root, name);
   writeFileSync(file, `#!/usr/bin/env node
-import { writeFileSync } from 'node:fs';
+const { writeFileSync } = require('node:fs');
 const args = process.argv.slice(2);
 if (args[0] === '--version') { console.log(${JSON.stringify(`${name} test-version`)}); process.exit(0); }
 if ((args[0] === 'login' || args[0] === 'auth') && args[1] === 'status') {

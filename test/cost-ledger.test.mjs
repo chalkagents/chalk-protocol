@@ -38,7 +38,7 @@ function repoWithFakeClaude(innerResult, { extraJs = '' } = {}) {
   const bin = join(d, 'fakebin'); mkdirSync(bin);
   writeFileSync(join(bin, 'claude'), [
     '#!/usr/bin/env node',
-    "import { readFileSync } from 'node:fs';",
+    "const { readFileSync } = require('node:fs');",
     'readFileSync(0);',
     "if (process.argv.includes('--output-format') && process.argv.includes('json')) console.log(" + JSON.stringify(ENVELOPE(innerResult)) + ');',
     "else console.log('NO-FLAG-INJECTED');",
