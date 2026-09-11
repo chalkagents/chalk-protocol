@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { Store } from '../lib/store.mjs';
+import { sourceIdentity } from '../lib/verification-record.mjs';
 
 const CLI = resolve('bin/chalk.mjs');
 
@@ -86,3 +87,33 @@ test('chalk work re-verifies an already-verified task and still enforces freshne
   assert.equal(records[1].green, false);
   assert.equal(records[1].freshness, 'stale');
 });
+
+for (const command of ['work', 'run']) {
+  test(`chalk ${command} binds its advancing receipt after mutation adequacy commands`, t => {
+    const { root, store } = fixture(t, command);
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: root });
+    execFileSync('git', ['config', 'user.name', 'Test'], { cwd: root });
+    execFileSync('git', ['add', '-A'], { cwd: root });
+    execFileSync('git', ['commit', '-qm', 'baseline'], { cwd: root });
+    writeFileSync(join(root, 'source.js'), 'before');
+    const mutator = join(root, 'mutator.cjs');
+    writeFileSync(mutator, 'require("node:fs").writeFileSync("source.js", "after");');
+    const meta = store.meta();
+    meta.protocol.mutation = `${JSON.stringify(process.execPath)} ${JSON.stringify(mutator)}`;
+    store.saveMeta(meta);
+
+    const result = invoke(root, command);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const records = receipts(root);
+    assert.equal(records.length, 2, 'an adequacy command is followed by a final verification');
+    const current = sourceIdentity(root, store.protocol());
+    assert.equal(current.status, 'known', current.error);
+    const advancing = records.find(record => record.green && record.before.source.digest === current.digest);
+    assert.ok(advancing, 'the final green receipt is bound to the post-mutation source');
+    assert.equal(advancing.after.source.digest, current.digest);
+    const task = store.task('task-automated');
+    if (command === 'work') assert.equal(task.pipeline.stage, 'verified');
+    else assert.equal(task.state, 'done');
+  });
+}

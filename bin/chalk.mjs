@@ -7,6 +7,7 @@ import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
+import { verifyAfterExternalGates } from '../lib/verification-boundary.mjs';
 import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
@@ -1032,6 +1033,16 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
     if (!mut.skipped && mut.survived.length) {
       console.error(C.r('✗ ') + `weak tests — mutants survived in: ${mut.survived.join(', ')}. The suite doesn't pin this change; strengthen the assertions (or kill the mutants).`);
+      process.exit(2);
+    }
+    // Adequacy probes run external commands after the first verification. Re-bind the
+    // receipt to the exact source that will advance so a mutating probe cannot smuggle
+    // post-verification changes into the verified pipeline stage.
+    const finalVerification = verifyAfterExternalGates({
+      gates: [bi, mut], verify: () => runVerify(s, { cwd: workdir(s, t) }),
+    });
+    if (finalVerification && !finalVerification.green) {
+      console.error(C.r('✗ ') + 'verify RED after post-verification adequacy gates — gate closed.');
       process.exit(2);
     }
     t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };

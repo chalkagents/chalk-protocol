@@ -121,19 +121,34 @@ test('raw non-UTF-8 Git pathname environments fail closed in a child process', t
   execFileSync('git', ['init', '-q'], { cwd: root });
   const module = pathToFileURL(resolve('lib/verification-record.mjs')).href;
   const program = `import {sourceIdentity} from ${JSON.stringify(module)};process.stdout.write(JSON.stringify(sourceIdentity(process.cwd(),{regression:{dir:'.chalk/held-out'}})));`;
+  const direct = [
+    'HOME', 'XDG_CONFIG_HOME', 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR',
+    'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+    'GIT_CEILING_DIRECTORIES', 'GIT_CONFIG_SYSTEM', 'GIT_CONFIG_GLOBAL',
+  ];
   const selectors = [
-    { name: 'XDG_CONFIG_HOME', windows: 'invalid-\uFFFD', shell: 'XDG_CONFIG_HOME=$(printf "invalid-\\377")' },
-    { name: 'GIT_CONFIG_PARAMETERS', windows: "'core.excludesfile'='invalid-\uFFFD'", shell: 'GIT_CONFIG_PARAMETERS="\'core.excludesfile\'=\'invalid-$(printf "\\377")\'"' },
+    ...direct.map(name => ({ name, values: { [name]: 'invalid-\uFFFD' }, shell: `${name}=$(printf "invalid-\\377")` })),
+    {
+      name: 'GIT_CONFIG_PARAMETERS',
+      values: { GIT_CONFIG_PARAMETERS: "'core.excludesfile'='invalid-\uFFFD'" },
+      shell: 'GIT_CONFIG_PARAMETERS="\'core.excludesfile\'=\'invalid-$(printf "\\377")\'"',
+    },
+    {
+      name: 'GIT_CONFIG_VALUE_0',
+      values: { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.excludesfile', GIT_CONFIG_VALUE_0: 'invalid-\uFFFD' },
+      shell: 'GIT_CONFIG_COUNT=1; GIT_CONFIG_KEY_0=core.excludesfile; GIT_CONFIG_VALUE_0=$(printf "invalid-\\377")',
+    },
   ];
   for (const selector of selectors) {
     let identity;
     if (process.platform === 'win32') {
-      const previous = process.env[selector.name];
-      try { process.env[selector.name] = selector.windows; identity = sourceIdentity(root, { regression: { dir: '.chalk/held-out' } }); }
-      finally { if (previous === undefined) delete process.env[selector.name]; else process.env[selector.name] = previous; }
+      const previous = Object.fromEntries(Object.keys(selector.values).map(name => [name, process.env[name]]));
+      try { Object.assign(process.env, selector.values); identity = sourceIdentity(root, { regression: { dir: '.chalk/held-out' } }); }
+      finally { for (const [name, value] of Object.entries(previous)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
     } else {
+      const exports = Object.keys(selector.values).join(' ');
       const probe = spawnSync('/bin/sh', ['-c',
-        `${selector.shell}; export ${selector.name}; exec "$1" --input-type=module -e "$2"`,
+        `${selector.shell}; export ${exports}; exec "$1" --input-type=module -e "$2"`,
         'chalk-nonutf8-env', process.execPath, program], { cwd: root, encoding: 'utf8' });
       assert.equal(probe.status, 0, probe.stderr);
       identity = JSON.parse(probe.stdout);

@@ -32,7 +32,9 @@ syncBuiltinESMExports();
 `);
 
   const store = new Store(root), meta = store.meta();
-  meta.protocol.verify = { test: `${JSON.stringify(process.execPath)} -e "process.exit(0)"` };
+  fs.writeFileSync(join(root, 'mutate-unwatched.cjs'),
+    'const fs=require("node:fs");fs.writeFileSync("source/219/transient.js","used");fs.unlinkSync("source/219/transient.js");');
+  meta.protocol.verify = { test: `${JSON.stringify(process.execPath)} mutate-unwatched.cjs` };
   store.saveMeta(meta);
 
   const result = spawnSync(process.execPath, [cli, 'verify'], {
@@ -41,6 +43,15 @@ syncBuiltinESMExports();
     env: { ...process.env, NODE_OPTIONS: `--import=${preload}` },
     timeout: 120_000,
   });
-  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(result.stdout, /GREEN/);
+  assert.notEqual(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /RED/);
+  const evidence = join(root, '.chalk', 'local', 'verification');
+  const runs = fs.readdirSync(evidence);
+  assert.equal(runs.length, 1);
+  const record = JSON.parse(fs.readFileSync(join(evidence, runs[0], 'run.json'), 'utf8'));
+  assert.equal(record.freshness, 'stale');
+  const command = record.toolchain.find(gate => gate.gate === 'test');
+  assert.equal(command.monitorError, null);
+  assert.ok(command.inputChanges.some(path => path.includes(`source${process.platform === 'win32' ? '\\\\' : '/'}219`)), JSON.stringify(command));
+  assert.doesNotMatch(JSON.stringify(record), /watch descriptor budget exceeded|EMFILE/);
 });
