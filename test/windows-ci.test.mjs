@@ -49,7 +49,8 @@ test('CI runs the complete suite on Ubuntu and Windows without changing cancella
   assert.match(workflow, /os:\s*\[ubuntu-latest, windows-latest\]/);
   assert.match(workflow, /runs-on:\s*\$\{\{ matrix\.os \}\}/);
   assert.match(workflow, /node-version:\s*['"]20['"]/);
-  assert.match(workflow, /- run:\s*node --test(?:\s|$)/m);
+  assert.match(workflow, /- run:\s*npm test(?:\s|$)/m);
+  assert.equal(JSON.parse(read('package.json')).scripts.test, 'node scripts/verify-tests.mjs');
   assert.match(workflow, /cancel-in-progress:\s*true/);
 });
 

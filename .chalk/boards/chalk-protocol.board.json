@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1785888331986,
+  "updatedAt": 1789091241176,
   "order": 0,
   "cards": [
     {
@@ -1677,6 +1677,40 @@
           "runId": "done-task-2b356654",
           "status": "passed",
           "at": 1785760477473
+        }
+      }
+    },
+    {
+      "id": "task-3a2210a9",
+      "title": "fix: isolate serial test runner lifetimes",
+      "column": "done",
+      "createdAt": 1789069262220,
+      "updatedAt": 1789089574591,
+      "order": 99,
+      "description": "- Stateful serial test files run with concurrency one and an independent node:test runner lifetime per file, while the concurrent batch behavior remains unchanged.\n- npm, Chalk verification, CI and release all use the bounded scheduler, and the declared Node engine covers the programmatic node:test API it requires.",
+      "testArtifact": {
+        "specPath": "test/serial-test-process-isolation.test.mjs",
+        "lastRun": {
+          "runId": "done-task-3a2210a9",
+          "status": "passed",
+          "at": 1789089574591
+        }
+      }
+    },
+    {
+      "id": "task-b3f1b2f6",
+      "title": "fix: make minimum Node CI fixtures portable",
+      "column": "done",
+      "createdAt": 1789089965414,
+      "updatedAt": 1789091241176,
+      "order": 100,
+      "description": "- The minimum supported Node CI lane passes every first-party adapter and connect fixture without relying on syntax detection added in newer Node releases.\n- Fake executable behavior and production adapter semantics remain unchanged on Node 20 and newer.",
+      "testArtifact": {
+        "specPath": "test/connect.test.mjs",
+        "lastRun": {
+          "runId": "done-task-b3f1b2f6",
+          "status": "passed",
+          "at": 1789091241176
         }
       }
     }

@@ -1059,3 +1059,123 @@
 
 - _when:_ 2026-09-10T19:03:57.283Z
 - _why:_ Update the locked adapter contract to find Codex's exec subcommand after newly required global approval flags.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-10T19:43:33.662Z
+- _why:_ Cover complete serial-batch execution after an earlier isolated runner fails.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-10T19:43:51.652Z
+- _why:_ Relock the extended regression proving later serial files still run after an earlier failure.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-10T23:36:12.290Z
+- _why:_ Raise and continuously test the real Node minimum required by node:test/reporters.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-10T23:36:29.500Z
+- _why:_ Relock the scheduler contract at Node 18.17 with a minimum-version CI lane.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-10T23:46:47.784Z
+- _why:_ Keep the existing two-platform Node 20 job intact and assert a separate minimum-runtime compatibility job.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-10T23:47:03.024Z
+- _why:_ Relock the scheduler contract for the separate Node 18.17 compatibility job.
+
+## Amended acceptance test for "ci: add a windows-latest lane and fix what breaks"
+
+- _when:_ 2026-09-10T23:47:24.254Z
+- _why:_ CI must retain Ubuntu/Windows Node 20 coverage while routing the complete suite through the bounded npm scheduler instead of bypassing serial isolation.
+
+## Amended acceptance test for "ci: add a windows-latest lane and fix what breaks"
+
+- _when:_ 2026-09-10T23:47:43.972Z
+- _why:_ Relock Windows CI coverage around npm test and the complete bounded scheduler.
+
+## Amended acceptance test for "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)"
+
+- _when:_ 2026-09-10T23:57:52.111Z
+- _why:_ The release remains suite-gated before publish, but now routes through npm test so stateful files receive bounded scheduler isolation.
+
+## Amended acceptance test for "fix: chalk release --commit — commit CHANGELOG+version bump, then tag that commit (removes the release.yml tag-normalization step)"
+
+- _when:_ 2026-09-10T23:58:02.106Z
+- _why:_ Relock the release gate assertion around npm test before publish.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-11T00:13:16.359Z
+- _why:_ Express the supported Node range without claiming incompatible early Node 19 releases.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-11T00:13:16.379Z
+- _why:_ Require deterministic TAP output from every isolated serial runner.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-11T00:13:38.355Z
+- _why:_ Relock the scheduler contract with the gap-free supported Node range.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-11T00:13:38.418Z
+- _why:_ Relock serial isolation with explicit TAP output.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-11T00:25:05.941Z
+- _why:_ Keep public Node prerequisites aligned with the executable engine range.
+
+## Amended acceptance test for "fix: isolate serial test runner lifetimes"
+
+- _when:_ 2026-09-11T00:25:30.417Z
+- _why:_ Relock the scheduler contract with public runtime prerequisite coverage.
+
+## Amended acceptance test for "fix: make minimum Node CI fixtures portable"
+
+- _when:_ 2026-09-11T01:26:53.210Z
+- _why:_ Make the extensionless fake Codex CLI explicitly CommonJS so the minimum Node lane exercises the same fixture behavior.
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-09-11T01:26:53.270Z
+- _why:_ Make the extensionless fake Codex CLI explicitly CommonJS so the locked connect contract runs on the declared minimum Node runtime.
+
+## Amended acceptance test for "fix: make minimum Node CI fixtures portable"
+
+- _when:_ 2026-09-11T01:26:53.329Z
+- _why:_ Make the extensionless fake Claude CLI explicitly CommonJS so the minimum Node lane exercises the same fixture behavior.
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-09-11T01:26:53.385Z
+- _why:_ Make the extensionless fake Claude CLI explicitly CommonJS so the locked cost-ledger contract runs on the declared minimum Node runtime.
+
+## Amended acceptance test for "fix: make minimum Node CI fixtures portable"
+
+- _when:_ 2026-09-11T01:27:05.326Z
+- _why:_ Relock the Node 18-compatible extensionless connect fixture.
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-09-11T01:27:05.387Z
+- _why:_ Relock the original connect contract after making its fake CLI execution mode explicit.
+
+## Amended acceptance test for "fix: make minimum Node CI fixtures portable"
+
+- _when:_ 2026-09-11T01:27:05.444Z
+- _why:_ Relock the Node 18-compatible extensionless cost-ledger fixture.
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-09-11T01:27:05.502Z
+- _why:_ Relock the original cost-ledger contract after making its fake CLI execution mode explicit.

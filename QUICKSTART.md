@@ -6,7 +6,7 @@ run**. You can also use every gate manually with no model at all.
 
 ## 0. Prerequisites
 
-- Node ≥ 18 and git for the local loop (Chalk has zero runtime npm dependencies).
+- Node 18.17+ on 18.x, or Node 20+, and git for the local loop (Chalk has zero runtime npm dependencies).
 - One supported agent CLI for autonomous work: [Claude Code](./docs/integrations/claude-code.md),
   [OpenCode](./docs/integrations/opencode.md), [Codex CLI](./docs/integrations/codex.md), or
   [Gemini CLI](./docs/integrations/gemini-cli.md).

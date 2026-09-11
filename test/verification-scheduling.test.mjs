@@ -16,7 +16,9 @@ test('scheduled verification includes every repository test exactly once and iso
   const walk = path => { for (const entry of fs.readdirSync(path, { withFileTypes: true })) { const file = `${path}/${entry.name}`; if (entry.isDirectory()) walk(file); else expected.push(file); } };
   walk('test'); assert.deepEqual(actual.sort(), expected.sort());
   assert.equal(new Set(actual).size, actual.length);
-  assert.ok(batches[0].includes('--test-concurrency=1'));
+  assert.equal(batches[0][1], '1');
+  assert.equal(batches[1][1], '4');
+  assert.ok(batches.every(args => args.every(arg => !arg.startsWith('--test-concurrency='))));
   assert.ok(batches[0].includes('test/adapter-conformance.test.mjs'));
   assert.ok(batches[0].includes('test/codex-gemini-adapters.test.mjs'));
   assert.ok(batches[0].includes('test/verification-scheduling.test.mjs'));
@@ -60,9 +62,16 @@ test('repository verification entry points use the bounded scheduler', () => {
   assert.equal(pkg.scripts.test, 'node scripts/verify-tests.mjs');
   const chalk = JSON.parse(fs.readFileSync(join(ROOT, '.chalk/chalk.json'), 'utf8'));
   assert.equal(chalk.protocol.verify.test, 'npm test');
+  assert.equal(pkg.engines.node, '>=18.17.0 <19 || >=20.0.0');
   for (const path of ['.github/workflows/test.yml', '.github/workflows/release.yml']) {
     const workflow = fs.readFileSync(join(ROOT, path), 'utf8');
-    assert.match(workflow, /run: node --test --test-concurrency=2/);
+    assert.match(workflow, /run: npm test/);
+    assert.doesNotMatch(workflow, /run: node --test/);
     assert.doesNotMatch(workflow, /NODE_OPTIONS:[^\n]*--test-concurrency/);
+  }
+  const ci = fs.readFileSync(join(ROOT, '.github/workflows/test.yml'), 'utf8');
+  assert.match(ci, /minimum-node:[\s\S]*node-version: '18[.]17[.]0'[\s\S]*run: npm test/);
+  for (const path of ['README.md', 'QUICKSTART.md']) {
+    assert.match(fs.readFileSync(join(ROOT, path), 'utf8'), /Node 18[.]17\+ on 18[.]x, or Node 20\+/);
   }
 });

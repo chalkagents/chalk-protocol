@@ -149,7 +149,7 @@
     "tests": [
       {
         "path": "test/package.test.mjs",
-        "sha256": "af207254f76e260b42eab9684e41b2aee3aedab932c4cfb0ecffde8130815beb"
+        "sha256": "511a9352814e36c3acfdd3f6815447d90d5681653a0ab9852251ea64a880b527"
       },
       {
         "path": "test/release-commit.test.mjs",
@@ -1219,7 +1219,7 @@
     "tests": [
       {
         "path": "test/cost-ledger.test.mjs",
-        "sha256": "3a3c0b8a0888c6c0478c753a16758494665845736dfbb6272791b47c9d4e3fea"
+        "sha256": "dc5f4aa8eb20f47524fbb0eab6811aba871d9438230b8dc0033155bbed743c71"
       }
     ],
     "heldOut": [],
@@ -1461,7 +1461,7 @@
     "tests": [
       {
         "path": "test/windows-ci.test.mjs",
-        "sha256": "d9fd9890e85a99d8a7e592f2a3406dd00828d88276c2c6d17ffc224856032975"
+        "sha256": "70e43e71404c292cf9a7fa8b02e520fe63c39237b79cd83d5cf5d346c4409420"
       }
     ],
     "heldOut": [],
@@ -7716,7 +7716,7 @@
     "tests": [
       {
         "path": "test/connect.test.mjs",
-        "sha256": "e89b1ccd41aff21467e9d5a10b0a4a5395f03c5654a64bae9851a1945722e8b5"
+        "sha256": "12444c9ba65c7c556482d42f0d88019e7ed73785a6b5807961094f664fbfb568"
       }
     ],
     "heldOut": [],
@@ -8246,5 +8246,349 @@
     "startedAt": "2026-08-03T12:28:14.789Z",
     "doneAt": "2026-08-03T12:34:37.473Z",
     "released": "0.4.0"
+  },
+  {
+    "id": "task-3a2210a9",
+    "title": "fix: isolate serial test runner lifetimes",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Stateful serial test files run with concurrency one and an independent node:test runner lifetime per file, while the concurrent batch behavior remains unchanged."
+      },
+      {
+        "text": "npm, Chalk verification, CI and release all use the bounded scheduler, and the declared Node engine covers the programmatic node:test API it requires."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/serial-test-process-isolation.test.mjs",
+        "sha256": "56f4857990e98c1b8aa1444aee19206fa3011074cee7e5f3a4ae4f93f7a860a4"
+      },
+      {
+        "path": "test/verification-scheduling.test.mjs",
+        "sha256": "68a4aae86bf2429c811427078305d3514d68bf2984e50ad53e01ba044e7a50fe"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-10T19:41:02.220Z",
+    "reviews": [
+      {
+        "at": "2026-09-10T23:31:33.084Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "`.github/workflows/test.yml` and `.github/workflows/release.yml` bypass `npm test`/`scripts/verify-tests.mjs` and run the complete suite directly with `node --test --test-concurrency=2`. Consequently, files classified as stateful/serial are run at concurrency two under one coordinator lifetime in CI and release, violating the acceptance criterion on two release-gate entry points."
+          },
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "`test/verification-scheduling.test.mjs` asserts that both workflows retain the direct `node --test --test-concurrency=2` command instead of exercising serial isolation through those entry points. The test therefore codifies the bypass and remains green while CI/release violate the new behavior."
+          },
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "The package still declares Node `>=18`, but `npm test` now launches Node with `--test-concurrency`, which was introduced on the Node 18 line in v18.19.0. Supported Node 18.0–18.18 installations will reject the option, and CI covers only Node 20 while release covers Node 24."
+          },
+          {
+            "severity": "low",
+            "area": "design-intent",
+            "note": "The supplied change also alters adapter timeouts, Codex CLI argument placement, reviewer-schema strictness, and integration documentation. Those behaviors are unrelated to serial runner isolation and substantially widen the release diff beyond the single acceptance criterion."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Spawn one synchronous `node --test --test-concurrency=1` process per file when a multi-file batch has concurrency one.",
+            "rationale": "A fresh process gives each stateful file an independent node:test coordinator lifetime and prevents retained watcher resources from leaking into later files.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Continue launching later isolated files after an earlier file fails, then return aggregate status 1.",
+            "rationale": "This preserves complete-batch execution and evidence collection instead of truncating the serial suite at the first failure.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Use `concurrency === 1` as both the scheduling limit and the signal that per-file process isolation is required.",
+            "rationale": "The existing scheduler already maps stateful policies into the concurrency-one batch, avoiding a new execution-mode parameter.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Leave the concurrent `run({files, concurrency})` path unchanged.",
+            "rationale": "The task requires isolation only for stateful serial files and explicitly preserves concurrent-batch behavior.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Keep CI and release on direct concurrency-two Node invocations while local `npm test` uses the serial/concurrent scheduler.",
+            "rationale": "The workflow comments prioritize a direct full-suite contract with bounded fixture concurrency, but this creates divergent gate semantics.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Retain the broad Node `>=18` engine declaration while adopting `--test-concurrency`.",
+            "rationale": "No minimum-version adjustment or compatibility fallback was included, apparently preserving the advertised support boundary.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-09-11T00:12:54.596Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "package.json declares Node >=18.17.0, which includes Node 19.0–19.8, but scripts/verify-test-batch.mjs statically imports node:test/reporters, exposed on the Node 19 line only from 19.9.0. The declared engine therefore does not cover the required API across its full range, violating criterion 2."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The locked scheduling test asserts the flawed >=18.17.0 range verbatim, while CI exercises 18.17 and 20 but no claimed pre-19.9 runtime. Thus both the test and minimum-runtime lane remain green while part of the advertised engine range fails at module startup."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "Serial children now inherit Node's default reporter instead of using the previously forced TAP reporter. On a TTY this changes serial npm-test output to spec format; the isolation test captures piped output, so this interactive behavior change is unasserted."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Run each file in a multi-file serial batch through a synchronous, fresh `node --test` process.",
+            "rationale": "A distinct process gives every stateful file an independent node:test coordinator lifetime while spawnSync preserves serial execution.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Continue running later serial files after an earlier file fails, then return an aggregate exit code of 1.",
+            "rationale": "This maximizes failure visibility while keeping the overall verification gate closed.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Keep concurrent files on the existing programmatic runner at concurrency four and remove the redundant outer CLI concurrency flag.",
+            "rationale": "This preserves the concurrent scheduling behavior while avoiding a CLI option unavailable on the selected Node 18 minimum.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Route npm, Chalk verification, both CI platforms, the minimum-runtime lane, and release publishing through `npm test`.",
+            "rationale": "One bounded scheduler now governs every verification and release entry point, preventing CI or release from bypassing serial isolation.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Declare `>=18.17.0` and add a Node 18.17 CI lane.",
+            "rationale": "Node 18.17 is the first 18.x release exposing node:test/reporters, but the continuous range unintentionally also claims incompatible Node 19.0–19.8 releases.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Allow serial subprocesses to choose Node's default reporter.",
+            "rationale": "Direct `node --test` invocation simplifies per-file isolation, at the cost of TTY-dependent output rather than consistently forced TAP.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-09-11T00:24:57.613Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "med",
+            "area": "regression",
+            "note": "The runtime-support change leaves public prerequisites contradictory. README.md:47, README.md:205, and QUICKSTART.md:9 still advertise “Node ≥18”, while package.json now excludes Node 18.0–18.16 and all Node 19 releases. Users are therefore told that unsupported runtimes are valid."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "test/verification-scheduling.test.mjs:65 pins the new engine range but no test keeps README/Quickstart prerequisites aligned with it. The complete 587-test suite passes despite the stale public support contract."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Run every file in a multi-file concurrency-one batch in its own synchronous node --test process.",
+            "rationale": "This provides independent node:test coordinator lifetimes while preserving serial execution order.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Continue executing later serial files after an earlier file fails, then return aggregate failure.",
+            "rationale": "This retains complete failure evidence without allowing the verification gate to pass.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Use concurrency one as the implicit signal for per-file process isolation while leaving the programmatic concurrent runner unchanged.",
+            "rationale": "It reuses the scheduler’s existing serial classification without adding another execution-mode parameter.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Force TAP for isolated children and remove NODE_TEST_CONTEXT before launching them.",
+            "rationale": "This gives deterministic output and prevents a parent test-runner marker from affecting nested runs.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Route npm, Chalk verification, CI, and release through npm test, with a Node 18.17 minimum-runtime CI lane.",
+            "rationale": "All gates now exercise the same bounded scheduler and continuously check the oldest declared runtime.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Declare >=18.17.0 <19 || >=20.0.0, excluding the entire Node 19 line.",
+            "rationale": "This avoids claiming early Node 19 versions that lack node:test/reporters, at the cost of also excluding later compatible Node 19 releases.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Limit the runtime-support update to package metadata, CI, and scheduler tests without updating installation documentation.",
+            "rationale": "The implementation focused on executable gate surfaces, but left user-facing prerequisites inconsistent with the new engine boundary.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ]
+      },
+      {
+        "at": "2026-09-11T00:56:57.351Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Process isolation is inferred from repeated TAP headers and reset test numbering rather than asserting distinct runner PIDs. The test is non-vacuous and fails against the prior implementation, but it is an indirect proof."
+          },
+          {
+            "severity": "low",
+            "area": "test-adequacy",
+            "note": "Concurrent-path tests assert the configured limit, ordering, and failure propagation, but do not measure actual overlap or the four-process ceiling. Risk is limited because the programmatic concurrent branch itself remains unchanged."
+          },
+          {
+            "severity": "low",
+            "area": "regression",
+            "note": "The batch script implicitly equates concurrency === 1 with per-file process isolation. A future caller requesting one-worker execution without fresh runner lifetimes would receive different semantics; an explicit execution mode would make this coupling safer."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Run every multi-file concurrency-one batch as one synchronous node --test process per file.",
+            "rationale": "This guarantees independent node:test coordinator lifetimes and prevents watcher resources from leaking between stateful files.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Continue running later serial files after an earlier file fails, then return an aggregate failure.",
+            "rationale": "The complete serial batch still executes while the overall verification remains fail-closed.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Keep the existing programmatic run({files, concurrency}) implementation for concurrent batches and remove the redundant outer CLI concurrency option.",
+            "rationale": "This preserves the four-worker concurrent scheduler while preventing runner configuration from being split across two layers.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Use concurrency === 1 as the implicit selector for fresh-runner behavior rather than adding an explicit batch mode.",
+            "rationale": "It keeps the scheduler interface small, at the cost of coupling worker count to lifecycle semantics.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Raise the supported runtime to Node 18.17+ on 18.x or Node 20+, excluding Node 19.",
+            "rationale": "Node 18.17 exposes node:test/reporters and the programmatic runner APIs used by the scheduler; excluding Node 19 avoids claiming support for early 19.x releases lacking the complete API surface.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Route CI and release through npm test and add a separate Ubuntu job at Node 18.17.0.",
+            "rationale": "All official gates now exercise the repository scheduler, while the additional lane validates the declared minimum runtime.",
+            "blastRadius": "high",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-09-10T19:41:11.117Z",
+    "handoff": {
+      "path": ".chalk/handoffs/task-3a2210a-1.md",
+      "at": "2026-09-10T19:49:12.540Z",
+      "reason": "human-input",
+      "seq": 1
+    },
+    "doneAt": "2026-09-11T01:19:34.591Z"
+  },
+  {
+    "id": "task-b3f1b2f6",
+    "title": "fix: make minimum Node CI fixtures portable",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "The minimum supported Node CI lane passes every first-party adapter and connect fixture without relying on syntax detection added in newer Node releases."
+      },
+      {
+        "text": "Fake executable behavior and production adapter semantics remain unchanged on Node 20 and newer."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/connect.test.mjs",
+        "sha256": "12444c9ba65c7c556482d42f0d88019e7ed73785a6b5807961094f664fbfb568"
+      },
+      {
+        "path": "test/cost-ledger.test.mjs",
+        "sha256": "dc5f4aa8eb20f47524fbb0eab6811aba871d9438230b8dc0033155bbed743c71"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-11T01:26:05.414Z",
+    "reviews": [
+      {
+        "at": "2026-09-11T01:42:29.505Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [],
+        "decisions": [
+          {
+            "choice": "Use CommonJS require calls inside the two extensionless fake executables instead of relying on ESM syntax detection.",
+            "rationale": "CommonJS is parsed consistently by Node 18.17 while preserving the fixtures’ arguments, output, exit codes, stdin handling, and marker behavior.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Keep the executable filenames extensionless rather than renaming them to .mjs or .cjs.",
+            "rationale": "This preserves realistic CLI discovery and invocation paths while fixing only the scripts’ module syntax.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Limit the compatibility fix to test fixtures and leave production adapters and CI configuration unchanged.",
+            "rationale": "Production adapters already use explicit .mjs files; the incompatibility originated solely in generated extensionless fixtures. The full Node 18.17 lane passed 587 tests, and focused suites passed on Node 20.0 and Node 24.18.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Amend and relock the shared acceptance tests for both the current task and their originating historical tasks.",
+            "rationale": "The fixtures are locked contracts shared across tasks, so all affected hashes needed sanctioned updates to preserve integrity enforcement.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-09-11T01:26:25.980Z",
+    "doneAt": "2026-09-11T01:47:21.176Z"
   }
 ]
