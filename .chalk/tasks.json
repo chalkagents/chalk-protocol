@@ -8615,29 +8615,110 @@
     "tests": [
       {
         "path": "test/verification-nonutf8-git-paths.test.mjs",
-        "sha256": "9d284fb5a26ac3878bfe0245a6e07fc95598a1ad77208157e1c2b02e773979c5"
+        "sha256": "4862c58e3b783e4ed6b32021282dda2f9c7afc7f7d86a3f67276a2f2813ddce5"
       },
       {
         "path": "test/verification-automated-callers.test.mjs",
-        "sha256": "13be91a6363772fac58a7d26365b5d0a863e809c77e24d2967f05040ddfb2685"
+        "sha256": "42e200e2a4d7694ef58b83a3b92ea36f93ea7e168711fa5803b1bc90e9bcb3fa"
       },
       {
         "path": "test/verification-descriptor-budget.test.mjs",
-        "sha256": "34d08c856140e85f905b3006a100583c7eae6ad3ce7fd89afce61dbf86250013"
+        "sha256": "a78b44be22d2174729bb0402205a0229bdec7cf8c6d8557a57bdb7107f7b32c6"
       },
       {
         "path": "test/verification-ignore-race.test.mjs",
-        "sha256": "e152f4731e5e796aeadf41d7bd97e884bdd3ad47b1f9f25a861c88e48d685e1f"
+        "sha256": "08d95dc6f0da5bfec5a20cc91bc3dedc4176ab75e6cfe41408db612e8a7e38b1"
       },
       {
         "path": "test/verification-default-timeout.test.mjs",
-        "sha256": "3aa9f447e4bd109fd5ecbd386bc60b85dd6fd43b26ea77a9568e274ccf6fac28"
+        "sha256": "abe5fb9ddf25de8542327774d49386b1b19f132fca19125e88ed831f27142c61"
       }
     ],
     "heldOut": [],
     "after": [],
     "createdAt": "2026-09-11T01:59:00.214Z",
-    "reviews": [],
+    "reviews": [
+      {
+        "at": "2026-09-11T08:00:55.591Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "AC2 is incomplete: bin/chalk.mjs:965 returns success for an already-verified `chalk work` before runVerify at line 998. Changed source/config/locks can therefore resume without a fresh receipt or freshness gate; the locked test covers only first invocation."
+          },
+          {
+            "severity": "high",
+            "area": "regression",
+            "note": "Independent execution of the five locked tests passed 9/10. verification-descriptor-budget.test.mjs failed because monitoring returned `invalid policy parent` and freshness `unknown`; verification-command.mjs:203-206 rejects a symlinked authority parent such as macOS `/etc` instead of resolving it."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "AC3 is only addressed where recursive fs.watch exists. The fallback at verification-command.mjs:234-238 opens per-directory watchers without a bounded alternative, while the locked test disables its synthetic cap on that exact branch. This leaves supported Node 18 and other non-recursive backends exposed under a 256-descriptor limit."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "AC4's locked test exercises only classifyGitIgnoreRule. Removing its observer wiring or changing the caller to report failure instead of stale still leaves the test green. No test drives the two-query race and asserts freshness `stale` with no monitorError."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "AC5 is inconsistent across verification commands: toolchain commands receive 15 minutes, but E2E commands omit timeoutMs and retain the 600000 ms fallback at verification-command.mjs:488; lib/e2e.mjs:65 also remains at 10 minutes."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The AC5 test asserts only an exported constant, not the effective command deadline, repository self-verification, per-test limits, or freshness enforcement. Replacing runToolchain's default with a 10-minute literal while retaining the constant would pass."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "AC1 tests cover ls-files and core.excludesFile, but not the newly altered decoding paths for index locations, configuration origins/includes, repository selectors, or submodule roots. Reintroducing lossy decoding in those channels would remain green."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Fail closed when Git pathname-bearing output is not valid UTF-8, while preserving valid leading BOM bytes.",
+            "rationale": "Node filesystem APIs cannot safely address arbitrary undecodable path bytes without risking hashing a replacement-character pathname.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Use one recursive fs.watch handle where supported, with per-directory watchers as the portability fallback.",
+            "rationale": "Recursive watching sharply reduces descriptor consumption for nested controller and supervisor monitors.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Raise the toolchain command deadline from ten to fifteen minutes.",
+            "rationale": "The repository's source-bound self-verification run takes roughly six minutes, requiring more headroom.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Classify an ignore rule disappearing between queries as a stale source change rather than an observer failure.",
+            "rationale": "The race establishes that classification changed, but the observer successfully resolved it conservatively.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Adopt conservative source-directory namespace identities and require generated-output directories to exist before verification.",
+            "rationale": "Directory metadata can retain transient create/delete activity when filesystem notifications are delayed or withheld.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Centralize command supervision and source-bound receipt persistence across verify, done, automated work/run, and phase audit.",
+            "rationale": "A shared recorder is intended to prevent caller-specific evidence and freshness bypasses.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          }
+        ]
+      }
+    ],
     "startedAt": "2026-09-11T01:59:47.119Z"
   }
 ]

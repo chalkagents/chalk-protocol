@@ -1249,3 +1249,88 @@
 
 - _when:_ 2026-09-11T04:52:14.589Z
 - _why:_ Lock the valid UTF-8 BOM pathname case found by adversarial review so pathname decoding cannot silently strip leading bytes.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:49.920Z
+- _why:_ Pin re-verification and freshness enforcement when chalk work resumes from an already-verified pipeline stage.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:49.988Z
+- _why:_ Exercise the non-recursive watcher fallback under a hard synthetic handle budget and the macOS symlinked policy-parent case.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:50.055Z
+- _why:_ Replace the helper-only assertion with an end-to-end observer race that must produce stale freshness without monitor failure.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:50.123Z
+- _why:_ Pin the effective default and explicit override passed to both toolchain and E2E verification commands.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:50.189Z
+- _why:_ Cover additional pathname-bearing Git authority and membership channels identified by external review.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.578Z
+- _why:_ Lock resumed-work re-verification and stale receipt enforcement after implementing the external review fix.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.644Z
+- _why:_ Lock the forced non-recursive watcher fallback under a 64-handle synthetic ceiling.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.714Z
+- _why:_ Lock the end-to-end two-query ignore race as stale with no monitor error.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.782Z
+- _why:_ Lock effective toolchain and E2E timeout propagation plus explicit timeout overrides.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.847Z
+- _why:_ Lock additional Git index, include, and metadata pathname channels after external review.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:11:52.844Z
+- _why:_ Lock full verification evidence showing both toolchain and E2E executions receive the shared fifteen-minute deadline.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:15:02.167Z
+- _why:_ Pin fail-closed handling when inherited raw bytes in Git pathname selector environment variables reach Node as replacement characters.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:16:02.095Z
+- _why:_ Lock the raw child-process XDG pathname environment regression after adding fail-closed selector validation.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:17:57.335Z
+- _why:_ Pin legacy GIT_CONFIG_PARAMETERS as another path-valued configuration channel that must fail closed on replacement characters.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:19:10.374Z
+- _why:_ Lock raw GIT_CONFIG_PARAMETERS and XDG_CONFIG_HOME selector coverage after closing the final environment-decoding gap.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:35:54.689Z
+- _why:_ The authoritative self-verification suite exceeded fifteen minutes after adding the required regressions; lock a twenty-minute shared command deadline while retaining explicit overrides.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:36:33.373Z
+- _why:_ Lock the effective twenty-minute toolchain and E2E deadline proven necessary by the full repository verification run.
