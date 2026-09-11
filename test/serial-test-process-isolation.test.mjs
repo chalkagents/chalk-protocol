@@ -16,8 +16,10 @@ test('serial scheduler files receive independent node:test runner lifetimes', t 
   const batch = join(process.cwd(), 'scripts/verify-test-batch.mjs');
   const result = spawnSync(process.execPath, [batch, '1', ...files.map(file => join(root, file))], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /serial 1[\s\S]*tests 1[\s\S]*serial 2[\s\S]*tests 1/);
-  assert.doesNotMatch(result.stdout, /tests 2/);
+  assert.equal(result.stdout.match(/TAP version 13/g)?.length, 2, result.stdout);
+  assert.match(result.stdout, /ok 1 - serial 1/);
+  assert.match(result.stdout, /ok 1 - serial 2/);
+  assert.doesNotMatch(result.stdout, /ok 2 - serial 2/);
 
   const marker = join(root, 'second-ran');
   fs.writeFileSync(join(root, files[0]), "import { test } from 'node:test'; import assert from 'node:assert/strict'; test('fails', () => assert.fail('expected'));\n");
