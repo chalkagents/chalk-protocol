@@ -8590,5 +8590,54 @@
     ],
     "startedAt": "2026-09-11T01:26:25.980Z",
     "doneAt": "2026-09-11T01:47:21.176Z"
+  },
+  {
+    "id": "task-42b79111",
+    "title": "fix: close source-bound verification review gaps",
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "Git pathname discovery preserves arbitrary non-NUL path bytes losslessly or fails closed with unknown source identity; it never hashes a replacement-character pathname."
+      },
+      {
+        "text": "Automated chalk work and chalk run verification paths create the same source-bound receipt evidence as direct verify and done without bypassing freshness gates."
+      },
+      {
+        "text": "Verification monitoring remains operational within a 256-descriptor process limit for repositories with at least 200 source directories."
+      },
+      {
+        "text": "If Git ignore policy changes between classification queries, verification conservatively records the changed path as stale without treating the resolved race as an observer failure."
+      },
+      {
+        "text": "The default verification command deadline accommodates the repository's source-bound self-verification suite without weakening per-test timeouts or freshness enforcement."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-nonutf8-git-paths.test.mjs",
+        "sha256": "9d284fb5a26ac3878bfe0245a6e07fc95598a1ad77208157e1c2b02e773979c5"
+      },
+      {
+        "path": "test/verification-automated-callers.test.mjs",
+        "sha256": "13be91a6363772fac58a7d26365b5d0a863e809c77e24d2967f05040ddfb2685"
+      },
+      {
+        "path": "test/verification-descriptor-budget.test.mjs",
+        "sha256": "34d08c856140e85f905b3006a100583c7eae6ad3ce7fd89afce61dbf86250013"
+      },
+      {
+        "path": "test/verification-ignore-race.test.mjs",
+        "sha256": "e152f4731e5e796aeadf41d7bd97e884bdd3ad47b1f9f25a861c88e48d685e1f"
+      },
+      {
+        "path": "test/verification-default-timeout.test.mjs",
+        "sha256": "3aa9f447e4bd109fd5ecbd386bc60b85dd6fd43b26ea77a9568e274ccf6fac28"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-11T01:59:00.214Z",
+    "reviews": [],
+    "startedAt": "2026-09-11T01:59:47.119Z"
   }
 ]

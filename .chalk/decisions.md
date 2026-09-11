@@ -1179,3 +1179,73 @@
 
 - _when:_ 2026-09-11T01:27:05.502Z
 - _why:_ Relock the original cost-ledger contract after making its fake CLI execution mode explicit.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T02:03:43.459Z
+- _why:_ Allow platforms whose filesystem rejects invalid UTF-8 path bytes to skip; Linux CI still exercises the reachable raw-byte Git pathname case.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T02:04:03.953Z
+- _why:_ Relock the cross-platform raw-byte Git pathname regression with Linux execution and filesystem-aware skipping.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T02:21:40.966Z
+- _why:_ Lock the finalized macOS EILSEQ portability case after its sanctioned skip handling was completed.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T02:59:39.432Z
+- _why:_ Replace timing-sensitive OS descriptor exhaustion with a deterministic inherited monitor-watch budget that fails the unbounded implementation and covers nested controller/supervisor monitors.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T03:44:31.045Z
+- _why:_ Keep the 220-directory acceptance fixture while limiting tracked content so the test targets watcher registration rather than file hashing.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T03:53:09.321Z
+- _why:_ Allow the intentionally large nested-verification fixture to complete under the outer repository verifier while retaining the deterministic 16-watch failure threshold.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:07:19.041Z
+- _why:_ Run the fixture on every CI platform; apply the synthetic per-watch cap only where fs.watch uses recursive directory handles, while Linux inotify validates the same large repository without a skip.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:08:24.403Z
+- _why:_ Replace platform branching with an fs.watch recursive-capability probe so every platform runs the fixture and the repository's no-untracked-exclusions policy remains satisfied.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:13:09.879Z
+- _why:_ Use a platform-neutral decision-unit contract for the Git classification race; the npm-wrapped integration path is already exercised by the existing policy tests.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:13:09.903Z
+- _why:_ Treat filesystem-level rejection of non-UTF-8 byte paths as a valid capability outcome instead of excluding Windows or macOS from the contract.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:27:24.462Z
+- _why:_ Lock the final platform-neutral classification decision test after replacing the executable shim implementation.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:48:59.049Z
+- _why:_ Extend the locked regression to cover non-UTF-8 Git configuration and repository pathname authorities identified by adversarial spec review.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:50:31.726Z
+- _why:_ Lock the expanded non-UTF-8 policy-authority regression after implementing fatal decoding for every pathname-bearing Git query.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:52:14.589Z
+- _why:_ Lock the valid UTF-8 BOM pathname case found by adversarial review so pathname decoding cannot silently strip leading bytes.
