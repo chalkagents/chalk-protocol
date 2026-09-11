@@ -9,12 +9,6 @@ import { Store } from '../lib/store.mjs';
 test('nested verification monitors stay within a conservative descriptor budget', t => {
   const root = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), 'chalk-verification-fds-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  let recursiveSupported = true;
-  try { const watcher = fs.watch(root, { recursive: true }, () => {}); watcher.close(); }
-  catch (error) {
-    if (!['ERR_FEATURE_UNAVAILABLE_ON_PLATFORM', 'ERR_INVALID_ARG_VALUE'].includes(error.code)) throw error;
-    recursiveSupported = false;
-  }
   const cli = resolve('bin/chalk.mjs');
   execFileSync(process.execPath, [cli, 'init', '--bare'], { cwd: root });
   execFileSync('git', ['init', '-q'], { cwd: root });
@@ -30,7 +24,8 @@ test('nested verification monitors stay within a conservative descriptor budget'
 import { syncBuiltinESMExports } from 'node:module';
 const watch = fs.watch; let opened = 0;
 fs.watch = (...args) => {
-  if (++opened > ${recursiveSupported ? 16 : Number.MAX_SAFE_INTEGER}) { const error = new Error('watch descriptor budget exceeded'); error.code = 'EMFILE'; throw error; }
+  if (args[1] && typeof args[1] === 'object' && args[1].recursive) { const error = new Error('recursive watch unavailable'); error.code = 'ERR_FEATURE_UNAVAILABLE_ON_PLATFORM'; throw error; }
+  if (++opened > 64) { const error = new Error('watch descriptor budget exceeded'); error.code = 'EMFILE'; throw error; }
   return watch(...args);
 };
 syncBuiltinESMExports();

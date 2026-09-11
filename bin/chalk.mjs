@@ -962,7 +962,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   work({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
-    if (stageDone(t, 'verified')) return ok(`work ${C.b(t.title)} ${C.dim('(already verified)')}`);
+    if (stageDone(t, 'verified')) {
+      const v = runVerify(s, { cwd: workdir(s, t) });
+      if (!v.green) {
+        console.error(C.r('✗ ') + 'verify RED while resuming previously verified work — gate closed.');
+        process.exit(2);
+      }
+      return ok(`work ${C.b(t.title)} ${C.dim('(already verified; fresh verification recorded)')}`);
+    }
     // Plan-approval gate (the human checkpoint): when planning is required, no code is written until a
     // human has approved the plan. Checked BEFORE the state flip so a refusal leaves no side effect.
     // Exit 2 → the pipeline auto-blocks (needs:human-input) + handoff.

@@ -68,3 +68,21 @@ for (const command of ['work', 'run']) {
     else assert.equal(task.state, 'blocked');
   });
 }
+
+test('chalk work re-verifies an already-verified task and still enforces freshness', t => {
+  const { root, store } = fixture(t, 'work');
+  const first = invoke(root, 'work');
+  assert.equal(first.status, 0, first.stdout + first.stderr);
+  assert.equal(store.task('task-automated').pipeline.stage, 'verified');
+
+  writeFileSync(join(root, 'source.js'), 'before');
+  writeFileSync(join(root, 'check.cjs'),
+    'require("node:fs").writeFileSync("source.js", "changed");');
+  const resumed = invoke(root, 'work');
+  assert.notEqual(resumed.status, 0, resumed.stdout + resumed.stderr);
+  const records = receipts(root).sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  assert.equal(records.length, 2, 'resume creates a new source-bound receipt');
+  assert.equal(records[0].green, true);
+  assert.equal(records[1].green, false);
+  assert.equal(records[1].freshness, 'stale');
+});
