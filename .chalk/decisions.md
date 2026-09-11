@@ -1334,3 +1334,33 @@
 
 - _when:_ 2026-09-11T08:36:33.373Z
 - _why:_ Lock the effective twenty-minute toolchain and E2E deadline proven necessary by the full repository verification run.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:14:26.364Z
+- _why:_ Pin a final source-bound verification receipt after mutation/break-it/review-class post-gate commands before work/run advances.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:14:26.443Z
+- _why:_ Prove stale detection for a transient input in a directory beyond the bounded fallback watcher cutoff, not only handle allocation.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:14:26.509Z
+- _why:_ Exercise every guarded Git pathname selector environment, including path-valued GIT_CONFIG_VALUE slots.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:18:22.360Z
+- _why:_ Lock final post-mutation verification receipts for both chalk work and chalk run using a real changed implementation diff.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:18:22.416Z
+- _why:_ Lock stale detection for a transient input beyond the bounded non-recursive watcher cutoff.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:18:22.475Z
+- _why:_ Lock exhaustive raw-byte coverage for every guarded Git pathname selector and config-value channel.

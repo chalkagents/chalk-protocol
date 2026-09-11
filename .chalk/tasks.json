@@ -8615,15 +8615,15 @@
     "tests": [
       {
         "path": "test/verification-nonutf8-git-paths.test.mjs",
-        "sha256": "4862c58e3b783e4ed6b32021282dda2f9c7afc7f7d86a3f67276a2f2813ddce5"
+        "sha256": "7f38db55bdba367cb86570e5a0834d22bb66285fa886c80a9c96ab961080eef6"
       },
       {
         "path": "test/verification-automated-callers.test.mjs",
-        "sha256": "42e200e2a4d7694ef58b83a3b92ea36f93ea7e168711fa5803b1bc90e9bcb3fa"
+        "sha256": "765eac9d74f3ae4f71fb90e99ad0fbfbc5f6b126338fb92d161b2b4cff866f48"
       },
       {
         "path": "test/verification-descriptor-budget.test.mjs",
-        "sha256": "a78b44be22d2174729bb0402205a0229bdec7cf8c6d8557a57bdb7107f7b32c6"
+        "sha256": "fc20b069efb4dea39bc34411109059a06a36585ee4e1b94b9c358464fcf677b7"
       },
       {
         "path": "test/verification-ignore-race.test.mjs",
@@ -8713,6 +8713,71 @@
           {
             "choice": "Centralize command supervision and source-bound receipt persistence across verify, done, automated work/run, and phase audit.",
             "rationale": "A shared recorder is intended to prevent caller-specific evidence and freshness bypasses.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          }
+        ]
+      },
+      {
+        "at": "2026-09-11T09:12:28.472Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "AC2 is violated after verification returns. lib/run.mjs:90 records a fresh receipt, then lines 103-140 run break-it, mutation, and review commands before lines 141-145 mark the task done; bin/chalk.mjs:1005-1038 has the same ordering before marking work verified. Those commands can alter source without another freshness check. A disposable reproduction configured a mutation command that rewrote source.js: chalk run exited 0, marked the task done, and retained a green/fresh receipt whose before/after identities described the pre-mutation source."
+          },
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "The locked automated-caller tests never enable break-it, mutation, or review, so they pass despite the post-verification mutation demonstrated above. No test asserts that the source still matches the receipt when chalk work records the verified stage or chalk run marks done. This is an untested behavior required by AC2 and therefore blocks under the mandatory non-vacuity rule."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "AC3's bounded fallback is insufficiently exercised. verification-descriptor-budget.test.mjs proves fewer than 65 fs.watch registrations and a GREEN no-op command, but never mutates one of the 220 directories beyond the 48-watcher cutoff. Disabling watcher callbacks or breaking stale detection in an unwatched directory would leave this test green, so operational monitoring—not merely bounded allocation—is unproven."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "AC1's new environment guard covers many independent selectors in GIT_PATH_ENVIRONMENT, but the raw-byte test exercises only XDG_CONFIG_HOME and GIT_CONFIG_PARAMETERS. Removing protection for GIT_INDEX_FILE, GIT_DIR, GIT_WORK_TREE, GIT_CONFIG_GLOBAL, or GIT_CONFIG_VALUE_n path entries would allow Git to receive a Node replacement character and emit valid UTF-8 for that replacement pathname, while all locked tests still pass."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Fail closed on invalid UTF-8 Git pathname output and replacement characters in path-valued Git environment selectors.",
+            "rationale": "Node filesystem paths are string-based, so fatal decoding and environment validation prevent invalid bytes from being silently normalized into a pathname that is then hashed.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Cap each verification monitor at 48 watchers and rely on recursive watching or endpoint namespace/metadata checks beyond that cap.",
+            "rationale": "This keeps nested controller and supervisor monitors comfortably below a 256-descriptor process limit.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Re-run verification when chalk work resumes an already-verified task.",
+            "rationale": "A prior verified pipeline stage cannot establish freshness for source or contract changes made afterward.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Treat a path that becomes unignored between the two Git classification queries as a source change rather than an observer error.",
+            "rationale": "The first query proves classification changed during verification, so stale is conservative while the resolved race remains observable rather than unknown.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Raise the shared toolchain and E2E verification deadline to twenty minutes while preserving explicit overrides.",
+            "rationale": "Recorded self-verification took about sixteen minutes under the prior fifteen-minute limit; twenty minutes accommodates that run without changing individual test limits or freshness checks.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Keep break-it, mutation, and review gates after source-bound verification in automated work/run flows.",
+            "rationale": "These adequacy gates logically consume verified code, but the ordering leaves their filesystem effects outside the receipt boundary and caused the blocking AC2 gap.",
             "blastRadius": "high",
             "reversibility": "hard"
           }
