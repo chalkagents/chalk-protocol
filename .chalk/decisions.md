@@ -1364,3 +1364,13 @@
 
 - _when:_ 2026-09-11T09:18:22.475Z
 - _why:_ Lock exhaustive raw-byte coverage for every guarded Git pathname selector and config-value channel.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T16:29:19.045Z
+- _why:_ Make Linux exercise the intended Git policy, include, and metadata decoders by placing raw-byte authority paths outside the worktree; otherwise general source enumeration fails closed first and the boundary-specific assertions are vacuous.
+
+## Overrode review gate for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T17:44:30.325Z
+- _why:_ External Codex reviewer repeatedly exhausted its fixed 10-minute deadline without a verdict; independent Standards and Spec reviews found no actionable findings; the full Linux suite and locked acceptance tests are green; the human director approved consolidation into main.

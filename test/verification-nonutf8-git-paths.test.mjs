@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdtempSync, writeFileSync, rmSync, realpathSync, renameSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync, rmSync, realpathSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, sep } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -60,11 +60,13 @@ test('a non-UTF-8 Git pathname fails closed or is rejected by the filesystem', t
 });
 
 test('a non-UTF-8 Git policy pathname fails closed or is rejected by the filesystem', t => {
-  const root = realpathSync(mkdtempSync(`${tmpdir()}${sep}chalk-nonutf8-policy-`));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const base = realpathSync(mkdtempSync(`${tmpdir()}${sep}chalk-nonutf8-policy-`));
+  const root = `${base}${sep}project`;
+  t.after(() => rmSync(base, { recursive: true, force: true }));
+  mkdirSync(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
 
-  const rawPath = Buffer.concat([Buffer.from(`${root}${sep}ignore-`), Buffer.from([0xff])]);
+  const rawPath = Buffer.concat([Buffer.from(`${base}${sep}ignore-`), Buffer.from([0xff])]);
   try { writeFileSync(rawPath, 'generated/\n'); }
   catch (error) {
     assert.ok(['EILSEQ', 'EINVAL', 'ENOENT', 'ENOTSUP'].includes(error.code), error.message);
@@ -82,10 +84,12 @@ test('a non-UTF-8 Git policy pathname fails closed or is rejected by the filesys
 });
 
 test('a non-UTF-8 included Git configuration path fails closed', t => {
-  const root = realpathSync(mkdtempSync(`${tmpdir()}${sep}chalk-nonutf8-include-`));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const base = realpathSync(mkdtempSync(`${tmpdir()}${sep}chalk-nonutf8-include-`));
+  const root = `${base}${sep}project`;
+  t.after(() => rmSync(base, { recursive: true, force: true }));
+  mkdirSync(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
-  const rawPath = Buffer.concat([Buffer.from(`${root}${sep}include-`), Buffer.from([0xff])]);
+  const rawPath = Buffer.concat([Buffer.from(`${base}${sep}include-`), Buffer.from([0xff])]);
   try { writeFileSync(rawPath, ''); }
   catch (error) {
     assert.ok(['EILSEQ', 'EINVAL', 'ENOENT', 'ENOTSUP'].includes(error.code), error.message);
@@ -100,10 +104,12 @@ test('a non-UTF-8 included Git configuration path fails closed', t => {
 });
 
 test('a non-UTF-8 Git metadata location fails closed', t => {
-  const root = realpathSync(mkdtempSync(`${tmpdir()}${sep}chalk-nonutf8-gitdir-`));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const base = realpathSync(mkdtempSync(`${tmpdir()}${sep}chalk-nonutf8-gitdir-`));
+  const root = `${base}${sep}project`;
+  t.after(() => rmSync(base, { recursive: true, force: true }));
+  mkdirSync(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
-  const rawGitDir = Buffer.concat([Buffer.from(`${root}${sep}gitdir-`), Buffer.from([0xff])]);
+  const rawGitDir = Buffer.concat([Buffer.from(`${base}${sep}gitdir-`), Buffer.from([0xff])]);
   try { renameSync(`${root}${sep}.git`, rawGitDir); }
   catch (error) {
     assert.ok(['EILSEQ', 'EINVAL', 'ENOENT', 'ENOTSUP'].includes(error.code), error.message);

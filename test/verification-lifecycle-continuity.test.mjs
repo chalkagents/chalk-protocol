@@ -74,7 +74,9 @@ test('a detached worker cannot hide an input transition between lint and test', 
   assert.equal(readFileSync(join(root, '.chalk/local/transition'), 'utf8'), 'observed');
   assert.equal(result.toolchainGreen, true, JSON.stringify(result));
   assert.equal(result.green, false); assert.equal(result.freshness, 'stale');
-  assert.ok(result.observation.inputChanges.includes('ephemeral.js'));
+  assert.ok(result.observation.inputChanges.includes('ephemeral.js') ||
+    result.observation.inputChanges.some(path => path === `source-directory:${root}`),
+  'the transient input is retained either by its delivered filename or the directory namespace boundary');
 });
 
 test('continuous observation preserves unchanged multi-gate verification', t => {

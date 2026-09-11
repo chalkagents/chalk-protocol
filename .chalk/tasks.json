@@ -8594,7 +8594,7 @@
   {
     "id": "task-42b79111",
     "title": "fix: close source-bound verification review gaps",
-    "state": "in-progress",
+    "state": "done",
     "acceptanceCriteria": [
       {
         "text": "Git pathname discovery preserves arbitrary non-NUL path bytes losslessly or fails closed with unknown source identity; it never hashes a replacement-character pathname."
@@ -8615,7 +8615,7 @@
     "tests": [
       {
         "path": "test/verification-nonutf8-git-paths.test.mjs",
-        "sha256": "7f38db55bdba367cb86570e5a0834d22bb66285fa886c80a9c96ab961080eef6"
+        "sha256": "e5402714d61d34a7560357c3e92a75552a0c7c212e35a4bc3c76c50225824587"
       },
       {
         "path": "test/verification-automated-callers.test.mjs",
@@ -8784,6 +8784,7 @@
         ]
       }
     ],
-    "startedAt": "2026-09-11T01:59:47.119Z"
+    "startedAt": "2026-09-11T01:59:47.119Z",
+    "doneAt": "2026-09-11T17:44:30.325Z"
   }
 ]
