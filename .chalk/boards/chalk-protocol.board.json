@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789089574591,
+  "updatedAt": 1789091241176,
   "order": 0,
   "cards": [
     {
@@ -1694,6 +1694,23 @@
           "runId": "done-task-3a2210a9",
           "status": "passed",
           "at": 1789089574591
+        }
+      }
+    },
+    {
+      "id": "task-b3f1b2f6",
+      "title": "fix: make minimum Node CI fixtures portable",
+      "column": "done",
+      "createdAt": 1789089965414,
+      "updatedAt": 1789091241176,
+      "order": 100,
+      "description": "- The minimum supported Node CI lane passes every first-party adapter and connect fixture without relying on syntax detection added in newer Node releases.\n- Fake executable behavior and production adapter semantics remain unchanged on Node 20 and newer.",
+      "testArtifact": {
+        "specPath": "test/connect.test.mjs",
+        "lastRun": {
+          "runId": "done-task-b3f1b2f6",
+          "status": "passed",
+          "at": 1789091241176
         }
       }
     }

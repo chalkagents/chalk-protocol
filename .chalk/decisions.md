@@ -1139,3 +1139,43 @@
 
 - _when:_ 2026-09-11T00:25:30.417Z
 - _why:_ Relock the scheduler contract with public runtime prerequisite coverage.
+
+## Amended acceptance test for "fix: make minimum Node CI fixtures portable"
+
+- _when:_ 2026-09-11T01:26:53.210Z
+- _why:_ Make the extensionless fake Codex CLI explicitly CommonJS so the minimum Node lane exercises the same fixture behavior.
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-09-11T01:26:53.270Z
+- _why:_ Make the extensionless fake Codex CLI explicitly CommonJS so the locked connect contract runs on the declared minimum Node runtime.
+
+## Amended acceptance test for "fix: make minimum Node CI fixtures portable"
+
+- _when:_ 2026-09-11T01:26:53.329Z
+- _why:_ Make the extensionless fake Claude CLI explicitly CommonJS so the minimum Node lane exercises the same fixture behavior.
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-09-11T01:26:53.385Z
+- _why:_ Make the extensionless fake Claude CLI explicitly CommonJS so the locked cost-ledger contract runs on the declared minimum Node runtime.
+
+## Amended acceptance test for "fix: make minimum Node CI fixtures portable"
+
+- _when:_ 2026-09-11T01:27:05.326Z
+- _why:_ Relock the Node 18-compatible extensionless connect fixture.
+
+## Amended acceptance test for "feat: add chalk connect for guided agent setup and role assignment"
+
+- _when:_ 2026-09-11T01:27:05.387Z
+- _why:_ Relock the original connect contract after making its fake CLI execution mode explicit.
+
+## Amended acceptance test for "fix: make minimum Node CI fixtures portable"
+
+- _when:_ 2026-09-11T01:27:05.444Z
+- _why:_ Relock the Node 18-compatible extensionless cost-ledger fixture.
+
+## Amended acceptance test for "feat: token-level cost ledger — record usage per agent call so chalk's induced overhead (and savings) are measurable"
+
+- _when:_ 2026-09-11T01:27:05.502Z
+- _why:_ Relock the original cost-ledger contract after making its fake CLI execution mode explicit.

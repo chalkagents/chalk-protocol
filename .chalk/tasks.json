@@ -1219,7 +1219,7 @@
     "tests": [
       {
         "path": "test/cost-ledger.test.mjs",
-        "sha256": "3a3c0b8a0888c6c0478c753a16758494665845736dfbb6272791b47c9d4e3fea"
+        "sha256": "dc5f4aa8eb20f47524fbb0eab6811aba871d9438230b8dc0033155bbed743c71"
       }
     ],
     "heldOut": [],
@@ -7716,7 +7716,7 @@
     "tests": [
       {
         "path": "test/connect.test.mjs",
-        "sha256": "e89b1ccd41aff21467e9d5a10b0a4a5395f03c5654a64bae9851a1945722e8b5"
+        "sha256": "12444c9ba65c7c556482d42f0d88019e7ed73785a6b5807961094f664fbfb568"
       }
     ],
     "heldOut": [],
@@ -8528,5 +8528,67 @@
       "seq": 1
     },
     "doneAt": "2026-09-11T01:19:34.591Z"
+  },
+  {
+    "id": "task-b3f1b2f6",
+    "title": "fix: make minimum Node CI fixtures portable",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "The minimum supported Node CI lane passes every first-party adapter and connect fixture without relying on syntax detection added in newer Node releases."
+      },
+      {
+        "text": "Fake executable behavior and production adapter semantics remain unchanged on Node 20 and newer."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/connect.test.mjs",
+        "sha256": "12444c9ba65c7c556482d42f0d88019e7ed73785a6b5807961094f664fbfb568"
+      },
+      {
+        "path": "test/cost-ledger.test.mjs",
+        "sha256": "dc5f4aa8eb20f47524fbb0eab6811aba871d9438230b8dc0033155bbed743c71"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-11T01:26:05.414Z",
+    "reviews": [
+      {
+        "at": "2026-09-11T01:42:29.505Z",
+        "by": "adversary",
+        "verdict": "pass",
+        "findings": [],
+        "decisions": [
+          {
+            "choice": "Use CommonJS require calls inside the two extensionless fake executables instead of relying on ESM syntax detection.",
+            "rationale": "CommonJS is parsed consistently by Node 18.17 while preserving the fixtures’ arguments, output, exit codes, stdin handling, and marker behavior.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Keep the executable filenames extensionless rather than renaming them to .mjs or .cjs.",
+            "rationale": "This preserves realistic CLI discovery and invocation paths while fixing only the scripts’ module syntax.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Limit the compatibility fix to test fixtures and leave production adapters and CI configuration unchanged.",
+            "rationale": "Production adapters already use explicit .mjs files; the incompatibility originated solely in generated extensionless fixtures. The full Node 18.17 lane passed 587 tests, and focused suites passed on Node 20.0 and Node 24.18.",
+            "blastRadius": "low",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Amend and relock the shared acceptance tests for both the current task and their originating historical tasks.",
+            "rationale": "The fixtures are locked contracts shared across tasks, so all affected hashes needed sanctioned updates to preserve integrity enforcement.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-09-11T01:26:25.980Z",
+    "doneAt": "2026-09-11T01:47:21.176Z"
   }
 ]
