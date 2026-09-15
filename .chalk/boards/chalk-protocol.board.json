@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789091241176,
+  "updatedAt": 1789484395478,
   "order": 0,
   "cards": [
     {
@@ -1712,6 +1712,103 @@
           "status": "passed",
           "at": 1789091241176
         }
+      }
+    },
+    {
+      "id": "task-42b79111",
+      "title": "fix: close source-bound verification review gaps",
+      "column": "done",
+      "createdAt": 1789091940214,
+      "updatedAt": 1789148670325,
+      "order": 101,
+      "description": "- Git pathname discovery preserves arbitrary non-NUL path bytes losslessly or fails closed with unknown source identity; it never hashes a replacement-character pathname.\n- Automated chalk work and chalk run verification paths create the same source-bound receipt evidence as direct verify and done without bypassing freshness gates.\n- Verification monitoring remains operational within a 256-descriptor process limit for repositories with at least 200 source directories.\n- If Git ignore policy changes between classification queries, verification conservatively records the changed path as stale without treating the resolved race as an observer failure.\n- The default verification command deadline accommodates the repository's source-bound self-verification suite without weakening per-test timeouts or freshness enforcement.",
+      "testArtifact": {
+        "specPath": "test/verification-nonutf8-git-paths.test.mjs",
+        "lastRun": {
+          "runId": "done-task-42b79111",
+          "status": "passed",
+          "at": 1789148670325
+        }
+      }
+    },
+    {
+      "id": "task-dedc06b3",
+      "title": "feat: persist verification runs with source-bound evidence",
+      "column": "done",
+      "createdAt": 1789476219369,
+      "updatedAt": 1789478524352,
+      "order": 102,
+      "description": "- Every verify invocation, including done and automated callers, stores a unique local run with commands, complete stdout/stderr logs, timestamps, exit/signal/error status, source fingerprints, effective verification configuration and matching task criteria/test identity.\n- Source identity includes tracked and ordinary untracked inputs and excludes protocol bookkeeping, held-out content and ignored build output; unknown identity or inputs changing during a run are reported and cannot produce green verification.\n- Passing, failing, timed-out and interrupted subprocess results retain evidence without shell-buffer truncation; failures to persist evidence fail verification explicitly; existing integrity and toolchain behavior remains covered.",
+      "testArtifact": {
+        "specPath": "test/verification-record.test.mjs",
+        "lastRun": {
+          "runId": "done-task-dedc06b3",
+          "status": "passed",
+          "at": 1789478524352
+        }
+      }
+    },
+    {
+      "id": "task-2cd1340d",
+      "title": "fix: normalize Windows filesystem identity probes",
+      "column": "done",
+      "createdAt": 1789479149592,
+      "updatedAt": 1789479650474,
+      "order": 103,
+      "description": "- Synchronous and asynchronous verification identity checks derive inode, device, and timestamp metadata through one exact stat representation so unchanged Windows inputs and storage remain fresh.\n- Archive replacement, source mutation, policy mutation, and storage redirection still fail closed while content hashing remains bounded and asynchronous.\n- The existing minimum-Node, Linux, and Windows verification matrix passes without weakening platform assertions.",
+      "testArtifact": {
+        "specPath": "test/verification-storage-identity.test.mjs",
+        "lastRun": {
+          "runId": "done-task-2cd1340d",
+          "status": "passed",
+          "at": 1789479650474
+        }
+      }
+    },
+    {
+      "id": "task-c1114f1f",
+      "title": "fix: make verification evidence portable on Windows",
+      "column": "done",
+      "createdAt": 1789480257375,
+      "updatedAt": 1789482359186,
+      "order": 104,
+      "description": "- Verification detects temporary Git repository, ignore-policy, source-file, and symlink changes on Windows without losing path identity or holding repository selectors open.\n- Verification retains complete stdout and stderr and terminates or drains descendant processes on Windows for normal completion, timeout, and interruption.\n- The Ubuntu, Windows, and minimum Node CI matrix passes without weakening fail-closed verification assertions.",
+      "testArtifact": {
+        "specPath": "test/verification-absent-membership.test.mjs",
+        "lastRun": {
+          "runId": "done-task-c1114f1f",
+          "status": "passed",
+          "at": 1789482359186
+        }
+      }
+    },
+    {
+      "id": "task-155a35cf",
+      "title": "fix: import the Windows verification script writer",
+      "column": "done",
+      "createdAt": 1789482930293,
+      "updatedAt": 1789483598567,
+      "order": 105,
+      "description": "- The Windows verification supervisor can create its command wrapper without an undefined filesystem binding.\n- Existing Windows verification tests reach their intended filesystem and process-tree assertions instead of failing during supervisor startup.\n- The full Ubuntu, minimum-Node, and Windows CI matrix is green.",
+      "testArtifact": {
+        "specPath": "test/verification-absent-authorities.test.mjs",
+        "lastRun": {
+          "runId": "done-task-155a35cf",
+          "status": "passed",
+          "at": 1789483598567
+        }
+      }
+    },
+    {
+      "id": "task-c52e6997",
+      "title": "fix: close remaining Windows verification regressions",
+      "column": "in_progress",
+      "createdAt": 1789484369073,
+      "updatedAt": 1789484395478,
+      "order": 106,
+      "description": "- Windows verification detects transient ancestor repository selectors, ignore policies, source membership, and symlink changes without false positives for stable ignored output.\n- Windows verification finalizes evidence without held filesystem handles and owns command descendants through normal completion, timeout, interruption, and capture failure.\n- The focused Windows verification regression job and the full Ubuntu, minimum-Node, and Windows CI matrix are green.",
+      "testArtifact": {
+        "specPath": "test/verification-absent-membership.test.mjs"
       }
     }
   ]

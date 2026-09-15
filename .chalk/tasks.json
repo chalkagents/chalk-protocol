@@ -8590,5 +8590,572 @@
     ],
     "startedAt": "2026-09-11T01:26:25.980Z",
     "doneAt": "2026-09-11T01:47:21.176Z"
+  },
+  {
+    "id": "task-42b79111",
+    "title": "fix: close source-bound verification review gaps",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Git pathname discovery preserves arbitrary non-NUL path bytes losslessly or fails closed with unknown source identity; it never hashes a replacement-character pathname."
+      },
+      {
+        "text": "Automated chalk work and chalk run verification paths create the same source-bound receipt evidence as direct verify and done without bypassing freshness gates."
+      },
+      {
+        "text": "Verification monitoring remains operational within a 256-descriptor process limit for repositories with at least 200 source directories."
+      },
+      {
+        "text": "If Git ignore policy changes between classification queries, verification conservatively records the changed path as stale without treating the resolved race as an observer failure."
+      },
+      {
+        "text": "The default verification command deadline accommodates the repository's source-bound self-verification suite without weakening per-test timeouts or freshness enforcement."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-nonutf8-git-paths.test.mjs",
+        "sha256": "e5402714d61d34a7560357c3e92a75552a0c7c212e35a4bc3c76c50225824587"
+      },
+      {
+        "path": "test/verification-automated-callers.test.mjs",
+        "sha256": "765eac9d74f3ae4f71fb90e99ad0fbfbc5f6b126338fb92d161b2b4cff866f48"
+      },
+      {
+        "path": "test/verification-descriptor-budget.test.mjs",
+        "sha256": "6ba0e679595ad831475612fe67b6ce3147550c341884c427e615a63c6f1502ed"
+      },
+      {
+        "path": "test/verification-ignore-race.test.mjs",
+        "sha256": "08d95dc6f0da5bfec5a20cc91bc3dedc4176ab75e6cfe41408db612e8a7e38b1"
+      },
+      {
+        "path": "test/verification-default-timeout.test.mjs",
+        "sha256": "abe5fb9ddf25de8542327774d49386b1b19f132fca19125e88ed831f27142c61"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-11T01:59:00.214Z",
+    "reviews": [
+      {
+        "at": "2026-09-11T08:00:55.591Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "AC2 is incomplete: bin/chalk.mjs:965 returns success for an already-verified `chalk work` before runVerify at line 998. Changed source/config/locks can therefore resume without a fresh receipt or freshness gate; the locked test covers only first invocation."
+          },
+          {
+            "severity": "high",
+            "area": "regression",
+            "note": "Independent execution of the five locked tests passed 9/10. verification-descriptor-budget.test.mjs failed because monitoring returned `invalid policy parent` and freshness `unknown`; verification-command.mjs:203-206 rejects a symlinked authority parent such as macOS `/etc` instead of resolving it."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "AC3 is only addressed where recursive fs.watch exists. The fallback at verification-command.mjs:234-238 opens per-directory watchers without a bounded alternative, while the locked test disables its synthetic cap on that exact branch. This leaves supported Node 18 and other non-recursive backends exposed under a 256-descriptor limit."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "AC4's locked test exercises only classifyGitIgnoreRule. Removing its observer wiring or changing the caller to report failure instead of stale still leaves the test green. No test drives the two-query race and asserts freshness `stale` with no monitorError."
+          },
+          {
+            "severity": "med",
+            "area": "correctness",
+            "note": "AC5 is inconsistent across verification commands: toolchain commands receive 15 minutes, but E2E commands omit timeoutMs and retain the 600000 ms fallback at verification-command.mjs:488; lib/e2e.mjs:65 also remains at 10 minutes."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "The AC5 test asserts only an exported constant, not the effective command deadline, repository self-verification, per-test limits, or freshness enforcement. Replacing runToolchain's default with a 10-minute literal while retaining the constant would pass."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "AC1 tests cover ls-files and core.excludesFile, but not the newly altered decoding paths for index locations, configuration origins/includes, repository selectors, or submodule roots. Reintroducing lossy decoding in those channels would remain green."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Fail closed when Git pathname-bearing output is not valid UTF-8, while preserving valid leading BOM bytes.",
+            "rationale": "Node filesystem APIs cannot safely address arbitrary undecodable path bytes without risking hashing a replacement-character pathname.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Use one recursive fs.watch handle where supported, with per-directory watchers as the portability fallback.",
+            "rationale": "Recursive watching sharply reduces descriptor consumption for nested controller and supervisor monitors.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Raise the toolchain command deadline from ten to fifteen minutes.",
+            "rationale": "The repository's source-bound self-verification run takes roughly six minutes, requiring more headroom.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Classify an ignore rule disappearing between queries as a stale source change rather than an observer failure.",
+            "rationale": "The race establishes that classification changed, but the observer successfully resolved it conservatively.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Adopt conservative source-directory namespace identities and require generated-output directories to exist before verification.",
+            "rationale": "Directory metadata can retain transient create/delete activity when filesystem notifications are delayed or withheld.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Centralize command supervision and source-bound receipt persistence across verify, done, automated work/run, and phase audit.",
+            "rationale": "A shared recorder is intended to prevent caller-specific evidence and freshness bypasses.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          }
+        ]
+      },
+      {
+        "at": "2026-09-11T09:12:28.472Z",
+        "by": "adversary",
+        "verdict": "block",
+        "findings": [
+          {
+            "severity": "high",
+            "area": "correctness",
+            "note": "AC2 is violated after verification returns. lib/run.mjs:90 records a fresh receipt, then lines 103-140 run break-it, mutation, and review commands before lines 141-145 mark the task done; bin/chalk.mjs:1005-1038 has the same ordering before marking work verified. Those commands can alter source without another freshness check. A disposable reproduction configured a mutation command that rewrote source.js: chalk run exited 0, marked the task done, and retained a green/fresh receipt whose before/after identities described the pre-mutation source."
+          },
+          {
+            "severity": "high",
+            "area": "test-adequacy",
+            "note": "The locked automated-caller tests never enable break-it, mutation, or review, so they pass despite the post-verification mutation demonstrated above. No test asserts that the source still matches the receipt when chalk work records the verified stage or chalk run marks done. This is an untested behavior required by AC2 and therefore blocks under the mandatory non-vacuity rule."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "AC3's bounded fallback is insufficiently exercised. verification-descriptor-budget.test.mjs proves fewer than 65 fs.watch registrations and a GREEN no-op command, but never mutates one of the 220 directories beyond the 48-watcher cutoff. Disabling watcher callbacks or breaking stale detection in an unwatched directory would leave this test green, so operational monitoring—not merely bounded allocation—is unproven."
+          },
+          {
+            "severity": "med",
+            "area": "test-adequacy",
+            "note": "AC1's new environment guard covers many independent selectors in GIT_PATH_ENVIRONMENT, but the raw-byte test exercises only XDG_CONFIG_HOME and GIT_CONFIG_PARAMETERS. Removing protection for GIT_INDEX_FILE, GIT_DIR, GIT_WORK_TREE, GIT_CONFIG_GLOBAL, or GIT_CONFIG_VALUE_n path entries would allow Git to receive a Node replacement character and emit valid UTF-8 for that replacement pathname, while all locked tests still pass."
+          }
+        ],
+        "decisions": [
+          {
+            "choice": "Fail closed on invalid UTF-8 Git pathname output and replacement characters in path-valued Git environment selectors.",
+            "rationale": "Node filesystem paths are string-based, so fatal decoding and environment validation prevent invalid bytes from being silently normalized into a pathname that is then hashed.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Cap each verification monitor at 48 watchers and rely on recursive watching or endpoint namespace/metadata checks beyond that cap.",
+            "rationale": "This keeps nested controller and supervisor monitors comfortably below a 256-descriptor process limit.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          },
+          {
+            "choice": "Re-run verification when chalk work resumes an already-verified task.",
+            "rationale": "A prior verified pipeline stage cannot establish freshness for source or contract changes made afterward.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Treat a path that becomes unignored between the two Git classification queries as a source change rather than an observer error.",
+            "rationale": "The first query proves classification changed during verification, so stale is conservative while the resolved race remains observable rather than unknown.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Raise the shared toolchain and E2E verification deadline to twenty minutes while preserving explicit overrides.",
+            "rationale": "Recorded self-verification took about sixteen minutes under the prior fifteen-minute limit; twenty minutes accommodates that run without changing individual test limits or freshness checks.",
+            "blastRadius": "med",
+            "reversibility": "easy"
+          },
+          {
+            "choice": "Keep break-it, mutation, and review gates after source-bound verification in automated work/run flows.",
+            "rationale": "These adequacy gates logically consume verified code, but the ordering leaves their filesystem effects outside the receipt boundary and caused the blocking AC2 gap.",
+            "blastRadius": "high",
+            "reversibility": "hard"
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-09-11T01:59:47.119Z",
+    "doneAt": "2026-09-11T17:44:30.325Z"
+  },
+  {
+    "id": "task-dedc06b3",
+    "title": "feat: persist verification runs with source-bound evidence",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Every verify invocation, including done and automated callers, stores a unique local run with commands, complete stdout/stderr logs, timestamps, exit/signal/error status, source fingerprints, effective verification configuration and matching task criteria/test identity."
+      },
+      {
+        "text": "Source identity includes tracked and ordinary untracked inputs and excludes protocol bookkeeping, held-out content and ignored build output; unknown identity or inputs changing during a run are reported and cannot produce green verification."
+      },
+      {
+        "text": "Passing, failing, timed-out and interrupted subprocess results retain evidence without shell-buffer truncation; failures to persist evidence fail verification explicitly; existing integrity and toolchain behavior remains covered."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-record.test.mjs",
+        "sha256": "8ac7cad85c89878831a5f036ba5335bb1883a85dc74cd72fab27385fb8af75cf"
+      },
+      {
+        "path": "test/verification-record-boundaries.test.mjs",
+        "sha256": "4923d91e7d73a5b1f4395b892d595a024211d7bd2a3ed0bad60e2ef3b09f8642"
+      },
+      {
+        "path": "test/verification-source-metadata.test.mjs",
+        "sha256": "929cc9be71332fa6b8c4c9f6af4e1f86ec1fffd4c8dbd0522a5b5c8c574ea4c1"
+      },
+      {
+        "path": "test/verification-lifecycle.test.mjs",
+        "sha256": "7869f29bbb170f019bd15f6124237f1289835b0be3c522c097a05d41fd99ff3c"
+      },
+      {
+        "path": "test/verification-supervision.test.mjs",
+        "sha256": "2bc99f2c56a9cb86b2be8466b40c66bdc8638e3d85bc7027d60db361f1be3325"
+      },
+      {
+        "path": "test/verification-contract-freeze.test.mjs",
+        "sha256": "64a2e8259b3b2e6846dbd8cd20fb15b6f89ce56064f137fbaa3c2f8201d8f152"
+      },
+      {
+        "path": "test/verification-audit-policy.test.mjs",
+        "sha256": "1925b677b2ba14305adba4c4424aa02bcf67e2aa9bc5618bb99774f8aad01a6e"
+      },
+      {
+        "path": "test/verification-recovery-boundaries.test.mjs",
+        "sha256": "5ed6c4439e7e21a97197fb054af42206fae8e782636a28706e27ef7cbd316bf1"
+      },
+      {
+        "path": "test/verification-audit-freshness.test.mjs",
+        "sha256": "09e99246f8c7531a1158bcd14bf0008e4878fab8c6f619ba2dcec2313b922fbf"
+      },
+      {
+        "path": "test/verification-stream-policy.test.mjs",
+        "sha256": "28cbbc1572a901aceace1beee69220e3104b22f18086ca61468d64d183768e9a"
+      },
+      {
+        "path": "test/verification-policy-authorities.test.mjs",
+        "sha256": "804c6b9c0b9e77a5508e0fdbc985514ae24ca044fba0ac74bbe7c5619c801045"
+      },
+      {
+        "path": "test/verification-index-membership.test.mjs",
+        "sha256": "840a9573a222e9aabd874f0c8e1dbcc419b82bac28e1be56e653aab5b3233c7e"
+      },
+      {
+        "path": "test/verification-policy-selection.test.mjs",
+        "sha256": "9c91c1409db2081a9fdd9babf0a85749321f79c6f6ee9d0cfbb9a786fc6b20b6"
+      },
+      {
+        "path": "test/verification-repository-selection.test.mjs",
+        "sha256": "79dcebcc27ef09a7faef45abf93fa796dbd180fd68244528804ff7930e1c24f4"
+      },
+      {
+        "path": "test/verification-descendant-selection.test.mjs",
+        "sha256": "9d93a0c85bec3f961cb24c6543cdcaa8572520b66b15e1b1a7c093980fbf31b8"
+      },
+      {
+        "path": "test/verification-retention.test.mjs",
+        "sha256": "4c9c568223fb77f3807d677ca13dd26baf82ca54936a979027513c3346954119"
+      },
+      {
+        "path": "test/verification-capture-authority.test.mjs",
+        "sha256": "35ca6fbf6ea1e6248609d152510a708be3e8f4cdc5251c9bb91ee5289f9b1c74"
+      },
+      {
+        "path": "test/verification-literal-boundaries.test.mjs",
+        "sha256": "695d6bb8a9d52c167a00560a6588febe6e5ca92abf02103d82da19d776fa2d64"
+      },
+      {
+        "path": "test/verification-policy-notifications.test.mjs",
+        "sha256": "c9eed6dcb562012aa875d6a44a9a59d88144fd29fbe51767af070d3119d377dd"
+      },
+      {
+        "path": "test/verification-git-paths.test.mjs",
+        "sha256": "696e5a95e0689d8548758539f7f38edc1cc3d196497e9493477dddcac931f1d7"
+      },
+      {
+        "path": "test/verification-config-newlines.test.mjs",
+        "sha256": "6d33618d101c3d9bcd20c22d949dc9097a7fb390702f25f85499282f673b4809"
+      },
+      {
+        "path": "test/verification-lifecycle-continuity.test.mjs",
+        "sha256": "0289ba0554ef257e6896b05bbed053030279cac9f794e257f0c0aa9890ade50c"
+      },
+      {
+        "path": "test/verification-observed-manifest.test.mjs",
+        "sha256": "14841d36612cbe10cfc7a45d5a9d777bd5dcce72f7e386372d98a5c89258295d"
+      },
+      {
+        "path": "test/verification-finalization.test.mjs",
+        "sha256": "ac1bc8dcd3d5274e5595e67550797759837278ea0a984cd7c8fc4173825a28a2"
+      },
+      {
+        "path": "test/verification-completion-boundary.test.mjs",
+        "sha256": "8fae92b7b03be7d2f1a48f014b96bfbcc82bfe4b1a6605545285268d95aaa1e0"
+      },
+      {
+        "path": "test/verification-observer-drain.test.mjs",
+        "sha256": "c1a7525d5f26a608e8b2ca48b4dbe0848cd9730779f27508a25a79bed31a049a"
+      },
+      {
+        "path": "test/verification-observer-classification.test.mjs",
+        "sha256": "dc1d3afd4cc8c32097343c0d6a11e271dfaf5a7bf7a10373af700d5a385b461d"
+      },
+      {
+        "path": "test/verification-namespace-boundary.test.mjs",
+        "sha256": "f65e83bbc5d6ef5acecbd051215952c37d16993ca05f5c7e6ccfef7c094583c0"
+      },
+      {
+        "path": "test/verification-namespace-lifecycle.test.mjs",
+        "sha256": "34cfb161582a92c38095b791e10a729e7d44f1b754c822442f05a3a79f613e6b"
+      },
+      {
+        "path": "test/verification-absent-authorities.test.mjs",
+        "sha256": "b8f412cbf9e1f062a1095a8e7ea6b5e6d51b134d2a9d2e0fdc6a5b43a173eaad"
+      },
+      {
+        "path": "test/verification-cli-diagnostics.test.mjs",
+        "sha256": "e9d273d89cafbaede7d0f932b014feed4260ec1e9a4b21cf5ddda3804a78d8b0"
+      },
+      {
+        "path": "test/verification-absent-tracked.test.mjs",
+        "sha256": "27ef46ed7f192110acb2755bf161a1c1ea70da1d5aac3a9774118f42ed126514"
+      },
+      {
+        "path": "test/verification-absent-membership.test.mjs",
+        "sha256": "760cee46bedae0f998f7a36f185036d68c6a84f7a8dc36a814b80fd1cd5c2605"
+      },
+      {
+        "path": "test/verification-symlink-metadata.test.mjs",
+        "sha256": "1a213b4bcefaec3ab995faa9332b304159ae8e5694c60bb817c0dd88c9986202"
+      },
+      {
+        "path": "test/verification-shared-startup.test.mjs",
+        "sha256": "fccb6ef797a0a2e9acc1ee73bc808b3a40cbc44e1eabd8f9e46f6c99045a6712"
+      },
+      {
+        "path": "test/verification-run-review-freshness.test.mjs",
+        "sha256": "5f2b96974294fc3af81c5898b5111c7b675089ba548f44d0264e8496df1428ec"
+      },
+      {
+        "path": "test/verification-storage-identity.test.mjs",
+        "sha256": "dc12d2b08a18d480e33f14251501c50b00a0f7208fc8f47945a3fe8365fff130"
+      },
+      {
+        "path": "test/verification-descriptor-budget.test.mjs",
+        "sha256": "6ba0e679595ad831475612fe67b6ce3147550c341884c427e615a63c6f1502ed"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-15T12:43:39.369Z",
+    "reviews": [],
+    "startedAt": "2026-09-15T12:44:14.205Z",
+    "doneAt": "2026-09-15T13:22:04.352Z"
+  },
+  {
+    "id": "task-2cd1340d",
+    "title": "fix: normalize Windows filesystem identity probes",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Synchronous and asynchronous verification identity checks derive inode, device, and timestamp metadata through one exact stat representation so unchanged Windows inputs and storage remain fresh."
+      },
+      {
+        "text": "Archive replacement, source mutation, policy mutation, and storage redirection still fail closed while content hashing remains bounded and asynchronous."
+      },
+      {
+        "text": "The existing minimum-Node, Linux, and Windows verification matrix passes without weakening platform assertions."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-storage-identity.test.mjs",
+        "sha256": "dc12d2b08a18d480e33f14251501c50b00a0f7208fc8f47945a3fe8365fff130"
+      },
+      {
+        "path": "test/verification-record.test.mjs",
+        "sha256": "8ac7cad85c89878831a5f036ba5335bb1883a85dc74cd72fab27385fb8af75cf"
+      },
+      {
+        "path": "test/verification-retention.test.mjs",
+        "sha256": "4c9c568223fb77f3807d677ca13dd26baf82ca54936a979027513c3346954119"
+      },
+      {
+        "path": "test/verification-source-metadata.test.mjs",
+        "sha256": "929cc9be71332fa6b8c4c9f6af4e1f86ec1fffd4c8dbd0522a5b5c8c574ea4c1"
+      },
+      {
+        "path": "test/verification-automated-callers.test.mjs",
+        "sha256": "765eac9d74f3ae4f71fb90e99ad0fbfbc5f6b126338fb92d161b2b4cff866f48"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-15T13:32:29.592Z",
+    "reviews": [],
+    "startedAt": "2026-09-15T13:32:40.220Z",
+    "doneAt": "2026-09-15T13:40:50.474Z"
+  },
+  {
+    "id": "task-c1114f1f",
+    "title": "fix: make verification evidence portable on Windows",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Verification detects temporary Git repository, ignore-policy, source-file, and symlink changes on Windows without losing path identity or holding repository selectors open."
+      },
+      {
+        "text": "Verification retains complete stdout and stderr and terminates or drains descendant processes on Windows for normal completion, timeout, and interruption."
+      },
+      {
+        "text": "The Ubuntu, Windows, and minimum Node CI matrix passes without weakening fail-closed verification assertions."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-absent-membership.test.mjs",
+        "sha256": "760cee46bedae0f998f7a36f185036d68c6a84f7a8dc36a814b80fd1cd5c2605"
+      },
+      {
+        "path": "test/verification-capture-authority.test.mjs",
+        "sha256": "35ca6fbf6ea1e6248609d152510a708be3e8f4cdc5251c9bb91ee5289f9b1c74"
+      },
+      {
+        "path": "test/verification-descriptor-budget.test.mjs",
+        "sha256": "6ba0e679595ad831475612fe67b6ce3147550c341884c427e615a63c6f1502ed"
+      },
+      {
+        "path": "test/verification-git-paths.test.mjs",
+        "sha256": "696e5a95e0689d8548758539f7f38edc1cc3d196497e9493477dddcac931f1d7"
+      },
+      {
+        "path": "test/verification-lifecycle-continuity.test.mjs",
+        "sha256": "0289ba0554ef257e6896b05bbed053030279cac9f794e257f0c0aa9890ade50c"
+      },
+      {
+        "path": "test/verification-lifecycle.test.mjs",
+        "sha256": "7869f29bbb170f019bd15f6124237f1289835b0be3c522c097a05d41fd99ff3c"
+      },
+      {
+        "path": "test/verification-literal-boundaries.test.mjs",
+        "sha256": "695d6bb8a9d52c167a00560a6588febe6e5ca92abf02103d82da19d776fa2d64"
+      },
+      {
+        "path": "test/verification-policy-authorities.test.mjs",
+        "sha256": "804c6b9c0b9e77a5508e0fdbc985514ae24ca044fba0ac74bbe7c5619c801045"
+      },
+      {
+        "path": "test/verification-record.test.mjs",
+        "sha256": "8ac7cad85c89878831a5f036ba5335bb1883a85dc74cd72fab27385fb8af75cf"
+      },
+      {
+        "path": "test/verification-repository-selection.test.mjs",
+        "sha256": "79dcebcc27ef09a7faef45abf93fa796dbd180fd68244528804ff7930e1c24f4"
+      },
+      {
+        "path": "test/verification-stream-policy.test.mjs",
+        "sha256": "28cbbc1572a901aceace1beee69220e3104b22f18086ca61468d64d183768e9a"
+      },
+      {
+        "path": "test/verification-supervision.test.mjs",
+        "sha256": "2bc99f2c56a9cb86b2be8466b40c66bdc8638e3d85bc7027d60db361f1be3325"
+      },
+      {
+        "path": "test/verification-symlink-metadata.test.mjs",
+        "sha256": "1a213b4bcefaec3ab995faa9332b304159ae8e5694c60bb817c0dd88c9986202"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-15T13:50:57.375Z",
+    "reviews": [],
+    "startedAt": "2026-09-15T13:51:05.413Z",
+    "doneAt": "2026-09-15T14:25:59.186Z"
+  },
+  {
+    "id": "task-155a35cf",
+    "title": "fix: import the Windows verification script writer",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "The Windows verification supervisor can create its command wrapper without an undefined filesystem binding."
+      },
+      {
+        "text": "Existing Windows verification tests reach their intended filesystem and process-tree assertions instead of failing during supervisor startup."
+      },
+      {
+        "text": "The full Ubuntu, minimum-Node, and Windows CI matrix is green."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-absent-authorities.test.mjs",
+        "sha256": "b8f412cbf9e1f062a1095a8e7ea6b5e6d51b134d2a9d2e0fdc6a5b43a173eaad"
+      },
+      {
+        "path": "test/verification-supervision.test.mjs",
+        "sha256": "2bc99f2c56a9cb86b2be8466b40c66bdc8638e3d85bc7027d60db361f1be3325"
+      },
+      {
+        "path": "test/verification-lifecycle-continuity.test.mjs",
+        "sha256": "0289ba0554ef257e6896b05bbed053030279cac9f794e257f0c0aa9890ade50c"
+      }
+    ],
+    "heldOut": [],
+    "after": [
+      "task-c1114f1f"
+    ],
+    "createdAt": "2026-09-15T14:35:30.293Z",
+    "reviews": [],
+    "startedAt": "2026-09-15T14:36:09.817Z",
+    "doneAt": "2026-09-15T14:46:38.567Z"
+  },
+  {
+    "id": "task-c52e6997",
+    "title": "fix: close remaining Windows verification regressions",
+    "state": "in-progress",
+    "acceptanceCriteria": [
+      {
+        "text": "Windows verification detects transient ancestor repository selectors, ignore policies, source membership, and symlink changes without false positives for stable ignored output."
+      },
+      {
+        "text": "Windows verification finalizes evidence without held filesystem handles and owns command descendants through normal completion, timeout, interruption, and capture failure."
+      },
+      {
+        "text": "The focused Windows verification regression job and the full Ubuntu, minimum-Node, and Windows CI matrix are green."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-absent-membership.test.mjs",
+        "sha256": "760cee46bedae0f998f7a36f185036d68c6a84f7a8dc36a814b80fd1cd5c2605"
+      },
+      {
+        "path": "test/verification-lifecycle-continuity.test.mjs",
+        "sha256": "0289ba0554ef257e6896b05bbed053030279cac9f794e257f0c0aa9890ade50c"
+      },
+      {
+        "path": "test/verification-repository-selection.test.mjs",
+        "sha256": "79dcebcc27ef09a7faef45abf93fa796dbd180fd68244528804ff7930e1c24f4"
+      }
+    ],
+    "heldOut": [],
+    "after": [
+      "task-155a35cf"
+    ],
+    "createdAt": "2026-09-15T14:59:29.073Z",
+    "reviews": [],
+    "startedAt": "2026-09-15T14:59:55.478Z"
   }
 ]

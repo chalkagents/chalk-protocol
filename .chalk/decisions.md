@@ -1179,3 +1179,433 @@
 
 - _when:_ 2026-09-11T01:27:05.502Z
 - _why:_ Relock the original cost-ledger contract after making its fake CLI execution mode explicit.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T02:03:43.459Z
+- _why:_ Allow platforms whose filesystem rejects invalid UTF-8 path bytes to skip; Linux CI still exercises the reachable raw-byte Git pathname case.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T02:04:03.953Z
+- _why:_ Relock the cross-platform raw-byte Git pathname regression with Linux execution and filesystem-aware skipping.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T02:21:40.966Z
+- _why:_ Lock the finalized macOS EILSEQ portability case after its sanctioned skip handling was completed.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T02:59:39.432Z
+- _why:_ Replace timing-sensitive OS descriptor exhaustion with a deterministic inherited monitor-watch budget that fails the unbounded implementation and covers nested controller/supervisor monitors.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T03:44:31.045Z
+- _why:_ Keep the 220-directory acceptance fixture while limiting tracked content so the test targets watcher registration rather than file hashing.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T03:53:09.321Z
+- _why:_ Allow the intentionally large nested-verification fixture to complete under the outer repository verifier while retaining the deterministic 16-watch failure threshold.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:07:19.041Z
+- _why:_ Run the fixture on every CI platform; apply the synthetic per-watch cap only where fs.watch uses recursive directory handles, while Linux inotify validates the same large repository without a skip.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:08:24.403Z
+- _why:_ Replace platform branching with an fs.watch recursive-capability probe so every platform runs the fixture and the repository's no-untracked-exclusions policy remains satisfied.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:13:09.879Z
+- _why:_ Use a platform-neutral decision-unit contract for the Git classification race; the npm-wrapped integration path is already exercised by the existing policy tests.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:13:09.903Z
+- _why:_ Treat filesystem-level rejection of non-UTF-8 byte paths as a valid capability outcome instead of excluding Windows or macOS from the contract.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:27:24.462Z
+- _why:_ Lock the final platform-neutral classification decision test after replacing the executable shim implementation.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:48:59.049Z
+- _why:_ Extend the locked regression to cover non-UTF-8 Git configuration and repository pathname authorities identified by adversarial spec review.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:50:31.726Z
+- _why:_ Lock the expanded non-UTF-8 policy-authority regression after implementing fatal decoding for every pathname-bearing Git query.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T04:52:14.589Z
+- _why:_ Lock the valid UTF-8 BOM pathname case found by adversarial review so pathname decoding cannot silently strip leading bytes.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:49.920Z
+- _why:_ Pin re-verification and freshness enforcement when chalk work resumes from an already-verified pipeline stage.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:49.988Z
+- _why:_ Exercise the non-recursive watcher fallback under a hard synthetic handle budget and the macOS symlinked policy-parent case.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:50.055Z
+- _why:_ Replace the helper-only assertion with an end-to-end observer race that must produce stale freshness without monitor failure.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:50.123Z
+- _why:_ Pin the effective default and explicit override passed to both toolchain and E2E verification commands.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:04:50.189Z
+- _why:_ Cover additional pathname-bearing Git authority and membership channels identified by external review.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.578Z
+- _why:_ Lock resumed-work re-verification and stale receipt enforcement after implementing the external review fix.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.644Z
+- _why:_ Lock the forced non-recursive watcher fallback under a 64-handle synthetic ceiling.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.714Z
+- _why:_ Lock the end-to-end two-query ignore race as stale with no monitor error.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.782Z
+- _why:_ Lock effective toolchain and E2E timeout propagation plus explicit timeout overrides.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:09:56.847Z
+- _why:_ Lock additional Git index, include, and metadata pathname channels after external review.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:11:52.844Z
+- _why:_ Lock full verification evidence showing both toolchain and E2E executions receive the shared fifteen-minute deadline.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:15:02.167Z
+- _why:_ Pin fail-closed handling when inherited raw bytes in Git pathname selector environment variables reach Node as replacement characters.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:16:02.095Z
+- _why:_ Lock the raw child-process XDG pathname environment regression after adding fail-closed selector validation.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:17:57.335Z
+- _why:_ Pin legacy GIT_CONFIG_PARAMETERS as another path-valued configuration channel that must fail closed on replacement characters.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:19:10.374Z
+- _why:_ Lock raw GIT_CONFIG_PARAMETERS and XDG_CONFIG_HOME selector coverage after closing the final environment-decoding gap.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:35:54.689Z
+- _why:_ The authoritative self-verification suite exceeded fifteen minutes after adding the required regressions; lock a twenty-minute shared command deadline while retaining explicit overrides.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T08:36:33.373Z
+- _why:_ Lock the effective twenty-minute toolchain and E2E deadline proven necessary by the full repository verification run.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:14:26.364Z
+- _why:_ Pin a final source-bound verification receipt after mutation/break-it/review-class post-gate commands before work/run advances.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:14:26.443Z
+- _why:_ Prove stale detection for a transient input in a directory beyond the bounded fallback watcher cutoff, not only handle allocation.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:14:26.509Z
+- _why:_ Exercise every guarded Git pathname selector environment, including path-valued GIT_CONFIG_VALUE slots.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:18:22.360Z
+- _why:_ Lock final post-mutation verification receipts for both chalk work and chalk run using a real changed implementation diff.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:18:22.416Z
+- _why:_ Lock stale detection for a transient input beyond the bounded non-recursive watcher cutoff.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T09:18:22.475Z
+- _why:_ Lock exhaustive raw-byte coverage for every guarded Git pathname selector and config-value channel.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T16:29:19.045Z
+- _why:_ Make Linux exercise the intended Git policy, include, and metadata decoders by placing raw-byte authority paths outside the worktree; otherwise general source enumeration fails closed first and the boundary-specific assertions are vacuous.
+
+## Overrode review gate for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-11T17:44:30.325Z
+- _why:_ External Codex reviewer repeatedly exhausted its fixed 10-minute deadline without a verdict; independent Standards and Spec reviews found no actionable findings; the full Linux suite and locked acceptance tests are green; the human director approved consolidation into main.
+
+## Restore source-bound verification contract as task-dedc06b
+
+- _when:_ 2026-09-15T12:44:46.430Z
+- _why:_ The original committed evidence referenced task-3689504d, but its durable Chalk task record was omitted. Recreating the original criteria and 35 current test locks through task add/spec/start restores auditable ownership without editing tasks.json directly.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:13.467Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.304Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.372Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.435Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.496Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.557Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.615Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.671Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.728Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-15T12:50:24.783Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading; descriptor-budget assertions remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:32.890Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:32.955Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.019Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.080Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.137Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.194Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.251Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.310Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.365Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-15T12:55:33.421Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:59:33.484Z
+- _why:_ Relock the Node 18.17 startup fixture after replacing eval import.meta.url with an explicit portable absolute module path.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:59:33.545Z
+- _why:_ Relock the Node 18.17 startup fixture after replacing eval import.meta.url with an explicit portable absolute module path.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:59:33.606Z
+- _why:_ Relock the Node 18.17 startup fixture after replacing eval import.meta.url with an explicit portable absolute module path.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:59:33.668Z
+- _why:_ Relock the Node 18.17 startup fixture after replacing eval import.meta.url with an explicit portable absolute module path.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:11:55.458Z
+- _why:_ Add the adversarially requested failure path proving a stale second verification after a passing review blocks chalk run instead of marking the task done.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:11:55.523Z
+- _why:_ Add controlled adjacent bigint identifiers above Number.MAX_SAFE_INTEGER so lossy Number conversion cannot satisfy the exact filesystem identity contract.
+
+## Overrode review gate for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:22:04.352Z
+- _why:_ Independent Standards and Spec reviewers both passed the exact PR plus remediation with zero findings; the configured external Codex reviewer previously timed out repeatedly, and the user approved continuing with the independent review evidence.
+
+## Overrode review gate for "fix: normalize Windows filesystem identity probes"
+
+- _when:_ 2026-09-15T13:40:50.473Z
+- _why:_ Independent Standards and Spec reviewers passed the exact Windows identity normalization diff with zero findings; the configured external reviewer is unavailable within the bounded workflow.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:26.981Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.080Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.179Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.276Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.374Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.471Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.570Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.670Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-15T14:04:31.975Z
+- _why:_ Keep the original fail-closed regression while expressing its path and termination evidence portably on Windows.
+
+## Amended acceptance test for "fix: normalize Windows filesystem identity probes"
+
+- _when:_ 2026-09-15T14:04:32.071Z
+- _why:_ Keep the original fail-closed regression while expressing its path and termination evidence portably on Windows.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T14:09:00.544Z
+- _why:_ Prove Windows timeout owns and terminates detached descendants before fixture cleanup.
+
+## Amended acceptance test for "fix: make verification evidence portable on Windows"
+
+- _when:_ 2026-09-15T14:09:00.619Z
+- _why:_ Prove Windows timeout owns and terminates detached descendants before fixture cleanup.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T14:14:32.983Z
+- _why:_ Ensure fixture cleanup cannot mask a surviving Windows descendant before the timeout assertion.
+
+## Amended acceptance test for "fix: make verification evidence portable on Windows"
+
+- _when:_ 2026-09-15T14:14:33.085Z
+- _why:_ Ensure fixture cleanup cannot mask a surviving Windows descendant before the timeout assertion.
+
+## Use bounded per-directory watching and PowerShell process-tree ownership on Windows
+
+- _when:_ 2026-09-15T14:18:10.559Z
+- _why:_ Recursive Windows watchers can hold Git selectors open and collapse nested events to ancestor names; Start-Process -Wait provides a live owner for complete descendant drain and taskkill cancellation.
+
+## Overrode review gate for "fix: make verification evidence portable on Windows"
+
+- _when:_ 2026-09-15T14:25:59.185Z
+- _why:_ Independent Standards and Spec reviewers both passed the final diff with zero actionable findings; full GREEN receipt 6c167147-a709-4fe0-b122-c8ac4b5c4b77.
+
+## Import the Windows command-wrapper writer from node:fs
+
+- _when:_ 2026-09-15T14:39:34.505Z
+- _why:_ Hosted Windows CI showed every affected verification test aborting at the same writeFileSync ReferenceError before reaching filesystem or process-tree assertions; a focused import check reproduced the missing binding and turned green after the one-symbol import fix.
+
+## Overrode review gate for "fix: import the Windows verification script writer"
+
+- _when:_ 2026-09-15T14:46:38.566Z
+- _why:_ Independent Standards and Spec reviewers passed the exact one-import diff with zero findings; full GREEN receipt cef17cf0-9c6d-4414-95cb-9bf7b56d90aa.

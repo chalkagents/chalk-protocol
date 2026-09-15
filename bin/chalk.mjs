@@ -7,6 +7,7 @@ import { runMigrate } from '../lib/migrate.mjs';
 import { checkForUpdate } from '../lib/update.mjs';
 import { emitMilestone, telemetryStatus, promptTelemetryOptIn } from '../lib/telemetry.mjs';
 import { verify as runVerify } from '../lib/verify.mjs';
+import { verifyAfterExternalGates } from '../lib/verification-boundary.mjs';
 import { runReview, formatDecisionLine, decisionRisk, pendingDecisions, RISK_RANK } from '../lib/review.mjs';
 import { runAudit, codeSize, heldOutFloor, lockFile, listDirFiles, buildGuardPrompt, runRegressionAuthor } from '../lib/regression.mjs';
 import { projectPlans } from '../lib/plans.mjs';
@@ -962,7 +963,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
   work({ _ }) {
     const s = Store.open();
     const t = mustTask(s, _[0]);
-    if (stageDone(t, 'verified')) return ok(`work ${C.b(t.title)} ${C.dim('(already verified)')}`);
+    if (stageDone(t, 'verified')) {
+      const v = runVerify(s, { cwd: workdir(s, t) });
+      if (!v.green) {
+        console.error(C.r('✗ ') + 'verify RED while resuming previously verified work — gate closed.');
+        process.exit(2);
+      }
+      return ok(`work ${C.b(t.title)} ${C.dim('(already verified; fresh verification recorded)')}`);
+    }
     // Plan-approval gate (the human checkpoint): when planning is required, no code is written until a
     // human has approved the plan. Checked BEFORE the state flip so a refusal leaves no side effect.
     // Exit 2 → the pipeline auto-blocks (needs:human-input) + handoff.
@@ -1025,6 +1033,16 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     }
     if (!mut.skipped && mut.survived.length) {
       console.error(C.r('✗ ') + `weak tests — mutants survived in: ${mut.survived.join(', ')}. The suite doesn't pin this change; strengthen the assertions (or kill the mutants).`);
+      process.exit(2);
+    }
+    // Adequacy probes run external commands after the first verification. Re-bind the
+    // receipt to the exact source that will advance so a mutating probe cannot smuggle
+    // post-verification changes into the verified pipeline stage.
+    const finalVerification = verifyAfterExternalGates({
+      gates: [bi, mut], verify: () => runVerify(s, { cwd: workdir(s, t) }),
+    });
+    if (finalVerification && !finalVerification.green) {
+      console.error(C.r('✗ ') + 'verify RED after post-verification adequacy gates — gate closed.');
       process.exit(2);
     }
     t.pipeline = { ...(t.pipeline || {}), stage: 'verified', at: now() };
@@ -1700,6 +1718,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
       for (const i of v.integrity) for (const b of i.broken) console.log(`    ${C.r('✗')} ${b.path} changed under ${i.done ? C.y('DONE ') : ''}task ${i.taskId.slice(0, 12)}${i.done ? ` (${i.title.slice(0, 40)})` : ''} — use \`chalk amend-spec ${i.taskId.slice(0, 12)} --test ${b.path} --why "..."\``);
     }
     for (const r of v.e2e || []) console.log(`  ${r.status === 'passed' ? C.g('pass') : C.r('fail')}  ${C.dim('e2e')} ${r.path} ${C.dim(`→ ${r.runDir}`)}`);
+    if (v.evidence) console.log(C.dim(`  verification record: ${v.evidence.path}`));
+    if (v.evidenceError) console.log(C.r(`  evidence error: ${v.evidenceError}`));
+    if (v.freshness !== 'fresh') console.log(C.r(`  verification inputs ${v.freshness} — resolve input/storage errors or source changes and re-run chalk verify`));
     console.log('\n' + (v.green ? C.g('● GREEN — done gate is open') : C.r('● RED — done gate is closed')));
     // A green made of nothing is a trap, not a pass — label it every time it prints. An e2e spec
     // that actually RAN is a real check, so its green is not vacuous even with an empty toolchain.
@@ -1723,11 +1744,14 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
     const t = mustTask(s, _[0]);
     if (t.state !== 'in-progress') die(`task is [${t.state}], not in-progress.`);
     const v = runVerify(s, { cwd: workdir(s, t) });
+    if (v.evidence?.path) console.log(C.dim(`  verification record: ${v.evidence.path}`));
     if (!v.green) {
       const reasons = [];
       if (!v.toolchainGreen) reasons.push('toolchain not green (run `chalk verify`)');
       if (!v.integrityGreen) reasons.push('locked tests were modified (P6) — use `chalk amend-spec`');
       if (!v.e2eGreen) reasons.push('a browser-spec (e2e) check failed');
+      if (v.evidenceError) reasons.push(`verification evidence could not be saved: ${v.evidenceError}`);
+      if (v.freshness !== 'fresh') reasons.push(`verification inputs are ${v.freshness} — resolve source changes or unavailable inputs and re-run chalk verify`);
       die(`GATE P4+P6: cannot mark done — ${reasons.join('; ')}.`);
     }
     // GATE P6 (tracking) — a pinned test that isn't in git ships a vacuous green to CI (#107): the
@@ -1916,6 +1940,9 @@ ${C.dim('  preflight readiness: chalk doctor · watch the whole loop first: chal
         if (g.status === 'fail' && g.tail) console.log(g.tail.split('\n').map((l) => '       ' + C.dim(l)).join('\n'));
       }
     }
+    if (r.phaseVerification?.evidence) console.log(C.dim(`  phase verification record: ${r.phaseVerification.evidence.path}`));
+    if (r.phaseVerification?.evidenceError) console.log(C.r(`  phase evidence error: ${r.phaseVerification.evidenceError}`));
+    if (r.phaseVerification && r.phaseVerification.freshness !== 'fresh') console.log(C.r(`  phase verification inputs ${r.phaseVerification.freshness} — resolve input changes or unavailable monitoring and re-run chalk audit`));
     console.log(C.dim(`  code size: ${r.size.loc} LOC across ${r.size.files} file(s)`));
     // P7 stringency scales with code size (SpecBench): warn (non-fatal — audit is about correctness) when
     // the held-out set has not grown with the code. The `phase` gate turns this into a refusal.

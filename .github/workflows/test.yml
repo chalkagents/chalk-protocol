@@ -11,6 +11,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  windows-verification:
+    runs-on: windows-latest
+    env:
+      CHALK_WINDOWS_DEBUG: '1'
+    steps:
+      - name: Configure LF checkout
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run focused Windows verification regressions
+        run: >-
+          node scripts/verify-test-batch.mjs 1
+          test/verification-absent-membership.test.mjs
+          test/verification-finalization.test.mjs
+          test/verification-git-paths.test.mjs
+          test/verification-ignore-race.test.mjs
+          test/verification-lifecycle-continuity.test.mjs
+          test/verification-lifecycle.test.mjs
+          test/verification-literal-boundaries.test.mjs
+          test/verification-policy-authorities.test.mjs
+          test/verification-repository-selection.test.mjs
+          test/verification-stream-policy.test.mjs
+          test/verification-symlink-metadata.test.mjs
+      - name: Diagnose Windows controller startup
+        if: always()
+        run: node scripts/debug-windows-controller.mjs
+
   test:
     strategy:
       fail-fast: false
