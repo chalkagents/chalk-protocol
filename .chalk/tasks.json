@@ -8958,5 +8958,49 @@
     "reviews": [],
     "startedAt": "2026-09-15T12:44:14.205Z",
     "doneAt": "2026-09-15T13:22:04.352Z"
+  },
+  {
+    "id": "task-2cd1340d",
+    "title": "fix: normalize Windows filesystem identity probes",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Synchronous and asynchronous verification identity checks derive inode, device, and timestamp metadata through one exact stat representation so unchanged Windows inputs and storage remain fresh."
+      },
+      {
+        "text": "Archive replacement, source mutation, policy mutation, and storage redirection still fail closed while content hashing remains bounded and asynchronous."
+      },
+      {
+        "text": "The existing minimum-Node, Linux, and Windows verification matrix passes without weakening platform assertions."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-storage-identity.test.mjs",
+        "sha256": "dc12d2b08a18d480e33f14251501c50b00a0f7208fc8f47945a3fe8365fff130"
+      },
+      {
+        "path": "test/verification-record.test.mjs",
+        "sha256": "33fcada0de43e28e2866bc60117eae6173420c0ee93380e5a09b02446ca9d39c"
+      },
+      {
+        "path": "test/verification-retention.test.mjs",
+        "sha256": "4c9c568223fb77f3807d677ca13dd26baf82ca54936a979027513c3346954119"
+      },
+      {
+        "path": "test/verification-source-metadata.test.mjs",
+        "sha256": "929cc9be71332fa6b8c4c9f6af4e1f86ec1fffd4c8dbd0522a5b5c8c574ea4c1"
+      },
+      {
+        "path": "test/verification-automated-callers.test.mjs",
+        "sha256": "765eac9d74f3ae4f71fb90e99ad0fbfbc5f6b126338fb92d161b2b4cff866f48"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-15T13:32:29.592Z",
+    "reviews": [],
+    "startedAt": "2026-09-15T13:32:40.220Z",
+    "doneAt": "2026-09-15T13:40:50.474Z"
   }
 ]

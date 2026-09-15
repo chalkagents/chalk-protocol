@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789478524352,
+  "updatedAt": 1789479650474,
   "order": 0,
   "cards": [
     {
@@ -1745,6 +1745,23 @@
           "runId": "done-task-dedc06b3",
           "status": "passed",
           "at": 1789478524352
+        }
+      }
+    },
+    {
+      "id": "task-2cd1340d",
+      "title": "fix: normalize Windows filesystem identity probes",
+      "column": "done",
+      "createdAt": 1789479149592,
+      "updatedAt": 1789479650474,
+      "order": 103,
+      "description": "- Synchronous and asynchronous verification identity checks derive inode, device, and timestamp metadata through one exact stat representation so unchanged Windows inputs and storage remain fresh.\n- Archive replacement, source mutation, policy mutation, and storage redirection still fail closed while content hashing remains bounded and asynchronous.\n- The existing minimum-Node, Linux, and Windows verification matrix passes without weakening platform assertions.",
+      "testArtifact": {
+        "specPath": "test/verification-storage-identity.test.mjs",
+        "lastRun": {
+          "runId": "done-task-2cd1340d",
+          "status": "passed",
+          "at": 1789479650474
         }
       }
     }
