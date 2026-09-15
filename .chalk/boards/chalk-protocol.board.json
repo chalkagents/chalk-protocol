@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789483598567,
+  "updatedAt": 1789484395478,
   "order": 0,
   "cards": [
     {
@@ -1797,6 +1797,18 @@
           "status": "passed",
           "at": 1789483598567
         }
+      }
+    },
+    {
+      "id": "task-c52e6997",
+      "title": "fix: close remaining Windows verification regressions",
+      "column": "in_progress",
+      "createdAt": 1789484369073,
+      "updatedAt": 1789484395478,
+      "order": 106,
+      "description": "- Windows verification detects transient ancestor repository selectors, ignore policies, source membership, and symlink changes without false positives for stable ignored output.\n- Windows verification finalizes evidence without held filesystem handles and owns command descendants through normal completion, timeout, interruption, and capture failure.\n- The focused Windows verification regression job and the full Ubuntu, minimum-Node, and Windows CI matrix are green.",
+      "testArtifact": {
+        "specPath": "test/verification-absent-membership.test.mjs"
       }
     }
   ]
