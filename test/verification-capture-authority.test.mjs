@@ -22,14 +22,17 @@ function fixture(t, code) {
 
 for (const mode of ['replace', 'truncate']) {
   test(`live stdout ${mode} cannot certify missing captured output`, t => {
-    const change = mode === 'replace' ? 'fs.unlinkSync(gate.stdoutPath);fs.writeFileSync(gate.stdoutPath,"");' : 'fs.truncateSync(gate.stdoutPath,0);';
+    // Windows prevents unlinking an open capture file, so exercise the equally unsafe
+    // truncation attack there while POSIX retains the replacement-descriptor assertion.
+    const canReplaceOpenFile = process.platform !== 'win32';
+    const change = mode === 'replace' && canReplaceOpenFile ? 'fs.unlinkSync(gate.stdoutPath);fs.writeFileSync(gate.stdoutPath,"");' : 'fs.truncateSync(gate.stdoutPath,0);';
     const { store } = fixture(t, `process.stdout.write("before\\n");setTimeout(()=>{${change}process.stdout.write("after\\n");},150);`);
     const result = verify(store), command = result.toolchain.find(g=>g.gate==='test');
     assert.equal(command.exitCode, 0);
     const output = readFileSync(command.stdoutPath, 'utf8');
     assert.ok(!result.green || output === 'before\nafter\n', JSON.stringify({ green: result.green, output }));
     assert.equal(result.green, false, 'observed spool damage closes verification even when recoverable');
-    if (mode === 'replace') assert.equal(output, 'before\nafter\n', 'the open descriptor retains unlinked captured output');
+    if (mode === 'replace' && canReplaceOpenFile) assert.equal(output, 'before\nafter\n', 'the open descriptor retains unlinked captured output');
     assert.ok(command.captureError || command.archiveError || command.retentionError);
   });
 }

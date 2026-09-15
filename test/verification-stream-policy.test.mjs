@@ -54,7 +54,7 @@ test('changes to Git ignore policy cannot conceal transient ordinary inputs', t 
     const result = verify(store);
     assert.equal(result.toolchainGreen, true);
     assert.equal(result.green, false); assert.equal(result.freshness, 'stale');
-    assert.ok(result.toolchain.find(g => g.gate === 'test').inputChanges.some(p => p.includes('info/exclude')));
+    assert.ok(result.toolchain.find(g => g.gate === 'test').inputChanges.some(p => p.includes(join('info', 'exclude'))));
   }
 });
 

@@ -11,12 +11,15 @@ for (const mode of ['external-ignore', 'empty-global-config', 'ancestor-root']) 
   test(`Git path discovery preserves significant trailing spaces in ${mode}`, t => {
     const base = realpathSync(mkdtempSync(join(tmpdir(), 'chalk-git-paths-')));
     t.after(() => rmSync(base, { recursive: true, force: true }));
-    const top = join(base, mode === 'ancestor-root' ? 'project ' : 'project');
+    // Win32 strips trailing dots/spaces from path components. Exercise the same Git
+    // discovery routes there with representable names; POSIX retains the whitespace pin.
+    const trailing = process.platform === 'win32' ? '' : ' ';
+    const top = join(base, mode === 'ancestor-root' ? `project${trailing}` : 'project');
     mkdirSync(top); execFileSync('git', ['init', '-q'], { cwd: top });
     const root = mode === 'ancestor-root' ? join(top, 'app') : top;
     if (root !== top) mkdirSync(root);
     execFileSync(process.execPath, [resolve('bin/chalk.mjs'), 'init', '--bare'], { cwd: root });
-    const policy = mode === 'ancestor-root' ? join(top, '.gitignore') : join(base, mode === 'external-ignore' ? 'ignore.rules ' : 'global.config ');
+    const policy = mode === 'ancestor-root' ? join(top, '.gitignore') : join(base, `${mode === 'external-ignore' ? 'ignore.rules' : 'global.config'}${trailing}`);
     const rules = join(base, 'stable.rules'); writeFileSync(rules, '/ephemeral.js\n'); writeFileSync(policy, '');
     if (mode === 'external-ignore') execFileSync('git', ['config', 'core.excludesFile', policy], { cwd: root });
     const value = mode === 'empty-global-config' ? `[core]\nexcludesFile = ${JSON.stringify(rules.replaceAll('\\', '/'))}\n` : mode === 'ancestor-root' ? '/app/ephemeral.js\n' : '/ephemeral.js\n';

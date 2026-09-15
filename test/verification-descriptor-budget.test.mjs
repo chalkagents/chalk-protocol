@@ -52,6 +52,6 @@ syncBuiltinESMExports();
   assert.equal(record.freshness, 'stale');
   const command = record.toolchain.find(gate => gate.gate === 'test');
   assert.equal(command.monitorError, null);
-  assert.ok(command.inputChanges.some(path => path.includes(`source${process.platform === 'win32' ? '\\\\' : '/'}219`)), JSON.stringify(command));
+  assert.ok(command.inputChanges.some(path => path.includes(join('source', '219'))), JSON.stringify(command));
   assert.doesNotMatch(JSON.stringify(record), /watch descriptor budget exceeded|EMFILE/);
 });

@@ -40,7 +40,7 @@ for (const stage of ['startup', 'final-collection']) {
       const store=new Store(${JSON.stringify(root)});${setup}console.log(JSON.stringify(verify(store)));`;
     const result = JSON.parse(execFileSync(process.execPath,
       ['--require', join(root, 'preload.cjs'), '--input-type=module', '-e', script], { encoding: 'utf8', timeout: 20000 }));
-    assert.equal(fs.readlinkSync(link), '../source.js');
+    assert.equal(resolve(join(link, '..'), fs.readlinkSync(link)), join(root, 'source.js'));
     assert.equal(fs.readFileSync(link, 'utf8'), 'original');
     assert.equal(result.toolchainGreen, true, JSON.stringify(result));
     assert.equal(result.green, false, JSON.stringify(result));
@@ -56,5 +56,6 @@ test('an unchanged tracked symlink permits legitimate ignored sibling output', t
   assert.equal(result.green, true, JSON.stringify(result));
   assert.equal(result.freshness, 'fresh');
   assert.equal(fs.readFileSync(join(root, 'build/output.log'), 'utf8'), 'generated');
-  assert.equal(fs.readlinkSync(join(root, 'build/input.js')), '../source.js');
+  const link = join(root, 'build/input.js');
+  assert.equal(resolve(join(link, '..'), fs.readlinkSync(link)), join(root, 'source.js'));
 });

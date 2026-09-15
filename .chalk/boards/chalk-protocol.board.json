@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789479650474,
+  "updatedAt": 1789482359186,
   "order": 0,
   "cards": [
     {
@@ -1762,6 +1762,23 @@
           "runId": "done-task-2cd1340d",
           "status": "passed",
           "at": 1789479650474
+        }
+      }
+    },
+    {
+      "id": "task-c1114f1f",
+      "title": "fix: make verification evidence portable on Windows",
+      "column": "done",
+      "createdAt": 1789480257375,
+      "updatedAt": 1789482359186,
+      "order": 104,
+      "description": "- Verification detects temporary Git repository, ignore-policy, source-file, and symlink changes on Windows without losing path identity or holding repository selectors open.\n- Verification retains complete stdout and stderr and terminates or drains descendant processes on Windows for normal completion, timeout, and interruption.\n- The Ubuntu, Windows, and minimum Node CI matrix passes without weakening fail-closed verification assertions.",
+      "testArtifact": {
+        "specPath": "test/verification-absent-membership.test.mjs",
+        "lastRun": {
+          "runId": "done-task-c1114f1f",
+          "status": "passed",
+          "at": 1789482359186
         }
       }
     }

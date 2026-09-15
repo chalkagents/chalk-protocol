@@ -27,7 +27,7 @@ test('transient inputs inside existing empty directories invalidate verification
 });
 
 test('background descendants retain supervision and complete output capture after the shell exits', t => {
-  const { root, store } = fixture(t, 'const {spawn}=require("child_process");spawn(process.execPath,["worker.cjs"],{stdio:["ignore",1,2]}).unref();');
+  const { root, store } = fixture(t, 'const {spawn}=require("child_process");spawn(process.execPath,["worker.cjs"],{detached:true,stdio:["ignore",1,2]}).unref();');
   writeFileSync(join(root, 'source.txt'), 'original');
   writeFileSync(join(root, 'worker.cjs'), 'setTimeout(()=>{console.log("late stdout");console.error("late stderr");require("fs").writeFileSync("source.txt","changed");},700);');
   const result = verify(store), gate = result.toolchain.find(g => g.gate === 'test');

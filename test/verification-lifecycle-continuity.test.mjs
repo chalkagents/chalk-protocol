@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, realpathSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync, readFileSync, rmSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
@@ -41,18 +41,25 @@ test('verification observes transient inputs during final input collection', t =
 
 test('deadline finishes evidence even when an escaped descendant retains pipes', t => {
   const { root } = fixture(t);
-  writeFileSync(join(root, 'worker.cjs'), 'console.log("escaped output");setTimeout(()=>console.log("late output"),15000);');
+  writeFileSync(join(root, 'worker.cjs'), 'console.log("escaped output");setTimeout(()=>{require("fs").writeFileSync(".chalk/local/escaped","alive");console.log("late output");},6500);');
   writeFileSync(join(root, 'check.cjs'), 'const p=require("child_process").spawn(process.execPath,["worker.cjs"],{detached:true,stdio:["ignore",1,2]});require("fs").writeFileSync(".chalk/local/worker.pid",String(p.pid));p.unref();');
   const started = Date.now();
-  let command;
-  try { command = runVerificationCommand({ cwd: root, gate: 'test', cmd: 'node check.cjs', timeoutMs: 5000,
-    stdoutPath: join(root, '.chalk/local/out.log'), stderrPath: join(root, '.chalk/local/err.log') }); }
-  finally { try { process.kill(Number(readFileSync(join(root, '.chalk/local/worker.pid'), 'utf8')), 'SIGKILL'); } catch {} }
-  assert.ok(Date.now() - started < 10000, 'cancellation must not wait for the escaped worker to exit');
-  assert.equal(command.status, 'fail'); assert.equal(command.errorCode, 'ETIMEDOUT');
-  assert.ok(command.finishedAt);
-  assert.match(readFileSync(command.stdoutPath, 'utf8'), /escaped output/);
-  assert.equal(command.outputComplete, false, 'unfinished inherited pipes cannot be reported as complete output');
+  let workerPid;
+  try {
+    const command = runVerificationCommand({ cwd: root, gate: 'test', cmd: 'node check.cjs', timeoutMs: 5000,
+      stdoutPath: join(root, '.chalk/local/out.log'), stderrPath: join(root, '.chalk/local/err.log') });
+    workerPid = Number(readFileSync(join(root, '.chalk/local/worker.pid'), 'utf8'));
+    assert.ok(Date.now() - started < 10000, 'cancellation must not wait for the escaped worker to exit');
+    assert.equal(command.status, 'fail'); assert.equal(command.errorCode, 'ETIMEDOUT');
+    assert.ok(command.finishedAt);
+    assert.match(readFileSync(command.stdoutPath, 'utf8'), /escaped output/);
+    assert.equal(command.outputComplete, process.platform === 'win32', 'only a fully terminated Windows tree can report complete output');
+    if (process.platform === 'win32') {
+      const until = Date.now() + 1800;
+      while (Date.now() < until) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+      assert.equal(existsSync(join(root, '.chalk/local/escaped')), false, 'the timed-out Windows descendant must be terminated');
+    }
+  } finally { if (workerPid) try { process.kill(workerPid, 'SIGKILL'); } catch {} }
 });
 
 test('a detached worker cannot hide an input transition between lint and test', t => {
@@ -108,7 +115,9 @@ test('controller interruption archives escaped-descendant output within a bound'
     const result = await waitFor(() => JSON.parse(readFileSync(join(root, '.chalk/local/test.result.json'), 'utf8')));
     assert.ok(Date.now() - started < 4500);
     assert.equal(result.status, 'fail'); assert.equal(result.errorCode, 'ECANCELED');
-    assert.equal(result.outputComplete, false); assert.ok(result.finishedAt);
+    // taskkill closes the complete Windows process tree; POSIX must bound an escaped
+    // descendant whose inherited pipe remains open and therefore cannot certify completeness.
+    assert.equal(result.outputComplete, process.platform === 'win32'); assert.ok(result.finishedAt);
     assert.match(readFileSync(result.stdoutPath, 'utf8'), /before interruption/);
   } finally {
     controller.kill('SIGKILL');

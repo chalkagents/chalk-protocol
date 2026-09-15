@@ -65,6 +65,7 @@ todos:
 - `test/verification-shared-startup.test.mjs`
 - `test/verification-run-review-freshness.test.mjs`
 - `test/verification-storage-identity.test.mjs`
+- `test/verification-descriptor-budget.test.mjs`
 
 ---
 _Generated from `.chalk/tasks.json` by `chalk plans`. Edit tasks via the chalk CLI, not here._

@@ -1519,3 +1519,83 @@
 
 - _when:_ 2026-09-15T13:40:50.473Z
 - _why:_ Independent Standards and Spec reviewers passed the exact Windows identity normalization diff with zero findings; the configured external reviewer is unavailable within the bounded workflow.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:26.981Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.080Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.179Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.276Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.374Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.471Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.570Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:55:27.670Z
+- _why:_ Preserve the same fail-closed security assertion using Windows-representable paths and process semantics.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-15T14:04:31.975Z
+- _why:_ Keep the original fail-closed regression while expressing its path and termination evidence portably on Windows.
+
+## Amended acceptance test for "fix: normalize Windows filesystem identity probes"
+
+- _when:_ 2026-09-15T14:04:32.071Z
+- _why:_ Keep the original fail-closed regression while expressing its path and termination evidence portably on Windows.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T14:09:00.544Z
+- _why:_ Prove Windows timeout owns and terminates detached descendants before fixture cleanup.
+
+## Amended acceptance test for "fix: make verification evidence portable on Windows"
+
+- _when:_ 2026-09-15T14:09:00.619Z
+- _why:_ Prove Windows timeout owns and terminates detached descendants before fixture cleanup.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T14:14:32.983Z
+- _why:_ Ensure fixture cleanup cannot mask a surviving Windows descendant before the timeout assertion.
+
+## Amended acceptance test for "fix: make verification evidence portable on Windows"
+
+- _when:_ 2026-09-15T14:14:33.085Z
+- _why:_ Ensure fixture cleanup cannot mask a surviving Windows descendant before the timeout assertion.
+
+## Use bounded per-directory watching and PowerShell process-tree ownership on Windows
+
+- _when:_ 2026-09-15T14:18:10.559Z
+- _why:_ Recursive Windows watchers can hold Git selectors open and collapse nested events to ancestor names; Start-Process -Wait provides a live owner for complete descendant drain and taskkill cancellation.
+
+## Overrode review gate for "fix: make verification evidence portable on Windows"
+
+- _when:_ 2026-09-15T14:25:59.185Z
+- _why:_ Independent Standards and Spec reviewers both passed the final diff with zero actionable findings; full GREEN receipt 6c167147-a709-4fe0-b122-c8ac4b5c4b77.

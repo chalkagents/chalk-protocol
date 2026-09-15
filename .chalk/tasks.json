@@ -8623,7 +8623,7 @@
       },
       {
         "path": "test/verification-descriptor-budget.test.mjs",
-        "sha256": "33cf47583098d7d2780369f691fbea3d26d7a252891d90c5034d32042ebaa5e8"
+        "sha256": "6ba0e679595ad831475612fe67b6ce3147550c341884c427e615a63c6f1502ed"
       },
       {
         "path": "test/verification-ignore-race.test.mjs",
@@ -8805,7 +8805,7 @@
     "tests": [
       {
         "path": "test/verification-record.test.mjs",
-        "sha256": "33fcada0de43e28e2866bc60117eae6173420c0ee93380e5a09b02446ca9d39c"
+        "sha256": "8ac7cad85c89878831a5f036ba5335bb1883a85dc74cd72fab27385fb8af75cf"
       },
       {
         "path": "test/verification-record-boundaries.test.mjs",
@@ -8821,7 +8821,7 @@
       },
       {
         "path": "test/verification-supervision.test.mjs",
-        "sha256": "6d73840caba7627c14756d445c54119890b226fb3b45afae88c08458d2fb54c3"
+        "sha256": "2bc99f2c56a9cb86b2be8466b40c66bdc8638e3d85bc7027d60db361f1be3325"
       },
       {
         "path": "test/verification-contract-freeze.test.mjs",
@@ -8841,7 +8841,7 @@
       },
       {
         "path": "test/verification-stream-policy.test.mjs",
-        "sha256": "d374f76a06a3da6e83105c0388939171080156233f34bbbde9310fb7a39521d7"
+        "sha256": "28cbbc1572a901aceace1beee69220e3104b22f18086ca61468d64d183768e9a"
       },
       {
         "path": "test/verification-policy-authorities.test.mjs",
@@ -8869,7 +8869,7 @@
       },
       {
         "path": "test/verification-capture-authority.test.mjs",
-        "sha256": "46ae238adfed681b08aec124edef5219288f7ab923dcd181fbb29928638690f1"
+        "sha256": "35ca6fbf6ea1e6248609d152510a708be3e8f4cdc5251c9bb91ee5289f9b1c74"
       },
       {
         "path": "test/verification-literal-boundaries.test.mjs",
@@ -8881,7 +8881,7 @@
       },
       {
         "path": "test/verification-git-paths.test.mjs",
-        "sha256": "36b03b6bffe72ebf775a6de3eb2794f5b65b90012c2be39c09b3e63a6d181647"
+        "sha256": "696e5a95e0689d8548758539f7f38edc1cc3d196497e9493477dddcac931f1d7"
       },
       {
         "path": "test/verification-config-newlines.test.mjs",
@@ -8889,7 +8889,7 @@
       },
       {
         "path": "test/verification-lifecycle-continuity.test.mjs",
-        "sha256": "1cddb8f5bf9119829c4fe3e5488a7e5ca61d80fb9660f3e5ec14b7f665bc5960"
+        "sha256": "0289ba0554ef257e6896b05bbed053030279cac9f794e257f0c0aa9890ade50c"
       },
       {
         "path": "test/verification-observed-manifest.test.mjs",
@@ -8937,7 +8937,7 @@
       },
       {
         "path": "test/verification-symlink-metadata.test.mjs",
-        "sha256": "7f49b6a21147db084faf85e57a337fca4406446ac8601058828ecf50c56b3c42"
+        "sha256": "1a213b4bcefaec3ab995faa9332b304159ae8e5694c60bb817c0dd88c9986202"
       },
       {
         "path": "test/verification-shared-startup.test.mjs",
@@ -8950,6 +8950,10 @@
       {
         "path": "test/verification-storage-identity.test.mjs",
         "sha256": "dc12d2b08a18d480e33f14251501c50b00a0f7208fc8f47945a3fe8365fff130"
+      },
+      {
+        "path": "test/verification-descriptor-budget.test.mjs",
+        "sha256": "6ba0e679595ad831475612fe67b6ce3147550c341884c427e615a63c6f1502ed"
       }
     ],
     "heldOut": [],
@@ -8981,7 +8985,7 @@
       },
       {
         "path": "test/verification-record.test.mjs",
-        "sha256": "33fcada0de43e28e2866bc60117eae6173420c0ee93380e5a09b02446ca9d39c"
+        "sha256": "8ac7cad85c89878831a5f036ba5335bb1883a85dc74cd72fab27385fb8af75cf"
       },
       {
         "path": "test/verification-retention.test.mjs",
@@ -9002,5 +9006,81 @@
     "reviews": [],
     "startedAt": "2026-09-15T13:32:40.220Z",
     "doneAt": "2026-09-15T13:40:50.474Z"
+  },
+  {
+    "id": "task-c1114f1f",
+    "title": "fix: make verification evidence portable on Windows",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Verification detects temporary Git repository, ignore-policy, source-file, and symlink changes on Windows without losing path identity or holding repository selectors open."
+      },
+      {
+        "text": "Verification retains complete stdout and stderr and terminates or drains descendant processes on Windows for normal completion, timeout, and interruption."
+      },
+      {
+        "text": "The Ubuntu, Windows, and minimum Node CI matrix passes without weakening fail-closed verification assertions."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-absent-membership.test.mjs",
+        "sha256": "760cee46bedae0f998f7a36f185036d68c6a84f7a8dc36a814b80fd1cd5c2605"
+      },
+      {
+        "path": "test/verification-capture-authority.test.mjs",
+        "sha256": "35ca6fbf6ea1e6248609d152510a708be3e8f4cdc5251c9bb91ee5289f9b1c74"
+      },
+      {
+        "path": "test/verification-descriptor-budget.test.mjs",
+        "sha256": "6ba0e679595ad831475612fe67b6ce3147550c341884c427e615a63c6f1502ed"
+      },
+      {
+        "path": "test/verification-git-paths.test.mjs",
+        "sha256": "696e5a95e0689d8548758539f7f38edc1cc3d196497e9493477dddcac931f1d7"
+      },
+      {
+        "path": "test/verification-lifecycle-continuity.test.mjs",
+        "sha256": "0289ba0554ef257e6896b05bbed053030279cac9f794e257f0c0aa9890ade50c"
+      },
+      {
+        "path": "test/verification-lifecycle.test.mjs",
+        "sha256": "7869f29bbb170f019bd15f6124237f1289835b0be3c522c097a05d41fd99ff3c"
+      },
+      {
+        "path": "test/verification-literal-boundaries.test.mjs",
+        "sha256": "695d6bb8a9d52c167a00560a6588febe6e5ca92abf02103d82da19d776fa2d64"
+      },
+      {
+        "path": "test/verification-policy-authorities.test.mjs",
+        "sha256": "804c6b9c0b9e77a5508e0fdbc985514ae24ca044fba0ac74bbe7c5619c801045"
+      },
+      {
+        "path": "test/verification-record.test.mjs",
+        "sha256": "8ac7cad85c89878831a5f036ba5335bb1883a85dc74cd72fab27385fb8af75cf"
+      },
+      {
+        "path": "test/verification-repository-selection.test.mjs",
+        "sha256": "79dcebcc27ef09a7faef45abf93fa796dbd180fd68244528804ff7930e1c24f4"
+      },
+      {
+        "path": "test/verification-stream-policy.test.mjs",
+        "sha256": "28cbbc1572a901aceace1beee69220e3104b22f18086ca61468d64d183768e9a"
+      },
+      {
+        "path": "test/verification-supervision.test.mjs",
+        "sha256": "2bc99f2c56a9cb86b2be8466b40c66bdc8638e3d85bc7027d60db361f1be3325"
+      },
+      {
+        "path": "test/verification-symlink-metadata.test.mjs",
+        "sha256": "1a213b4bcefaec3ab995faa9332b304159ae8e5694c60bb817c0dd88c9986202"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-15T13:50:57.375Z",
+    "reviews": [],
+    "startedAt": "2026-09-15T13:51:05.413Z",
+    "doneAt": "2026-09-15T14:25:59.186Z"
   }
 ]

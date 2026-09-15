@@ -56,7 +56,8 @@ test('timeouts and interrupted commands retain evidence and cannot pass', t => {
   // only a startup-starved run, never a run that emitted output and then lost its log.
   for (const timeoutMs of [2000, 8000, 30000]) {
     const gate = runToolchain(root, { test: 'node check.cjs' }, { timeoutMs }).find(g => g.gate === 'test');
-    assert.equal(gate.status, 'fail'); assert.equal(gate.errorCode, 'ETIMEDOUT'); assert.ok(gate.signal);
+    assert.equal(gate.status, 'fail'); assert.equal(gate.errorCode, 'ETIMEDOUT');
+    assert.ok(gate.signal || process.platform === 'win32' && gate.exitCode !== null, 'termination outcome is retained');
     ready = existsSync(join(root, '.chalk/local/timeout-ready'));
     if (ready) { assert.match(readFileSync(gate.stdoutPath, 'utf8'), /started/); break; }
   }
