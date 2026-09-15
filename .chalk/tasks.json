@@ -9082,5 +9082,43 @@
     "reviews": [],
     "startedAt": "2026-09-15T13:51:05.413Z",
     "doneAt": "2026-09-15T14:25:59.186Z"
+  },
+  {
+    "id": "task-155a35cf",
+    "title": "fix: import the Windows verification script writer",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "The Windows verification supervisor can create its command wrapper without an undefined filesystem binding."
+      },
+      {
+        "text": "Existing Windows verification tests reach their intended filesystem and process-tree assertions instead of failing during supervisor startup."
+      },
+      {
+        "text": "The full Ubuntu, minimum-Node, and Windows CI matrix is green."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-absent-authorities.test.mjs",
+        "sha256": "b8f412cbf9e1f062a1095a8e7ea6b5e6d51b134d2a9d2e0fdc6a5b43a173eaad"
+      },
+      {
+        "path": "test/verification-supervision.test.mjs",
+        "sha256": "2bc99f2c56a9cb86b2be8466b40c66bdc8638e3d85bc7027d60db361f1be3325"
+      },
+      {
+        "path": "test/verification-lifecycle-continuity.test.mjs",
+        "sha256": "0289ba0554ef257e6896b05bbed053030279cac9f794e257f0c0aa9890ade50c"
+      }
+    ],
+    "heldOut": [],
+    "after": [
+      "task-c1114f1f"
+    ],
+    "createdAt": "2026-09-15T14:35:30.293Z",
+    "reviews": [],
+    "startedAt": "2026-09-15T14:36:09.817Z",
+    "doneAt": "2026-09-15T14:46:38.567Z"
   }
 ]

@@ -1599,3 +1599,13 @@
 
 - _when:_ 2026-09-15T14:25:59.185Z
 - _why:_ Independent Standards and Spec reviewers both passed the final diff with zero actionable findings; full GREEN receipt 6c167147-a709-4fe0-b122-c8ac4b5c4b77.
+
+## Import the Windows command-wrapper writer from node:fs
+
+- _when:_ 2026-09-15T14:39:34.505Z
+- _why:_ Hosted Windows CI showed every affected verification test aborting at the same writeFileSync ReferenceError before reaching filesystem or process-tree assertions; a focused import check reproduced the missing binding and turned green after the one-symbol import fix.
+
+## Overrode review gate for "fix: import the Windows verification script writer"
+
+- _when:_ 2026-09-15T14:46:38.566Z
+- _why:_ Independent Standards and Spec reviewers passed the exact one-import diff with zero findings; full GREEN receipt cef17cf0-9c6d-4414-95cb-9bf7b56d90aa.

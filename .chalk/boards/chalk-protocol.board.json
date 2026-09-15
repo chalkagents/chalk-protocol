@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789482359186,
+  "updatedAt": 1789483598567,
   "order": 0,
   "cards": [
     {
@@ -1779,6 +1779,23 @@
           "runId": "done-task-c1114f1f",
           "status": "passed",
           "at": 1789482359186
+        }
+      }
+    },
+    {
+      "id": "task-155a35cf",
+      "title": "fix: import the Windows verification script writer",
+      "column": "done",
+      "createdAt": 1789482930293,
+      "updatedAt": 1789483598567,
+      "order": 105,
+      "description": "- The Windows verification supervisor can create its command wrapper without an undefined filesystem binding.\n- Existing Windows verification tests reach their intended filesystem and process-tree assertions instead of failing during supervisor startup.\n- The full Ubuntu, minimum-Node, and Windows CI matrix is green.",
+      "testArtifact": {
+        "specPath": "test/verification-absent-authorities.test.mjs",
+        "lastRun": {
+          "runId": "done-task-155a35cf",
+          "status": "passed",
+          "at": 1789483598567
         }
       }
     }
