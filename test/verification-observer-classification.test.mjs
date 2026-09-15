@@ -14,7 +14,7 @@ test('slow ignored-output classification cannot hide a source write at completio
   fs.writeFileSync(join(root, '.gitignore'), 'generated.tmp\n');
   fs.writeFileSync(join(root, 'source.js'), 'before');
   const shim = `const fs=require('fs'),cp=require('child_process');fs.writeFileSync(${JSON.stringify(join(root, '.chalk/local/classifying'))},'yes');setTimeout(()=>{const r=cp.spawnSync('git',ARGS,{encoding:'utf8'});process.stdout.write(r.stdout||'');process.stderr.write(r.stderr||'');process.exitCode=r.status??2;},500);`;
-  fs.writeFileSync(join(root, 'preload.mjs'), `import fs from 'node:fs';import fsp from 'node:fs/promises';import cp from 'node:child_process';import{workerData}from'node:worker_threads';import{syncBuiltinESMExports}from'node:module';
+  fs.writeFileSync(join(root, 'preload.cjs'), `const fs=require('node:fs');const fsp=require('node:fs/promises');const cp=require('node:child_process');const{workerData}=require('node:worker_threads');const{syncBuiltinESMExports}=require('node:module');
     if(workerData?.mode==='monitor'){
       let stopping=false,fired=false;workerData.port.on('message',m=>{if(m.type==='stop')stopping=true;});
       const stat=fsp.lstat,sync=cp.spawnSync,asyncSpawn=cp.spawn;
@@ -30,7 +30,7 @@ test('slow ignored-output classification cannot hide a source write at completio
   const writer = spawn(process.execPath, ['writer.cjs'], { cwd: root, stdio: 'ignore' });
   const script = `import{Store}from${JSON.stringify(new URL('../lib/store.mjs', import.meta.url).href)};import{verify}from${JSON.stringify(new URL('../lib/verify.mjs', import.meta.url).href)};console.log(JSON.stringify(verify(new Store(${JSON.stringify(root)}))));`;
   let result;
-  try { result = JSON.parse(execFileSync(process.execPath, ['--import', join(root, 'preload.mjs'), '--input-type=module', '-e', script], { encoding: 'utf8', timeout: 15000 })); }
+  try { result = JSON.parse(execFileSync(process.execPath, ['--require', join(root, 'preload.cjs'), '--input-type=module', '-e', script], { encoding: 'utf8', timeout: 15000 })); }
   finally { writer.kill('SIGKILL'); }
   assert.equal(fs.readFileSync(join(root, 'source.js'), 'utf8'), 'after');
   assert.ok(Number(fs.readFileSync(join(root, '.chalk/local/changed'), 'utf8')) <= Date.parse(result.finishedAt));

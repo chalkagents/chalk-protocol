@@ -1374,3 +1374,143 @@
 
 - _when:_ 2026-09-11T17:44:30.325Z
 - _why:_ External Codex reviewer repeatedly exhausted its fixed 10-minute deadline without a verdict; independent Standards and Spec reviews found no actionable findings; the full Linux suite and locked acceptance tests are green; the human director approved consolidation into main.
+
+## Restore source-bound verification contract as task-dedc06b
+
+- _when:_ 2026-09-15T12:44:46.430Z
+- _why:_ The original committed evidence referenced task-3689504d, but its durable Chalk task record was omitted. Recreating the original criteria and 35 current test locks through task add/spec/start restores auditable ownership without editing tasks.json directly.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:13.467Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.304Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.372Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.435Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.496Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.557Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.615Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.671Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:50:24.728Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading and portable Windows paths; assertions and acceptance coverage remain unchanged.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-15T12:50:24.783Z
+- _why:_ Replace Node 18.19-only --import fixture preloading with Node 18.17-compatible CommonJS preloading; descriptor-budget assertions remain unchanged.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:32.890Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:32.955Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.019Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.080Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.137Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.194Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.251Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.310Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:55:33.365Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "fix: close source-bound verification review gaps"
+
+- _when:_ 2026-09-15T12:55:33.421Z
+- _why:_ Relock the sanctioned Node 18.17-compatible CommonJS preload fixture after applying the portability-only edit.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:59:33.484Z
+- _why:_ Relock the Node 18.17 startup fixture after replacing eval import.meta.url with an explicit portable absolute module path.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:59:33.545Z
+- _why:_ Relock the Node 18.17 startup fixture after replacing eval import.meta.url with an explicit portable absolute module path.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:59:33.606Z
+- _why:_ Relock the Node 18.17 startup fixture after replacing eval import.meta.url with an explicit portable absolute module path.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T12:59:33.668Z
+- _why:_ Relock the Node 18.17 startup fixture after replacing eval import.meta.url with an explicit portable absolute module path.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:11:55.458Z
+- _why:_ Add the adversarially requested failure path proving a stale second verification after a passing review blocks chalk run instead of marking the task done.
+
+## Amended acceptance test for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:11:55.523Z
+- _why:_ Add controlled adjacent bigint identifiers above Number.MAX_SAFE_INTEGER so lossy Number conversion cannot satisfy the exact filesystem identity contract.
+
+## Overrode review gate for "feat: persist verification runs with source-bound evidence"
+
+- _when:_ 2026-09-15T13:22:04.352Z
+- _why:_ Independent Standards and Spec reviewers both passed the exact PR plus remediation with zero findings; the configured external Codex reviewer previously timed out repeatedly, and the user approved continuing with the independent review evidence.

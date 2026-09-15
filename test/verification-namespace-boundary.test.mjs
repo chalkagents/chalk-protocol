@@ -17,7 +17,7 @@ for (const ignoredOutput of [false, true]) {
     meta.protocol.verify = { test: 'node -e "console.log(1)"' }; store.saveMeta(meta);
     // Simulate the platform delivering every other notification before the source
     // notification. Completion cannot infer that an empty callback queue is complete.
-    fs.writeFileSync(join(root, 'preload.mjs'), `import fs from 'node:fs';import{syncBuiltinESMExports}from'node:module';
+    fs.writeFileSync(join(root, 'preload.cjs'), `const fs=require('node:fs');const{syncBuiltinESMExports}=require('node:module');
       const watch=fs.watch;fs.watch=(path,...args)=>{const cb=args.pop();return watch(path,...args,(event,name)=>{
         if(String(name)!=='ephemeral.js')cb(event,name);
       });};syncBuiltinESMExports();`);
@@ -31,7 +31,7 @@ for (const ignoredOutput of [false, true]) {
         ${ignoredOutput ? "fs.mkdirSync(root+'/build');fs.writeFileSync(root+'/build/output.log','generated');fs.rmSync(root+'/build',{recursive:true});" : ''}
       }return value;};const result=verify(store);console.log(JSON.stringify({result,calls,used}));`;
     const { result, calls, used } = JSON.parse(execFileSync(process.execPath,
-      ['--import', join(root, 'preload.mjs'), '--input-type=module', '-e', script], { encoding: 'utf8', timeout: 20000 }));
+      ['--require', join(root, 'preload.cjs'), '--input-type=module', '-e', script], { encoding: 'utf8', timeout: 20000 }));
     assert.equal(calls, 2, 'mutation occurs during final input collection');
     assert.equal(used, 'used during verification');
     assert.equal(fs.existsSync(join(root, 'ephemeral.js')), false);

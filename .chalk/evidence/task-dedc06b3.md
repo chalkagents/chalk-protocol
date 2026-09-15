@@ -1,6 +1,6 @@
-# Verification evidence for task-3689504d
+# Verification evidence for task-dedc06b3
 
-Status: **complete through chalk done**. Codex review passed, and the final done verification passed all 716 tests with fresh inputs. Final receipt: `.chalk/local/verification/77d75258-eab4-4dac-97db-9d51992a85da/run.json`. No review override was used.
+Status: **durable task ownership restored; pre-completion verification GREEN**. This sanctioned replacement preserves the contract and 35 locked tests originally executed as `task-3689504d`, whose task record was omitted from the branch even though its evidence page was committed. Two focused locks now also cover post-review `chalk run` freshness and exact filesystem identifiers. The historical Codex review and final done verification passed all 716 tests with fresh inputs. Final historical receipt: `.chalk/local/verification/77d75258-eab4-4dac-97db-9d51992a85da/run.json`. The current full verification passed with fresh inputs at `.chalk/local/verification/ca23260e-ab08-46c4-9e7e-2717f5c1718b/run.json`; `chalk done` will run the authoritative final gate. No historical review override was used.
 
 Receipt: `.chalk/local/verification/478a1104-16db-41e3-a65b-9d2a56b65bd7/run.json`
 Recorded completion boundary: 2026-09-08T21:21:59.099Z
@@ -25,6 +25,8 @@ Full stderr: `/Users/devid/Documents/projects/personal/startup/chalk/chalk-proto
 ```
 
 ## Latest review and startup metadata fixes
+
+PR review found two additional portability gaps. Required reviews now have a locked automated-caller regression proving that `chalk run` records a second fresh receipt bound to the post-review source. Test preloads use Node 18.17-compatible CommonJS loading and explicit absolute module paths instead of the newer `--import` flag. Verification storage and file metadata retain exact bigint filesystem identifiers as strings, avoiding false archive-change reports when Windows file IDs exceed JavaScript's safe integer range. The changed verification subset passed on Node 20, and the new review/storage regressions passed on the exact Node 18.17 runtime.
 
 The preceding Codex review independently passed all 113 then-locked verification tests and 35 selected existing regressions, but reproduced a force-tracked symlink inside ignored output being replaced/read/restored before observer startup without invalidating the run. Its target string was preserved while initial metadata was lost.
 

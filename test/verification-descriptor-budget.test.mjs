@@ -19,9 +19,9 @@ test('nested verification monitors stay within a conservative descriptor budget'
   }
   execFileSync('git', ['add', '-A'], { cwd: root });
 
-  const preload = join(root, 'watch-budget.mjs');
-  fs.writeFileSync(preload, `import fs from 'node:fs';
-import { syncBuiltinESMExports } from 'node:module';
+  const preload = join(root, 'watch-budget.cjs');
+  fs.writeFileSync(preload, `const fs = require('node:fs');
+const { syncBuiltinESMExports } = require('node:module');
 const watch = fs.watch; let opened = 0;
 fs.watch = (...args) => {
   if (args[1] && typeof args[1] === 'object' && args[1].recursive) { const error = new Error('recursive watch unavailable'); error.code = 'ERR_FEATURE_UNAVAILABLE_ON_PLATFORM'; throw error; }
@@ -40,7 +40,7 @@ syncBuiltinESMExports();
   const result = spawnSync(process.execPath, [cli, 'verify'], {
     cwd: root,
     encoding: 'utf8',
-    env: { ...process.env, NODE_OPTIONS: `--import=${preload}` },
+    env: { ...process.env, NODE_OPTIONS: `--require=${JSON.stringify(preload)}` },
     timeout: 120_000,
   });
   assert.notEqual(result.status, 0, `${result.stdout}\n${result.stderr}`);

@@ -13,7 +13,7 @@ for (const target of ['source', 'archive']) {
     execFileSync(process.execPath, [resolve('bin/chalk.mjs'), 'init', '--bare'], { cwd: root });
     fs.writeFileSync(join(root, 'source.js'), 'before');
     const contract = join(root, '.chalk/chalk.json');
-    fs.writeFileSync(join(root, 'preload.mjs'), `import fs from 'node:fs';import fsp from 'node:fs/promises';import{workerData}from'node:worker_threads';import{syncBuiltinESMExports}from'node:module';
+    fs.writeFileSync(join(root, 'preload.cjs'), `const fs=require('node:fs');const fsp=require('node:fs/promises');const{workerData}=require('node:worker_threads');const{syncBuiltinESMExports}=require('node:module');
       if(workerData?.mode==='monitor'){
         let fired=false;const read=fs.readFileSync,open=fsp.open;
         const match=p=>!fired&&String(p)===${JSON.stringify(contract)};
@@ -34,7 +34,7 @@ for (const target of ['source', 'archive']) {
     const writer = spawn(process.execPath, ['writer.cjs'], { cwd: root, stdio: 'ignore' });
     const script = `import{Store}from${JSON.stringify(new URL('../lib/store.mjs', import.meta.url).href)};import{verify}from${JSON.stringify(new URL('../lib/verify.mjs', import.meta.url).href)};console.log(JSON.stringify(verify(new Store(${JSON.stringify(root)}))));`;
     let result;
-    try { result = JSON.parse(execFileSync(process.execPath, ['--import', join(root, 'preload.mjs'), '--input-type=module', '-e', script], { encoding: 'utf8', timeout: 10000 })); }
+    try { result = JSON.parse(execFileSync(process.execPath, ['--require', join(root, 'preload.cjs'), '--input-type=module', '-e', script], { encoding: 'utf8', timeout: 10000 })); }
     finally { writer.kill('SIGKILL'); }
     const changedAt = Number(fs.readFileSync(join(root, '.chalk/local/changed'), 'utf8'));
     assert.ok(changedAt <= Date.parse(result.finishedAt), 'the mutation must precede the recorded completion boundary');

@@ -40,8 +40,8 @@ test('a create/read/delete transition before observer startup closes the namespa
 
 test('missing notifications during the final drain cannot hide a vanished new input', t => {
   const { root } = fixture(t);
-  fs.writeFileSync(join(root, 'preload.mjs'), `import fs from 'node:fs';import fsp from 'node:fs/promises';
-    import{workerData}from'node:worker_threads';import{syncBuiltinESMExports}from'node:module';
+  fs.writeFileSync(join(root, 'preload.cjs'), `const fs=require('node:fs');const fsp=require('node:fs/promises');
+    const{workerData}=require('node:worker_threads');const{syncBuiltinESMExports}=require('node:module');
     if(workerData?.mode==='monitor'){
       let stopping=false,fired=false;workerData.port.on('message',m=>{if(m.type==='stop')stopping=true;});
       const watch=fs.watch,stat=fsp.lstat;
@@ -60,7 +60,7 @@ test('missing notifications during the final drain cannot hide a vanished new in
     import{verify}from${JSON.stringify(new URL('../lib/verify.mjs', import.meta.url).href)};
     console.log(JSON.stringify(verify(new Store(${JSON.stringify(root)}))));`;
   const result = JSON.parse(execFileSync(process.execPath,
-    ['--import', join(root, 'preload.mjs'), '--input-type=module', '-e', script], { encoding: 'utf8', timeout: 15000 }));
+    ['--require', join(root, 'preload.cjs'), '--input-type=module', '-e', script], { encoding: 'utf8', timeout: 15000 }));
   assert.ok(Number(fs.readFileSync(join(root, '.chalk/local/changed'), 'utf8')) <= Date.parse(result.finishedAt));
   assert.equal(result.toolchainGreen, true, JSON.stringify(result));
   assert.equal(result.green, false, JSON.stringify(result));

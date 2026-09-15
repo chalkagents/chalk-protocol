@@ -8623,7 +8623,7 @@
       },
       {
         "path": "test/verification-descriptor-budget.test.mjs",
-        "sha256": "fc20b069efb4dea39bc34411109059a06a36585ee4e1b94b9c358464fcf677b7"
+        "sha256": "33cf47583098d7d2780369f691fbea3d26d7a252891d90c5034d32042ebaa5e8"
       },
       {
         "path": "test/verification-ignore-race.test.mjs",
@@ -8786,5 +8786,177 @@
     ],
     "startedAt": "2026-09-11T01:59:47.119Z",
     "doneAt": "2026-09-11T17:44:30.325Z"
+  },
+  {
+    "id": "task-dedc06b3",
+    "title": "feat: persist verification runs with source-bound evidence",
+    "state": "done",
+    "acceptanceCriteria": [
+      {
+        "text": "Every verify invocation, including done and automated callers, stores a unique local run with commands, complete stdout/stderr logs, timestamps, exit/signal/error status, source fingerprints, effective verification configuration and matching task criteria/test identity."
+      },
+      {
+        "text": "Source identity includes tracked and ordinary untracked inputs and excludes protocol bookkeeping, held-out content and ignored build output; unknown identity or inputs changing during a run are reported and cannot produce green verification."
+      },
+      {
+        "text": "Passing, failing, timed-out and interrupted subprocess results retain evidence without shell-buffer truncation; failures to persist evidence fail verification explicitly; existing integrity and toolchain behavior remains covered."
+      }
+    ],
+    "tests": [
+      {
+        "path": "test/verification-record.test.mjs",
+        "sha256": "33fcada0de43e28e2866bc60117eae6173420c0ee93380e5a09b02446ca9d39c"
+      },
+      {
+        "path": "test/verification-record-boundaries.test.mjs",
+        "sha256": "4923d91e7d73a5b1f4395b892d595a024211d7bd2a3ed0bad60e2ef3b09f8642"
+      },
+      {
+        "path": "test/verification-source-metadata.test.mjs",
+        "sha256": "929cc9be71332fa6b8c4c9f6af4e1f86ec1fffd4c8dbd0522a5b5c8c574ea4c1"
+      },
+      {
+        "path": "test/verification-lifecycle.test.mjs",
+        "sha256": "7869f29bbb170f019bd15f6124237f1289835b0be3c522c097a05d41fd99ff3c"
+      },
+      {
+        "path": "test/verification-supervision.test.mjs",
+        "sha256": "6d73840caba7627c14756d445c54119890b226fb3b45afae88c08458d2fb54c3"
+      },
+      {
+        "path": "test/verification-contract-freeze.test.mjs",
+        "sha256": "64a2e8259b3b2e6846dbd8cd20fb15b6f89ce56064f137fbaa3c2f8201d8f152"
+      },
+      {
+        "path": "test/verification-audit-policy.test.mjs",
+        "sha256": "1925b677b2ba14305adba4c4424aa02bcf67e2aa9bc5618bb99774f8aad01a6e"
+      },
+      {
+        "path": "test/verification-recovery-boundaries.test.mjs",
+        "sha256": "5ed6c4439e7e21a97197fb054af42206fae8e782636a28706e27ef7cbd316bf1"
+      },
+      {
+        "path": "test/verification-audit-freshness.test.mjs",
+        "sha256": "09e99246f8c7531a1158bcd14bf0008e4878fab8c6f619ba2dcec2313b922fbf"
+      },
+      {
+        "path": "test/verification-stream-policy.test.mjs",
+        "sha256": "d374f76a06a3da6e83105c0388939171080156233f34bbbde9310fb7a39521d7"
+      },
+      {
+        "path": "test/verification-policy-authorities.test.mjs",
+        "sha256": "804c6b9c0b9e77a5508e0fdbc985514ae24ca044fba0ac74bbe7c5619c801045"
+      },
+      {
+        "path": "test/verification-index-membership.test.mjs",
+        "sha256": "840a9573a222e9aabd874f0c8e1dbcc419b82bac28e1be56e653aab5b3233c7e"
+      },
+      {
+        "path": "test/verification-policy-selection.test.mjs",
+        "sha256": "9c91c1409db2081a9fdd9babf0a85749321f79c6f6ee9d0cfbb9a786fc6b20b6"
+      },
+      {
+        "path": "test/verification-repository-selection.test.mjs",
+        "sha256": "79dcebcc27ef09a7faef45abf93fa796dbd180fd68244528804ff7930e1c24f4"
+      },
+      {
+        "path": "test/verification-descendant-selection.test.mjs",
+        "sha256": "9d93a0c85bec3f961cb24c6543cdcaa8572520b66b15e1b1a7c093980fbf31b8"
+      },
+      {
+        "path": "test/verification-retention.test.mjs",
+        "sha256": "4c9c568223fb77f3807d677ca13dd26baf82ca54936a979027513c3346954119"
+      },
+      {
+        "path": "test/verification-capture-authority.test.mjs",
+        "sha256": "46ae238adfed681b08aec124edef5219288f7ab923dcd181fbb29928638690f1"
+      },
+      {
+        "path": "test/verification-literal-boundaries.test.mjs",
+        "sha256": "695d6bb8a9d52c167a00560a6588febe6e5ca92abf02103d82da19d776fa2d64"
+      },
+      {
+        "path": "test/verification-policy-notifications.test.mjs",
+        "sha256": "c9eed6dcb562012aa875d6a44a9a59d88144fd29fbe51767af070d3119d377dd"
+      },
+      {
+        "path": "test/verification-git-paths.test.mjs",
+        "sha256": "36b03b6bffe72ebf775a6de3eb2794f5b65b90012c2be39c09b3e63a6d181647"
+      },
+      {
+        "path": "test/verification-config-newlines.test.mjs",
+        "sha256": "6d33618d101c3d9bcd20c22d949dc9097a7fb390702f25f85499282f673b4809"
+      },
+      {
+        "path": "test/verification-lifecycle-continuity.test.mjs",
+        "sha256": "1cddb8f5bf9119829c4fe3e5488a7e5ca61d80fb9660f3e5ec14b7f665bc5960"
+      },
+      {
+        "path": "test/verification-observed-manifest.test.mjs",
+        "sha256": "14841d36612cbe10cfc7a45d5a9d777bd5dcce72f7e386372d98a5c89258295d"
+      },
+      {
+        "path": "test/verification-finalization.test.mjs",
+        "sha256": "ac1bc8dcd3d5274e5595e67550797759837278ea0a984cd7c8fc4173825a28a2"
+      },
+      {
+        "path": "test/verification-completion-boundary.test.mjs",
+        "sha256": "8fae92b7b03be7d2f1a48f014b96bfbcc82bfe4b1a6605545285268d95aaa1e0"
+      },
+      {
+        "path": "test/verification-observer-drain.test.mjs",
+        "sha256": "c1a7525d5f26a608e8b2ca48b4dbe0848cd9730779f27508a25a79bed31a049a"
+      },
+      {
+        "path": "test/verification-observer-classification.test.mjs",
+        "sha256": "dc1d3afd4cc8c32097343c0d6a11e271dfaf5a7bf7a10373af700d5a385b461d"
+      },
+      {
+        "path": "test/verification-namespace-boundary.test.mjs",
+        "sha256": "f65e83bbc5d6ef5acecbd051215952c37d16993ca05f5c7e6ccfef7c094583c0"
+      },
+      {
+        "path": "test/verification-namespace-lifecycle.test.mjs",
+        "sha256": "34cfb161582a92c38095b791e10a729e7d44f1b754c822442f05a3a79f613e6b"
+      },
+      {
+        "path": "test/verification-absent-authorities.test.mjs",
+        "sha256": "b8f412cbf9e1f062a1095a8e7ea6b5e6d51b134d2a9d2e0fdc6a5b43a173eaad"
+      },
+      {
+        "path": "test/verification-cli-diagnostics.test.mjs",
+        "sha256": "e9d273d89cafbaede7d0f932b014feed4260ec1e9a4b21cf5ddda3804a78d8b0"
+      },
+      {
+        "path": "test/verification-absent-tracked.test.mjs",
+        "sha256": "27ef46ed7f192110acb2755bf161a1c1ea70da1d5aac3a9774118f42ed126514"
+      },
+      {
+        "path": "test/verification-absent-membership.test.mjs",
+        "sha256": "760cee46bedae0f998f7a36f185036d68c6a84f7a8dc36a814b80fd1cd5c2605"
+      },
+      {
+        "path": "test/verification-symlink-metadata.test.mjs",
+        "sha256": "7f49b6a21147db084faf85e57a337fca4406446ac8601058828ecf50c56b3c42"
+      },
+      {
+        "path": "test/verification-shared-startup.test.mjs",
+        "sha256": "fccb6ef797a0a2e9acc1ee73bc808b3a40cbc44e1eabd8f9e46f6c99045a6712"
+      },
+      {
+        "path": "test/verification-run-review-freshness.test.mjs",
+        "sha256": "5f2b96974294fc3af81c5898b5111c7b675089ba548f44d0264e8496df1428ec"
+      },
+      {
+        "path": "test/verification-storage-identity.test.mjs",
+        "sha256": "dc12d2b08a18d480e33f14251501c50b00a0f7208fc8f47945a3fe8365fff130"
+      }
+    ],
+    "heldOut": [],
+    "after": [],
+    "createdAt": "2026-09-15T12:43:39.369Z",
+    "reviews": [],
+    "startedAt": "2026-09-15T12:44:14.205Z",
+    "doneAt": "2026-09-15T13:22:04.352Z"
   }
 ]

@@ -19,11 +19,11 @@ function fixture(t, code) {
 
 test('log write failures kill the command and retain a finished failed outcome', async t => {
   const { root, store } = fixture(t, 'console.log("trigger capture");setTimeout(()=>require("fs").writeFileSync(".chalk/local/survived","bad"),700);');
-  const preload = join(root, 'inject.mjs');
-  writeFileSync(preload, 'import fs from "node:fs";import{syncBuiltinESMExports}from"node:module";if(process.argv[1]?.endsWith("verification-command.mjs")){fs.writeSync=()=>{throw Object.assign(new Error("injected disk full"),{code:"ENOSPC"});};syncBuiltinESMExports();}');
+  const preload = join(root, 'inject.cjs');
+  writeFileSync(preload, 'const fs=require("node:fs");const{syncBuiltinESMExports}=require("node:module");if(process.argv[1]?.endsWith("verification-command.mjs")){fs.writeSync=()=>{throw Object.assign(new Error("injected disk full"),{code:"ENOSPC"});};syncBuiltinESMExports();}');
   const original = process.env.NODE_OPTIONS;
   let result;
-  try { process.env.NODE_OPTIONS = `${original || ''} --import ${JSON.stringify(preload)}`; result = verify(store); }
+  try { process.env.NODE_OPTIONS = `${original || ''} --require ${JSON.stringify(preload)}`; result = verify(store); }
   finally { if (original === undefined) delete process.env.NODE_OPTIONS; else process.env.NODE_OPTIONS = original; }
   assert.equal(result.green, false);
   const receipt = JSON.parse(readFileSync(result.evidence.path, 'utf8'));

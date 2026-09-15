@@ -2,7 +2,7 @@
   "id": "proto-ba413e855c25",
   "name": "chalk-protocol — Chalk Protocol",
   "createdAt": 1782327495431,
-  "updatedAt": 1789148670325,
+  "updatedAt": 1789478524352,
   "order": 0,
   "cards": [
     {
@@ -1728,6 +1728,23 @@
           "runId": "done-task-42b79111",
           "status": "passed",
           "at": 1789148670325
+        }
+      }
+    },
+    {
+      "id": "task-dedc06b3",
+      "title": "feat: persist verification runs with source-bound evidence",
+      "column": "done",
+      "createdAt": 1789476219369,
+      "updatedAt": 1789478524352,
+      "order": 102,
+      "description": "- Every verify invocation, including done and automated callers, stores a unique local run with commands, complete stdout/stderr logs, timestamps, exit/signal/error status, source fingerprints, effective verification configuration and matching task criteria/test identity.\n- Source identity includes tracked and ordinary untracked inputs and excludes protocol bookkeeping, held-out content and ignored build output; unknown identity or inputs changing during a run are reported and cannot produce green verification.\n- Passing, failing, timed-out and interrupted subprocess results retain evidence without shell-buffer truncation; failures to persist evidence fail verification explicitly; existing integrity and toolchain behavior remains covered.",
+      "testArtifact": {
+        "specPath": "test/verification-record.test.mjs",
+        "lastRun": {
+          "runId": "done-task-dedc06b3",
+          "status": "passed",
+          "at": 1789478524352
         }
       }
     }
